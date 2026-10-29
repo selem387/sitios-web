@@ -30,8 +30,9 @@ server {
         proxy_read_timeout 3600s;
     }
 
-    # Páginas de acceso alojadas por el backend.
-    location ~ ^/(login|register|forgot-password|reset-password)/?$ {
+    # Páginas de acceso alojadas por el backend. Si la app trae sus propias
+    # páginas de login, define AUTH_PAGES_REGEX='^/__sin_paginas_alojadas__$'.
+    location ~ ${AUTH_PAGES_REGEX} {
         proxy_pass ${API_UPSTREAM}/t/${TENANT_SLUG}/$1$is_args$args;
         proxy_set_header Host $host;
     }

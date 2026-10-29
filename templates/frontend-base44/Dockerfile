@@ -16,7 +16,8 @@ RUN npm run build
 FROM nginx:1.27-alpine
 # Valores por defecto; se sobreescriben con variables de entorno en Easypanel.
 ENV API_UPSTREAM=http://sitios-web_api:3000 \
-    TENANT_SLUG=cambiar
+    TENANT_SLUG=cambiar \
+    AUTH_PAGES_REGEX='^/(login|register|forgot-password|reset-password)/?$'
 COPY nginx.conf.template /etc/nginx/templates/default.conf.template
 COPY --from=build /app/dist /usr/share/nginx/html
 EXPOSE 80

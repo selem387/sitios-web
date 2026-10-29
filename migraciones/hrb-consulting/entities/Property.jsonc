@@ -1,0 +1,245 @@
+{
+  "name": "Property",
+  "description": "Ficha inmobiliaria completa (estructura tipo EasyBroker/Wasi): datos de identificaci\u00f3n, precios, medidas, especificaciones, ubicaci\u00f3n, amenidades e im\u00e1genes.",
+  "type": "object",
+  "properties": {
+    "title": {
+      "type": "string",
+      "description": "T\u00edtulo publicitario de la propiedad"
+    },
+    "property_code": {
+      "type": "string",
+      "description": "Clave interna, ej. HRB-0001"
+    },
+    "operation_type": {
+      "type": "string",
+      "enum": [
+        "venta",
+        "renta",
+        "preventa",
+        "venta_renta"
+      ],
+      "default": "venta"
+    },
+    "property_type": {
+      "type": "string",
+      "enum": [
+        "casa",
+        "departamento",
+        "terreno",
+        "bodega",
+        "oficina",
+        "local_comercial",
+        "edificio",
+        "desarrollo",
+        "rancho",
+        "otro"
+      ],
+      "default": "casa"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "disponible",
+        "reservado",
+        "vendido",
+        "rentado",
+        "suspendido"
+      ],
+      "default": "disponible"
+    },
+    "featured": {
+      "type": "boolean",
+      "default": false,
+      "description": "Mostrar en carrusel de destacadas"
+    },
+    "price": {
+      "type": "number",
+      "description": "Precio de venta o renta mensual"
+    },
+    "currency": {
+      "type": "string",
+      "enum": [
+        "MXN",
+        "USD"
+      ],
+      "default": "MXN"
+    },
+    "maintenance_fee": {
+      "type": "number",
+      "description": "Cuota de mantenimiento mensual"
+    },
+    "negotiable": {
+      "type": "boolean",
+      "default": false,
+      "description": "Precio negociable"
+    },
+    "description": {
+      "type": "string",
+      "description": "Descripci\u00f3n p\u00fablica"
+    },
+    "investment_notes": {
+      "type": "string",
+      "description": "Potencial de inversi\u00f3n, plusval\u00eda, ROI"
+    },
+    "internal_notes": {
+      "type": "string",
+      "description": "Notas internas (solo admin)"
+    },
+    "land_area_m2": {
+      "type": "number",
+      "description": "Superficie de terreno en m\u00b2"
+    },
+    "built_area_m2": {
+      "type": "number",
+      "description": "Superficie construida en m\u00b2"
+    },
+    "front_m": {
+      "type": "number",
+      "description": "Frente en metros"
+    },
+    "depth_m": {
+      "type": "number",
+      "description": "Fondo en metros"
+    },
+    "bedrooms": {
+      "type": "integer",
+      "description": "Rec\u00e1maras"
+    },
+    "bathrooms": {
+      "type": "number",
+      "description": "Ba\u00f1os completos"
+    },
+    "half_bathrooms": {
+      "type": "integer",
+      "description": "Medios ba\u00f1os"
+    },
+    "parking_spots": {
+      "type": "integer",
+      "description": "Cajones de estacionamiento"
+    },
+    "levels": {
+      "type": "integer",
+      "description": "Niveles o pisos"
+    },
+    "age_years": {
+      "type": "integer",
+      "description": "Antig\u00fcedad en a\u00f1os (0 = nuevo)"
+    },
+    "condition": {
+      "type": "string",
+      "enum": [
+        "nuevo",
+        "usado",
+        "en_construccion",
+        "en_remodelacion",
+        "por_estrenar"
+      ],
+      "default": "nuevo"
+    },
+    "year_built": {
+      "type": "integer",
+      "description": "A\u00f1o de construcci\u00f3n"
+    },
+    "availability_date": {
+      "type": "string",
+      "format": "date",
+      "description": "Fecha de disponibilidad"
+    },
+    "land_use": {
+      "type": "string",
+      "enum": [
+        "habitacional",
+        "comercial",
+        "industrial",
+        "mixto",
+        "rustico",
+        "turistico"
+      ],
+      "description": "Uso de suelo"
+    },
+    "deed_status": {
+      "type": "string",
+      "description": "Situaci\u00f3n legal, ej. libre de gravamen, escrituras en proceso"
+    },
+    "features": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "Amenidades y caracter\u00edsticas"
+    },
+    "services": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "Servicios con los que cuenta (agua, luz, drenaje, etc.)"
+    },
+    "address": {
+      "type": "string",
+      "description": "Direcci\u00f3n"
+    },
+    "neighborhood": {
+      "type": "string",
+      "description": "Colonia o fraccionamiento"
+    },
+    "city": {
+      "type": "string",
+      "description": "Ciudad"
+    },
+    "state": {
+      "type": "string",
+      "description": "Estado"
+    },
+    "country": {
+      "type": "string",
+      "default": "M\u00e9xico"
+    },
+    "zip_code": {
+      "type": "string",
+      "description": "C\u00f3digo postal"
+    },
+    "latitude": {
+      "type": "number"
+    },
+    "longitude": {
+      "type": "number"
+    },
+    "images": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "URLs de im\u00e1genes (fotos de la propiedad)"
+    },
+    "views": {
+      "type": "integer",
+      "default": 0,
+      "description": "Contador de vistas"
+    }
+  },
+  "required": [
+    "title",
+    "operation_type",
+    "property_type"
+  ],
+  "rls": {
+    "read": {},
+    "create": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "update": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "delete": {
+      "user_condition": {
+        "role": "admin"
+      }
+    }
+  }
+}

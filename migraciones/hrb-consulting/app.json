@@ -1,0 +1,12 @@
+{
+  "app_id": "6aa9d84510d482734184f7eb",
+  "slug": "hrb-consulting",
+  "name": "HRB Consulting",
+  "settings": {
+    "base44_fallback_login": true,
+    "auth": { "password": true, "allow_signup": true },
+    "brand": { "name": "HRB Consulting" },
+    "public_integrations": [],
+    "timezone": "America/Merida"
+  }
+}
