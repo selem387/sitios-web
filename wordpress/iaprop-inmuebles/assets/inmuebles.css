@@ -1,0 +1,27 @@
+/* Estilos base. Toman colores y tipografía del tema (theme.json) mediante variables. */
+.iaprop-grid{display:grid;grid-template-columns:repeat(var(--iaprop-cols,3),minmax(0,1fr));gap:24px}
+@media (max-width:900px){.iaprop-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media (max-width:600px){.iaprop-grid{grid-template-columns:1fr}}
+.iaprop-card{background:var(--wp--preset--color--base,#fff);border-radius:12px;overflow:hidden;box-shadow:0 1px 3px rgba(0,0,0,.08),0 8px 24px rgba(0,0,0,.04);transition:transform .2s,box-shadow .2s}
+.iaprop-card:hover{transform:translateY(-2px);box-shadow:0 4px 12px rgba(0,0,0,.1)}
+.iaprop-card a{color:inherit;text-decoration:none;display:block}
+.iaprop-card__media{position:relative;aspect-ratio:4/3;background:#e4e4e7}
+.iaprop-card__img{width:100%;height:100%;object-fit:cover;display:block}
+.iaprop-card__badge{position:absolute;top:12px;left:12px;background:var(--wp--preset--color--primary,#111827);color:#fff;font-size:12px;font-weight:600;padding:4px 10px;border-radius:999px}
+.iaprop-card__body{padding:16px}
+.iaprop-card__price{margin:0 0 4px;font-size:1.25rem;font-weight:700;color:var(--wp--preset--color--primary,#111827)}
+.iaprop-card__title{margin:0 0 6px;font-size:1rem;line-height:1.35}
+.iaprop-card__zone,.iaprop-card__facts{margin:0;font-size:.875rem;opacity:.75}
+.iaprop-empty{padding:24px;text-align:center;opacity:.7}
+.iaprop-pager{margin-top:24px;display:flex;gap:8px;justify-content:center}
+.iaprop-search{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;background:var(--wp--preset--color--base,#fff);padding:16px;border-radius:12px;box-shadow:0 8px 24px rgba(0,0,0,.08)}
+.iaprop-search select,.iaprop-search input{padding:10px 12px;border:1px solid #d4d4d8;border-radius:8px;font:inherit;width:100%}
+.iaprop-search button{padding:10px 16px;border:0;border-radius:8px;background:var(--wp--preset--color--primary,#111827);color:#fff;font-weight:600;cursor:pointer}
+.iaprop-ficha__price{font-size:1.75rem;font-weight:700;margin:0 0 16px;color:var(--wp--preset--color--primary,#111827)}
+.iaprop-ficha__gallery{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:8px;margin-bottom:24px}
+.iaprop-ficha__gallery img{width:100%;aspect-ratio:4/3;object-fit:cover;border-radius:8px;display:block}
+.iaprop-ficha__facts{list-style:none;padding:0;margin:0 0 20px;display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:10px}
+.iaprop-ficha__facts li{background:rgba(0,0,0,.03);border-radius:8px;padding:10px 12px;display:flex;flex-direction:column}
+.iaprop-ficha__facts span{font-size:.8rem;opacity:.7}
+.iaprop-ficha__map{width:100%;height:320px;border:0;border-radius:12px;margin:12px 0 20px}
+.iaprop-ficha__wa{display:inline-block;background:#25d366;color:#fff;font-weight:700;padding:12px 20px;border-radius:999px;text-decoration:none}
