@@ -47,12 +47,23 @@ async function startRunner(tenant) {
     HOME: process.env.HOME || '/tmp',
     DENO_DIR: process.env.DENO_DIR || path.join(config.dataDir, 'deno-cache'),
     DENO_NO_UPDATE_CHECK: '1',
+    ...Object.fromEntries(
+      ['DENO_CERT', 'HTTPS_PROXY', 'HTTP_PROXY', 'NO_PROXY', 'https_proxy', 'http_proxy', 'no_proxy', 'TZ']
+        .filter((k) => process.env[k])
+        .map((k) => [k, process.env[k]])
+    ),
     ...Object.fromEntries(Object.entries(tenant.secrets || {}).map(([k, v]) => [k, String(v)])),
     BASE44_APP_ID: tenant.app_id,
     RUNNER_PORT: String(port),
     FUNCTIONS_DIR: functionsDir(tenant.app_id),
   };
-  const proc = spawn(config.denoBin, ['run', '-A', '--quiet', RUNNER], { env, stdio: ['ignore', 'pipe', 'pipe'] });
+  // Sin config ni node_modules del backend: las funciones resuelven npm: desde la caché global de Deno.
+  await fs.mkdir(env.FUNCTIONS_DIR, { recursive: true });
+  const proc = spawn(config.denoBin, ['run', '-A', '--quiet', '--no-config', '--node-modules-dir=none', RUNNER], {
+    env,
+    cwd: env.FUNCTIONS_DIR,
+    stdio: ['ignore', 'pipe', 'pipe'],
+  });
   const tag = `[fn:${tenant.slug}]`;
   proc.stdout.on('data', (d) => process.stdout.write(`${tag} ${d}`));
   proc.stderr.on('data', (d) => process.stderr.write(`${tag} ${d}`));
