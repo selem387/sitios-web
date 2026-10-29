@@ -86,9 +86,16 @@ export const CORE = {
 };
 
 export function registerIntegrationRoutes(app, ctx) {
-  app.post('/api/apps/:appId/integration-endpoints/Core/:name', ctx(async (c, { tenant }) => {
-    const fn = CORE[c.req.param('name')];
-    if (!fn) throw new HttpError(404, `Integración Core no soportada: ${c.req.param('name')}`);
+  app.post('/api/apps/:appId/integration-endpoints/Core/:name', ctx(async (c, { tenant, caller }) => {
+    const name = c.req.param('name');
+    const fn = CORE[name];
+    if (!fn) throw new HttpError(404, `Integración Core no soportada: ${name}`);
+    // Sin sesión solo se permiten las integraciones listadas en settings.public_integrations
+    // (evita que cualquiera use la app como almacenamiento gratis o gaste créditos de IA).
+    const allowed = tenant.settings.public_integrations || [];
+    if (caller.kind === 'anon' && !allowed.includes(name) && !allowed.includes('*')) {
+      throw new HttpError(401, 'Authentication required', { reason: 'auth_required' });
+    }
     return fn(tenant, await readPayload(c));
   }, { rawBody: true }));
 

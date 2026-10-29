@@ -24,6 +24,8 @@ Las funciones backend (`base44/functions/*/entry.ts`) corren en Deno, un proceso
 - Integraciones Core: `UploadFile`, `UploadPublicFile`, `UploadPrivateFile`, `CreateFileSignedUrl`, `InvokeLLM` (Claude, con `response_json_schema`, `file_urls`, búsqueda web), `ExtractDataFromUploadedFile`, `SendEmail` (Resend o SMTP), `GenerateImage` (OpenAI, opcional).
 - Funciones Deno, automatizaciones por evento de entidad y cron (`settings.automations`).
 
+Las integraciones Core exigen sesión, salvo las listadas en `settings.public_integrations` (por ejemplo `["InvokeLLM", "UploadFile"]` para formularios públicos).
+
 ## Pendiente
 
 Agentes de IA de Base44 (`agents.*`), conectores OAuth de Base44 (`connectors.*`), pagos de Base44 (`payments.*`), `importEntities` (CSV).
@@ -69,6 +71,7 @@ Todas con `Authorization: Bearer $ADMIN_TOKEN`.
   "brand": { "name": "Cliente", "color": "#0f766e", "logo_url": "https://..." },
   "mail_from": "hola@cliente.com",
   "timezone": "America/Mexico_City",
+  "public_integrations": ["InvokeLLM"],
   "automations": [
     { "type": "entity", "entity": "Workshop", "events": ["create", "update"], "function": "syncWorkshopToPg" },
     { "type": "cron", "cron": "0 8 * * *", "function": "dailyAdminSummary" }
