@@ -5,7 +5,7 @@ import { useAuth } from '@/lib/AuthContext';
 import { Image } from '@/components/ui/image';
 import { whatsappLink } from '@/lib/format';
 
-export const LOGO_URL = 'https://media.base44.com/images/public/6aa9d84510d482734184f7eb/b8d3570cc_logohrbweb.jpg';
+export const LOGO_URL = '/logo-hrb.jpg';
 
 const LINKS = [
   { label: 'Inicio', to: '/' },

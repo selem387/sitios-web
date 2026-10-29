@@ -6,11 +6,10 @@ WORKDIR /app
 COPY package*.json ./
 RUN if [ -f package-lock.json ]; then npm ci --no-audit --no-fund; else npm install --no-audit --no-fund; fi
 COPY . .
+# El appId se toma de .env.production. Estos ARG sin valor por defecto solo
+# lo sobreescriben si se pasan explícitamente al construir.
 ARG VITE_BASE44_APP_ID
-# Vacío = mismo origen (nginx hace de proxy). No cambiar en producción.
-ARG VITE_BASE44_APP_BASE_URL=""
-ENV VITE_BASE44_APP_ID=$VITE_BASE44_APP_ID \
-    VITE_BASE44_APP_BASE_URL=$VITE_BASE44_APP_BASE_URL
+ARG VITE_BASE44_APP_BASE_URL
 RUN npm run build
 
 FROM nginx:1.27-alpine
