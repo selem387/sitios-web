@@ -22,4 +22,11 @@ export const config = {
   base44Url: (env.BASE44_URL || 'https://base44.app').replace(/\/$/, ''),
   maxListLimit: Number(env.MAX_LIST_LIMIT || 5000),
   maxUploadMb: Number(env.MAX_UPLOAD_MB || 50),
+  // Entrevista web (módulo entrevista/): misma API que creador_video/entrevista.
+  entrevistaDb: env.ENTREVISTA_DB || 'web_builder',
+  entrevistaApiKey: env.ENTREVISTA_API_KEY || '',
+  entrevistaModel: env.ENTREVISTA_MODEL || env.ANTHROPIC_MODEL || 'claude-sonnet-5-5',
+  entrevistaMemoriaModel: env.ENTREVISTA_MEMORIA_MODEL || 'claude-haiku-5-5',
+  transcribirUrl: env.TRANSCRIBIR_URL || '',
+  transcribirKey: env.TRANSCRIBIR_KEY || '',
 };

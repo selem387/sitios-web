@@ -13,6 +13,7 @@ import { registerAuthRoutes } from './auth.js';
 import { registerHostedRoutes } from './hosted.js';
 import { registerIntegrationRoutes } from './integrations.js';
 import { registerAdminRoutes } from './admin.js';
+import { registerEntrevistaRoutes, initEntrevista } from './entrevista/index.js';
 import { invokeFunction } from './functions.js';
 import { attachRealtime } from './realtime.js';
 import { scheduleAll } from './automations.js';
@@ -24,7 +25,7 @@ const app = new Hono();
 app.use('*', cors({
   origin: (origin) => origin || '*',
   credentials: true,
-  allowHeaders: ['Content-Type', 'Authorization', 'X-App-Id', 'X-Origin-URL', 'X-Base44-Anonymous-Id', 'Base44-Functions-Version', 'on-behalf-of', 'X-Data-Env'],
+  allowHeaders: ['Content-Type', 'Authorization', 'X-App-Id', 'X-Origin-URL', 'X-Base44-Anonymous-Id', 'Base44-Functions-Version', 'on-behalf-of', 'X-Data-Env', 'X-API-Key'],
   exposeHeaders: ['Content-Length'],
   maxAge: 86400,
 }));
@@ -95,6 +96,7 @@ registerAuthRoutes(app, ctx);
 registerIntegrationRoutes(app, ctx);
 registerHostedRoutes(app, ctx, resolveTenant);
 registerAdminRoutes(app, wrap);
+registerEntrevistaRoutes(app, wrap);
 
 // Funciones backend: el SDK hace POST /api/apps/:appId/functions/:name.
 async function proxyFunction(c, tenant, name) {
@@ -189,6 +191,7 @@ async function fetchWithPrefix(req, env) {
 async function main() {
   await initControl();
   await migrateAllTenants();
+  await initEntrevista();
   const server = serve({ fetch: fetchWithPrefix, port: config.port, hostname: '0.0.0.0' }, (info) => {
     console.log(`sitios-web backend escuchando en :${info.port}`);
   });
