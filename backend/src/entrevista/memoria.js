@@ -2,7 +2,7 @@
 // `entrevistas.memoria` completa. Ari solo la lee. Ver doc, sección 2.2.
 import * as db from './db.js';
 import { pedirJSON, MODELO_MEMORIA } from './claude.js';
-import { SISTEMA_MEMORIA, ESQUEMA_MEMORIA } from './prompts.js';
+import { SISTEMA_MEMORIA, ESQUEMA_MEMORIA, GUIA_BLOQUES } from './prompts.js';
 
 const CAMPOS_LISTA = ['hechos', 'decisiones', 'rechazado', 'preguntas_hechas', 'pendientes', 'preferencias_cliente', 'bloques_cerrados'];
 const TOPE_CHARS = 6000; // ~1,500 tokens
@@ -50,6 +50,7 @@ export async function actualizarMemoria(entrevistaId, disparador = 'manual') {
     `MEMORIA ACTUAL:\n${Object.keys(anterior).length ? JSON.stringify(anterior, null, 1) : '(vacía)'}`,
     `BRIEF:\n${JSON.stringify(e.brief || {})}`,
     `BLOQUE ACTUAL: ${e.bloque_actual}`,
+    `GUÍA DE PREGUNTAS (usa estos códigos en preguntas_hechas, p. ej. "B1.3"):\n${Object.values(GUIA_BLOQUES).join('\n')}`,
     `MENSAJES NUEVOS (desde #${msgDesde} hasta #${msgHasta}):\n${formatearMensajes(nuevos)}`,
   ].join('\n\n');
   let ultimoError = null;
