@@ -8,13 +8,14 @@ export async function pedirJSON({ system, contenido, schema, model = MODELO_ARI,
   const apiKey = config.anthropicApiKey;
   if (!apiKey) throw new Error('Falta ANTHROPIC_API_KEY');
   const content = typeof contenido === 'string' ? [{ type: 'text', text: contenido }] : contenido;
+  // Algunos modelos no aceptan tool_choice forzado: se pide por instrucción y se cae a JSON en texto si hace falta.
   const body = {
     model,
     max_tokens,
-    system,
+    system: `${system}\n\nRESPONDE SIEMPRE llamando a la herramienta "responder" con el JSON pedido. No escribas texto fuera de la herramienta.`,
     messages: [{ role: 'user', content }],
     tools: [{ name: 'responder', description: 'Entrega la respuesta en el formato pedido.', input_schema: schema || { type: 'object' } }],
-    tool_choice: { type: 'tool', name: 'responder' },
+    tool_choice: { type: 'auto' },
   };
   const t0 = Date.now();
   const res = await fetch('https://api.anthropic.com/v1/messages', {
@@ -26,8 +27,14 @@ export async function pedirJSON({ system, contenido, schema, model = MODELO_ARI,
   const json = await res.json();
   if (!res.ok) throw new Error(`Claude: ${json?.error?.message || res.status}`);
   const call = (json.content || []).find((b) => b.type === 'tool_use' && b.name === 'responder');
-  if (!call) throw new Error('Claude no devolvió JSON');
-  return { data: call.input, usage: json.usage || {}, model, duracion_ms: Date.now() - t0 };
+  let data = call?.input;
+  if (!data) {
+    const texto = (json.content || []).filter((b) => b.type === 'text').map((b) => b.text).join('\n');
+    const m = texto.match(/\{[\s\S]*\}/);
+    if (m) { try { data = JSON.parse(m[0]); } catch { /* sigue */ } }
+  }
+  if (!data) throw new Error('Claude no devolvió JSON');
+  return { data, usage: json.usage || {}, model, duracion_ms: Date.now() - t0 };
 }
 
 // Describe una imagen (contenido, calidad, orientación) para `assets.descripcion_ia`.
