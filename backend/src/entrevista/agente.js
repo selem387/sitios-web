@@ -5,6 +5,7 @@ import { pedirJSON, describirImagen, transcribirAudio, MODELO_ARI } from './clau
 import { actualizarMemoria, tocaActualizar } from './memoria.js';
 import { BLOQUES, TOTAL_BLOQUES, PALABRA_INICIO, INSTRUCCIONES, SISTEMA_ARI, GUIA_BLOQUES, BRIEF_VACIO, ESQUEMA_SALIDA_ARI, SISTEMA_PLATAFORMA, ESQUEMA_PLATAFORMA } from './prompts.js';
 import { isObject } from '../util.js';
+import { resolverSubtipo } from './subtipo.js';
 
 const MAX_MSGS_CLIENTE = 120;
 const PAUSA_MS = 2 * 3600 * 1000;
@@ -79,7 +80,11 @@ async function turnoAri(e, { mensajesRecientes, ultimoTexto, regresaDePausa, arq
     `BLOQUE ACTUAL: ${bloque}\nGUÍA DEL BLOQUE:\n${GUIA_BLOQUES[bloque]}`,
   ];
   if (bloque === 'B1' || !brief.negocio?.arquetipo) {
-    partes.push(`ARQUETIPOS (slug: subtipos):\n${arquetipos.map((a) => `${a.slug}: ${a.subtipos ? Object.keys(a.subtipos).join(', ') : '(sin subtipos)'}`).join('\n')}`);
+    const lista = arquetipos.map((a) => {
+      const subs = a.subtipos ? Object.entries(a.subtipos).map(([k, v]) => `${k} (${String(v?.keywords_es || v?.keywords || '').split(',').slice(0, 6).map((x) => x.trim()).join(', ')})`) : ['(sin subtipos)'];
+      return `${a.slug}:\n  ${subs.join('\n  ')}`;
+    });
+    partes.push(`ARQUETIPOS (slug → subtipos con palabras clave). Asigna negocio.arquetipo y negocio.subtipo SOLO con estos valores:\n${lista.join('\n')}`);
   }
   if (bloque === 'B11' && brief.negocio?.arquetipo) partes.push(`ARQUETIPO ASIGNADO: ${brief.negocio.arquetipo}`);
   if (assets.length) partes.push(`ASSETS recibidos:\n${assets.map((a) => `${a.clave} [${a.tipo}, ${a.calidad || '?'}, usar=${a.usar}] ${a.descripcion_ia || a.nota || ''}`).join('\n')}`);
@@ -199,7 +204,10 @@ export async function procesarMensaje(b) {
   // Cierre: última memoria (síncrona), decisión de plataforma y callback.
   await actualizarMemoria(e.id, 'cierre').catch((err) => console.error('memoria cierre', err));
   const plataforma = await decidirPlataforma(brief);
-  const briefFinal = { ...brief, plataforma };
+  // Capa 2 de subtipo: confirma el de Ari o lo infiere por keywords; queda en el brief para el generador.
+  const sub = resolverSubtipo(brief, arquetipos);
+  const briefFinal = { ...brief, negocio: { ...(brief.negocio || {}), arquetipo: sub.arquetipo, subtipo_resuelto: sub.subtipo, subtipo_fuente: sub.fuente }, plataforma };
+  await db.evento(e.id, 'subtipo_resuelto', sub);
   await db.guardar(e.id, { brief: briefFinal, estado: 'completada' });
   e.brief = briefFinal; e.estado = 'completada';
   await db.evento(e.id, 'entrevista_completada', { plataforma: plataforma.plataforma, demasiado });
