@@ -158,6 +158,8 @@ export async function generarSitio(sitioId, entrevista, { slug } = {}) {
     const dominio = `sw-${slug}.${config.wpDominioBase}`;
     const sitio = await wp.crearSitio({ dominio, titulo: brief.negocio?.nombre || slug });
     const url = sitio.url.replace(/^http:/, 'https:');
+    // Regenerar el mismo dominio: la fila anterior queda como histórico sin dominio.
+    await q(`UPDATE sitios SET dominio=NULL, estado=CASE WHEN estado IN ('listo','requiere_revision') THEN 'reemplazado' ELSE estado END, actualizado=now() WHERE dominio=$1 AND id<>$2`, [dominio, sitioId]);
     await guardarSitio(sitioId, { dominio, blog_id_wp: sitio.blog_id, url_publica: url, estado: 'publicando' });
     await paso('sitio_wp', sitio);
 
