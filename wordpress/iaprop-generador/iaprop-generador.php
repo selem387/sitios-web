@@ -293,6 +293,8 @@ add_action( 'wp_head', function () {
 	}
 	echo '<meta property="og:title" content="' . esc_attr( wp_get_document_title() ) . '">' . "\n";
 	echo '<meta property="og:type" content="website">' . "\n";
+	// Palabras largas en español (p. ej. "Departamentos") no deben desbordar títulos en celular.
+	echo '<style>h1,h2,h3,.wp-block-heading{overflow-wrap:break-word;hyphens:auto}</style>' . "\n";
 	echo '<meta property="og:locale" content="es_MX">' . "\n";
 	echo '<link rel="canonical" href="' . esc_url( is_front_page() ? home_url( '/' ) : ( is_singular() ? get_permalink() : home_url( add_query_arg( array() ) ) ) ) . '">' . "\n";
 	$ld = get_option( 'iaprop_jsonld' );
