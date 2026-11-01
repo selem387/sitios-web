@@ -153,6 +153,7 @@ export async function generarSitio(sitioId, entrevista, { slug } = {}) {
     // 3) Textos.
     let red = await redactar(brief, dd);
     await paso('textos', { modelo: red.model, ms: red.duracion_ms, tokens: red.usage, avisos: red.data._avisos });
+    reporte.contenido = red.data;
 
     // 4) Sitio en el Multisite.
     const dominio = `sw-${slug}.${config.wpDominioBase}`;
@@ -230,6 +231,7 @@ export async function generarSitio(sitioId, entrevista, { slug } = {}) {
     return { url, publicable: !!aud.publicable };
   } catch (err) {
     reporte.error = String(err.message || err).slice(0, 1000);
+    reporte.error_stack = String(err.stack || '').split('\n').slice(0, 6).join(' | ');
     await guardarSitio(sitioId, { estado: 'error', reporte }).catch(() => {});
     console.error('generarSitio', sitioId, err);
     throw err;
