@@ -152,6 +152,8 @@ app.post('/v1/auditar', async (c) => {
   if (propio?.checks && !propio.checks.whatsapp_links && !propio.checks.tel_links) p0.push('Sin enlace de WhatsApp ni teléfono');
   if (propio?.checks && propio.checks.h1 !== 1) p0.push(`H1 = ${propio?.checks?.h1} (debe ser 1)`);
   if (propio?.checks?.inter_como_fuente) p0.push('Inter/Roboto/Arial como fuente visible');
+  const slop = (imp?.hallazgos || []).filter((h) => h.categoria === 'slop');
+  if (slop.length >= 3) p0.push(`${slop.length} clichés de diseño IA detectados por Impeccable (${slop.slice(0, 3).map((h) => h.regla).join(', ')})`);
   return c.json({ url: b.url, lighthouse: lh, impeccable: imp, propio, p0, publicable: p0.length === 0, ms: Date.now() - t0 });
 });
 

@@ -36,10 +36,25 @@ export async function lighthouse(url, { desktop = false, timeoutMs = 120000 } = 
 }
 
 /** Impeccable detect sobre una URL (reglas de render: contraste, texto diminuto, patrones de IA, etc.). */
-export async function impeccable(url, { timeoutMs = 120000 } = {}) {
-  const env = { ...process.env, CHROME_PATH: CHROME, DO_NOT_TRACK: '1', IMPECCABLE_BROWSER: CHROME };
+import fs from 'node:fs/promises';
+import os from 'node:os';
+import path from 'node:path';
+
+// Impeccable usa Puppeteer; como corremos como root en Docker, Chrome necesita --no-sandbox.
+// Un wrapper ejecutable que añade las banderas y PUPPETEER_EXECUTABLE_PATH apuntando a él resuelve ambas cosas.
+let wrapperChrome = null;
+async function chromeSinSandbox() {
+  if (wrapperChrome) return wrapperChrome;
+  const p = path.join(os.tmpdir(), 'chrome-nosandbox.sh');
+  await fs.writeFile(p, `#!/bin/sh\nexec "${CHROME}" --no-sandbox --disable-dev-shm-usage --disable-gpu "$@"\n`, { mode: 0o755 });
+  wrapperChrome = p;
+  return p;
+}
+
+export async function impeccable(url, { timeoutMs = 120000, viewport = '390x844' } = {}) {
+  const env = { ...process.env, DO_NOT_TRACK: '1', PUPPETEER_EXECUTABLE_PATH: await chromeSinSandbox(), PUPPETEER_SKIP_DOWNLOAD: '1' };
   try {
-    const { stdout } = await run('impeccable', ['detect', '--json', '--no-config', url], { env, timeout: timeoutMs, maxBuffer: 16 * 1024 * 1024 });
+    const { stdout } = await run('impeccable', ['detect', '--json', '--no-config', '--viewport', viewport, url], { env, timeout: timeoutMs, maxBuffer: 16 * 1024 * 1024 });
     return { ok: true, ...normalizarImpeccable(stdout) };
   } catch (err) {
     // Exit code 2 = hubo hallazgos (no es error); 1 = no se pudo escanear.
@@ -52,17 +67,22 @@ function normalizarImpeccable(stdout) {
   let data;
   try { data = JSON.parse(stdout); } catch { return { hallazgos: [], crudo: String(stdout).slice(0, 2000) }; }
   // El esquema puede variar entre versiones: aceptamos {findings:[...]} o un arreglo.
+  // Esquema real de impeccable 3.x: [{antipattern, name, description, severity, category: slop|quality|a11y..., file, line, snippet}]
   const lista = Array.isArray(data) ? data : data.findings || data.results || data.issues || [];
   const hallazgos = lista.map((f) => ({
-    regla: f.rule || f.ruleId || f.id || null,
+    regla: f.antipattern || f.rule || f.ruleId || f.id || null,
+    nombre: f.name || null,
     severidad: f.severity || f.priority || f.level || null,
-    mensaje: f.message || f.title || f.description || null,
-    selector: f.selector || f.target || f.element || null,
-    valor: f.value ?? null,
+    categoria: f.category || null,
+    mensaje: f.description || f.message || null,
+    evidencia: f.snippet || f.selector || null,
   }));
-  const porSeveridad = {};
-  for (const h of hallazgos) porSeveridad[h.severidad || 'sin'] = (porSeveridad[h.severidad || 'sin'] || 0) + 1;
-  return { hallazgos, resumen: porSeveridad, total: hallazgos.length };
+  const porSeveridad = {}, porCategoria = {};
+  for (const h of hallazgos) {
+    porSeveridad[h.severidad || 'sin'] = (porSeveridad[h.severidad || 'sin'] || 0) + 1;
+    porCategoria[h.categoria || 'sin'] = (porCategoria[h.categoria || 'sin'] || 0) + 1;
+  }
+  return { hallazgos, resumen: porSeveridad, por_categoria: porCategoria, total: hallazgos.length };
 }
 
 /** Comprobaciones propias baratas que ni Lighthouse ni Impeccable cubren bien para nuestros sitios. */
