@@ -1,11 +1,11 @@
 // Reglas de diseño que el generador recibe junto con arquetipos.diseno y diseno_estilos.
 // Se siembran en la tabla diseno_reglas al arrancar (upsert por clave); editar aquí y redesplegar, o editar la fila.
-export const VERSION_REGLAS = 'v1-2026-11-01';
+export const VERSION_REGLAS = 'v2-2026-11-01';
 
 export const REGLAS = {
-  // Clichés visuales que delatan diseño generado por IA. No se usan salvo que el brief los pida por su nombre.
-  tropes_prohibidos: {
-    descripcion: 'Señales de diseño generado por IA. El generador NO las usa salvo que el brief las pida explícitamente.',
+  // Clichés de diseño hecho con IA: recursos que aparecen en miles de páginas generadas sin importar el giro. No se usan salvo que el brief los pida por su nombre.
+  cliches_ia: {
+    descripcion: 'Clichés de diseño hecho con IA. El generador NO los usa salvo que el brief los pida por su nombre.',
     lista: [
       'Fondos con gradientes agresivos o gradiente morado/rosa',
       'Emojis como íconos o viñetas (usar SVG: Lucide/Heroicons/Phosphor)',
@@ -80,6 +80,7 @@ CREATE TABLE IF NOT EXISTS diseno_reglas (
 /** Siembra/actualiza las reglas. Pasa la función q(sql, params) de db.js. */
 export async function sembrarReglas(q) {
   await q(SCHEMA_REGLAS);
+  await q(`DELETE FROM diseno_reglas WHERE clave = 'tropes_prohibidos'`);
   for (const [clave, valor] of Object.entries(REGLAS)) {
     await q(
       `INSERT INTO diseno_reglas (clave, valor, version) VALUES ($1, $2, $3)

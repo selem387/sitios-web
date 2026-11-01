@@ -88,7 +88,7 @@ export async function datosDiseno({ arquetipo, subtipo, estilo }) {
     arquetipo, subtipo, estilo: estilo || null, version: row.diseno_version || null,
     subtipo_diseno: sd, estilo_diseno: est, tipografia_recomendada: tipografia,
     checklist: row.checklist || [],
-    tropes_prohibidos: reglas.tropes_prohibidos?.lista || [],
+    cliches_ia: reglas.cliches_ia?.lista || [],
     niveles_efectos: reglas.niveles_efectos || null,
     sorteo_variacion: reglas.sorteo_variacion?.reglas || [],
   };
