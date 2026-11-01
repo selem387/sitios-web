@@ -1,0 +1,15 @@
+{
+  "name": "sitios-web-render",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Mockups de primera pantalla por estilo y capturas de sitios publicados (Chromium headless)",
+  "main": "src/index.js",
+  "scripts": { "start": "node src/index.js", "test": "node --test test/*.test.mjs" },
+  "engines": { "node": ">=22" },
+  "dependencies": {
+    "@hono/node-server": "^1.13.7",
+    "hono": "^4.6.14",
+    "playwright": "1.49.1"
+  }
+}
