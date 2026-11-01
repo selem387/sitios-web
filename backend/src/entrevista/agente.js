@@ -6,6 +6,7 @@ import { actualizarMemoria, tocaActualizar } from './memoria.js';
 import { BLOQUES, TOTAL_BLOQUES, PALABRA_INICIO, INSTRUCCIONES, SISTEMA_ARI, GUIA_BLOQUES, BRIEF_VACIO, ESQUEMA_SALIDA_ARI, SISTEMA_PLATAFORMA, ESQUEMA_PLATAFORMA } from './prompts.js';
 import { isObject } from '../util.js';
 import { resolverSubtipo } from './subtipo.js';
+import { estudiarReferencias } from './referencias.js';
 
 const MAX_MSGS_CLIENTE = 120;
 const PAUSA_MS = 2 * 3600 * 1000;
@@ -206,7 +207,14 @@ export async function procesarMensaje(b) {
   const plataforma = await decidirPlataforma(brief);
   // Capa 2 de subtipo: confirma el de Ari o lo infiere por keywords; queda en el brief para el generador.
   const sub = resolverSubtipo(brief, arquetipos);
-  const briefFinal = { ...brief, negocio: { ...(brief.negocio || {}), arquetipo: sub.arquetipo, subtipo_resuelto: sub.subtipo, subtipo_fuente: sub.fuente }, plataforma };
+  // Densidad por defecto según arquetipo si Ari no la fijó.
+  const DENSIDAD = { restaurante: 'compacta', tienda: 'compacta', turismo: 'aireada', servicios: 'aireada' };
+  const marca = { ...(brief.marca || {}) };
+  if (!marca.densidad) marca.densidad = DENSIDAD[sub.arquetipo] || 'media';
+  if (!marca.efectos) marca.efectos = 'sobrio';
+  // Estudio de ligas de referencia (web → render /v1/estudiar; Figma → REST). No bloquea el cierre si falla.
+  marca.referencias_estudio = await estudiarReferencias(brief).catch(() => []);
+  const briefFinal = { ...brief, marca, negocio: { ...(brief.negocio || {}), arquetipo: sub.arquetipo, subtipo_resuelto: sub.subtipo, subtipo_fuente: sub.fuente }, plataforma };
   await db.evento(e.id, 'subtipo_resuelto', sub);
   await db.guardar(e.id, { brief: briefFinal, estado: 'completada' });
   e.brief = briefFinal; e.estado = 'completada';

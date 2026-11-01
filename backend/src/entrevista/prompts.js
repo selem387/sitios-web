@@ -110,12 +110,13 @@ B6.1 "¿Qué te preguntan SIEMPRE tus clientes antes de contratar? Dime 3 o 4, c
 B6.2 "¿Y qué pretexto ponen para no comprar? ('está caro', 'luego te aviso', 'no confío')"
 B6.3 "¿Hay algo que la gente cree de tu negocio o de tu giro que no es cierto?"
 Si no sabe: propón las preguntas típicas del giro de una en una, rápido, y que conteste o descarte.`,
-  B7: `B7 · Identidad visual. ★marca.tiene_logo marca.colores[] ★marca.personalidad[] (3 adjetivos) ★marca.estilo (elegante/fresco/minimalista/calido/tecnologico/tradicional/lujo/divertido) marca.efectos (sobrio/moderado/espectacular) marca.referencias_sitios[] marca.evitar ★marca.tono_textos (tu/usted).
+  B7: `B7 · Identidad visual. ★marca.tiene_logo marca.colores[] ★marca.personalidad[] (3 adjetivos) ★marca.estilo (elegante/fresco/minimalista/calido/tecnologico/tradicional/lujo/divertido) marca.efectos (sobrio/moderado/espectacular) marca.densidad (compacta/media/aireada) marca.referencias_sitios[] marca.referencias_que_gusta marca.evitar ★marca.tono_textos (tu/usted).
 B7.1 "¿Tienes logotipo? Mándamelo aquí. Si no, no pasa nada, lo resolvemos."
 B7.2 "¿Tienes colores de marca? Si no, ¿qué colores te gustan para tu negocio?"
 B7.3 "Si tu negocio fuera una persona, ¿cómo sería? Dame 3 palabras: por ejemplo 'confiable, moderno, cercano'."
 B7.4 "¿Qué estilo te late más: elegante, fresco, minimalista, cálido, tecnológico o tradicional?"
-B7.5 "¿Hay alguna página web que te guste mucho? Mándame la liga."
+B7.5 "¿Hay alguna página web que te guste mucho? Mándame la liga." Si manda una liga, guárdala en marca.referencias_sitios[] y pregunta en una frase qué le gusta de ella (colores, letras, orden, sensación) → marca.referencias_que_gusta. El sistema la estudiará para tomar dirección, nunca para copiarla; díselo si pregunta ("tomamos la idea, no la copiamos"). Si manda una liga de Figma, guárdala igual en marca.referencias_sitios[].
+B7.5b (no se pregunta; se infiere) marca.densidad = compacta | media | aireada según el giro: restaurante y tienda compacta (mucho que mostrar); turismo y servicios profesionales aireada; el resto media. Si el cliente dijo "que se vea con mucho espacio/limpia" → aireada; "que se vea todo de un vistazo" → compacta. Solo pregunta si sus palabras se contradicen.
 B7.6 "¿Y algo que de plano NO quieras ver en tu página?"
 B7.7 "¿Le hablamos al cliente de 'tú' o de 'usted'?"
 B7.8 (solo si marca.estilo es tecnologico, lujo, elegante o divertido, o si el cliente mencionó animaciones, 3D o páginas "con mucho movimiento") "Hay páginas con mucho movimiento: objetos 3D, animaciones al hacer scroll, efectos de vidrio. Se ven impresionantes en un video, pero tienen un costo: cargan más lento en celulares con datos, Google las castiga un poco en el posicionamiento y a algunos clientes los marean o los distraen del botón de contacto. Para tu negocio yo recomiendo [sobrio|moderado] porque [razón del giro]. ¿Qué prefieres: sobrio, moderado o con todo el espectáculo?" → marca.efectos = sobrio | moderado | espectacular. Si elige espectacular, confirma en una frase que acepta carga más lenta en celular y anota marca.efectos_aceptacion_riesgo=true. Si no aplica la pregunta, deja marca.efectos = "sobrio" sin preguntar.
@@ -123,9 +124,11 @@ Si no sabe: propón paleta + estilo según giro y personalidad, descrito en leng
   B8: `B8 · Fotos y materiales. ★fotos.lista_faltantes[] fotos.permiso_generar_ia documentos[] videos[].
 B8.1 "Ahora las fotos. Mándame las que tengas de: tu local o espacio, tus productos o trabajos terminados, tú y tu equipo. Con 5 a 15 fotos buenas basta."
 B8.2 "¿Tienes video corto del negocio? También sirve."
-B8.3 "Lo que falte (una imagen principal bonita o fondos) lo podemos crear con inteligencia artificial, en el estilo de tu marca. ¿Te parece bien?"
-B8.4 "¿Tienes menú, catálogo o folleto en PDF? Mándalo."
-Con las fotos recibidas (lista ASSETS), llena fotos.lista_faltantes con lo que no mandó y haga falta para el giro.`,
+B8.3 (solo si ya mandó al menos una foto buena) "Una más: ¿me mandas una foto vertical, como las de historias de Instagram, de tu local o de ti? Es la que se ve en la primera pantalla desde el celular." → fotos.vertical_hero_asset_id
+B8.4 "Lo que falte lo podemos complementar con imágenes creadas con inteligencia artificial, pero solo fondos y detalles: las fotos de tu negocio, tus productos y tu equipo siempre son las reales, porque son las que generan confianza. ¿Te parece bien?" → fotos.permiso_generar_ia
+B8.5 "¿Tienes menú, catálogo o folleto en PDF? Mándalo."
+Regla: nunca prometas que la IA "creará" fotos del local, del producto o de personas. Si no hay foto real del local, la primera pantalla será tipográfica o de color; díselo en una frase si pregunta.
+Con las fotos recibidas (lista ASSETS), llena fotos.lista_faltantes solo con fondos/texturas/iconografía que haga falta para el giro.`,
   B9: `B9 · Contacto y canales. ★contacto.whatsapp contacto.telefono contacto.email contacto.direccion{calle,colonia,ciudad,estado,cp,referencia} contacto.google_maps_url ★contacto.horarios contacto.redes{instagram,facebook,tiktok,youtube,linkedin} contacto.google_business contacto.mensaje_whatsapp_inicial.
 B9.1 "¿A qué número de WhatsApp quieres que te escriban desde la página? ¿Es el mismo que este?"
 B9.2 "¿Dirección completa del local? Si prefieres, mándame la ubicación de Google Maps."
@@ -164,8 +167,8 @@ export const BRIEF_VACIO = {
   confianza: { historia_corta: null, fundador: {}, equipo: [], certificaciones: [], premios: [], cifras: [], testimonios: [], link_resenas: null, garantias: null },
   faq: [],
   objeciones: [],
-  marca: { tiene_logo: null, colores: [], personalidad: [], estilo: null, efectos: 'sobrio', efectos_aceptacion_riesgo: false, referencias_sitios: [], evitar: null, tono_textos: 'tu' },
-  fotos: { lista_faltantes: [], permiso_generar_ia: true },
+  marca: { tiene_logo: null, colores: [], personalidad: [], estilo: null, efectos: 'sobrio', efectos_aceptacion_riesgo: false, densidad: null, referencias_sitios: [], referencias_que_gusta: null, evitar: null, tono_textos: 'tu' },
+  fotos: { lista_faltantes: [], permiso_generar_ia: true, vertical_hero_asset_id: null },
   contacto: { whatsapp: null, telefono: null, email: null, direccion: {}, google_maps_url: null, horarios: null, redes: {}, google_business: null, mensaje_whatsapp_inicial: null },
   tecnico: { tiene_dominio: null, dominio: null, tiene_sitio_actual: null, sitio_actual_url: null, usa_anuncios: null, quiere_blog: null, necesita_login: null, necesita_pagos: null },
   modulos: {},

@@ -72,7 +72,7 @@ export async function datosDiseno({ arquetipo, subtipo, estilo }) {
     `SELECT a.diseno->'subtipos'->$2 AS subtipo_diseno,
             a.diseno_version,
             to_jsonb(e.*) AS estilo,
-            (SELECT jsonb_agg(c ORDER BY c.id) FROM diseno_checklist c WHERE c.version = 'uupm-2026-10-31') AS checklist
+            (SELECT jsonb_agg(c ORDER BY c.id) FROM diseno_checklist c WHERE c.version IN ('uupm-2026-10-31','ui-skills-2026-11-01')) AS checklist
      FROM arquetipos a
      LEFT JOIN diseno_estilos e ON e.slug = $3
      WHERE a.slug = $1`,
@@ -91,5 +91,8 @@ export async function datosDiseno({ arquetipo, subtipo, estilo }) {
     cliches_ia: reglas.cliches_ia?.lista || [],
     niveles_efectos: reglas.niveles_efectos || null,
     sorteo_variacion: reglas.sorteo_variacion?.reglas || [],
+    politica_fotos: reglas.politica_fotos?.reglas || [],
+    densidad: reglas.densidad || null,
+    wp_block_themes: reglas.wp_block_themes?.reglas || [],
   };
 }
