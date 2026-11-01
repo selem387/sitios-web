@@ -3,6 +3,7 @@
 // Capa 2: si viene null o con subtipo_confianza = "baja", se infiere por keywords_es/keywords
 //         contra giro_texto + nombres de la oferta. Si nada coincide, default por arquetipo.
 import { q } from './db.js';
+import { reglasDiseno } from './diseno_reglas.js';
 
 export const DEFAULT_SUBTIPO = {
   inmobiliaria: 'inmobiliaria', clinica: 'medica', restaurante: 'restaurante', servicios: 'contador_consultor',
@@ -78,6 +79,7 @@ export async function datosDiseno({ arquetipo, subtipo, estilo }) {
     [arquetipo, subtipo, estilo || null],
   );
   const row = r.rows[0] || {};
+  const reglas = await reglasDiseno(q);
   const sd = row.subtipo_diseno || null;
   const est = row.estilo || null;
   // Inter como cuerpo es un "tell" de diseño IA: preferir la alternativa cuando aparece.
@@ -86,5 +88,8 @@ export async function datosDiseno({ arquetipo, subtipo, estilo }) {
     arquetipo, subtipo, estilo: estilo || null, version: row.diseno_version || null,
     subtipo_diseno: sd, estilo_diseno: est, tipografia_recomendada: tipografia,
     checklist: row.checklist || [],
+    tropes_prohibidos: reglas.tropes_prohibidos?.lista || [],
+    niveles_efectos: reglas.niveles_efectos || null,
+    sorteo_variacion: reglas.sorteo_variacion?.reglas || [],
   };
 }

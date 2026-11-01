@@ -110,7 +110,7 @@ B6.1 "¿Qué te preguntan SIEMPRE tus clientes antes de contratar? Dime 3 o 4, c
 B6.2 "¿Y qué pretexto ponen para no comprar? ('está caro', 'luego te aviso', 'no confío')"
 B6.3 "¿Hay algo que la gente cree de tu negocio o de tu giro que no es cierto?"
 Si no sabe: propón las preguntas típicas del giro de una en una, rápido, y que conteste o descarte.`,
-  B7: `B7 · Identidad visual. ★marca.tiene_logo marca.colores[] ★marca.personalidad[] (3 adjetivos) ★marca.estilo (elegante/fresco/minimalista/calido/tecnologico/tradicional/lujo/divertido) marca.referencias_sitios[] marca.evitar ★marca.tono_textos (tu/usted).
+  B7: `B7 · Identidad visual. ★marca.tiene_logo marca.colores[] ★marca.personalidad[] (3 adjetivos) ★marca.estilo (elegante/fresco/minimalista/calido/tecnologico/tradicional/lujo/divertido) marca.efectos (sobrio/moderado/espectacular) marca.referencias_sitios[] marca.evitar ★marca.tono_textos (tu/usted).
 B7.1 "¿Tienes logotipo? Mándamelo aquí. Si no, no pasa nada, lo resolvemos."
 B7.2 "¿Tienes colores de marca? Si no, ¿qué colores te gustan para tu negocio?"
 B7.3 "Si tu negocio fuera una persona, ¿cómo sería? Dame 3 palabras: por ejemplo 'confiable, moderno, cercano'."
@@ -118,6 +118,7 @@ B7.4 "¿Qué estilo te late más: elegante, fresco, minimalista, cálido, tecnol
 B7.5 "¿Hay alguna página web que te guste mucho? Mándame la liga."
 B7.6 "¿Y algo que de plano NO quieras ver en tu página?"
 B7.7 "¿Le hablamos al cliente de 'tú' o de 'usted'?"
+B7.8 (solo si marca.estilo es tecnologico, lujo, elegante o divertido, o si el cliente mencionó animaciones, 3D o páginas "con mucho movimiento") "Hay páginas con mucho movimiento: objetos 3D, animaciones al hacer scroll, efectos de vidrio. Se ven impresionantes en un video, pero tienen un costo: cargan más lento en celulares con datos, Google las castiga un poco en el posicionamiento y a algunos clientes los marean o los distraen del botón de contacto. Para tu negocio yo recomiendo [sobrio|moderado] porque [razón del giro]. ¿Qué prefieres: sobrio, moderado o con todo el espectáculo?" → marca.efectos = sobrio | moderado | espectacular. Si elige espectacular, confirma en una frase que acepta carga más lenta en celular y anota marca.efectos_aceptacion_riesgo=true. Si no aplica la pregunta, deja marca.efectos = "sobrio" sin preguntar.
 Si no sabe: propón paleta + estilo según giro y personalidad, descrito en lenguaje simple.`,
   B8: `B8 · Fotos y materiales. ★fotos.lista_faltantes[] fotos.permiso_generar_ia documentos[] videos[].
 B8.1 "Ahora las fotos. Mándame las que tengas de: tu local o espacio, tus productos o trabajos terminados, tú y tu equipo. Con 5 a 15 fotos buenas basta."
@@ -163,7 +164,7 @@ export const BRIEF_VACIO = {
   confianza: { historia_corta: null, fundador: {}, equipo: [], certificaciones: [], premios: [], cifras: [], testimonios: [], link_resenas: null, garantias: null },
   faq: [],
   objeciones: [],
-  marca: { tiene_logo: null, colores: [], personalidad: [], estilo: null, referencias_sitios: [], evitar: null, tono_textos: 'tu' },
+  marca: { tiene_logo: null, colores: [], personalidad: [], estilo: null, efectos: 'sobrio', efectos_aceptacion_riesgo: false, referencias_sitios: [], evitar: null, tono_textos: 'tu' },
   fotos: { lista_faltantes: [], permiso_generar_ia: true },
   contacto: { whatsapp: null, telefono: null, email: null, direccion: {}, google_maps_url: null, horarios: null, redes: {}, google_business: null, mensaje_whatsapp_inicial: null },
   tecnico: { tiene_dominio: null, dominio: null, tiene_sitio_actual: null, sitio_actual_url: null, usa_anuncios: null, quiere_blog: null, necesita_login: null, necesita_pagos: null },

@@ -2,6 +2,7 @@
 import { ensureDatabase, poolFor } from '../db.js';
 import { config } from '../config.js';
 import { SCHEMA } from './schema.js';
+import { sembrarReglas } from './diseno_reglas.js';
 
 export const DB = config.entrevistaDb;
 const pool = () => poolFor(DB);
@@ -10,6 +11,7 @@ export const q = (sql, params = []) => pool().query(sql, params);
 export async function migrar() {
   await ensureDatabase(DB);
   await pool().query(SCHEMA);
+  await sembrarReglas(q);
 }
 
 // ---- entrevistas ----
