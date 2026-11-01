@@ -7,6 +7,8 @@ import crypto from 'node:crypto';
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import { heroHTML, ESTILOS_CON_LAYOUT } from './plantillas/hero.js';
+import { lighthouse, impeccable, checksPropios } from './auditoria.js';
+import { estudiarSitio } from './estudio.js';
 
 const PORT = Number(process.env.PORT || 8080);
 const DATA_DIR = process.env.DATA_DIR || '/data';
@@ -125,6 +127,43 @@ app.post('/v1/captura', async (c) => {
   });
   const f = await guardarPNG(buf, movil ? 'movil' : 'desktop');
   return c.json({ ...f, ms: Date.now() - t0 });
+});
+
+// Auditoría de un sitio publicado: Lighthouse móvil + Impeccable detect + checks propios + captura móvil.
+// Cuerpo: {url, desktop?:boolean, sin_lighthouse?:boolean, sin_impeccable?:boolean}
+app.post('/v1/auditar', async (c) => {
+  const b = await c.req.json().catch(() => null);
+  if (!b || !/^https?:\/\//.test(b.url || '')) return c.json({ error: 'falta url' }, 400);
+  const t0 = Date.now();
+  const [lh, imp, propio] = await Promise.all([
+    b.sin_lighthouse ? null : lighthouse(b.url, { desktop: Boolean(b.desktop) }),
+    b.sin_impeccable ? null : impeccable(b.url),
+    conPagina({}, async (page) => {
+      await page.goto(b.url, { waitUntil: 'networkidle', timeout: 30000 });
+      const checks = await checksPropios(page);
+      const buf = await page.screenshot({ type: 'png' });
+      return { checks, captura: await guardarPNG(buf, 'auditoria') };
+    }).catch((e) => ({ error: String(e.message) })),
+  ]);
+  // Veredicto simple para que el generador decida si itera: P0 = bloquea publicación.
+  const p0 = [];
+  if (lh?.ok && lh.puntajes.rendimiento < 75) p0.push(`Lighthouse rendimiento móvil ${lh.puntajes.rendimiento} < 75`);
+  if (lh?.ok && lh.puntajes.accesibilidad < 90) p0.push(`Lighthouse accesibilidad ${lh.puntajes.accesibilidad} < 90`);
+  if (propio?.checks && !propio.checks.whatsapp_links && !propio.checks.tel_links) p0.push('Sin enlace de WhatsApp ni teléfono');
+  if (propio?.checks && propio.checks.h1 !== 1) p0.push(`H1 = ${propio?.checks?.h1} (debe ser 1)`);
+  if (propio?.checks?.inter_como_fuente) p0.push('Inter/Roboto/Arial como fuente visible');
+  return c.json({ url: b.url, lighthouse: lh, impeccable: imp, propio, p0, publicable: p0.length === 0, ms: Date.now() - t0 });
+});
+
+// Estudio de una liga de referencia (B7.5): extrae dirección de diseño, nunca clona.
+app.post('/v1/estudiar', async (c) => {
+  const b = await c.req.json().catch(() => null);
+  if (!b || !/^https?:\/\//.test(b.url || '')) return c.json({ error: 'falta url' }, 400);
+  const t0 = Date.now();
+  try {
+    const r = await conPagina({ width: 1280, height: 800, scale: 1, movil: false }, (page) => estudiarSitio(page, b.url));
+    return c.json({ ...r, ms: Date.now() - t0 });
+  } catch (e) { return c.json({ error: String(e.message) }, 502); }
 });
 
 // Vista previa del HTML sin capturar (para ajustar plantillas desde el navegador).

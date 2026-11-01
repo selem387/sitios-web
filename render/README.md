@@ -11,6 +11,8 @@ Servicio del proyecto Easypanel **sitios-web**. Genera las 3 opciones visuales d
 - `POST /v1/mockup` → uno solo (`?formato=png` devuelve la imagen).
 - `POST /v1/mockup/html` → el HTML sin capturar (para ajustar plantillas).
 - `POST /v1/captura` `{url, ancho?:390|1280, completa?:bool}` → `{url, nombre, ms}`.
+- `POST /v1/auditar` `{url, desktop?, sin_lighthouse?, sin_impeccable?}` → `{lighthouse:{puntajes, metricas, fallos}, impeccable:{hallazgos, resumen}, propio:{checks, captura}, p0[], publicable}`. P0: rendimiento móvil < 75, accesibilidad < 90, sin WhatsApp/teléfono, H1 ≠ 1, Inter/Roboto/Arial visibles.
+- `POST /v1/estudiar` `{url}` → dirección de diseño de una liga de referencia (tipografía por rol, fondo/acentos, radio de botones, densidad, secuencia de secciones, hero, versión móvil) + `resumen` en una frase. Inspiración declarada; nunca clona marcado ni copy.
 - `GET /files/:nombre.png` → público (nombres no adivinables, se borran a los `RETENCION_DIAS`).
 
 Layouts por estilo: minimalista/tradicional = centrado · elegante/lujo = editorial (foto a sangre) ·
