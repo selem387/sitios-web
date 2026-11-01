@@ -71,8 +71,39 @@ export async function redactar(brief, diseno, { correcciones = [] } = {}) {
     `Subtipo de negocio: ${diseno?.arquetipo}/${diseno?.subtipo}. Patrón de landing del subtipo: ${diseno?.subtipo_diseno?.patron_landing || '—'}; secciones de referencia: ${(diseno?.subtipo_diseno?.patrones_detalle || []).map((p) => p.secciones).join(' | ') || '—'}`,
     correcciones.length ? `Correcciones obligatorias de la revisión anterior:\n- ${correcciones.join('\n- ')}` : '',
   ].filter(Boolean).join('\n\n');
-  const r = await pedirJSON({ system, contenido, schema: ESQUEMA_CONTENIDO, model: config.generadorModel || config.anthropicModel, max_tokens: 6000 });
-  return { ...r, data: limpiar(r.data) };
+  // Esquema muy anidado: con tool_use el modelo a veces aplana o rompe los objetos. Aquí pedimos JSON en texto
+  // contra el esquema descrito y validamos; un reintento si no parsea o faltan secciones clave.
+  const model = config.generadorModel || config.anthropicModel;
+  let ultimoError = null;
+  for (let intento = 0; intento < 2; intento++) {
+    const r = await jsonEnTexto({ system, contenido: `${contenido}\n\nEsquema de la respuesta (JSON Schema):\n${JSON.stringify(ESQUEMA_CONTENIDO)}${ultimoError ? `\n\nTu respuesta anterior no sirvió: ${ultimoError}. Devuelve el JSON completo.` : ''}`, model });
+    const faltan = ['hero', 'servicios', 'faq', 'cta_final'].filter((k) => !r.data?.[k]);
+    if (r.data && !faltan.length && r.data.hero?.h1 && (r.data.servicios?.items || []).length >= 3) return { ...r, data: limpiar(r.data) };
+    ultimoError = r.data ? `faltan o vienen vacíos: ${faltan.join(', ') || 'hero.h1 / servicios.items'}` : 'no era JSON válido';
+    if (intento === 1 && r.data) return { ...r, data: limpiar(r.data) };
+  }
+  throw new Error(`Redacción inválida: ${ultimoError}`);
+}
+
+async function jsonEnTexto({ system, contenido, model, max_tokens = 8000 }) {
+  const t0 = Date.now();
+  const res = await fetch('https://api.anthropic.com/v1/messages', {
+    method: 'POST',
+    headers: { 'x-api-key': config.anthropicApiKey, 'anthropic-version': '2023-06-01', 'content-type': 'application/json' },
+    body: JSON.stringify({
+      model, max_tokens,
+      system: `${system}\n\nFORMATO: responde ÚNICAMENTE con un objeto JSON válido que cumpla el esquema dado. Sin texto antes ni después, sin bloques de código.`,
+      messages: [{ role: 'user', content: contenido }],
+    }),
+    signal: AbortSignal.timeout(180000),
+  });
+  const json = await res.json();
+  if (!res.ok) throw new Error(`Claude: ${json?.error?.message || res.status}`);
+  const texto = (json.content || []).filter((b) => b.type === 'text').map((b) => b.text).join('\n');
+  let data = null;
+  const i = texto.indexOf('{'), j = texto.lastIndexOf('}');
+  if (i >= 0 && j > i) { try { data = JSON.parse(texto.slice(i, j + 1)); } catch { data = null; } }
+  return { data, usage: json.usage || {}, model, duracion_ms: Date.now() - t0 };
 }
 
 // Red de seguridad determinista sobre lo que devuelva el modelo.

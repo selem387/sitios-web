@@ -104,6 +104,14 @@ async function fotosDelSitio(entrevistaId, brief) {
 }
 
 async function auditar(url) {
+  const a = await auditarRender(url);
+  // Regla propia del generador: una landing con muy poco texto no compite (SEO/GEO ni conversión).
+  const palabras = a?.propio?.checks?.palabras;
+  if (typeof palabras === 'number' && palabras < 250) { a.p0 = [...(a.p0 || []), `Contenido pobre: ${palabras} palabras (mínimo 250)`]; a.publicable = false; }
+  return a;
+}
+
+async function auditarRender(url) {
   if (!config.renderUrl) return { error: 'RENDER_URL no configurada' };
   const r = await fetch(`${config.renderUrl}/v1/auditar`, {
     method: 'POST', headers: { 'content-type': 'application/json', 'x-api-key': config.renderApiKey },
@@ -118,6 +126,7 @@ export function planCorreccion(aud) {
   for (const p of aud?.p0 || []) {
     if (/rendimiento/i.test(p) && (aud.lighthouse?.metricas?.lcp_ms || 0) > 3000) ajustes.heroSinFoto = true;
     if (/H1/.test(p)) textos.push('Debe existir exactamente un H1 (el del hero).');
+    if (/Contenido pobre/.test(p)) textos.push('La página quedó con muy poco texto: entrega 4-6 servicios con 2 frases cada uno, sección "sobre" de 2-3 párrafos y 5-6 preguntas frecuentes.');
   }
   const slop = (aud?.impeccable?.hallazgos || []).filter((h) => h.categoria === 'slop');
   if (slop.length) textos.push(`Impeccable marcó clichés: ${[...new Set(slop.map((h) => h.nombre || h.regla))].slice(0, 6).join(', ')}. Reescribe evitando esas fórmulas.`);

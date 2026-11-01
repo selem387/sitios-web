@@ -35,6 +35,18 @@ function iaprop_gen_autorizado( WP_REST_Request $req ) {
 	return true;
 }
 
+/**
+ * Las peticiones llegan sin sesión: sin usuario, WP aplica kses al guardar (borra settings de los estilos globales,
+ * estilos en línea, etc.). Actuamos como el primer super admin y quitamos los filtros kses en la petición.
+ */
+function iaprop_gen_como_admin() {
+	$admins  = get_super_admins();
+	$usuario = $admins ? get_user_by( 'login', $admins[0] ) : get_user_by( 'id', 1 );
+	if ( $usuario ) wp_set_current_user( $usuario->ID );
+	kses_remove_filters();
+	return $usuario;
+}
+
 /* ------------------------------------------------------------------ */
 /* Rutas REST                                                          */
 /* ------------------------------------------------------------------ */
@@ -67,6 +79,7 @@ function iaprop_gen_crear_sitio( WP_REST_Request $req ) {
 	if ( ! preg_match( '/^[a-z0-9-]+(\.[a-z0-9-]+)+$/', $dominio ) ) {
 		return new WP_Error( 'iaprop_dominio', 'dominio inválido', array( 'status' => 400 ) );
 	}
+	iaprop_gen_como_admin();
 	$existente = get_blog_id_from_url( $dominio, '/' );
 	if ( $existente ) {
 		$blog_id = (int) $existente;
@@ -124,6 +137,7 @@ function iaprop_gen_aplicar( WP_REST_Request $req ) {
 	$blog_id = (int) $req['id'];
 	if ( ! get_site( $blog_id ) ) return new WP_Error( 'iaprop_no_existe', 'sitio no existe', array( 'status' => 404 ) );
 	$b = $req->get_json_params();
+	iaprop_gen_como_admin();
 	switch_to_blog( $blog_id );
 	$log = array();
 	try {
