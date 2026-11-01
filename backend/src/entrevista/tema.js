@@ -66,13 +66,17 @@ function googleFontsUrl(familias) {
 const slugFuente = (f) => slugify(f);
 
 /** Elige la tipografía: estilo.tipografia, pero nunca con cuerpo vetado; si lo es, alternativa del estilo; si no, la del giro. */
+const SOLO_MAYUSCULAS = /^(Cinzel|Cinzel Decorative|Trajan|Bebas Neue|Anton)$/i;
+
 export function elegirTipografia(estilo = {}, subtipoDiseno = {}, semilla = 0) {
   const candidatas = [estilo.tipografia, estilo.tipografia_alternativa, subtipoDiseno.tipografia_giro].filter((t) => t && t.titulos && t.cuerpo);
   const validas = candidatas.filter((t) => !FUENTES_VETADAS.has(t.cuerpo.toLowerCase()) && !FUENTES_VETADAS.has(t.titulos.toLowerCase()));
   const lista = validas.length ? validas : candidatas;
   if (!lista.length) return { nombre: 'Predeterminada', titulos: 'DM Serif Display', cuerpo: 'Work Sans', fuente: 'default' };
-  const t = lista[Math.abs(semilla) % lista.length];
-  return { ...t, fuente: t === estilo.tipografia ? 'estilo' : t === estilo.tipografia_alternativa ? 'alternativa' : 'giro' };
+  const elegida = lista[Math.abs(semilla) % lista.length];
+  // Fuentes que solo tienen mayúsculas/versalitas (Cinzel…) vuelven ilegible un H1 largo: se sustituyen.
+  const t = SOLO_MAYUSCULAS.test(elegida.titulos) ? { ...elegida, titulos: 'Cormorant Garamond', titulos_original: elegida.titulos } : elegida;
+  return { ...t, fuente: elegida === estilo.tipografia ? 'estilo' : elegida === estilo.tipografia_alternativa ? 'alternativa' : 'giro' };
 }
 
 /**

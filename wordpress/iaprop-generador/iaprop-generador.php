@@ -225,6 +225,24 @@ function iaprop_gen_aplicar( WP_REST_Request $req ) {
 			$log[] = "menú $nid";
 		}
 
+		// 4b) Partes de plantilla propias del sitio (p. ej. footer) sin tocar el tema compartido.
+		foreach ( (array) ( $b['partes'] ?? array() ) as $parte => $marcado ) {
+			$parte = sanitize_key( $parte );
+			if ( ! in_array( $parte, array( 'header', 'footer' ), true ) || ! is_string( $marcado ) ) continue;
+			$tema   = get_stylesheet();
+			$previa = get_posts( array(
+				'post_type' => 'wp_template_part', 'name' => $parte, 'post_status' => 'any', 'numberposts' => 1,
+				'tax_query' => array( array( 'taxonomy' => 'wp_theme', 'field' => 'name', 'terms' => $tema ) ),
+			) );
+			$tp = array( 'post_type' => 'wp_template_part', 'post_status' => 'publish', 'post_name' => $parte, 'post_title' => ucfirst( $parte ), 'post_content' => $marcado );
+			if ( $previa ) { $tp['ID'] = $previa[0]->ID; $pid = wp_update_post( wp_slash( $tp ), true ); }
+			else { $pid = wp_insert_post( wp_slash( $tp ), true ); }
+			if ( is_wp_error( $pid ) ) { $log[] = "parte $parte: " . $pid->get_error_message(); continue; }
+			wp_set_post_terms( $pid, array( $tema ), 'wp_theme' );
+			wp_set_post_terms( $pid, array( $parte ), 'wp_template_part_area' );
+			$log[] = "parte $parte $pid";
+		}
+
 		// 5) Opciones de front.
 		$o = (array) ( $b['opciones'] ?? array() );
 		if ( isset( $o['descripcion'] ) ) update_option( 'blogdescription', sanitize_text_field( $o['descripcion'] ) );

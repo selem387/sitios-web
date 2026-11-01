@@ -11,7 +11,7 @@ import { resolverSubtipo, datosDiseno } from '../entrevista/subtipo.js';
 import { generarVariaciones, generarThemeJsonHints, contraste } from '../entrevista/tema.js';
 import { mergeProfundo } from '../entrevista/agente.js';
 import { redactar } from './contenido.js';
-import { paginaInicio, paginaTexto, waUrl } from './bloques.js';
+import { paginaInicio, paginaTexto, piePagina, waUrl } from './bloques.js';
 import * as wp from './wp.js';
 
 const q = db.q;
@@ -48,6 +48,7 @@ export function estilosGlobales(vars, estilo) {
 /* SEO / GEO                                                           */
 /* ------------------------------------------------------------------ */
 
+const ETIQUETA_SERVICIOS = { inmobiliaria: 'Propiedades', clinica: 'Tratamientos', restaurante: 'Menú', tienda: 'Productos', educacion: 'Cursos', turismo: 'Experiencias' };
 const TIPO_LD = { inmobiliaria: 'RealEstateAgent', clinica: 'MedicalClinic', restaurante: 'Restaurant', servicios: 'ProfessionalService', tienda: 'Store', oficios: 'HomeAndConstructionBusiness', educacion: 'EducationalOrganization', turismo: 'LodgingBusiness' };
 
 export function jsonLd(brief, cont, url, arquetipo) {
@@ -194,7 +195,7 @@ export async function generarSitio(sitioId, entrevista, { slug } = {}) {
         confianza: { ...(cont.confianza || {}), cifras: (conf.cifras || []).filter((x) => x?.valor && x?.etiqueta), testimonios: (conf.testimonios || []).filter((t) => t?.texto && t?.autor), certificaciones: conf.certificaciones || [] },
       }, ctx);
       const menu = [
-        { texto: cont.servicios?.titulo?.split(' ').slice(0, 2).join(' ') || 'Servicios', url: '#servicios' },
+        { texto: ETIQUETA_SERVICIOS[arquetipo] || 'Servicios', url: '#servicios' },
         ...(cont.faq?.length ? [{ texto: 'Preguntas', url: '#preguntas' }] : []),
         { texto: 'Contacto', url: '#contacto' },
       ];
@@ -205,6 +206,7 @@ export async function generarSitio(sitioId, entrevista, { slug } = {}) {
           { slug: 'aviso-de-privacidad', titulo: 'Aviso de privacidad', contenido: paginaTexto('Aviso de privacidad', avisoPrivacidad(brief)), descripcion: `Aviso de privacidad de ${brief.negocio?.nombre || ''}`, plantilla: 'page-no-title' },
         ],
         menu,
+        partes: { footer: piePagina({ nombre: brief.negocio?.nombre || '', lema: cont.lema, wa: ctx.wa, contacto }) },
         opciones: {
           descripcion: cont.lema || cont.descripcion_meta, whatsapp: waUrl(contacto.whatsapp) ? String(contacto.whatsapp) : '', whatsapp_mensaje: mensajeWa,
           jsonld: jsonLd(brief, cont, url, arquetipo), llms: llmsTxt(brief, cont, url),

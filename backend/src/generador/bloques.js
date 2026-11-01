@@ -13,6 +13,9 @@ const spCss = (k) => `var(--wp--preset--spacing--${k})`;
 // Espaciado vertical de sección según densidad del brief.
 const PAD = { compacta: 'x-large', media: 'xx-large', aireada: 'xxx-large' };
 
+/** 9991593608 → 999 159 3608 (México, 10 dígitos); otros formatos se dejan igual. */
+export const formatoTel = (t) => { const d = String(t || '').replace(/\D/g, '').replace(/^52(?=\d{10}$)/, ''); return d.length === 10 ? `${d.slice(0, 3)} ${d.slice(3, 6)} ${d.slice(6)}` : String(t || ''); };
+
 export const waUrl = (numero, mensaje) => {
   const n = String(numero || '').replace(/\D/g, '');
   if (!n) return null;
@@ -33,11 +36,12 @@ function parrafo(texto, { tam = null, color = null } = {}) {
   return `<!-- wp:paragraph${attrs(a)} -->\n<p${cls ? ` class="${cls}"` : ''}>${esc(texto)}</p>\n<!-- /wp:paragraph -->`;
 }
 
-function boton({ texto, url, contorno = false, nueva = false }) {
+function boton({ texto, url, contorno = false, nueva = false, fondo = null, color = null }) {
   if (!texto || !url) return '';
-  const a = contorno ? { className: 'is-style-outline' } : {};
+  const a = { ...(contorno ? { className: 'is-style-outline' } : {}), ...(fondo ? { backgroundColor: fondo } : {}), ...(color ? { textColor: color } : {}) };
   const extra = nueva ? ' target="_blank" rel="noreferrer noopener"' : '';
-  return `<!-- wp:button${attrs(a)} -->\n<div class="wp-block-button${contorno ? ' is-style-outline' : ''}"><a class="wp-block-button__link wp-element-button" href="${esc(url)}"${extra}>${esc(texto)}</a></div>\n<!-- /wp:button -->`;
+  const cls = ['wp-block-button__link', color ? `has-${color}-color has-text-color` : '', fondo ? `has-${fondo}-background-color has-background` : '', 'wp-element-button'].filter(Boolean).join(' ');
+  return `<!-- wp:button${attrs(a)} -->\n<div class="wp-block-button${contorno ? ' is-style-outline' : ''}"><a class="${cls}" href="${esc(url)}"${extra}>${esc(texto)}</a></div>\n<!-- /wp:button -->`;
 }
 
 function botones(lista) {
@@ -108,7 +112,7 @@ export function hero(c, ctx) {
   ]);
   const texto = [
     heading(c.h1, { nivel: 1, tam: 'xx-large' }),
-    parrafo(c.subtitulo, { tam: 'large', color: 'main-accent' }),
+    parrafo(c.subtitulo, { tam: 'medium', color: 'main-accent' }),
     ctas,
     c.nota ? parrafo(c.nota, { tam: 'small', color: 'main-accent' }) : '',
   ].filter(Boolean).join('\n');
@@ -163,7 +167,8 @@ export function ctaFinal(s, ctx) {
   const interior = grupo([
     heading(s.titulo, { tam: 'x-large' }),
     parrafo(s.texto, { tam: 'medium' }),
-    botones([{ texto: s.boton, url: ctx.wa || ctx.tel }]),
+    // Sobre fondo oscuro el botón se invierte (fondo base, texto main) para no perder contraste.
+    botones([{ texto: s.boton, url: ctx.wa || ctx.tel, fondo: 'base', color: 'main' }]),
   ].filter(Boolean).join('\n'), { gap: 'medium' });
   return seccion('Llamado final', interior, { densidad: ctx.densidad, fondo: 'main', texto: 'base' });
 }
@@ -172,7 +177,7 @@ export function contacto(s, ctx) {
   const c = ctx.contacto || {};
   const dir = c.direccion && typeof c.direccion === 'object' ? [c.direccion.calle, c.direccion.colonia, c.direccion.ciudad, c.direccion.estado, c.direccion.cp].filter(Boolean).join(', ') : c.direccion;
   const datos = [];
-  if (ctx.wa) datos.push({ titulo: 'WhatsApp', html: `<a href="${esc(ctx.wa)}">${esc(c.whatsapp)}</a>` });
+  if (ctx.wa) datos.push({ titulo: 'WhatsApp', html: `<a href="${esc(ctx.wa)}">${esc(formatoTel(c.whatsapp))}</a>` });
   if (c.telefono) datos.push({ titulo: 'Teléfono', html: `<a href="tel:${esc(String(c.telefono).replace(/[^\d+]/g, ''))}">${esc(c.telefono)}</a>` });
   if (c.email) datos.push({ titulo: 'Correo', html: `<a href="mailto:${esc(c.email)}">${esc(c.email)}</a>` });
   if (dir) datos.push({ titulo: 'Dirección', html: c.google_maps_url ? `<a href="${esc(c.google_maps_url)}">${esc(dir)}</a>` : esc(dir) });
@@ -201,4 +206,19 @@ export function paginaInicio(cont, ctx) {
 
 export function paginaTexto(titulo, parrafos) {
   return seccion('Texto', grupo([heading(titulo, { nivel: 1, tam: 'x-large' }), ...parrafos.map((p) => parrafo(p))].join('\n'), { gap: 'medium' }), { densidad: 'media' });
+}
+
+/** Pie de página propio del sitio (reemplaza el pie de demostración del tema). */
+export function piePagina({ nombre, lema, wa, contacto = {}, anio = new Date().getFullYear() }) {
+  const lineas = [];
+  if (wa) lineas.push(`<a href="${esc(wa)}">WhatsApp ${esc(formatoTel(contacto.whatsapp))}</a>`);
+  if (contacto.telefono) lineas.push(`<a href="tel:${esc(String(contacto.telefono).replace(/[^\d+]/g, ''))}">${esc(contacto.telefono)}</a>`);
+  if (contacto.email) lineas.push(`<a href="mailto:${esc(contacto.email)}">${esc(contacto.email)}</a>`);
+  const d = contacto.direccion && typeof contacto.direccion === 'object' ? [contacto.direccion.ciudad, contacto.direccion.estado].filter(Boolean).join(', ') : '';
+  if (d) lineas.push(esc(d));
+  const izq = grupo([parrafo(nombre, { tam: 'medium' }), parrafo(lema, { color: 'main-accent' })].filter(Boolean).join('\n'), { gap: 'small' });
+  const der = grupo(lineas.map((l) => `<!-- wp:paragraph -->\n<p>${l}</p>\n<!-- /wp:paragraph -->`).join('\n'), { gap: 'small' });
+  const legal = `<!-- wp:paragraph {"fontSize":"small","textColor":"main-accent"} -->\n<p class="has-main-accent-color has-text-color has-small-font-size">© ${anio} ${esc(nombre)} · <a href="/aviso-de-privacidad/">Aviso de privacidad</a></p>\n<!-- /wp:paragraph -->`;
+  const a = { tagName: 'footer', metadata: { name: 'Pie' }, align: 'full', style: { spacing: { padding: { top: sp('x-large'), bottom: sp('large'), left: sp('medium'), right: sp('medium') }, blockGap: sp('large') }, border: { top: { color: 'var:preset|color|border-light', width: '1px' } } }, layout: { type: 'constrained' } };
+  return `<!-- wp:group${attrs(a)} -->\n<footer class="wp-block-group alignfull" style="border-top-color:var(--wp--preset--color--border-light);border-top-width:1px;padding-top:${spCss('x-large')};padding-right:${spCss('medium')};padding-bottom:${spCss('large')};padding-left:${spCss('medium')}">\n${columnas([{ html: izq }, { html: der }], { alinear: 'top', gap: 'x-large' })}\n${legal}\n</footer>\n<!-- /wp:group -->`;
 }
