@@ -29,4 +29,16 @@ export const config = {
   entrevistaMemoriaModel: env.ENTREVISTA_MEMORIA_MODEL || 'claude-haiku-5-5',
   transcribirUrl: env.TRANSCRIBIR_URL || '',
   transcribirKey: env.TRANSCRIBIR_KEY || '',
+  // Generador de sitios WordPress (módulo generador/).
+  generadorModel: env.GENERADOR_MODEL || env.ANTHROPIC_MODEL || 'claude-sonnet-5-5',
+  wpGenUrl: (env.WP_GEN_URL || '').replace(/\/$/, ''),          // sitio principal del Multisite (https://...)
+  wpGenKey: env.WP_GEN_KEY || '',                                 // = opción de red iaprop_gen_key
+  wpDominioBase: env.WP_DOMINIO_BASE || 'x6jqxs.easypanel.host',  // vista previa: sw-<slug>.<base>
+  renderUrl: (env.RENDER_URL || '').replace(/\/$/, ''),
+  renderApiKey: env.RENDER_API_KEY || '',
+  // Opcional: registrar el dominio de vista previa en Easypanel desde el backend.
+  easypanelUrl: (env.EASYPANEL_URL || '').replace(/\/$/, ''),
+  easypanelToken: env.EASYPANEL_TOKEN || '',
+  wpEasypanelProyecto: env.WP_EASYPANEL_PROYECTO || 'sitios-web',
+  wpEasypanelServicio: env.WP_EASYPANEL_SERVICIO || 'wp-plantilla',
 };
