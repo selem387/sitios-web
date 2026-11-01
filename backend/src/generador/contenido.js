@@ -77,7 +77,17 @@ export async function redactar(brief, diseno, { correcciones = [] } = {}) {
 
 // Red de seguridad determinista sobre lo que devuelva el modelo.
 const PROHIBIDAS = /(soluciones integrales|socio de confianza|siguiente nivel|bienvenid[oa]s a|de clase mundial)/i;
+// A veces el modelo entrega arreglos/objetos anidados como cadena JSON dentro del tool_use.
+const comoArreglo = (v) => { if (Array.isArray(v)) return v; if (typeof v === 'string') { try { const p = JSON.parse(v); return Array.isArray(p) ? p : []; } catch { return []; } } return []; };
+const comoObjeto = (v) => { if (v && typeof v === 'object' && !Array.isArray(v)) return v; if (typeof v === 'string') { try { const p = JSON.parse(v); return p && typeof p === 'object' ? p : {}; } catch { return {}; } } return {}; };
+function normalizar(d) {
+  for (const k of ['hero', 'servicios', 'proceso', 'sobre', 'confianza', 'cta_final', 'contacto']) if (k in d) d[k] = comoObjeto(d[k]);
+  d.faq = comoArreglo(d.faq);
+  for (const k of ['servicios', 'proceso']) if (d[k]) d[k].items = comoArreglo(d[k].items);
+  return d;
+}
 function limpiar(d) {
+  d = normalizar(d || {});
   const txt = (s) => (typeof s === 'string' ? s.replace(/\p{Extended_Pictographic}/gu, '').replace(/\s*→\s*/g, ' ').replace(/\s{2,}/g, ' ').trim() : s);
   const rec = (o) => (Array.isArray(o) ? o.map(rec) : o && typeof o === 'object' ? Object.fromEntries(Object.entries(o).map(([k, v]) => [k, rec(v)])) : txt(o));
   const out = rec(d);
