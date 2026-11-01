@@ -31,7 +31,7 @@ export async function registrarDominioEasypanel(host) {
   const input = {
     id: crypto.randomBytes(8).toString('hex'), host, https: true, path: '/', wildcard: false, middlewares: [], certificateResolver: '',
     destinationType: 'service',
-    serviceDestination: { projectName: config.wpEasypanelProyecto, serviceName: config.wpEasypanelServicio, port: 80, protocol: 'http' },
+    serviceDestination: { projectName: config.wpEasypanelProyecto, serviceName: config.wpEasypanelServicio, port: 80, protocol: 'http', path: '/', composeService: '' },
   };
   try {
     const r = await fetch(`${config.easypanelUrl}/api/trpc/domains.createDomain`, {
