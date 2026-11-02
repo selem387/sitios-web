@@ -222,6 +222,14 @@ export async function generarSitio(sitioId, entrevista, { slug } = {}) {
       const d = await wp.registrarDominioEasypanel(dominio);
       await paso('dominio', d);
       if (!d.ok) reporte.avisos.push(`Registrar en Easypanel el dominio ${dominio} → ${config.wpEasypanelServicio}:80`);
+      // Esperar a que Traefik tome el dominio (o a que alguien lo registre a mano) antes de auditar: hasta 10 min.
+      let listo = false;
+      for (let i = 0; i < 40 && !listo; i++) { await new Promise((r) => setTimeout(r, 15000)); listo = await wp.responde(url); }
+      if (!listo) {
+        await guardarSitio(sitioId, { estado: 'esperando_dominio', reporte });
+        await db.evento(entrevista.id, 'sitio_esperando_dominio', { sitio_id: sitioId, dominio });
+        return { url, publicable: false, esperando_dominio: true };
+      }
     }
 
     // 6) Auditoría + una corrección.
