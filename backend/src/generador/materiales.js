@@ -20,7 +20,7 @@ const PROMPT = `Analiza esta imagen que un emprendedor mandó para su página we
  "es_captura_pantalla": boolean,           // captura de celular/computadora (barras de estado, navegador, botones de app)
  "contenido": {"x":0,"y":0,"w":1,"h":1},    // caja del contenido útil SIN barras del sistema/navegador/app ni márgenes vacíos, en fracciones 0-1 de ancho y alto
  "logo": {"x":..,"y":..,"w":..,"h":..} | null, // caja ajustada del logotipo del negocio si aparece (símbolo + nombre), en fracciones
- "productos": [{"nombre":"", "x":..,"y":..,"w":..,"h":..}], // fotos de producto individuales que se puedan recortar limpias (máx 6)
+ "productos": [{"nombre":"", "x":..,"y":..,"w":..,"h":..}], // fotos de producto individuales (máx 6). La caja debe incluir el producto COMPLETO a lo ancho, con margen a los lados; en vasos/bebidas solo se permite cortar por abajo, nunca los lados ni la tapa. Usa el nombre tal como aparece en el menú
  "menu": [{"seccion":"", "items":[{"nombre":"", "descripcion":"", "precio":""}]}] | null, // si es menú o lista de precios: transcribe TODO tal cual, precios con $
  "colores": ["#RRGGBB"],                    // 3-5 colores dominantes del diseño de la marca
  "calidad": "buena" | "regular" | "mala",
@@ -45,6 +45,15 @@ async function visionJSON(buf, mime) {
   const t = (j.content || []).filter((b) => b.type === 'text').map((b) => b.text).join('');
   const i = t.indexOf('{'), k = t.lastIndexOf('}');
   return JSON.parse(t.slice(i, k + 1));
+}
+
+/** Quita el fondo con el servicio render (rembg). Devuelve null si no está disponible. */
+async function sinFondo(url) {
+  if (!config.renderUrl) return null;
+  try {
+    const r = await fetch(`${config.renderUrl}/v1/sin-fondo`, { method: 'POST', headers: { 'content-type': 'application/json', 'x-api-key': config.renderApiKey }, body: JSON.stringify({ url }), signal: AbortSignal.timeout(150000) });
+    return r.ok ? r.json() : null;
+  } catch { return null; }
 }
 
 async function descargar(url) {
@@ -89,7 +98,7 @@ async function coloresDe(buf) {
 
 /** Analiza (o reutiliza el análisis guardado de) un asset de imagen y genera sus recortes. */
 export async function analizarAsset(a) {
-  if (a.analisis?.version === 2) return a.analisis;
+  if (a.analisis?.version === 3) return a.analisis;
   const original = await descargar(a.url);
   const base = sharp(original).rotate();
   const meta = await base.metadata();
@@ -97,7 +106,7 @@ export async function analizarAsset(a) {
   // Para el modelo: lado largo ≤ 1568 px; las cajas vienen en fracciones, así que sirven para el original.
   const vista = await sharp(original).rotate().resize(1568, 1568, { fit: 'inside', withoutEnlargement: true }).jpeg({ quality: 85 }).toBuffer();
   const v = await visionJSON(vista, 'image/jpeg');
-  const out = { version: 2, tipo: v.tipo, es_captura: !!v.es_captura_pantalla, calidad: v.calidad, descripcion: v.descripcion, colores: (v.colores || []).filter((c) => /^#[0-9a-f]{6}$/i.test(c)), menu: v.menu || null, ancho: W, alto: H };
+  const out = { version: 3, tipo: v.tipo, es_captura: !!v.es_captura_pantalla, calidad: v.calidad, descripcion: v.descripcion, colores: (v.colores || []).filter((c) => /^#[0-9a-f]{6}$/i.test(c)), menu: v.menu || null, ancho: W, alto: H };
 
   const cont = caja(v.contenido, W, H) || { left: 0, top: 0, width: W, height: H };
   const recorteContenido = sharp(original).rotate().extract(cont);
@@ -116,10 +125,15 @@ export async function analizarAsset(a) {
   }
   out.productos = [];
   for (const p of (v.productos || []).slice(0, 6)) {
-    const b = caja(p, W, H);
+    // Margen lateral extra para no cortar los lados del producto (el modelo tiende a ajustar de más).
+    const b = caja({ x: p.x - 0.02, y: p.y - 0.01, w: p.w + 0.04, h: p.h + 0.01 }, W, H);
     if (!b || b.width < 120) continue;
-    out.productos.push({ nombre: p.nombre || '', ...(await guardar(sharp(original).rotate().extract(b), 'prod')) });
+    const g = await guardar(sharp(original).rotate().extract(b), 'prod');
+    const sf = await sinFondo(g.url);
+    out.productos.push({ nombre: p.nombre || '', ...g, ...(sf ? { url: sf.url, ancho: sf.ancho, alto: sf.alto, sin_fondo: true } : {}) });
   }
+  // Fotos de producto sueltas (no menú): también sin fondo para usarlas en portada.
+  if (v.tipo === 'foto_producto') { const sf = await sinFondo(out.contenido.url); if (sf) out.sin_fondo = sf; }
   await db.q(`UPDATE assets SET analisis=$2, tipo=COALESCE(NULLIF($3,''), tipo), calidad=COALESCE($4, calidad), descripcion_ia=COALESCE(descripcion_ia,$5) WHERE id=$1`,
     [a.id, JSON.stringify(out), mapaTipo(v.tipo), ['buena', 'regular', 'mala'].includes(v.calidad) ? v.calidad : null, v.descripcion || null]).catch(() => {});
   return out;
@@ -159,24 +173,28 @@ export async function procesarMateriales(entrevistaId, brief = {}, { aceptarLoQu
   if (logos[0]) res.logo = logos[0];
   // Fotos reales (no capturas de menú/flyer).
   for (const { a, r } of analisis) {
-    if (/^foto_/.test(r.tipo) && r.calidad !== 'mala' && r.contenido.ancho >= MIN_FOTO) res.fotos.push({ url: r.contenido.url, ancho: r.contenido.ancho, alto: r.contenido.alto, alt: r.descripcion || '', tipo: r.tipo, clave: a.clave });
+    if (/^foto_/.test(r.tipo) && r.calidad !== 'mala' && r.contenido.ancho >= MIN_FOTO) res.fotos.push({ url: r.contenido.url, ancho: r.contenido.ancho, alto: r.contenido.alto, alt: r.descripcion || '', tipo: r.tipo, clave: a.clave, sin_fondo: r.sin_fondo?.url || null });
     if (r.tipo === 'menu') { res.menus.push({ url: r.contenido.url, ancho: r.contenido.ancho, alto: r.contenido.alto, alt: r.descripcion || 'Menú' }); }
     // Regla: ninguna imagen del cliente se omite. Lo que no es foto, menú ni logo puro va a la galería.
     else if (!/^foto_/.test(r.tipo) && r.tipo !== 'logo' && r.tipo !== 'documento') res.otras.push({ url: r.contenido.url, ancho: r.contenido.ancho, alto: r.contenido.alto, alt: r.descripcion || '' });
     else if (/^foto_/.test(r.tipo) && (r.calidad === 'mala' || r.contenido.ancho < MIN_FOTO)) res.otras.push({ url: r.contenido.url, ancho: r.contenido.ancho, alto: r.contenido.alto, alt: r.descripcion || '' });
     if (r.menu?.length) res.menu_texto.push(...r.menu);
-    for (const p of r.productos || []) if (p.ancho >= MIN_FOTO) res.fotos.push({ url: p.url, ancho: p.ancho, alto: p.alto, alt: p.nombre, tipo: 'foto_producto' });
+    // Recortes de producto (de menús/flyers): van a destacados aunque sean pequeños; nunca a la portada si < MIN_HERO.
+    for (const p of r.productos || []) res.fotos.push({ url: p.url, ancho: p.ancho, alto: p.alto, alt: p.nombre, tipo: 'foto_producto', sin_fondo: p.sin_fondo ? p.url : null, recorte: true });
   }
   const vertical = brief.fotos?.vertical_hero_asset_id;
   const elegida = vertical && analisis.find((x) => String(x.a.id) === String(vertical) || x.a.clave === vertical);
-  const candidatas = res.fotos.filter((f) => f.ancho >= MIN_HERO).sort((p, q) => (q.tipo === 'foto_local') - (p.tipo === 'foto_local') || q.ancho - p.ancho);
+  const candidatas = res.fotos.filter((f) => f.ancho >= MIN_HERO && !f.recorte).sort((p, q) => (q.tipo === 'foto_local') - (p.tipo === 'foto_local') || q.ancho - p.ancho);
   res.hero = elegida && /^foto_/.test(elegida.r.tipo) && elegida.r.contenido.ancho >= MIN_HERO ? { url: elegida.r.contenido.url, alt: elegida.r.descripcion } : candidatas[0] || null;
   res.colores = [...new Set([...(res.logo?.colores || []), ...coloresDePalabras(brief.marca?.colores || [])])].slice(0, 5);
 
   // Si el cliente ya dijo que no tiene mejores, se trabaja con lo que mandó: la mejor imagen disponible va a la portada.
   if (!res.hero && aceptarLoQueHay) {
+    // Primero un producto recortado sin fondo (se ve bien sobre el color de la portada); si no, la imagen más grande.
+    const prod = res.fotos.filter((f) => f.sin_fondo).sort((p, q) => q.alto - p.alto)[0];
     const resto = [...res.fotos, ...res.otras, ...res.menus].sort((p, q) => q.ancho * q.alto - p.ancho * p.alto);
-    if (resto[0]) res.hero = { url: resto[0].url, alt: resto[0].alt, provisional: true };
+    if (prod) res.hero = { url: prod.sin_fondo, alt: prod.alt, sin_fondo: true, provisional: true };
+    else if (resto[0]) res.hero = { url: resto[0].url, alt: resto[0].alt, provisional: true };
   }
   res.material_suficiente = !!res.hero && (!!res.logo || brief.marca?.tiene_logo === false);
   if (aceptarLoQueHay) return res;

@@ -169,6 +169,28 @@ app.post('/v1/estudiar', async (c) => {
   } catch (e) { return c.json({ error: String(e.message) }, 502); }
 });
 
+// Quitar el fondo de una foto de producto. Cuerpo: {url} → {url, ancho, alto} (PNG transparente).
+import { execFile } from 'node:child_process';
+const ejecutar = (cmd, args, op) => new Promise((res, rej) => execFile(cmd, args, op, (e, so, se) => (e ? rej(new Error(String(se || e.message).slice(0, 300))) : res(so))));
+app.post('/v1/sin-fondo', async (c) => {
+  const b = await c.req.json().catch(() => null);
+  if (!b || !/^https?:\/\//.test(b.url || '')) return c.json({ error: 'falta url' }, 400);
+  const t0 = Date.now();
+  try {
+    const r = await fetch(b.url, { signal: AbortSignal.timeout(20000) });
+    if (!r.ok) return c.json({ error: `descarga ${r.status}` }, 502);
+    const tmp = path.join(FILES_DIR, `tmp-${crypto.randomBytes(6).toString('hex')}`);
+    await fs.writeFile(tmp, Buffer.from(await r.arrayBuffer()));
+    const nombre = `sinfondo-${crypto.randomBytes(9).toString('base64url')}.png`;
+    await tomar();
+    let so;
+    try { so = await ejecutar('/opt/rembg/bin/python', [path.join(path.dirname(new URL(import.meta.url).pathname), 'py', 'sin_fondo.py'), tmp, path.join(FILES_DIR, nombre)], { timeout: 120000 }); }
+    finally { soltar(); await fs.unlink(tmp).catch(() => {}); }
+    const [ancho, alto] = String(so).trim().split(/\s+/).map(Number);
+    return c.json({ url: `${PUBLIC_URL}/files/${nombre}`, ancho, alto, ms: Date.now() - t0 });
+  } catch (e) { return c.json({ error: String(e.message) }, 500); }
+});
+
 // Vista previa del HTML sin capturar (para ajustar plantillas desde el navegador).
 app.post('/v1/mockup/html', async (c) => c.html(heroHTML(await c.req.json())));
 

@@ -60,7 +60,8 @@ export function heroHTML(d) {
   const servicios = (d.servicios || []).slice(0, 3);
   const relleno = `linear-gradient(135deg, ${pal.secondary || pal.primary || '#888'} 0%, ${pal.primary || '#555'} 100%)`;
   // Foto encima del degradado: si la imagen no carga, se ve el relleno y no un hueco.
-  const foto = d.foto_url ? `url('${esc(d.foto_url)}') center/cover no-repeat, ${relleno}` : relleno;
+  // Producto sin fondo (PNG transparente): se muestra completo sobre un fondo suave, nunca recortado a los lados.
+  const foto = d.foto_url ? (d.foto_sin_fondo ? `url('${esc(d.foto_url)}') center bottom/contain no-repeat, ${pal.muted || '#F3EDE3'}` : `url('${esc(d.foto_url)}') center/cover no-repeat, ${relleno}`) : relleno;
 
   const css = `
   :root{--p:${pal.primary || '#1E3A8A'};--on-p:${pal.on_primary || '#fff'};--acc:${pal.accent || '#B45309'};--on-acc:${pal.on_accent || '#fff'};

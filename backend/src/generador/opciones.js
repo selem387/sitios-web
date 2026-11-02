@@ -73,7 +73,7 @@ export async function crearOpciones(brief, mat, semilla = 0, { excluir = [] } = 
         negocio: { nombre: brief.negocio?.nombre, giro_texto: brief.negocio?.giro_texto, ciudad: brief.negocio?.ciudad },
         titular: textos.titular, subtitulo: textos.subtitulo, cta: textos.cta,
         servicios: String(textos.servicios || '').split('|').map((s) => s.trim()).filter(Boolean).slice(0, 3),
-        foto_url: mat.hero?.url || null, logo_url: mat.logo?.url || null,
+        foto_url: mat.hero?.url || null, foto_sin_fondo: !!mat.hero?.sin_fondo, logo_url: mat.logo?.url || null,
       },
       opciones: opciones.map((o) => ({ etiqueta: o.etiqueta, estilo: { slug: o.estilo, tipografia: o.tipografia, theme_json_hints: o.hints }, subtipo: { paleta: paletaMockup(o.paleta) } })),
     }),
