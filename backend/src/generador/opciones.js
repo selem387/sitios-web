@@ -88,11 +88,11 @@ export async function crearOpciones(brief, mat, semilla = 0, { excluir = [] } = 
 /** Interpreta la respuesta del cliente: "la B", "me gusta la a con los colores de c", "ninguna". */
 export function interpretarEleccion(texto = '') {
   const t = ` ${String(texto).toLowerCase()} `;
-  const letras = [...t.matchAll(/(?:^|[\s,.;:¡!¿?"'(])(?:la |opci[oó]n |op\. ?)?([abc])(?=[\s,.;:!?)"']|$)/g)].map((m) => m[1].toUpperCase());
-  const colores = t.match(/colores? (?:de|del|de la) (?:la |opci[oó]n )?([abc])\b/);
+  const letras = [...t.matchAll(/(?:^|[\s,.;:¡!¿?"'(])(?:la |opci[oó]n |propuesta |op\. ?)?([a-f])(?=[\s,.;:!?)"']|$)/g)].map((m) => m[1].toUpperCase());
+  const colores = t.match(/colores? (?:de|del|de la) (?:la |opci[oó]n |propuesta )?([a-f])\b/);
   if (/ninguna|ninguno|no me gusta(n)? ninguna/.test(t) && !letras.length) return { ninguna: true };
-  const ord = { primera: 'A', primer: 'A', '1': 'A', segunda: 'B', '2': 'B', tercera: 'C', '3': 'C', 'última': 'C', ultima: 'C' };
-  if (!letras.length) { const m = t.match(/\b(primera|primer|segunda|tercera|[uú]ltima|[123])\b/); if (m) letras.push(ord[m[1]] || ord[m[1].replace('ú', 'u')]); }
+  const ord = { primera: 'A', primer: 'A', '1': 'A', segunda: 'B', '2': 'B', tercera: 'C', '3': 'C', cuarta: 'D', '4': 'D', quinta: 'E', '5': 'E', sexta: 'F', '6': 'F', ultima: 'F' };
+  if (!letras.length) { const m = t.normalize('NFD').replace(/[\u0300-\u036f]/g, '').match(/\b(primera|primer|segunda|tercera|cuarta|quinta|sexta|ultima|[1-6])\b/); if (m) letras.push(ord[m[1]]); }
   if (!letras.length) return null;
   const base = colores ? letras.find((l) => l !== colores[1].toUpperCase()) || letras[0] : letras[0];
   return { elegido: base, colores_de: colores ? colores[1].toUpperCase() : null };

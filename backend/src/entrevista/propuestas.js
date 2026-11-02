@@ -4,7 +4,8 @@
 // 2) mandar 3 opciones A/B/C con su logo, colores y fotos; 3) registrar la elegida (o mezclas / ninguna).
 // Estado en brief.marca.propuestas = {estado, pedidos, opciones[], elegido, colores_de, rechazos[], comentario}.
 import { procesarMateriales } from '../generador/materiales.js';
-import { crearOpciones, interpretarEleccion } from '../generador/opciones.js';
+import { interpretarEleccion } from '../generador/opciones.js';
+import { crearPropuestasHTML, textosPropuestas } from '../generador/propuestas_html.js';
 
 const NO_TENGO = /no (las |los )?tengo|no tengo (m[aá]s|otras|mejores)|son (todas|las [uú]nicas)|con esas|as[ií] est[aá] bien|usa(lo)? (esas|lo que hay)|no hay (m[aá]s|otras)/i;
 const hash = (s) => [...String(s)].reduce((h, c) => (h * 31 + c.charCodeAt(0)) >>> 0, 7);
@@ -25,20 +26,23 @@ function mensajeFaltan(mat) {
 }
 
 function mensajeOpciones(op) {
+  const lista = op.opciones.map((o) => `*${o.letra}* · ${o.nombre}\n${o.url}`).join('\n\n');
   return {
     textos: [
-      'Te preparé 3 propuestas de cómo se vería el inicio de tu página en el celular, con tu logo, tus colores y tus fotos 👇',
-      '¿Cuál te gusta más: *A*, *B* o *C*? También puedes pedir mezclas, por ejemplo _la A con los colores de la C_, o decirme qué cambiarías.',
+      'Te preparé 6 propuestas de tu página con tu logo, tus productos, tus precios y tu menú. Ábrelas en tu celular y recórrelas completas 👇',
+      lista,
+      '¿Cuál te gusta más? Respóndeme con la letra (*A* a *F*). También puedes pedir mezclas, por ejemplo _la B con los colores de la E_, o decirme qué cambiarías.',
     ],
-    media: op.opciones.map((o) => ({ url: o.url, tipo: 'imagen', caption: `Opción ${o.etiqueta}` })),
+    media: [],
   };
 }
 
 async function mostrar(e, brief, mat, { excluir = [] } = {}) {
-  const b = { ...brief, marca: { ...brief.marca, estilo: excluir.includes(brief.marca?.estilo) ? null : brief.marca?.estilo } };
-  const op = await crearOpciones(b, mat, hash(e.id) + excluir.length * 7, { excluir });
+  const textos = await textosPropuestas(brief, mat);
+  const r = await crearPropuestasHTML(brief, mat, textos);
   const prev = brief.marca?.propuestas || {};
-  return { propuestas: { ...prev, estado: 'mostradas', opciones: op.opciones, textos: op.textos, usados: [...new Set([...(prev.usados || []), ...op.opciones.map((o) => o.estilo)])] }, salida: mensajeOpciones(op) };
+  const opciones = r.opciones.map((o) => ({ etiqueta: o.letra, letra: o.letra, layout: o.layout, nombre: o.nombre, url: o.url, estilo: o.fuentes.estilo, tipografia: { titulos: o.fuentes.titulos, cuerpo: o.fuentes.cuerpo }, paleta: o.paleta }));
+  return { propuestas: { ...prev, estado: 'mostradas', token: r.token, opciones, textos, usados: [...(prev.usados || []), r.token] }, salida: mensajeOpciones({ opciones }) };
 }
 
 /**
@@ -67,7 +71,7 @@ export async function atenderPropuestas(e, brief, { texto = '', huboMedia = fals
   }
   if (p.estado === 'mostradas') {
     const r = interpretarEleccion(texto);
-    if (!r) return { responder: { textos: ['¿Cuál de las 3 te gustó más: *A*, *B* o *C*? Si ninguna te convence, dime *ninguna* y qué te gustaría distinto.'] }, brief, seguirConAri: false };
+    if (!r) return { responder: { textos: ['¿Cuál de las 6 te gustó más? Respóndeme con la letra, de la *A* a la *F*. Si ninguna te convence, dime *ninguna* y qué te gustaría distinto.'] }, brief, seguirConAri: false };
     if (r.ninguna) {
       return { responder: { textos: ['Va, hago otras. ¿Qué no te gustó o qué te gustaría ver? Por ejemplo: colores más claros, letras más sencillas, que la foto se vea más grande.'] }, brief: { ...brief, marca: { ...brief.marca, propuestas: { ...p, estado: 'rechazadas', rechazos: [...(p.rechazos || []), texto] } } }, seguirConAri: false };
     }

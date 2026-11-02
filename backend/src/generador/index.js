@@ -13,7 +13,7 @@ import { mergeProfundo } from '../entrevista/agente.js';
 import { redactar } from './contenido.js';
 import { paginaInicio, paginaTexto, piePagina, cabecera, waUrl } from './bloques.js';
 import { procesarMateriales } from './materiales.js';
-import { crearOpciones } from './opciones.js';
+import { crearPropuestasHTML, textosPropuestas } from './propuestas_html.js';
 import * as wp from './wp.js';
 
 const q = db.q;
@@ -167,7 +167,7 @@ export async function generarSitio(sitioId, entrevista, { slug } = {}) {
     const estiloBase = elegida ? { ...(dd.estilo_diseno || {}), tipografia: elegida.tipografia, tipografia_alternativa: null } : (dd.estilo_diseno || {});
     const subBase = elegida ? { ...(dd.subtipo_diseno || {}), tipografia_giro: null } : (dd.subtipo_diseno || {});
     const palRef = (deColores || elegida)?.paleta;
-    const coloresMarca = palRef ? [palRef.primary, palRef['primary-accent']] : mat.colores;
+    const coloresMarca = palRef ? [palRef.primary, palRef['primary-accent'] || palRef.accent].filter(Boolean) : mat.colores;
     const vars = generarVariaciones({ estilo: estiloBase, subtipo_diseno: subBase, colores_marca: coloresMarca, slug_sitio: slug, semilla: hash(entrevista.id) });
     reporte.avisos.push(...vars.avisos);
     const estilos = estilosGlobales(vars, dd.estilo_diseno);
@@ -342,16 +342,20 @@ export function registerGeneradorRoutes(app, wrap) {
     return procesarMateriales(e.id, e.brief || {}, { aceptarLoQueHay: !!b.aceptar });
   }));
 
-  // Propuestas A/B/C para una sesión (las guarda en brief.marca.propuestas como "mostradas").
+  // Propuestas (6 páginas HTML con liga) para una sesión; se guardan en brief.marca.propuestas como "mostradas".
   app.post('/entrevista/v1/sesiones/:id/propuestas', wrap(async (c) => {
     auth(c);
     const e = await db.obtener(c.req.param('id'));
     if (!e) throw new HttpError(404, 'no existe');
+    const b = await c.req.json().catch(() => ({}));
     const mat = await procesarMateriales(e.id, e.brief || {}, { aceptarLoQueHay: true });
-    const op = await crearOpciones(e.brief || {}, mat, hash(e.id));
-    const brief = { ...e.brief, marca: { ...e.brief.marca, propuestas: { estado: 'mostradas', opciones: op.opciones, textos: op.textos, usados: op.opciones.map((o) => o.estilo) } } };
+    if (b.logo_url) mat.logo = { ...(mat.logo || {}), url: b.logo_url };
+    const textos = await textosPropuestas(e.brief || {}, mat);
+    const r = await crearPropuestasHTML(e.brief || {}, mat, textos);
+    const opciones = r.opciones.map((o) => ({ etiqueta: o.letra, letra: o.letra, layout: o.layout, nombre: o.nombre, url: o.url, estilo: o.fuentes.estilo, tipografia: { titulos: o.fuentes.titulos, cuerpo: o.fuentes.cuerpo }, paleta: o.paleta }));
+    const brief = { ...e.brief, marca: { ...e.brief.marca, propuestas: { estado: 'mostradas', token: r.token, opciones, textos, usados: [r.token] } } };
     await db.guardar(e.id, { brief });
-    return { opciones: op.opciones.map((o) => ({ etiqueta: o.etiqueta, estilo: o.estilo, url: o.url, tipografia: o.tipografia })), materiales: { logo: mat.logo?.url, hero: mat.hero?.url, fotos: mat.fotos.length, menus: mat.menus.length, otras: mat.otras.length } };
+    return { token: r.token, opciones: opciones.map((o) => ({ letra: o.letra, nombre: o.nombre, url: o.url, fuentes: o.tipografia })) };
   }));
 
   // Registrar la elección del cliente por fuera del chat: {elegido:"A", colores_de?:"C"}.

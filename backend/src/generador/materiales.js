@@ -19,7 +19,7 @@ const PROMPT = `Analiza esta imagen que un emprendedor mandó para su página we
  "tipo": "logo" | "foto_producto" | "foto_local" | "foto_equipo" | "foto_fundador" | "menu" | "flyer" | "documento" | "otro",
  "es_captura_pantalla": boolean,           // captura de celular/computadora (barras de estado, navegador, botones de app)
  "contenido": {"x":0,"y":0,"w":1,"h":1},    // caja del contenido útil SIN barras del sistema/navegador/app ni márgenes vacíos, en fracciones 0-1 de ancho y alto
- "logo": {"x":..,"y":..,"w":..,"h":..} | null, // caja ajustada del logotipo del negocio si aparece (símbolo + nombre), en fracciones
+ "logo": {"x":..,"y":..,"w":..,"h":..} | null, // caja ajustada SOLO del logotipo (símbolo/mascota + nombre del negocio), sin títulos de sección ni otros textos debajo, en fracciones
  "productos": [{"nombre":"", "x":..,"y":..,"w":..,"h":..}], // fotos de producto individuales (máx 6). La caja debe incluir el producto COMPLETO a lo ancho, con margen a los lados; en vasos/bebidas solo se permite cortar por abajo, nunca los lados ni la tapa. Usa el nombre tal como aparece en el menú
  "menu": [{"seccion":"", "items":[{"nombre":"", "descripcion":"", "precio":""}]}] | null, // si es menú o lista de precios: transcribe TODO tal cual, precios con $
  "colores": ["#RRGGBB"],                    // 3-5 colores dominantes del diseño de la marca
@@ -80,14 +80,28 @@ async function guardar(img, prefijo, formato = 'jpg') {
   return { url: urlPublica(nombre), ancho: info.width, alto: info.height };
 }
 
+/** Logo: el color de fondo (esquina) se vuelve transparente con borde suave, y se recorta al contenido. */
+async function fondoTransparente(buf) {
+  const { data, info } = await sharp(buf).ensureAlpha().raw().toBuffer({ resolveWithObject: true });
+  const [r0, g0, b0] = [data[0], data[1], data[2]];
+  for (let i = 0; i < data.length; i += 4) {
+    const d = Math.abs(data[i] - r0) + Math.abs(data[i + 1] - g0) + Math.abs(data[i + 2] - b0);
+    if (d < 28) data[i + 3] = 0; else if (d < 60) data[i + 3] = Math.min(data[i + 3], Math.round(255 * (d - 28) / 32));
+  }
+  return sharp(data, { raw: { width: info.width, height: info.height, channels: 4 } }).trim().png().toBuffer();
+}
+
 /** Colores dominantes por cuantización simple (sin fondo blanco/negro puro). */
 async function coloresDe(buf) {
-  const { data } = await sharp(buf).resize(48, 48, { fit: 'inside' }).removeAlpha().raw().toBuffer({ resolveWithObject: true });
+  const { data, info } = await sharp(buf).resize(48, 48, { fit: 'inside' }).removeAlpha().raw().toBuffer({ resolveWithObject: true });
+  // Color de fondo = el de la esquina superior izquierda: se excluye (si no, el "color de marca" sale beige del fondo).
+  const fondo = [data[0], data[1], data[2]];
   const cubos = new Map();
   for (let i = 0; i < data.length; i += 3) {
     const [r, g, b] = [data[i], data[i + 1], data[i + 2]];
     const l = (r + g + b) / 3;
     if (l > 242 || l < 12) continue;
+    if (Math.abs(r - fondo[0]) + Math.abs(g - fondo[1]) + Math.abs(b - fondo[2]) < 60) continue;
     const k = `${r >> 5},${g >> 5},${b >> 5}`;
     const c = cubos.get(k) || { n: 0, r: 0, g: 0, b: 0 };
     c.n++; c.r += r; c.g += g; c.b += b; cubos.set(k, c);
@@ -98,7 +112,7 @@ async function coloresDe(buf) {
 
 /** Analiza (o reutiliza el análisis guardado de) un asset de imagen y genera sus recortes. */
 export async function analizarAsset(a) {
-  if (a.analisis?.version === 3) return a.analisis;
+  if (a.analisis?.version === 4) return a.analisis;
   const original = await descargar(a.url);
   const base = sharp(original).rotate();
   const meta = await base.metadata();
@@ -106,7 +120,7 @@ export async function analizarAsset(a) {
   // Para el modelo: lado largo ≤ 1568 px; las cajas vienen en fracciones, así que sirven para el original.
   const vista = await sharp(original).rotate().resize(1568, 1568, { fit: 'inside', withoutEnlargement: true }).jpeg({ quality: 85 }).toBuffer();
   const v = await visionJSON(vista, 'image/jpeg');
-  const out = { version: 3, tipo: v.tipo, es_captura: !!v.es_captura_pantalla, calidad: v.calidad, descripcion: v.descripcion, colores: (v.colores || []).filter((c) => /^#[0-9a-f]{6}$/i.test(c)), menu: v.menu || null, ancho: W, alto: H };
+  const out = { version: 4, tipo: v.tipo, es_captura: !!v.es_captura_pantalla, calidad: v.calidad, descripcion: v.descripcion, colores: (v.colores || []).filter((c) => /^#[0-9a-f]{6}$/i.test(c)), menu: v.menu || null, ancho: W, alto: H };
 
   const cont = caja(v.contenido, W, H) || { left: 0, top: 0, width: W, height: H };
   const recorteContenido = sharp(original).rotate().extract(cont);
@@ -117,7 +131,8 @@ export async function analizarAsset(a) {
   }
   const lb = v.tipo === 'logo' ? cont : caja(v.logo, W, H, 0.01);
   if (lb) {
-    const buf = await sharp(original).rotate().extract(lb).trim({ threshold: 18 }).png().toBuffer().catch(() => null);
+    let buf = await sharp(original).rotate().extract(lb).trim({ threshold: 18 }).png().toBuffer().catch(() => null);
+    if (buf) buf = await fondoTransparente(buf).catch(() => buf);
     if (buf) {
       const g = await guardar(sharp(buf), 'logo', 'png');
       out.logo = { ...g, colores: await coloresDe(buf).catch(() => []) };

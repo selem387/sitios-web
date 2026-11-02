@@ -14,6 +14,7 @@ import * as db from '../entrevista/db.js';
 import { procesarMensaje, enSerie } from '../entrevista/agente.js';
 import { encolar } from '../generador/index.js';
 import { paginaChat } from './pagina.js';
+import { DIR_PROPUESTAS } from '../generador/propuestas_html.js';
 
 const DIR = path.join(config.dataDir, 'chat');
 const CODIGO = process.env.CHAT_CODIGO || '';
@@ -49,6 +50,14 @@ async function sitioDe(usuarioId) {
 
 export function registerChatRoutes(app, wrap) {
   app.get('/chat', (c) => c.html(paginaChat()));
+
+  // Propuestas de diseño navegables (6 por cliente): /p/<token>/<A-F>
+  app.get('/p/:token/:letra', async (c) => {
+    const { token, letra } = c.req.param();
+    if (!/^[A-Za-z0-9]{8,40}$/.test(token) || !/^[A-F]$/.test(letra)) return c.text('no', 404);
+    try { return c.html(await fs.readFile(path.join(DIR_PROPUESTAS, token, `${letra}.html`), 'utf8'), 200, { 'cache-control': 'no-store', 'x-robots-tag': 'noindex' }); }
+    catch { return c.text('Propuesta no encontrada', 404); }
+  });
 
   app.get('/chat/archivos/:nombre', async (c) => {
     const nombre = c.req.param('nombre');
