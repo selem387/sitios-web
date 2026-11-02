@@ -105,7 +105,7 @@ img{max-width:100%;display:block}a{color:inherit}
 h1,h2,h3{font-family:var(--ft);line-height:1.08;letter-spacing:-.01em;text-wrap:balance}h1{font-size:clamp(32px,8.5vw,60px)}h2{font-size:clamp(24px,6vw,36px);margin-bottom:16px}
 .barra{position:sticky;top:0;z-index:20;background:color-mix(in srgb,var(--bg) 92%,transparent);backdrop-filter:blur(8px);border-bottom:1px solid var(--bor)}
 .barra .in{max-width:1120px;margin:0 auto;display:flex;align-items:center;justify-content:space-between;padding:10px 20px}
-.logo{height:44px;width:auto}.nombre{font-family:var(--ft);font-size:20px;font-weight:700}
+.logo{height:44px;width:auto}body.menu .logo,body.dostonos .logo{background:#F6EFE3;padding:4px 10px;border-radius:12px;height:52px}.nombre{font-family:var(--ft);font-size:20px;font-weight:700}
 .barra nav{display:flex;gap:18px;font-weight:600;font-size:15px}.barra nav a{text-decoration:none}
 .wrap{max-width:1120px;margin:0 auto;padding:0 20px}
 .sub{color:var(--soft);font-size:clamp(16px,4.2vw,19px);margin-top:12px;max-width:34ch}
