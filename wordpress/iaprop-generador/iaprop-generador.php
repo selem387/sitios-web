@@ -250,6 +250,10 @@ function iaprop_gen_aplicar( WP_REST_Request $req ) {
 		foreach ( array( 'whatsapp', 'whatsapp_mensaje', 'llms', 'robots_extra' ) as $k ) {
 			if ( isset( $o[ $k ] ) ) update_option( "iaprop_$k", is_string( $o[ $k ] ) ? wp_unslash( $o[ $k ] ) : '' );
 		}
+		if ( ! empty( $o['logo_clave'] ) && ! empty( $medios[ $o['logo_clave'] ]['id'] ) ) {
+			update_option( 'site_logo', (int) $medios[ $o['logo_clave'] ]['id'] );
+			update_option( 'site_icon', (int) $medios[ $o['logo_clave'] ]['id'] );
+		}
 		if ( isset( $o['jsonld'] ) ) update_option( 'iaprop_jsonld', wp_json_encode( $o['jsonld'] ) );
 		update_option( 'iaprop_generado', gmdate( 'c' ) );
 

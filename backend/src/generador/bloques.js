@@ -108,7 +108,7 @@ function encabezadoSeccion(titulo, intro, ancla) {
 export function hero(c, ctx) {
   const ctas = botones([
     { texto: c.cta_principal, url: ctx.wa || ctx.tel },
-    { texto: c.cta_secundario, url: c.cta_secundario_url || '#servicios', contorno: true },
+    { texto: c.cta_secundario, url: c.cta_secundario_url || (ctx.menus?.length || ctx.menuTexto?.length ? '#menu' : ctx.destacados?.length ? '#destacados' : '#servicios'), contorno: true },
   ]);
   const texto = [
     heading(c.h1, { nivel: 1, tam: 'xx-large' }),
@@ -117,13 +117,13 @@ export function hero(c, ctx) {
     c.nota ? parrafo(c.nota, { tam: 'small', color: 'main-accent' }) : '',
   ].filter(Boolean).join('\n');
   const interior = ctx.medios.hero
-    ? columnas([{ html: grupo(texto, { gap: 'medium' }), ancho: '55%' }, { html: imagen('hero', ctx.medios.hero.alt, { ratio: '4/5', prioridad: true }), ancho: '45%' }])
+    ? columnas([{ html: grupo(texto, { gap: 'medium' }), ancho: '55%' }, { html: (ctx.medios.hero.provisional ? imagenSimple('hero', ctx.medios.hero.alt, { prioridad: true }) : imagen('hero', ctx.medios.hero.alt, { ratio: '4/5', prioridad: true })), ancho: '45%' }])
     : grupo(texto, { ancho: true, gap: 'medium' });
   return seccion('Hero', interior, { densidad: ctx.densidad });
 }
 
 export function servicios(s, ctx) {
-  if (!s?.items?.length) return '';
+  if (!s?.items?.length || ctx.menuTexto?.length) return '';
   return seccion('Servicios', [encabezadoSeccion(s.titulo, s.intro, 'servicios'), rejilla(s.items)].join('\n'), { densidad: ctx.densidad, fondo: 'tertiary' });
 }
 
@@ -188,6 +188,61 @@ export function contacto(s, ctx) {
   return seccion('Contacto', [heading(s?.titulo || 'Contacto', { ancla: 'contacto' }), `<!-- wp:group${attrs(a)} -->\n<div class="wp-block-group alignwide">\n${celdas}\n</div>\n<!-- /wp:group -->`].join('\n'), { densidad: ctx.densidad });
 }
 
+/** Imagen simple por URL ya publicada en WP (clave de medio). */
+function imagenSimple(clave, alt, { ratio = null, ajuste = 'cover', prioridad = false, enlace = false } = {}) {
+  const a = { id: '__ID__', sizeSlug: 'large', linkDestination: enlace ? 'media' : 'none', ...(ratio ? { aspectRatio: ratio, scale: ajuste } : {}) };
+  const json = attrs(a).replace('"__ID__"', `{{media:${clave}:id}}`);
+  const estilo = ratio ? ` style="aspect-ratio:${ratio};object-fit:${ajuste}"` : '';
+  const img = `<img src="{{media:${clave}:grande}}" alt="${esc(alt)}" class="wp-image-{{media:${clave}:id}}"${estilo}${prioridad ? ' fetchpriority="high" loading="eager"' : ' loading="lazy"'}/>`;
+  return `<!-- wp:image${json} -->\n<figure class="wp-block-image size-large">${enlace ? `<a href="{{media:${clave}}}">${img}</a>` : img}</figure>\n<!-- /wp:image -->`;
+}
+
+/** Productos destacados con foto y precio reales (recortes de su material + precios de su menú). */
+export function destacados(items, ctx, titulo = 'Lo más pedido') {
+  if (!items?.length) return '';
+  const n = Math.min(4, items.length);
+  const celdas = items.slice(0, 8).map((it) => grupo([
+    imagenSimple(it.clave, it.nombre, { ratio: '1', ajuste: 'contain' }),
+    heading(it.nombre, { nivel: 3, tam: 'medium' }),
+    it.precio ? parrafo(it.precio, { color: 'primary', tam: 'medium' }) : '',
+    it.descripcion ? parrafo(it.descripcion, { color: 'main-accent', tam: 'small' }) : '',
+  ].filter(Boolean).join('\n'), { gap: 'small' })).join('\n');
+  const a = { align: 'wide', layout: { type: 'grid', columnCount: n, minimumColumnWidth: '10rem' }, style: { spacing: { blockGap: { top: sp('large'), left: sp('medium') } } } };
+  return seccion('Destacados', [heading(titulo, { ancla: 'destacados' }), `<!-- wp:group${attrs(a)} -->\n<div class="wp-block-group alignwide">\n${celdas}\n</div>\n<!-- /wp:group -->`].join('\n'), { densidad: ctx.densidad });
+}
+
+/** Menú: listado con precios (texto, bueno para Google y lectores) + las imágenes del menú del cliente. */
+export function menu(secciones, imagenes, ctx, titulo = 'Menú') {
+  if (!secciones?.length && !imagenes?.length) return '';
+  const listas = (secciones || []).filter((x) => x?.items?.length).map((sec) => grupo([
+    heading(sec.seccion || 'Menú', { nivel: 3, tam: 'medium' }),
+    ...sec.items.slice(0, 20).map((it) => `<!-- wp:paragraph -->\n<p><strong>${esc(it.nombre)}</strong>${it.precio ? ` · ${esc(it.precio)}` : ''}${it.descripcion ? `<br><span class="has-main-accent-color has-text-color">${esc(it.descripcion)}</span>` : ''}</p>\n<!-- /wp:paragraph -->`),
+  ].join('\n'), { gap: 'small' }));
+  const ga = { align: 'wide', layout: { type: 'grid', columnCount: Math.min(3, Math.max(1, listas.length)), minimumColumnWidth: '14rem' }, style: { spacing: { blockGap: { top: sp('large'), left: sp('large') } } } };
+  const imgs = (imagenes || []).map((m) => imagenSimple(m.clave, m.alt || 'Menú', { enlace: true }));
+  const gi = { align: 'wide', layout: { type: 'grid', columnCount: Math.min(3, Math.max(1, imgs.length)), minimumColumnWidth: '12rem' }, style: { spacing: { blockGap: { top: sp('medium'), left: sp('medium') } } } };
+  return seccion('Menú', [
+    heading(titulo, { ancla: 'menu' }),
+    listas.length ? `<!-- wp:group${attrs(ga)} -->\n<div class="wp-block-group alignwide">\n${listas.join('\n')}\n</div>\n<!-- /wp:group -->` : '',
+    imgs.length ? `<!-- wp:group${attrs(gi)} -->\n<div class="wp-block-group alignwide">\n${imgs.join('\n')}\n</div>\n<!-- /wp:group -->` : '',
+  ].filter(Boolean).join('\n'), { densidad: ctx.densidad, fondo: 'tertiary' });
+}
+
+/** Galería con el resto de imágenes del cliente (regla: ninguna se omite). */
+export function galeria(imagenes, ctx, titulo = 'Galería') {
+  if (!imagenes?.length) return '';
+  const imgs = imagenes.map((m) => imagenSimple(m.clave, m.alt || '', { ratio: '4/5', enlace: true }));
+  const a = { align: 'wide', layout: { type: 'grid', columnCount: Math.min(4, imgs.length), minimumColumnWidth: '10rem' }, style: { spacing: { blockGap: { top: sp('medium'), left: sp('medium') } } } };
+  return seccion('Galería', [heading(titulo, { ancla: 'galeria' }), `<!-- wp:group${attrs(a)} -->\n<div class="wp-block-group alignwide">\n${imgs.join('\n')}\n</div>\n<!-- /wp:group -->`].join('\n'), { densidad: ctx.densidad });
+}
+
+/** Encabezado propio: logo del cliente (site-logo) + menú. Sin logo, el nombre del sitio. */
+export function cabecera({ conLogo }) {
+  const marca = conLogo ? '<!-- wp:site-logo {"width":150,"shouldSyncIcon":true} /-->' : '<!-- wp:site-title {"level":0,"fontSize":"medium"} /-->';
+  const a = { tagName: 'header', metadata: { name: 'Encabezado' }, align: 'full', style: { spacing: { padding: { top: sp('small'), bottom: sp('small'), left: sp('medium'), right: sp('medium') } }, border: { bottom: { color: 'var:preset|color|border-light', width: '1px' } } }, layout: { type: 'flex', justifyContent: 'space-between', flexWrap: 'nowrap' } };
+  return `<!-- wp:group${attrs(a)} -->\n<header class="wp-block-group alignfull" style="border-bottom-color:var(--wp--preset--color--border-light);border-bottom-width:1px;padding-top:${spCss('small')};padding-right:${spCss('medium')};padding-bottom:${spCss('small')};padding-left:${spCss('medium')}">${marca}\n<!-- wp:navigation {"overlayMenu":"mobile","icon":"menu","fontSize":"small"} /--></header>\n<!-- /wp:group -->`;
+}
+
 /** Página de inicio completa. El orden respeta la estructura del subtipo si viene, con hero siempre primero. */
 export function paginaInicio(cont, ctx) {
   const porTipo = {
@@ -198,8 +253,13 @@ export function paginaInicio(cont, ctx) {
     faq: () => faq(cont.faq, ctx),
     cta: () => ctaFinal(cont.cta_final, ctx),
     contacto: () => contacto(cont.contacto, ctx),
+    destacados: () => destacados(ctx.destacados, ctx, cont.titulo_destacados || 'Lo más pedido'),
+    menu: () => menu(ctx.menuTexto, ctx.menus, ctx, cont.titulo_menu || 'Menú'),
+    galeria: () => galeria(ctx.galeria, ctx),
   };
-  const orden = (ctx.orden || ['servicios', 'proceso', 'sobre', 'confianza', 'faq', 'cta', 'contacto']).filter((k) => porTipo[k]);
+  const orden = (ctx.orden || (ctx.menus?.length || ctx.menuTexto?.length
+    ? ['destacados', 'menu', 'sobre', 'galeria', 'faq', 'cta', 'contacto', 'servicios', 'proceso', 'confianza']
+    : ['servicios', 'destacados', 'proceso', 'sobre', 'galeria', 'confianza', 'faq', 'cta', 'contacto'])).filter((k) => porTipo[k]);
   for (const k of Object.keys(porTipo)) if (!orden.includes(k)) orden.push(k);
   return [hero(cont.hero, ctx), ...orden.map((k) => porTipo[k]())].filter(Boolean).join('\n\n');
 }

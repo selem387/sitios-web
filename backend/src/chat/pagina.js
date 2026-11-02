@@ -118,6 +118,7 @@ async function enviar(texto, media = [], opciones = {}, oculto = false) {
     const d = await api('/chat/v1/mensajes', { method:'POST', body: JSON.stringify({ usuario_id: usuario, texto, media, ...opciones }) });
     ind.remove();
     for (const r of d.respuestas || []) agregar({ de:'ari', texto: r });
+    for (const m of d.media || []) agregar({ de:'ari', texto: m.caption || '', media: [m] });
     if (d.total_pasos) $('#estado').textContent = 'Paso ' + Math.min(d.paso, d.total_pasos) + ' de ' + d.total_pasos;
     if (d.estado === 'completada') { $('#estado').textContent = 'Entrevista terminada'; if (d.generando) agregar({ tipo:'sis', texto:'Estoy armando tu página. Tarda unos minutos; aquí te aviso.' }); iniciarSondeo(); }
   } catch (e) { ind.remove(); if (e.message !== 'codigo') agregar({ tipo:'sis', texto:'No se pudo enviar: ' + e.message }); }
@@ -129,7 +130,8 @@ function iniciarSondeo(){
   sondeo = setInterval(async () => {
     try {
       const s = await api('/chat/v1/sitio?usuario_id=' + encodeURIComponent(usuario));
-      if (s.estado === 'listo' || s.estado === 'requiere_revision') { clearInterval(sondeo); sondeo=null; mem.set('ari_sitio_'+usuario,'1'); agregar({ tipo:'sitio', url: s.url_publica, captura: s.captura }); }
+      if (s.estado === 'listo') { clearInterval(sondeo); sondeo=null; mem.set('ari_sitio_'+usuario,'1'); agregar({ tipo:'sitio', url: s.url_publica, captura: s.captura }); }
+      if (s.estado === 'requiere_revision') { clearInterval(sondeo); sondeo=null; mem.set('ari_sitio_'+usuario,'1'); agregar({ tipo:'sis', texto:'Tu página ya está armada y la está revisando el equipo de IAprop antes de mostrártela. Te aviso en cuanto quede.' }); }
       if (s.estado === 'error') { clearInterval(sondeo); sondeo=null; agregar({ tipo:'sis', texto:'Hubo un problema al armar la página; el equipo de IAprop ya lo está revisando.' }); }
     } catch {}
   }, 15000);

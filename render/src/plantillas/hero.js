@@ -70,7 +70,7 @@ export function heroHTML(d) {
   html,body{width:390px;height:844px;overflow:hidden;background:var(--bg);color:var(--fg);font-family:var(--fc);font-size:16px;line-height:1.45;-webkit-font-smoothing:antialiased}
   .tag{display:inline-block;vertical-align:middle;margin-right:8px;background:#111;color:#fff;font:700 13px/1 var(--fc);padding:6px 9px;border-radius:999px;letter-spacing:.02em} .editorial .tag{background:#fff;color:#111}
   header{display:flex;justify-content:space-between;align-items:center;padding:14px 20px;font-weight:700}
-  header span{font-family:var(--ft)} header i{display:inline-block;width:22px;height:2px;background:currentColor;box-shadow:0 6px 0 currentColor,0 -6px 0 currentColor}
+  header span{font-family:var(--ft);display:flex;align-items:center} header img.logo{height:40px;max-width:170px;object-fit:contain;display:block} .editorial header img.logo{background:rgba(255,255,255,.92);border-radius:6px;padding:3px 6px} header i{display:inline-block;width:22px;height:2px;background:currentColor;box-shadow:0 6px 0 currentColor,0 -6px 0 currentColor}
   h1{font-family:var(--ft);font-weight:700;line-height:1.1;letter-spacing:-.01em}
   p.sub{color:var(--mutedfg);margin-top:10px}
   .btn{display:inline-block;background:var(--acc);color:var(--on-acc);font-weight:700;padding:14px 22px;border-radius:var(--r);box-shadow:var(--sh);margin-top:18px}
@@ -128,7 +128,7 @@ export function heroHTML(d) {
 
   return `<!doctype html><html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=390"><link rel="stylesheet" href="${f.url}"><style>${css}</style></head>
 <body class="${layout}" style="--foto:${foto}">
-<header><span>${d.etiqueta ? `<span class="tag">${esc(d.etiqueta)}</span>` : ''}${esc(d.negocio?.nombre || '')}</span><i></i></header>
+<header><span>${d.etiqueta ? `<span class="tag">${esc(d.etiqueta)}</span>` : ''}${d.logo_url ? `<img class="logo" src="${esc(d.logo_url)}" alt="${esc(d.negocio?.nombre || '')}">` : esc(d.negocio?.nombre || '')}</span><i></i></header>
 ${bloqueHero}${apoyo}<div class="wa"></div></body></html>`;
 }
 

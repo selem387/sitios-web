@@ -69,6 +69,7 @@ export async function redactar(brief, diseno, { correcciones = [] } = {}) {
   const contenido = [
     `Brief (JSON):\n${JSON.stringify(briefParaRedactar(brief), null, 1)}`,
     `Subtipo de negocio: ${diseno?.arquetipo}/${diseno?.subtipo}. Patrón de landing del subtipo: ${diseno?.subtipo_diseno?.patron_landing || '—'}; secciones de referencia: ${(diseno?.subtipo_diseno?.patrones_detalle || []).map((p) => p.secciones).join(' | ') || '—'}`,
+    diseno?.menu_texto?.length ? `Menú real del negocio (úsalo para los textos; no inventes productos ni precios fuera de él):\n${JSON.stringify(diseno.menu_texto).slice(0, 4000)}` : '',
     correcciones.length ? `Correcciones obligatorias de la revisión anterior:\n- ${correcciones.join('\n- ')}` : '',
   ].filter(Boolean).join('\n\n');
   // Esquema muy anidado: con tool_use el modelo a veces aplana o rompe los objetos. Aquí pedimos JSON en texto

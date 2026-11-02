@@ -85,6 +85,7 @@ app.post('/v1/mockup', async (c) => {
   if (!d || !d.estilo?.slug) return c.json({ error: 'falta estilo.slug' }, 400);
   const t0 = Date.now();
   d.foto_url = await incrustarFoto(d.foto_url);
+  d.logo_url = await incrustarFoto(d.logo_url);
   const buf = await conPagina({}, async (page) => {
     await page.setContent(heroHTML(d), { waitUntil: 'networkidle', timeout: 15000 }).catch(() => {});
     await page.evaluate(() => document.fonts?.ready).catch(() => {});
@@ -104,7 +105,7 @@ app.post('/v1/mockups', async (c) => {
   const fotos = new Map();
   for (const [i, op] of b.opciones.slice(0, 4).entries()) {
     const d = { ...(b.comun || {}), ...op, etiqueta: op.etiqueta || 'ABCD'[i] };
-    if (d.foto_url) { if (!fotos.has(d.foto_url)) fotos.set(d.foto_url, await incrustarFoto(d.foto_url)); d.foto_url = fotos.get(d.foto_url); }
+    for (const k of ['foto_url', 'logo_url']) if (d[k]) { if (!fotos.has(d[k])) fotos.set(d[k], await incrustarFoto(d[k])); d[k] = fotos.get(d[k]); }
     const buf = await conPagina({}, async (page) => {
       await page.setContent(heroHTML(d), { waitUntil: 'networkidle', timeout: 15000 }).catch(() => {});
       await page.evaluate(() => document.fonts?.ready).catch(() => {});

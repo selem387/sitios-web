@@ -7,6 +7,7 @@ import { BLOQUES, TOTAL_BLOQUES, PALABRA_INICIO, INSTRUCCIONES, SISTEMA_ARI, GUI
 import { isObject } from '../util.js';
 import { resolverSubtipo } from './subtipo.js';
 import { estudiarReferencias } from './referencias.js';
+import { propuestasPendientes, tocaPropuestas, atenderPropuestas, iniciarPropuestas } from './propuestas.js';
 
 const MAX_MSGS_CLIENTE = 120;
 const PAUSA_MS = 2 * 3600 * 1000;
@@ -175,7 +176,27 @@ export async function procesarMensaje(b) {
     return responder([INSTRUCCIONES.replace('¡Empecemos! 👇', '').trim(), pendiente ? `Seguimos donde nos quedamos 👇\n\n${pendiente.contenido}` : 'Seguimos donde nos quedamos 👇'], 'texto');
   }
 
-  const mensajes = [];
+  // Propuestas visuales pendientes (faltan materiales, esperando elección A/B/C o rehacer): se atienden antes que Ari.
+  const responderConMedia = async (textos, media = []) => {
+    for (const m of media) await db.insertarMensaje(e.id, { rol: 'agente', tipo: 'imagen', contenido: `[${m.caption || 'imagen'}] ${m.url}`, bloque: e.bloque_actual });
+    const r = await responder(textos, 'texto');
+    r.media = media;
+    return r;
+  };
+  const prefijo = [];
+  if (!nueva && propuestasPendientes(e.brief)) {
+    try {
+      const r = await atenderPropuestas(e, e.brief || {}, { texto, huboMedia: nuevosAssets.length > 0 });
+      if (r.brief !== e.brief) { await db.guardar(e.id, { brief: r.brief }); e.brief = r.brief; }
+      if (!r.seguirConAri) return responderConMedia(r.responder.textos, r.responder.media);
+      if (r.responder?.textos) prefijo.push(...r.responder.textos);
+    } catch (err) {
+      console.error('propuestas', err);
+      return responder(['Dame un momento, estoy terminando de preparar tus propuestas. Escríbeme de nuevo en un par de minutos 🙏'], 'texto');
+    }
+  }
+
+  const mensajes = [...prefijo];
   if (nueva) mensajes.push(INSTRUCCIONES);
   const [mensajesRecientes, arquetipos] = await Promise.all([db.ultimosMensajes(e.id, 8), db.arquetipos()]);
   const assets = [...assetsPrevios, ...nuevosAssets];
@@ -192,6 +213,14 @@ export async function procesarMensaje(b) {
   const cambios = { brief, bloque_actual: t.bloque, pendientes_bloque: t.pendientes, arquetipo_slug: brief.negocio?.arquetipo || null, nombre: brief.cliente?.nombre || e.nombre };
   await db.guardar(e.id, cambios);
   Object.assign(e, cambios);
+  // Al salir de B8 (fotos): revisar materiales y mandar las 3 propuestas, o pedir mejores imágenes.
+  if (!t.completado && tocaPropuestas(e.brief, bloqueAnterior, t.bloque)) {
+    try {
+      const r = await iniciarPropuestas(e, e.brief);
+      await db.guardar(e.id, { brief: r.brief }); e.brief = r.brief;
+      return responderConMedia([...mensajes, ...r.responder.textos], r.responder.media);
+    } catch (err) { console.error('iniciarPropuestas', err); }
+  }
   mensajes.push(t.reply);
 
   const demasiado = e.mensajes_cliente + 1 >= MAX_MSGS_CLIENTE;

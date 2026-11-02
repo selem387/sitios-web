@@ -11,7 +11,9 @@ import { resolverSubtipo, datosDiseno } from '../entrevista/subtipo.js';
 import { generarVariaciones, generarThemeJsonHints, contraste } from '../entrevista/tema.js';
 import { mergeProfundo } from '../entrevista/agente.js';
 import { redactar } from './contenido.js';
-import { paginaInicio, paginaTexto, piePagina, waUrl } from './bloques.js';
+import { paginaInicio, paginaTexto, piePagina, cabecera, waUrl } from './bloques.js';
+import { procesarMateriales } from './materiales.js';
+import { crearOpciones } from './opciones.js';
 import * as wp from './wp.js';
 
 const q = db.q;
@@ -149,19 +151,30 @@ export async function generarSitio(sitioId, entrevista, { slug } = {}) {
     // 1) Subtipo y datos de diseño.
     let arquetipo = brief.negocio?.arquetipo, subtipo = brief.negocio?.subtipo_resuelto || brief.negocio?.subtipo, fuente = brief.negocio?.subtipo_fuente || 'ari';
     if (!arquetipo || !subtipo) { const r = resolverSubtipo(brief, await db.arquetipos()); arquetipo = r.arquetipo; subtipo = r.subtipo; fuente = r.fuente; }
-    const estiloSlug = brief.marca?.estilo || null;
+    const prop = brief.marca?.propuestas;
+    const elegida = prop?.elegido ? prop.opciones?.find((o) => o.etiqueta === prop.elegido) : null;
+    const deColores = prop?.colores_de ? prop.opciones?.find((o) => o.etiqueta === prop.colores_de) : null;
+    const estiloSlug = elegida?.estilo || brief.marca?.estilo || null;
     const dd = await datosDiseno({ arquetipo, subtipo, estilo: estiloSlug });
+    // Materiales del cliente (análisis guardado): logo, portada, menú, productos y resto de imágenes. Nunca se omiten.
+    const mat = await procesarMateriales(entrevista.id, brief, { aceptarLoQueHay: true });
+    await paso('materiales', { logo: !!mat.logo, hero: mat.hero?.url || null, fotos: mat.fotos.length, menus: mat.menus.length, otras: mat.otras.length, items_menu: mat.menu_texto.reduce((n, x) => n + (x.items?.length || 0), 0), avisos: mat.avisos });
     await guardarSitio(sitioId, { subtipo_resuelto: `${arquetipo}/${subtipo}`, subtipo_fuente: fuente });
     await paso('diseno', { arquetipo, subtipo, estilo: estiloSlug, tipografia: dd.tipografia_recomendada });
 
     // 2) Variaciones de tema (paleta + tipografía) → estilos globales del sitio.
-    const vars = generarVariaciones({ estilo: dd.estilo_diseno || {}, subtipo_diseno: dd.subtipo_diseno || {}, colores_marca: brief.marca?.colores || [], slug_sitio: slug, semilla: hash(entrevista.id) });
+    // Con propuesta elegida: misma tipografía y paleta que vio el cliente (o la paleta de la opción que pidió mezclar).
+    const estiloBase = elegida ? { ...(dd.estilo_diseno || {}), tipografia: elegida.tipografia, tipografia_alternativa: null } : (dd.estilo_diseno || {});
+    const subBase = elegida ? { ...(dd.subtipo_diseno || {}), tipografia_giro: null } : (dd.subtipo_diseno || {});
+    const palRef = (deColores || elegida)?.paleta;
+    const coloresMarca = palRef ? [palRef.primary, palRef['primary-accent']] : mat.colores;
+    const vars = generarVariaciones({ estilo: estiloBase, subtipo_diseno: subBase, colores_marca: coloresMarca, slug_sitio: slug, semilla: hash(entrevista.id) });
     reporte.avisos.push(...vars.avisos);
     const estilos = estilosGlobales(vars, dd.estilo_diseno);
     await paso('tema', { paleta: vars.paleta, tipografia: vars.tipografia });
 
     // 3) Textos.
-    let red = await redactar(brief, dd);
+    let red = await redactar(brief, { ...dd, menu_texto: mat.menu_texto });
     await paso('textos', { modelo: red.model, ms: red.duracion_ms, tokens: red.usage, avisos: red.data._avisos });
     reporte.contenido = red.data;
 
@@ -180,14 +193,28 @@ export async function generarSitio(sitioId, entrevista, { slug } = {}) {
 
     const publicar = async (cont, ajustes = {}) => {
       const medios = [];
-      if (fotos.hero && !ajustes.heroSinFoto) medios.push({ clave: 'hero', url: fotos.hero.url, alt: cont.alt_hero || fotos.hero.descripcion_ia || brief.negocio?.nombre });
-      if (fotos.sobre) medios.push({ clave: 'sobre', url: fotos.sobre.url, alt: cont.alt_sobre || fotos.sobre.descripcion_ia || '' });
+      const heroUrl = mat.hero?.url || fotos.hero?.url;
+      if (heroUrl && !ajustes.heroSinFoto) medios.push({ clave: 'hero', url: heroUrl, alt: cont.alt_hero || mat.hero?.alt || brief.negocio?.nombre, provisional: !!mat.hero?.provisional });
+      const sobreFoto = mat.fotos.find((f) => f.url !== heroUrl && ['foto_local', 'foto_equipo', 'foto_fundador'].includes(f.tipo)) || (fotos.sobre && fotos.sobre.url !== heroUrl ? { url: fotos.sobre.url, alt: fotos.sobre.descripcion_ia } : null);
+      if (sobreFoto) medios.push({ clave: 'sobre', url: sobreFoto.url, alt: cont.alt_sobre || sobreFoto.alt || '' });
+      if (mat.logo) medios.push({ clave: 'logo', url: mat.logo.url, alt: brief.negocio?.nombre || 'Logo' });
+      const usadas = new Set(medios.map((m) => m.url));
+      // Productos destacados: recortes con nombre + precio del menú si coincide.
+      const precios = new Map(mat.menu_texto.flatMap((sec) => (sec.items || []).map((it) => [String(it.nombre).toLowerCase(), it])));
+      const buscarPrecio = (nombre) => { const k = String(nombre || '').toLowerCase(); return precios.get(k) || [...precios.entries()].find(([n]) => n && (n.includes(k) || k.includes(n)))?.[1]; };
+      const destacados = mat.fotos.filter((f) => f.tipo === 'foto_producto' && !usadas.has(f.url)).slice(0, 8).map((f, i) => {
+        const it = buscarPrecio(f.alt); medios.push({ clave: `prod${i + 1}`, url: f.url, alt: f.alt }); usadas.add(f.url);
+        return { clave: `prod${i + 1}`, nombre: f.alt || it?.nombre || 'Producto', precio: it?.precio || '', descripcion: it?.descripcion || '' };
+      });
+      const menus = mat.menus.filter((m) => !usadas.has(m.url)).map((m, i) => { medios.push({ clave: `menu${i + 1}`, url: m.url, alt: m.alt }); usadas.add(m.url); return { clave: `menu${i + 1}`, alt: m.alt }; });
+      const galeriaImgs = [...mat.fotos, ...mat.otras].filter((m) => !usadas.has(m.url)).map((m, i) => { medios.push({ clave: `gal${i + 1}`, url: m.url, alt: m.alt }); usadas.add(m.url); return { clave: `gal${i + 1}`, alt: m.alt }; });
       const ctx = {
         densidad: brief.marca?.densidad || 'media',
         wa: waUrl(contacto.whatsapp, mensajeWa),
         tel: contacto.telefono ? `tel:${String(contacto.telefono).replace(/[^\d+]/g, '')}` : null,
         contacto,
         medios: Object.fromEntries(medios.map((m) => [m.clave, m])),
+        destacados, menus, galeria: galeriaImgs, menuTexto: mat.menu_texto,
       };
       const conf = brief.confianza || {};
       const contenido = paginaInicio({
@@ -195,7 +222,7 @@ export async function generarSitio(sitioId, entrevista, { slug } = {}) {
         confianza: { ...(cont.confianza || {}), cifras: (conf.cifras || []).filter((x) => x?.valor && x?.etiqueta), testimonios: (conf.testimonios || []).filter((t) => t?.texto && t?.autor), certificaciones: conf.certificaciones || [] },
       }, ctx);
       const menu = [
-        { texto: ETIQUETA_SERVICIOS[arquetipo] || 'Servicios', url: '#servicios' },
+        ...(menus.length || mat.menu_texto.length ? [{ texto: 'Menú', url: '#menu' }] : [{ texto: ETIQUETA_SERVICIOS[arquetipo] || 'Servicios', url: destacados.length ? '#destacados' : '#servicios' }]),
         ...(cont.faq?.length ? [{ texto: 'Preguntas', url: '#preguntas' }] : []),
         { texto: 'Contacto', url: '#contacto' },
       ];
@@ -206,9 +233,9 @@ export async function generarSitio(sitioId, entrevista, { slug } = {}) {
           { slug: 'aviso-de-privacidad', titulo: 'Aviso de privacidad', contenido: paginaTexto('Aviso de privacidad', avisoPrivacidad(brief)), descripcion: `Aviso de privacidad de ${brief.negocio?.nombre || ''}`, plantilla: 'page-no-title' },
         ],
         menu,
-        partes: { footer: piePagina({ nombre: brief.negocio?.nombre || '', lema: cont.lema, wa: ctx.wa, contacto }) },
+        partes: { header: cabecera({ conLogo: !!mat.logo }), footer: piePagina({ nombre: brief.negocio?.nombre || '', lema: cont.lema, wa: ctx.wa, contacto }) },
         opciones: {
-          descripcion: cont.lema || cont.descripcion_meta, whatsapp: waUrl(contacto.whatsapp) ? String(contacto.whatsapp) : '', whatsapp_mensaje: mensajeWa,
+          logo_clave: mat.logo ? 'logo' : '', descripcion: cont.lema || cont.descripcion_meta, whatsapp: waUrl(contacto.whatsapp) ? String(contacto.whatsapp) : '', whatsapp_mensaje: mensajeWa,
           jsonld: jsonLd(brief, cont, url, arquetipo), llms: llmsTxt(brief, cont, url),
         },
       });
@@ -233,14 +260,25 @@ export async function generarSitio(sitioId, entrevista, { slug } = {}) {
     }
 
     // 6) Auditoría + una corrección.
-    let aud = await auditar(url);
+    const revisarImagenes = async (a) => {
+      const html = await fetch(url, { signal: AbortSignal.timeout(30000) }).then((r) => r.text()).catch(() => '');
+      const imgs = (html.match(/<img\b/g) || []).length;
+      const minimo = Math.min(3, mat.total_imagenes || 0);
+      a.p0 = a.p0 || [];
+      if (minimo && imgs < minimo) a.p0.push(`Solo ${imgs} imágenes en la página; el cliente mandó ${mat.total_imagenes}`);
+      if (mat.logo && !/custom-logo/.test(html)) a.p0.push('No se ve el logo del cliente');
+      if (!mat.total_imagenes && imgs < 1) a.p0.push('Página sin imágenes');
+      if (a.p0.length) a.publicable = false;
+      return a;
+    };
+    let aud = await revisarImagenes(await auditar(url));
     await guardarSitio(sitioId, { lighthouse_json: aud.lighthouse || null });
     await paso('auditoria_1', { p0: aud.p0, puntajes: aud.lighthouse?.puntajes, slop: aud.impeccable?.por_categoria });
     const plan = planCorreccion(aud);
     if (!aud.publicable && plan.hay) {
-      if (plan.textos.length) red = await redactar(brief, dd, { correcciones: plan.textos });
+      if (plan.textos.length) red = await redactar(brief, { ...dd, menu_texto: mat.menu_texto }, { correcciones: plan.textos });
       await publicar(red.data, plan.ajustes);
-      aud = await auditar(url);
+      aud = await revisarImagenes(await auditar(url));
       await guardarSitio(sitioId, { lighthouse_json: aud.lighthouse || null });
       await paso('auditoria_2', { correcciones: plan, p0: aud.p0, puntajes: aud.lighthouse?.puntajes });
     }
@@ -293,6 +331,40 @@ export function registerGeneradorRoutes(app, wrap) {
     for (const [i, f] of (b.fotos || []).entries()) await db.insertarAsset(id, { clave: f.clave || `foto${i + 1}`, tipo: f.tipo || 'foto_otro', url: f.url, calidad: f.calidad || 'buena', descripcion_ia: f.descripcion || null });
     const e = await db.obtener(id);
     return c.json({ sesion_id: id, ...(await encolar(e, { slug: b.slug, forzarWordpress: true })) }, 202);
+  }));
+
+  // Revisión manual: materiales analizados de una sesión.
+  app.post('/entrevista/v1/sesiones/:id/materiales', wrap(async (c) => {
+    auth(c);
+    const e = await db.obtener(c.req.param('id'));
+    if (!e) throw new HttpError(404, 'no existe');
+    const b = await c.req.json().catch(() => ({}));
+    return procesarMateriales(e.id, e.brief || {}, { aceptarLoQueHay: !!b.aceptar });
+  }));
+
+  // Propuestas A/B/C para una sesión (las guarda en brief.marca.propuestas como "mostradas").
+  app.post('/entrevista/v1/sesiones/:id/propuestas', wrap(async (c) => {
+    auth(c);
+    const e = await db.obtener(c.req.param('id'));
+    if (!e) throw new HttpError(404, 'no existe');
+    const mat = await procesarMateriales(e.id, e.brief || {}, { aceptarLoQueHay: true });
+    const op = await crearOpciones(e.brief || {}, mat, hash(e.id));
+    const brief = { ...e.brief, marca: { ...e.brief.marca, propuestas: { estado: 'mostradas', opciones: op.opciones, textos: op.textos, usados: op.opciones.map((o) => o.estilo) } } };
+    await db.guardar(e.id, { brief });
+    return { opciones: op.opciones.map((o) => ({ etiqueta: o.etiqueta, estilo: o.estilo, url: o.url, tipografia: o.tipografia })), materiales: { logo: mat.logo?.url, hero: mat.hero?.url, fotos: mat.fotos.length, menus: mat.menus.length, otras: mat.otras.length } };
+  }));
+
+  // Registrar la elección del cliente por fuera del chat: {elegido:"A", colores_de?:"C"}.
+  app.post('/entrevista/v1/sesiones/:id/propuestas/elegir', wrap(async (c) => {
+    auth(c);
+    const e = await db.obtener(c.req.param('id'));
+    const b = await c.req.json().catch(() => ({}));
+    const p = e?.brief?.marca?.propuestas;
+    const op = p?.opciones?.find((o) => o.etiqueta === b.elegido);
+    if (!op) throw new HttpError(400, 'opción inválida');
+    const brief = { ...e.brief, marca: { ...e.brief.marca, estilo: op.estilo, propuestas: { ...p, estado: 'elegida', elegido: b.elegido, colores_de: b.colores_de || null } } };
+    await db.guardar(e.id, { brief });
+    return { ok: true, estilo: op.estilo };
   }));
 
   app.get('/entrevista/v1/sitios/:id', wrap(async (c) => {

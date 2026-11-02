@@ -70,6 +70,7 @@ CREATE TABLE IF NOT EXISTS assets (
   creado          timestamptz NOT NULL DEFAULT now()
 );
 CREATE INDEX IF NOT EXISTS assets_entrevista_idx ON assets (entrevista_id);
+ALTER TABLE assets ADD COLUMN IF NOT EXISTS analisis jsonb;
 
 CREATE TABLE IF NOT EXISTS memoria_log (
   id             serial PRIMARY KEY,
