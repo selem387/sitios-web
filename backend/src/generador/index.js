@@ -253,7 +253,7 @@ export async function generarSitio(sitioId, entrevista, { slug } = {}) {
 /* Rutas                                                               */
 /* ------------------------------------------------------------------ */
 
-async function encolar(entrevista, { slug, forzarWordpress }) {
+export async function encolar(entrevista, { slug, forzarWordpress }) {
   const plat = entrevista.brief?.plataforma?.plataforma || entrevista.brief?.plataforma;
   if (plat === 'app' && !forzarWordpress) throw new HttpError(409, 'El brief salió para plataforma "app"; usa forzar_wordpress:true para generar una landing en WordPress.');
   const s = slugify(slug || entrevista.brief?.negocio?.nombre || entrevista.id.slice(0, 8));
