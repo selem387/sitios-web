@@ -367,6 +367,10 @@ export function registerGeneradorRoutes(app, wrap) {
     const b = await c.req.json().catch(() => ({}));
     const dominio = String(b.dominio || '').toLowerCase().replace(/^https?:\/\//, '').replace(/\/.*$/, '');
     if (!/^[a-z0-9-]+(\.[a-z0-9-]+)+$/.test(dominio)) throw new HttpError(400, 'dominio inválido');
+    if (b.modo === 'chat') {
+      await asignarDominio({ dominio, modo: 'chat', datos: { nombre: 'Ari · IAprop' } });
+      return { ok: true, dominio, modo: 'chat', url: `https://${dominio}/` };
+    }
     const e = await db.obtener(b.sesion_id);
     const p = e?.brief?.marca?.propuestas;
     if (!p?.token) throw new HttpError(400, 'la sesión no tiene propuestas');

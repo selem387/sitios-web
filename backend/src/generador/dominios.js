@@ -5,6 +5,7 @@ import fs from 'node:fs/promises';
 import path from 'node:path';
 import * as db from '../entrevista/db.js';
 import { DIR_PROPUESTAS } from './propuestas_html.js';
+import { paginaChat } from '../chat/pagina.js';
 
 const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 let listo = false;
@@ -25,11 +26,11 @@ async function mapa() {
   return cache.mapa;
 }
 
-export async function asignarDominio({ dominio, entrevista_id, token, datos = {} }) {
+export async function asignarDominio({ dominio, entrevista_id, token, datos = {}, modo = 'propuestas' }) {
   await tabla();
-  await db.q(`INSERT INTO dominios_cliente (dominio, entrevista_id, token, datos) VALUES ($1,$2,$3,$4)
-    ON CONFLICT (dominio) DO UPDATE SET entrevista_id=EXCLUDED.entrevista_id, token=EXCLUDED.token, datos=EXCLUDED.datos, actualizado=now()`,
-  [dominio.toLowerCase(), entrevista_id || null, token, JSON.stringify(datos)]);
+  await db.q(`INSERT INTO dominios_cliente (dominio, entrevista_id, token, datos, modo) VALUES ($1,$2,$3,$4,$5)
+    ON CONFLICT (dominio) DO UPDATE SET entrevista_id=EXCLUDED.entrevista_id, token=EXCLUDED.token, datos=EXCLUDED.datos, modo=EXCLUDED.modo, actualizado=now()`,
+  [dominio.toLowerCase(), entrevista_id || null, token || null, JSON.stringify(datos), modo]);
   cache.t = 0;
 }
 
@@ -65,6 +66,11 @@ export function middlewareDominios() {
     if (host.startsWith('www.') && m.has(host.slice(4))) return c.redirect(`https://${host.slice(4)}${c.req.path}`, 301);
     const reg = m.get(host);
     if (!reg) return next();
+    // Dominio del chat de Ari (p. ej. weber.lemoss.co): la raíz es el chat; /chat/v1, /chat/archivos y /p/ siguen normales.
+    if (reg.modo === 'chat') {
+      if (c.req.path === '/' || c.req.path === '/chat') return c.html(paginaChat(), 200, { 'cache-control': 'no-cache' });
+      return next();
+    }
     const ruta = c.req.path.replace(/\/+$/, '') || '/';
     if (ruta === '/') return c.html(selector(host, reg), 200, { 'cache-control': 'no-cache' });
     const letra = ruta.match(/^\/([a-f])$/i)?.[1]?.toUpperCase();
