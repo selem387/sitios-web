@@ -14,6 +14,7 @@ import { redactar } from './contenido.js';
 import { paginaInicio, paginaTexto, piePagina, cabecera, waUrl } from './bloques.js';
 import { procesarMateriales } from './materiales.js';
 import { asignarDominio } from './dominios.js';
+import { apuntarDominio, registros as registrosDns } from './dns_godaddy.js';
 import { crearPropuestasHTML, textosPropuestas } from './propuestas_html.js';
 import * as wp from './wp.js';
 
@@ -382,6 +383,10 @@ export function registerGeneradorRoutes(app, wrap) {
     await asignarDominio({ dominio, entrevista_id: e.id, token: p.token, datos: { nombre: e.brief?.negocio?.nombre, logo: b.logo_url || mat.logo?.url || null, opciones } });
     return { ok: true, dominio, url: `https://${dominio}/`, opciones };
   }));
+
+  // DNS en GoDaddy (token en GODADDY_PAT): ver registros y apuntar @/www al servidor.
+  app.get('/entrevista/v1/dns/:dominio', wrap(async (c) => { auth(c); return { registros: await registrosDns(c.req.param('dominio')) }; }));
+  app.post('/entrevista/v1/dns/:dominio/apuntar', wrap(async (c) => { auth(c); return apuntarDominio(c.req.param('dominio')); }));
 
   // Registrar la elección del cliente por fuera del chat: {elegido:"A", colores_de?:"C"}.
   app.post('/entrevista/v1/sesiones/:id/propuestas/elegir', wrap(async (c) => {
