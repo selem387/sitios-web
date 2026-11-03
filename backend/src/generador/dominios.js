@@ -33,7 +33,7 @@ export async function asignarDominio({ dominio, entrevista_id, token, datos = {}
   cache.t = 0;
 }
 
-function selector(d, reg) {
+export function selector(d, reg) {
   const ops = reg.datos.opciones || [];
   const pal = { bg: '#F4EDE1', fg: '#3B2417', p: '#5A331F', card: '#FFFDF8', bor: '#E6D9C3' };
   return `<!doctype html><html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><meta name="robots" content="noindex">
