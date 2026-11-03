@@ -13,6 +13,7 @@ import { mergeProfundo } from '../entrevista/agente.js';
 import { redactar } from './contenido.js';
 import { paginaInicio, paginaTexto, piePagina, cabecera, waUrl } from './bloques.js';
 import { procesarMateriales } from './materiales.js';
+import { asignarDominio } from './dominios.js';
 import { crearPropuestasHTML, textosPropuestas } from './propuestas_html.js';
 import * as wp from './wp.js';
 
@@ -357,6 +358,29 @@ export function registerGeneradorRoutes(app, wrap) {
     const brief = { ...e.brief, marca: { ...e.brief.marca, propuestas: { estado: 'mostradas', token: r.token, opciones, textos, usados: [r.token] } } };
     await db.guardar(e.id, { brief });
     return { token: r.token, opciones: opciones.map((o) => ({ letra: o.letra, nombre: o.nombre, url: o.url, fuentes: o.tipografia })) };
+  }));
+
+  // Conectar un dominio propio del cliente a sus propuestas: {dominio, sesion_id}. Hace las capturas para el selector.
+  app.post('/entrevista/v1/dominios', wrap(async (c) => {
+    auth(c);
+    const b = await c.req.json().catch(() => ({}));
+    const dominio = String(b.dominio || '').toLowerCase().replace(/^https?:\/\//, '').replace(/\/.*$/, '');
+    if (!/^[a-z0-9-]+(\.[a-z0-9-]+)+$/.test(dominio)) throw new HttpError(400, 'dominio inválido');
+    const e = await db.obtener(b.sesion_id);
+    const p = e?.brief?.marca?.propuestas;
+    if (!p?.token) throw new HttpError(400, 'la sesión no tiene propuestas');
+    const opciones = [];
+    for (const o of p.opciones || []) {
+      let captura = null;
+      if (config.renderUrl) {
+        const r = await fetch(`${config.renderUrl}/v1/captura`, { method: 'POST', headers: { 'content-type': 'application/json', 'x-api-key': config.renderApiKey }, body: JSON.stringify({ url: o.url, ancho: 390 }), signal: AbortSignal.timeout(90000) }).catch(() => null);
+        if (r?.ok) captura = (await r.json()).url;
+      }
+      opciones.push({ letra: o.letra || o.etiqueta, nombre: o.nombre, captura });
+    }
+    const mat = await procesarMateriales(e.id, e.brief, { aceptarLoQueHay: true }).catch(() => ({}));
+    await asignarDominio({ dominio, entrevista_id: e.id, token: p.token, datos: { nombre: e.brief?.negocio?.nombre, logo: b.logo_url || mat.logo?.url || null, opciones } });
+    return { ok: true, dominio, url: `https://${dominio}/`, opciones };
   }));
 
   // Registrar la elección del cliente por fuera del chat: {elegido:"A", colores_de?:"C"}.

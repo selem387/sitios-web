@@ -16,6 +16,7 @@ import { registerAdminRoutes } from './admin.js';
 import { registerEntrevistaRoutes, initEntrevista } from './entrevista/index.js';
 import { registerGeneradorRoutes } from './generador/index.js';
 import { registerChatRoutes } from './chat/index.js';
+import { middlewareDominios } from './generador/dominios.js';
 import { invokeFunction } from './functions.js';
 import { attachRealtime } from './realtime.js';
 import { scheduleAll } from './automations.js';
@@ -31,6 +32,9 @@ app.use('*', cors({
   exposeHeaders: ['Content-Length'],
   maxAge: 86400,
 }));
+
+// Dominios propios de clientes (p. ej. toolatte.cafe → propuestas de diseño). Va antes de todas las rutas.
+app.use('*', middlewareDominios());
 
 function handleError(c, err) {
   const status = err instanceof HttpError ? err.status : 500;
