@@ -351,7 +351,8 @@ export function registerGeneradorRoutes(app, wrap) {
     const mat = await procesarMateriales(e.id, e.brief || {}, { aceptarLoQueHay: true });
     if (b.logo_url) mat.logo = { ...(mat.logo || {}), url: b.logo_url };
     const textos = await textosPropuestas(e.brief || {}, mat);
-    const r = await crearPropuestasHTML(e.brief || {}, mat, textos);
+    // token opcional: regenerar sobre las mismas ligas que ya tiene el cliente.
+    const r = await crearPropuestasHTML(e.brief || {}, mat, textos, /^[A-Za-z0-9]{8,40}$/.test(b.token || '') ? { token: b.token } : {});
     const opciones = r.opciones.map((o) => ({ etiqueta: o.letra, letra: o.letra, layout: o.layout, nombre: o.nombre, url: o.url, estilo: o.fuentes.estilo, tipografia: { titulos: o.fuentes.titulos, cuerpo: o.fuentes.cuerpo }, paleta: o.paleta }));
     const brief = { ...e.brief, marca: { ...e.brief.marca, propuestas: { estado: 'mostradas', token: r.token, opciones, textos, usados: [r.token] } } };
     await db.guardar(e.id, { brief });
