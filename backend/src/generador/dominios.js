@@ -48,7 +48,7 @@ a.op{display:block;background:${pal.card};border:1px solid ${pal.bor};border-rad
 a.op:hover,a.op:focus-visible{transform:translateY(-3px);box-shadow:0 14px 30px rgba(59,36,23,.14)}a.op:focus-visible{outline:3px solid ${pal.p};outline-offset:3px}
 .th{aspect-ratio:390/600;background:#eee;overflow:hidden}.th img{width:100%;display:block}
 .pie{display:flex;align-items:center;gap:12px;padding:14px 16px}.l{flex:0 0 auto;width:38px;height:38px;border-radius:50%;background:${pal.p};color:#fff;display:grid;place-items:center;font-weight:700;font-family:'Bricolage Grotesque'}
-.pie b{display:block}.pie span{font-size:14px;color:#6E5446}
+.pie b{display:block}.pie span{font-size:14px;color:#6E5446}.pie .l{color:#fff;font-size:17px}
 @media (prefers-reduced-motion:reduce){a.op{transition:none}}</style></head><body><div class="w">
 <header>${reg.datos.logo ? `<img src="${esc(reg.datos.logo)}" alt="${esc(reg.datos.nombre || '')}">` : ''}<h1>Elige el diseño de tu página</h1><p>${ops.length} propuestas hechas con tu logo, tus productos y tu menú. Ábrelas y recórrelas completas.</p></header>
 <div class="g">${ops.map((o) => `<a class="op" href="/${o.letra.toLowerCase()}"><div class="th">${o.captura ? `<img src="${esc(o.captura)}" alt="Vista de la propuesta ${o.letra}" loading="lazy">` : ''}</div><div class="pie"><span class="l">${o.letra}</span><span><b>Propuesta ${o.letra}</b><span>${esc(o.nombre)}</span></span></div></a>`).join('')}</div>
