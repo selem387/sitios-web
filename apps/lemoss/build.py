@@ -87,7 +87,7 @@ def layout(path, title, desc, body, schema=None, og_type="website", extra_head="
   <div class="wrap pie-in">
     <div>
       <a class="logo" href="/">lemoss<span>.</span></a>
-      <p class="muted">Consultoría en tecnología y negocios por resultados para empresas medianas en México. Sede en Mérida, con atención en CDMX y todo el país.</p>
+      <p class="muted">Consultoría en estrategia tecnológica por resultados para empresas medianas en México. Sede en Mérida, con atención en CDMX y todo el país.</p>
     </div>
     <div>
       <h2 class="pie-t">Contacto</h2>
@@ -120,7 +120,7 @@ ORG = {
     "url": SITE + "/",
     "logo": SITE + "/assets/lemoss-logo-1024.png",
     "image": SITE + "/assets/og.png",
-    "description": "Consultoría en tecnología y negocios por resultados para empresas medianas en México: estrategia tecnológica, procesos, sistemas, ventas e inteligencia artificial, con diagnóstico, piloto con meta pactada, implementación y operación.",
+    "description": "Consultoría en estrategia tecnológica por resultados para empresas medianas en México: hoja de ruta tecnológica, procesos, sistemas, ventas e inteligencia artificial, con diagnóstico, piloto con meta pactada, implementación y operación.",
     "email": EMAIL,
     "telephone": "+52 55 2706 9296",
     "priceRange": "Desde $18,000 MXN",
@@ -136,7 +136,7 @@ PERSONA = {
     "@type": "Person",
     "@id": SITE + "/sobre/#sebastian",
     "name": "Sebastián Lemos",
-    "jobTitle": "Consultor en tecnología y negocios",
+    "jobTitle": "Consultor en estrategia tecnológica",
     "worksFor": {"@id": SITE + "/#lemoss"},
     "url": SITE + "/sobre/",
     "image": SITE + "/assets/lemoss-avatar-800.png",
@@ -215,7 +215,7 @@ FAQ = [
     ("¿Para qué tamaño de empresa es?", "Principalmente para empresas medianas, de 20 a 250 colaboradores, con venta consultiva o procesos operativos que hoy dependen de mucho trabajo manual."),
     ("¿Trabajan solo en Mérida?", "No. Nuestra sede está en Mérida y atendemos a empresas de la Ciudad de México y de todo el país de forma remota, con visitas presenciales cuando el proyecto lo requiere."),
     ("¿Tengo que cambiar mis sistemas actuales?", "Normalmente no. Primero conectamos lo que ya usas (CRM, ERP, hojas de cálculo, WhatsApp, correo) y solo proponemos cambiar una herramienta cuando el ahorro lo justifica."),
-    ("¿Qué relación tiene Lemoss con timewins.ai?", "timewins.ai es nuestra marca especializada en adopción de inteligencia artificial y en herramientas de IA listas para usar. Lemoss se encarga de la consultoría general en tecnología y negocios; cuando un proyecto incluye IA, lo implementamos con timewins.ai."),
+    ("¿Qué relación tiene Lemoss con timewins.ai?", "timewins.ai es nuestra marca especializada en adopción de inteligencia artificial y en herramientas de IA listas para usar. Lemoss se encarga de la consultoría general en estrategia tecnológica; cuando un proyecto incluye IA, lo implementamos con timewins.ai."),
     ("¿Qué pasa con la información de mi empresa?", "Se usa solo para el proyecto, bajo confidencialidad, con accesos controlados y revisión humana en los procesos críticos. Los detalles están en el aviso de privacidad."),
 ]
 
@@ -273,7 +273,7 @@ def home():
     body = f"""
 <section class="hero"><div class="wrap">
 <h1><span class="az">Tecnología</span> que se mide en <span class="az">RESULTADOS</span></h1>
-<p class="lead">Consultoría en tecnología y negocios para empresas medianas en México: estrategia, procesos, sistemas, ventas e inteligencia artificial. Antes de empezar acordamos una meta medible, y el trabajo se evalúa contra ella.</p>
+<p class="lead">Consultoría en estrategia tecnológica para empresas medianas en México: hoja de ruta, procesos, sistemas, ventas e inteligencia artificial. Antes de empezar acordamos una meta medible, y el trabajo se evalúa contra ella.</p>
 <div class="acciones"><a class="btn" href="{wa()}" rel="noopener">Escríbenos por WhatsApp</a><a class="btn btn-2" href="/autodiagnostico/">Autodiagnóstico gratis</a></div>
 <p class="sello">Sede en Mérida · atención en CDMX y todo México</p>
 </div></section>
@@ -322,8 +322,8 @@ def home():
 </div></section>
 {cta_final()}
 """
-    return layout("/", "Lemoss | Consultoría en tecnología y negocios en México",
-                  "Consultoría en tecnología y negocios por resultados para empresas medianas en México: estrategia, procesos, sistemas, ventas e IA. Sede en Mérida.",
+    return layout("/", "Lemoss | Consultoría en estrategia tecnológica en México",
+                  "Consultoría en estrategia tecnológica por resultados para empresas medianas en México: hoja de ruta, procesos, sistemas, ventas e IA. Sede en Mérida.",
                   body, [ORG, WEBSITE, faq_schema(FAQ)])
 
 
@@ -426,7 +426,7 @@ def sobre():
     body = f"""
 <section class="hero hero-sm"><div class="wrap">
 <h1>Nosotros</h1>
-<p class="lead">Lemoss es una consultoría en tecnología y negocios para empresas medianas en México. Trabajas directamente con el consultor que diseña y pone a funcionar tu proyecto, sin intermediarios ni equipos que cambian a mitad del camino.</p>
+<p class="lead">Lemoss es una consultoría en estrategia tecnológica para empresas medianas en México. Trabajas directamente con el consultor que diseña y pone a funcionar tu proyecto, sin intermediarios ni equipos que cambian a mitad del camino.</p>
 </div></section>
 <section class="sec"><div class="wrap dos">
 <div><h2>Experiencia en sistemas críticos</h2></div>
@@ -449,8 +449,8 @@ def sobre():
 </div></section>
 {cta_final()}
 """
-    return layout("/sobre/", "Nosotros: consultoría en tecnología y negocios | Lemoss",
-                  "Lemoss, dirigida por Sebastián Lemos, con más de 20 años en tecnología. Consultoría en tecnología y negocios para empresas medianas en México desde Mérida.",
+    return layout("/sobre/", "Nosotros: consultoría en estrategia tecnológica | Lemoss",
+                  "Lemoss, dirigida por Sebastián Lemos, con más de 20 años en tecnología. Consultoría en estrategia tecnológica para empresas medianas en México desde Mérida.",
                   body, [ORG, PERSONA, migas(("Nosotros", "/sobre/"))])
 
 
@@ -555,7 +555,7 @@ def llms():
     arts = "\n".join(f"- [{a['titulo']}]({SITE}/blog/{a['slug']}/): {a['desc']}" for a in ARTICULOS)
     return f"""# Lemoss
 
-> Consultoría en tecnología y negocios por resultados para empresas medianas (20 a 250 colaboradores) en México. Sede en Mérida, Yucatán; atención en Ciudad de México y todo el país. Dirigida por Sebastián Lemos.
+> Consultoría en estrategia tecnológica por resultados para empresas medianas (20 a 250 colaboradores) en México. Sede en Mérida, Yucatán; atención en Ciudad de México y todo el país. Dirigida por Sebastián Lemos.
 
 Lemoss (también Lemoss Consulting) acuerda con cada cliente una meta medible antes de implementar y trabaja por etapas, desde un autodiagnóstico gratuito hasta la participación en resultados.
 
