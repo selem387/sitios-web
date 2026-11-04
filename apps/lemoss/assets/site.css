@@ -24,7 +24,7 @@ p{margin:0 0 1em;max-width:62ch}
 .top a:focus-visible,.top summary:focus-visible{outline-color:var(--accent)}
 .top-in{display:flex;align-items:center;gap:32px;height:68px}
 .logo{font-weight:500;font-size:1.6rem;color:var(--fg);text-decoration:none;letter-spacing:-.03em}
-.logo span{color:var(--accent)}
+.logo span{color:var(--accent);font-weight:700}
 .nav{display:flex;gap:28px;margin-left:auto}
 .nav a{text-decoration:none;color:#525252;font-size:.95rem}
 .nav a:hover,.nav a[aria-current]{color:#000}
