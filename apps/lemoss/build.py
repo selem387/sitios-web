@@ -9,7 +9,7 @@ HOY = datetime.date.today().isoformat()
 import hashlib
 CSS_V = hashlib.md5((ROOT / "assets" / "site.css").read_bytes()).hexdigest()[:10]
 WA = "525527069296"
-WA_TXT = "Hola, vengo de lemoss.co y quiero platicar sobre un proyecto de IA."
+WA_TXT = "Hola, vengo de lemoss.co y quiero platicar sobre un proyecto."
 EMAIL = "contacto@lemoss.co"
 
 SAME_AS = [
@@ -87,7 +87,7 @@ def layout(path, title, desc, body, schema=None, og_type="website", extra_head="
   <div class="wrap pie-in">
     <div>
       <a class="logo" href="/">lemoss<span>.</span></a>
-      <p class="muted">Consultoría en inteligencia artificial por resultados para empresas medianas en México. Sede en Mérida, con atención en CDMX y todo el país.</p>
+      <p class="muted">Consultoría en tecnología y negocios por resultados para empresas medianas en México. Sede en Mérida, con atención en CDMX y todo el país.</p>
     </div>
     <div>
       <h2 class="pie-t">Contacto</h2>
@@ -120,7 +120,7 @@ ORG = {
     "url": SITE + "/",
     "logo": SITE + "/assets/lemoss-logo-1024.png",
     "image": SITE + "/assets/og.png",
-    "description": "Consultoría en inteligencia artificial y automatización por resultados para empresas medianas en México: diagnóstico, piloto con meta pactada, implementación y operación.",
+    "description": "Consultoría en tecnología y negocios por resultados para empresas medianas en México: estrategia tecnológica, procesos, sistemas, ventas e inteligencia artificial, con diagnóstico, piloto con meta pactada, implementación y operación.",
     "email": EMAIL,
     "telephone": "+52 55 2706 9296",
     "priceRange": "Desde $18,000 MXN",
@@ -129,14 +129,14 @@ ORG = {
     "openingHoursSpecification": [{"@type": "OpeningHoursSpecification", "dayOfWeek": ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"], "opens": "09:00", "closes": "18:00"}],
     "founder": {"@id": SITE + "/sobre/#sebastian"},
     "sameAs": SAME_AS,
-    "knowsAbout": ["Inteligencia artificial aplicada a ventas", "Automatización de procesos", "CRM y WhatsApp Business API", "Agentes de IA", "Integración de sistemas", "Arquitectura de plataformas"],
+    "knowsAbout": ["Estrategia tecnológica", "Modelos de negocio de servicios tecnológicos", "Transformación digital", "Automatización de procesos", "Inteligencia artificial aplicada a negocios", "CRM y WhatsApp Business API", "Agentes de IA", "Integración de sistemas", "Arquitectura de plataformas"],
 }
 PERSONA = {
     "@context": "https://schema.org",
     "@type": "Person",
     "@id": SITE + "/sobre/#sebastian",
     "name": "Sebastián Lemos",
-    "jobTitle": "Consultor en inteligencia artificial y automatización",
+    "jobTitle": "Consultor en tecnología y negocios",
     "worksFor": {"@id": SITE + "/#lemoss"},
     "url": SITE + "/sobre/",
     "image": SITE + "/assets/lemoss-avatar-800.png",
@@ -146,7 +146,7 @@ PERSONA = {
 WEBSITE = {"@context": "https://schema.org", "@type": "WebSite", "@id": SITE + "/#web", "url": SITE + "/", "name": "Lemoss", "inLanguage": "es-MX", "publisher": {"@id": SITE + "/#lemoss"}}
 
 ETAPAS = [
-    ("Autodiagnóstico", "Gratis · 10 minutos", "Respondes ocho preguntas sobre tus procesos y sabes de inmediato qué tan lista está tu empresa para aprovechar la IA y por dónde conviene empezar.", "/autodiagnostico/", "Hacer el autodiagnóstico"),
+    ("Autodiagnóstico", "Gratis · 10 minutos", "Respondes ocho preguntas sobre tus procesos y sabes de inmediato qué tan listo está un proceso para automatizarse y por dónde conviene empezar.", "/autodiagnostico/", "Hacer el autodiagnóstico"),
     ("Diagnóstico", "Desde $18,000 MXN · se acredita 100%", "Revisamos contigo procesos, datos y sistemas, calculamos cuánto te cuesta hoy cada proceso y te entregamos un plan priorizado con el retorno esperado de cada caso. El monto se descuenta completo si avanzamos al piloto.", None, None),
     ("Piloto con meta pactada", "Desde $45,000 MXN · 30 a 60 días", "Elegimos un proceso, fijamos por escrito una meta medible (por ejemplo tiempo de respuesta, prospectos atendidos o horas ahorradas) y lo ponemos a funcionar con tu equipo real.", None, None),
     ("Implementación", "Proyecto cerrado, honorario + bono o garantía", "Con el piloto probado, escalamos a más procesos o áreas. Tú eliges el modelo: precio cerrado, honorario base más bono por resultado, o garantía de resultado con condiciones por escrito.", None, None),
@@ -155,10 +155,11 @@ ETAPAS = [
 ]
 
 SERVICIOS = [
-    ("Ventas y atención con IA", "Respuesta inmediata a cada prospecto, calificación automática, seguimiento por WhatsApp y un CRM que se actualiza solo. Tu equipo comercial habla solo con quien está listo para comprar.", ["Agentes de IA en WhatsApp y web", "Lead scoring y asignación automática", "CRM conectado a WhatsApp Business API", "Seguimiento y reactivación de prospectos"]),
-    ("Operación y procesos", "Inventario, pedidos, cotizaciones y reportes que hoy dependen de capturas manuales y hojas de cálculo, conectados y automatizados de punta a punta.", ["Mapeo y rediseño de procesos", "Integración ERP, CRM y hojas de cálculo", "Inventario y ventas automatizados", "Tableros con la información en tiempo real"]),
-    ("Contenido y comunicación", "Producción de contenido con IA y supervisión humana: investigación, redacción, piezas multimedia y publicación en redes con un flujo de aprobación claro.", ["Coordinación editorial asistida por IA", "Generación de video y carruseles", "Publicación programada multicanal", "Análisis de desempeño del contenido"]),
-    ("Plataformas y arquitectura", "Cuando lo que necesitas no existe en el mercado, diseñamos la arquitectura y construimos la plataforma: desde sistemas de gestión hasta servicios para entidades financieras.", ["Arquitectura de servicios (PaaS)", "Sistemas de gestión a la medida", "APIs, microservicios y migración a la nube", "Seguridad y manejo responsable de datos"]),
+    ("Estrategia tecnológica y de negocio", "Diagnóstico de cómo la tecnología puede hacer crecer tu negocio: hoja de ruta, prioridades, presupuesto y modelos de negocio de servicios tecnológicos, con el retorno esperado de cada iniciativa.", ["Diagnóstico y hoja de ruta tecnológica", "Modelos de negocio de servicios tecnológicos", "Evaluación y selección de proveedores", "Acompañamiento a dirección"]),
+    ("Procesos y operación", "Inventario, pedidos, cotizaciones y reportes que hoy dependen de capturas manuales y hojas de cálculo, rediseñados, conectados y automatizados de punta a punta.", ["Mapeo y rediseño de procesos", "Integración ERP, CRM y hojas de cálculo", "Inventario y ventas automatizados", "Tableros con la información en tiempo real"]),
+    ("Sistemas y plataformas", "Cuando lo que necesitas no existe en el mercado, diseñamos la arquitectura y construimos la plataforma: desde sistemas de gestión hasta servicios para entidades financieras.", ["Arquitectura de servicios (PaaS)", "Sistemas de gestión a la medida", "APIs, microservicios y migración a la nube", "Seguridad y manejo responsable de datos"]),
+    ("Ventas y atención", "Respuesta inmediata a cada prospecto, calificación automática, seguimiento por WhatsApp y un CRM que se actualiza solo. Tu equipo comercial habla solo con quien está listo para comprar.", ["CRM conectado a WhatsApp Business API", "Lead scoring y asignación automática", "Seguimiento y reactivación de prospectos", "Medición del embudo comercial"]),
+    ("Adopción de inteligencia artificial", "Implementación de IA en procesos reales con supervisión humana: agentes, contenido y análisis. Lo hacemos con timewins.ai, nuestra marca especializada en adopción y herramientas de IA.", ["Agentes de IA en WhatsApp y web", "Contenido y comunicación asistidos por IA", "Capacitación de equipos en IA", "Herramientas de timewins.ai"]),
 ]
 
 CASOS = [
@@ -208,18 +209,19 @@ INDUSTRIAS = [
 ]
 
 FAQ = [
-    ("¿Qué significa consultoría en IA por resultados?", "Que antes de implementar acordamos por escrito una meta medible, como tiempo de respuesta, prospectos atendidos u horas ahorradas, y el trabajo se evalúa contra esa meta. En etapas avanzadas parte de nuestros honorarios puede depender de alcanzarla."),
+    ("¿Qué significa consultoría por resultados?", "Que antes de implementar acordamos por escrito una meta medible, como tiempo de respuesta, prospectos atendidos u horas ahorradas, y el trabajo se evalúa contra esa meta. En etapas avanzadas parte de nuestros honorarios puede depender de alcanzarla."),
     ("¿Cuánto cuesta trabajar con Lemoss?", "El autodiagnóstico es gratis. El diagnóstico empieza en $18,000 MXN más IVA y se acredita al 100% si continuamos. Un piloto con meta pactada empieza en $45,000 MXN más IVA y dura de 30 a 60 días. La implementación se cotiza según el alcance, con precio cerrado, honorario más bono o garantía de resultado."),
     ("¿Cuánto tiempo tarda en verse un resultado?", "El piloto está diseñado para medir un resultado en 30 a 60 días sobre un proceso real de tu empresa."),
     ("¿Para qué tamaño de empresa es?", "Principalmente para empresas medianas, de 20 a 250 colaboradores, con venta consultiva o procesos operativos que hoy dependen de mucho trabajo manual."),
     ("¿Trabajan solo en Mérida?", "No. Nuestra sede está en Mérida y atendemos a empresas de la Ciudad de México y de todo el país de forma remota, con visitas presenciales cuando el proyecto lo requiere."),
     ("¿Tengo que cambiar mis sistemas actuales?", "Normalmente no. Primero conectamos lo que ya usas (CRM, ERP, hojas de cálculo, WhatsApp, correo) y solo proponemos cambiar una herramienta cuando el ahorro lo justifica."),
+    ("¿Qué relación tiene Lemoss con timewins.ai?", "timewins.ai es nuestra marca especializada en adopción de inteligencia artificial y en herramientas de IA listas para usar. Lemoss se encarga de la consultoría general en tecnología y negocios; cuando un proyecto incluye IA, lo implementamos con timewins.ai."),
     ("¿Qué pasa con la información de mi empresa?", "Se usa solo para el proyecto, bajo confidencialidad, con accesos controlados y revisión humana en los procesos críticos. Los detalles están en el aviso de privacidad."),
 ]
 
 
 # ---------- Bloques ----------
-def cta_final(titulo="¿Platicamos de tu proyecto?", texto="Cuéntanos qué proceso te quita más tiempo o dinero. En una llamada de 30 minutos te decimos si la IA puede resolverlo y cómo lo mediríamos."):
+def cta_final(titulo="¿Platicamos de tu proyecto?", texto="Cuéntanos qué proceso te quita más tiempo o dinero. En una llamada de 30 minutos te decimos si la tecnología puede resolverlo y cómo lo mediríamos."):
     return f"""<section class="sec cta-fin"><div class="wrap"><div class="cta-in">
 <h2>{titulo}</h2><p class="lead">{texto}</p>
 <div class="acciones"><a class="btn" href="{wa()}" rel="noopener">Escríbenos por WhatsApp</a><a class="btn btn-2" href="/autodiagnostico/">Hacer el autodiagnóstico</a></div>
@@ -270,20 +272,20 @@ def home():
     inds = "".join(f"<li><strong>{n}</strong><span>{d}</span></li>" for n, d in INDUSTRIAS)
     body = f"""
 <section class="hero"><div class="wrap">
-<h1>Adopción de <span class="az">IA</span> que se mide en <span class="az">RESULTADOS</span></h1>
-<p class="lead">Ayudamos a empresas medianas en México a automatizar ventas, atención y operación con IA. Antes de empezar acordamos una meta medible, y el trabajo se evalúa contra ella.</p>
+<h1><span class="az">Tecnología</span> que se mide en <span class="az">RESULTADOS</span></h1>
+<p class="lead">Consultoría en tecnología y negocios para empresas medianas en México: estrategia, procesos, sistemas, ventas e inteligencia artificial. Antes de empezar acordamos una meta medible, y el trabajo se evalúa contra ella.</p>
 <div class="acciones"><a class="btn" href="{wa()}" rel="noopener">Escríbenos por WhatsApp</a><a class="btn btn-2" href="/autodiagnostico/">Autodiagnóstico gratis</a></div>
 <p class="sello">Sede en Mérida · atención en CDMX y todo México</p>
 </div></section>
 
 <section class="sec"><div class="wrap dos">
-<div><h2>El problema casi nunca es la tecnología</h2></div>
-<div><p>La mayoría de los proyectos de IA que no dan resultados fallan por otra razón: se eligió un proceso que no estaba listo, nadie midió cuánto costaba antes, o no había un responsable dentro de la empresa.</p>
+<div><h2>El problema rara vez es la herramienta</h2></div>
+<div><p>La mayoría de los proyectos de tecnología que no dan resultados fallan por otra razón: se eligió un proceso que no estaba listo, nadie midió cuánto costaba antes, o no había un responsable dentro de la empresa.</p>
 <p>Por eso trabajamos al revés de lo habitual: primero el costo del problema y la meta, después la herramienta. Y avanzamos por etapas, para que solo inviertas más cuando ya viste un resultado.</p></div>
 </div></section>
 
 <section class="sec"><div class="wrap">
-<h2>Qué resuelvo</h2>
+<h2>Qué resolvemos</h2>
 <ul class="lista-serv">{servicios}</ul>
 <p><a href="/servicios/">Ver servicios y precios</a></p>
 </div></section>
@@ -308,7 +310,7 @@ def home():
 <section class="sec"><div class="wrap dos">
 <div><h2>Una familia de marcas</h2></div>
 <div class="marcas">
-<p><a href="https://timewins.ai" rel="noopener"><strong>timewins.ai</strong></a><br>Productos de IA listos para usar: creador de videos, creador de sitios web, pautador de anuncios y publicador de redes.</p>
+<p><a href="https://timewins.ai" rel="noopener"><strong>timewins.ai</strong></a><br>Nuestra marca especializada en adopción de inteligencia artificial: acompañamiento para implementar IA y herramientas listas para usar, como creador de videos, creador de sitios web, pautador de anuncios y publicador de redes.</p>
 <p><a href="https://iaprop.tech" rel="noopener"><strong>iaprop.tech</strong></a><br>IA y automatización para inmobiliarias y asesores.</p>
 <p><a href="https://estrategia.dental" rel="noopener"><strong>estrategia.dental</strong></a><br>Captación y atención de pacientes para clínicas dentales.</p>
 </div>
@@ -320,8 +322,8 @@ def home():
 </div></section>
 {cta_final()}
 """
-    return layout("/", "Lemoss | Consultoría en IA por resultados en México",
-                  "Consultoría en inteligencia artificial y automatización para empresas medianas en México. Diagnóstico, piloto con meta pactada e implementación. Sede en Mérida.",
+    return layout("/", "Lemoss | Consultoría en tecnología y negocios en México",
+                  "Consultoría en tecnología y negocios por resultados para empresas medianas en México: estrategia, procesos, sistemas, ventas e IA. Sede en Mérida.",
                   body, [ORG, WEBSITE, faq_schema(FAQ)])
 
 
@@ -337,14 +339,14 @@ def servicios():
 <li>Un plazo mínimo de 12 meses y las reglas de cálculo firmadas antes de empezar.</li>
 </ul>"""
     oferta = {"@context": "https://schema.org", "@type": "OfferCatalog", "name": "Servicios de Lemoss", "itemListElement": [
-        {"@type": "Offer", "itemOffered": {"@type": "Service", "name": "Autodiagnóstico de IA", "provider": {"@id": SITE + "/#lemoss"}}, "price": "0", "priceCurrency": "MXN"},
-        {"@type": "Offer", "itemOffered": {"@type": "Service", "name": "Diagnóstico de IA y automatización", "provider": {"@id": SITE + "/#lemoss"}}, "priceSpecification": {"@type": "PriceSpecification", "minPrice": 18000, "priceCurrency": "MXN", "valueAddedTaxIncluded": False}},
-        {"@type": "Offer", "itemOffered": {"@type": "Service", "name": "Piloto de IA con meta pactada", "provider": {"@id": SITE + "/#lemoss"}}, "priceSpecification": {"@type": "PriceSpecification", "minPrice": 45000, "priceCurrency": "MXN", "valueAddedTaxIncluded": False}},
+        {"@type": "Offer", "itemOffered": {"@type": "Service", "name": "Autodiagnóstico de procesos", "provider": {"@id": SITE + "/#lemoss"}}, "price": "0", "priceCurrency": "MXN"},
+        {"@type": "Offer", "itemOffered": {"@type": "Service", "name": "Diagnóstico tecnológico y de procesos", "provider": {"@id": SITE + "/#lemoss"}}, "priceSpecification": {"@type": "PriceSpecification", "minPrice": 18000, "priceCurrency": "MXN", "valueAddedTaxIncluded": False}},
+        {"@type": "Offer", "itemOffered": {"@type": "Service", "name": "Piloto con meta pactada", "provider": {"@id": SITE + "/#lemoss"}}, "priceSpecification": {"@type": "PriceSpecification", "minPrice": 45000, "priceCurrency": "MXN", "valueAddedTaxIncluded": False}},
     ] + [{"@type": "Offer", "itemOffered": {"@type": "Service", "name": t, "description": d, "provider": {"@id": SITE + "/#lemoss"}}} for t, d, _ in SERVICIOS]}
     body = f"""
 <section class="hero hero-sm"><div class="wrap">
 <h1>Servicios y precios</h1>
-<p class="lead">Cuatro áreas donde la IA ahorra tiempo o genera ventas de forma medible, y una ruta por etapas para que solo inviertas más cuando ya viste un resultado.</p>
+<p class="lead">Cinco áreas donde la tecnología ahorra tiempo o genera ventas de forma medible, y una ruta por etapas para que solo inviertas más cuando ya viste un resultado.</p>
 </div></section>
 <section class="sec"><div class="wrap grid-serv">{bloques}</div></section>
 <section class="sec"><div class="wrap">
@@ -358,8 +360,8 @@ def servicios():
 </div></section>
 {cta_final()}
 """
-    return layout("/servicios/", "Servicios y precios de consultoría en IA | Lemoss",
-                  "Ventas y atención con IA, automatización de procesos, contenido con IA y plataformas a la medida. Diagnóstico desde $18,000 MXN y piloto con meta pactada desde $45,000 MXN.",
+    return layout("/servicios/", "Servicios y precios de consultoría tecnológica | Lemoss",
+                  "Estrategia tecnológica, procesos, sistemas y plataformas, ventas y adopción de IA. Diagnóstico desde $18,000 MXN y piloto con meta pactada desde $45,000 MXN.",
                   body, [ORG, oferta, migas(("Servicios", "/servicios/"))])
 
 
@@ -372,7 +374,7 @@ def casos():
 <section class="sec"><div class="wrap lista-casos">{"".join(caso_tarjeta(c, True) for c in CASOS)}</div></section>
 {cta_final("¿Tu caso se parece a alguno?", "Escríbenos y te contamos cómo lo resolvimos y qué haríamos distinto en tu empresa.")}
 """
-    return layout("/casos/", "Casos de IA y automatización en empresas | Lemoss",
+    return layout("/casos/", "Casos de tecnología, automatización e IA | Lemoss",
                   "Casos reales: de 2 horas a 5 segundos de respuesta en una inmobiliaria, coordinación editorial con IA para 5 sitios de noticias, plataformas para financieras y más.",
                   body, [ORG, migas(("Casos", "/casos/"))])
 
@@ -400,14 +402,14 @@ f.addEventListener('submit',function(ev){ev.preventDefault();var t=0,n=%d;for(va
 var pct=Math.round(t/(n*2)*100),h,p;
 if(pct>=70){h='Tu proceso está listo para un piloto';p='Tiene volumen, está claro y hay datos. Es el escenario ideal para una prueba de 30 a 60 días con una meta medible.'}
 else if(pct>=45){h='Vas bien, con un par de huecos por cerrar';p='Conviene resolver primero las respuestas más bajas (normalmente documentar el proceso o calcular su costo). Un diagnóstico te dice exactamente cuáles.'}
-else{h='Primero conviene ordenar el proceso';p='Antes de invertir en IA, define cómo se hace bien y dónde vive la información. Te podemos orientar en una llamada sin costo.'}
+else{h='Primero conviene ordenar el proceso';p='Antes de invertir en tecnología, define cómo se hace bien y dónde vive la información. Te podemos orientar en una llamada sin costo.'}
 r.querySelector('h2').textContent=h+' ('+pct+'%%)';r.querySelector('p').textContent=p;
 var msg='Hola, hice el autodiagnóstico en lemoss.co y obtuve '+pct+'%%: '+h+'. Quiero platicar.';
 r.querySelector('a').href='https://wa.me/%s?text='+encodeURIComponent(msg);r.hidden=false;r.focus();});})();
 </script>""" % (len(PREGUNTAS), WA)
     body = f"""
 <section class="hero hero-sm"><div class="wrap">
-<h1>Autodiagnóstico de IA</h1>
+<h1>Autodiagnóstico de procesos</h1>
 <p class="lead">Piensa en un proceso concreto de tu empresa (atender prospectos, cotizar, inventario, cobranza) y responde ocho preguntas. Toma 5 minutos y no guardamos tus respuestas.</p>
 </div></section>
 <section class="sec"><div class="wrap estrecho">
@@ -415,8 +417,8 @@ r.querySelector('a').href='https://wa.me/%s?text='+encodeURIComponent(msg);r.hid
 <div id="res" class="resultado" hidden tabindex="-1" aria-live="polite"><h2></h2><p></p><a class="btn" href="{wa()}" rel="noopener">Platicarlo por WhatsApp</a></div>
 </div></section>
 """
-    return layout("/autodiagnostico/", "Autodiagnóstico gratis: ¿tu proceso está listo para la IA? | Lemoss",
-                  "Ocho preguntas para saber si un proceso de tu empresa está listo para automatizarse con inteligencia artificial y por dónde empezar. Gratis, sin registro.",
+    return layout("/autodiagnostico/", "Autodiagnóstico gratis: ¿tu proceso está listo para automatizarse? | Lemoss",
+                  "Ocho preguntas para saber si un proceso de tu empresa está listo para automatizarse, con o sin inteligencia artificial, y por dónde empezar. Gratis, sin registro.",
                   body + js, [ORG, migas(("Autodiagnóstico", "/autodiagnostico/"))])
 
 
@@ -424,13 +426,13 @@ def sobre():
     body = f"""
 <section class="hero hero-sm"><div class="wrap">
 <h1>Nosotros</h1>
-<p class="lead">Lemoss es una consultoría en inteligencia artificial y automatización para empresas medianas en México. Trabajas directamente con el consultor que diseña y pone a funcionar tu proyecto, sin intermediarios ni equipos que cambian a mitad del camino.</p>
+<p class="lead">Lemoss es una consultoría en tecnología y negocios para empresas medianas en México. Trabajas directamente con el consultor que diseña y pone a funcionar tu proyecto, sin intermediarios ni equipos que cambian a mitad del camino.</p>
 </div></section>
 <section class="sec"><div class="wrap dos">
 <div><h2>Experiencia en sistemas críticos</h2></div>
 <div>
 <p>Lemoss la dirige <strong>Sebastián Lemos</strong>, con más de veinte años en tecnología. Fue director de sistemas y fundó una empresa de servicios de mensajería SMS para bancos, donde se aprende lo que cuesta que un sistema falle cuando de él depende la operación de un cliente.</p>
-<p>Hoy aplicamos esa experiencia a la inteligencia artificial: diseñamos y ponemos a funcionar automatizaciones de ventas, atención y operación para empresas medianas, y desarrollamos productos propios bajo las marcas timewins.ai, iaprop.tech y estrategia.dental.</p>
+<p>Hoy aplicamos esa experiencia a la estrategia tecnológica y de negocio de empresas medianas: procesos, sistemas, ventas e inteligencia artificial. La adopción de IA y nuestras herramientas propias las ofrecemos a través de timewins.ai, y tenemos verticales especializadas en iaprop.tech (inmobiliario) y estrategia.dental (salud dental).</p>
 <p>Trabajamos desde Mérida con empresas de la Ciudad de México y de todo el país. Nuestra forma de trabajar es simple: medir antes, acordar una meta, probar en pequeño y crecer solo cuando el resultado está a la vista.</p>
 <p><a href="{PERSONA_SAME_AS[0]}" rel="noopener">Perfil de Sebastián Lemos en LinkedIn</a></p>
 </div>
@@ -447,8 +449,8 @@ def sobre():
 </div></section>
 {cta_final()}
 """
-    return layout("/sobre/", "Nosotros: consultoría en IA y automatización | Lemoss",
-                  "Lemoss, dirigida por Sebastián Lemos, con más de 20 años en tecnología. Consultoría en IA y automatización para empresas medianas en México desde Mérida.",
+    return layout("/sobre/", "Nosotros: consultoría en tecnología y negocios | Lemoss",
+                  "Lemoss, dirigida por Sebastián Lemos, con más de 20 años en tecnología. Consultoría en tecnología y negocios para empresas medianas en México desde Mérida.",
                   body, [ORG, PERSONA, migas(("Nosotros", "/sobre/"))])
 
 
@@ -553,7 +555,7 @@ def llms():
     arts = "\n".join(f"- [{a['titulo']}]({SITE}/blog/{a['slug']}/): {a['desc']}" for a in ARTICULOS)
     return f"""# Lemoss
 
-> Consultoría en inteligencia artificial y automatización por resultados para empresas medianas (20 a 250 colaboradores) en México. Sede en Mérida, Yucatán; atención en Ciudad de México y todo el país. Dirigida por Sebastián Lemos.
+> Consultoría en tecnología y negocios por resultados para empresas medianas (20 a 250 colaboradores) en México. Sede en Mérida, Yucatán; atención en Ciudad de México y todo el país. Dirigida por Sebastián Lemos.
 
 Lemoss (también Lemoss Consulting) acuerda con cada cliente una meta medible antes de implementar y trabaja por etapas, desde un autodiagnóstico gratuito hasta la participación en resultados.
 
@@ -567,7 +569,7 @@ Lemoss (también Lemoss Consulting) acuerda con cada cliente una meta medible an
 {casos}
 
 ## Marcas relacionadas
-- [timewins.ai](https://timewins.ai): productos de IA (creador de videos, creador de sitios web, pautador de anuncios, publicador de redes).
+- [timewins.ai](https://timewins.ai): marca de Lemoss especializada en adopción de inteligencia artificial y herramientas de IA (creador de videos, creador de sitios web, pautador de anuncios, publicador de redes).
 - [iaprop.tech](https://iaprop.tech): IA y automatización para inmobiliarias.
 - [estrategia.dental](https://estrategia.dental): captación y atención de pacientes para clínicas dentales.
 
