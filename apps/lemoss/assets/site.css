@@ -19,13 +19,15 @@ p{margin:0 0 1em;max-width:62ch}
 .lead{font-size:1.2rem;color:var(--txt);max-width:56ch}
 .skip{position:absolute;left:-9999px}.skip:focus{left:16px;top:16px;background:var(--fg);color:#000;padding:8px 12px;z-index:10}
 /* Encabezado */
-.top{position:sticky;top:0;z-index:5;background:rgba(0,0,0,.92);border-bottom:1px solid var(--line)}
+.top{position:sticky;top:0;z-index:5;background:#fff;border-bottom:1px solid #e5e5e5}
+.top .logo{color:#000;white-space:nowrap}
+.top a:focus-visible,.top summary:focus-visible{outline-color:var(--accent)}
 .top-in{display:flex;align-items:center;gap:32px;height:68px}
 .logo{font-weight:500;font-size:1.6rem;color:var(--fg);text-decoration:none;letter-spacing:-.03em}
 .logo span{color:var(--accent)}
 .nav{display:flex;gap:28px;margin-left:auto}
-.nav a{text-decoration:none;color:var(--muted);font-size:.95rem}
-.nav a:hover,.nav a[aria-current]{color:var(--fg)}
+.nav a{text-decoration:none;color:#525252;font-size:.95rem}
+.nav a:hover,.nav a[aria-current]{color:#000}
 .menu{display:none}
 /* Botones */
 .btn{display:inline-block;background:var(--accent);color:#fff;text-decoration:none;font-weight:500;padding:14px 24px;border-radius:999px;border:2px solid var(--accent);font-size:1rem;cursor:pointer;font-family:inherit;transition:background-color .2s,border-color .2s}
@@ -123,10 +125,10 @@ p{margin:0 0 1em;max-width:62ch}
 @media (max-width:960px){
   .nav,.top .btn-sm{display:none}
   .menu{display:block;margin-left:auto;position:relative}
-  .menu summary{list-style:none;cursor:pointer;color:var(--fg);border:1px solid #525252;border-radius:999px;padding:6px 16px;font-size:.95rem}
+  .menu summary{list-style:none;cursor:pointer;color:#000;border:1px solid #a3a3a3;border-radius:999px;padding:6px 16px;font-size:.95rem}
   .menu summary::-webkit-details-marker{display:none}
-  .menu nav{position:absolute;right:0;top:48px;background:#000;border:1px solid var(--line);border-radius:14px;padding:12px;display:flex;flex-direction:column;min-width:240px}
-  .menu nav a{padding:10px 12px;text-decoration:none;color:var(--fg)}
+  .menu nav{position:absolute;right:0;top:48px;background:#fff;border:1px solid #e5e5e5;box-shadow:0 12px 32px rgba(0,0,0,.12);border-radius:14px;padding:12px;display:flex;flex-direction:column;min-width:240px}
+  .menu nav a{padding:10px 12px;text-decoration:none;color:#000}
   .dos,.caso-largo{grid-template-columns:1fr;gap:16px}
   .caso-largo>p{grid-column:1}
   .ruta,.casos{grid-template-columns:1fr 1fr}
@@ -134,6 +136,7 @@ p{margin:0 0 1em;max-width:62ch}
   .wa-flot{display:grid}
 }
 @media (max-width:640px){
+  .top .logo{font-size:1.3rem}
   :root{--sec:80px;--gap:24px}
   body{font-size:17px}
   .wrap{padding:0 20px}
