@@ -160,7 +160,8 @@ function pagina(d) {
   };
   const secSobre = () => {
     const otra = mat.equipo.find((x) => x.tipo === 'foto_fundador' && !usadas.has(x.url));
-    const foto = mat.fundador && usadas.has(mat.fundador.url) && otra ? otra : mat.fundador;
+    // Si su foto ya está en la portada, aquí va otra suya o ninguna (nunca la misma dos veces).
+    const foto = mat.fundador && usadas.has(mat.fundador.url) ? (otra || null) : (mat.fundador || otra || null);
     if (!foto && !conf.historia_corta) return '';
     const cifras = (conf.cifras || []).slice(0, 3).map((c) => `<li>${esc(c)}</li>`).join('');
     const cred = (fund.credenciales || []).map((c) => esc(c)).join(' · ');
