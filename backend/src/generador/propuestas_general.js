@@ -37,7 +37,7 @@ function paletaGeneral(layout, colores, pastel, i) {
   const cs = colores.filter((c) => /^#[0-9A-F]{6}$/i.test(c));
   let base, tinte;
   if (pastel) {
-    const pas = cs.filter((c) => lum(c) > 0.45);
+    const pas = cs.filter((c) => lum(c) > 0.45 && hsl(c)[1] > 0.12); // sin grises
     tinte = pas[i % Math.max(pas.length, 1)] || '#F2C4CE';
     base = conContraste(tono(tinte, 0.42, 0.22, 0.34), '#FFFFFF', 4.6, tono(tinte, 0.18, 0.25, 0.34));
   } else {
@@ -118,9 +118,12 @@ function pagina(d) {
   const neg = brief.negocio || {}, conf = brief.confianza || {}, fund = conf.fundador || {};
 
   // Orden de fotos por propuesta: rota para que cada una abra con una imagen distinta.
-  const trabajos = [...mat.trabajos, ...mat.local];
+  // Capturas de pantalla y fotos regulares nunca abren la página: van después (se muestran igual en la galería).
+  const buenaFoto = (x) => !x.captura && x.calidad !== 'regular';
+  const trabajos = [...mat.trabajos, ...mat.local].filter(buenaFoto);
+  const capturasT = [...mat.trabajos, ...mat.local].filter((x) => !buenaFoto(x));
   const rot = (arr, k) => (arr.length ? [...arr.slice(k % arr.length), ...arr.slice(0, k % arr.length)] : []);
-  const fotosT = rot(trabajos, d.i * 2);
+  const fotosT = [...rot(trabajos, d.i * 2), ...capturasT];
   // La foto que el cliente eligió para la portada va en las propuestas A y D; las demás abren con su trabajo.
   const heroFoto = (d.layout === 'portada' || d.layout === 'logo') ? (mat.hero || fotosT[0]) : (fotosT[0] || mat.hero || mat.fundador);
 

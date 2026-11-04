@@ -250,7 +250,7 @@ export async function procesarMateriales(entrevistaId, brief = {}, { aceptarLoQu
   for (const { a, r } of analisis) {
     res.usables.push({ id: a.id, clave: a.clave, tipo: r.tipo, urls: [a.url, r.contenido?.url, r.sin_fondo?.url, r.logo?.url, ...(r.productos || []).map((p) => p.url)].filter(Boolean) });
     if (r.tipo === 'logo') continue; // se usa como logo (su URL recortada está en usables)
-    const f = ficha(a, r, { sin_fondo: r.sin_fondo?.url || null, personas: r.personas });
+    const f = ficha(a, r, { sin_fondo: r.sin_fondo?.url || null, personas: r.personas, captura: r.es_captura, calidad: r.calidad });
     const chica = r.calidad === 'mala' || r.contenido.ancho < MIN_FOTO;
     if (/^foto_/.test(r.tipo) && !chica) res.fotos.push(f);
     if (r.tipo === 'foto_fundador') { if (!res.fundador || f.ancho > res.fundador.ancho) { if (res.fundador) res.equipo.push(res.fundador); res.fundador = f; } else res.equipo.push(f); }
@@ -270,7 +270,8 @@ export async function procesarMateriales(entrevistaId, brief = {}, { aceptarLoQu
   const prioridad = (t) => ({ foto_local: 3, foto_trabajo: 2, foto_fundador: 1 }[t] || 0);
   const candidatas = res.fotos.filter((f) => f.ancho >= MIN_HERO && !f.recorte).sort((p, q) => prioridad(q.tipo) - prioridad(p.tipo) || q.ancho - p.ancho);
   res.hero = elegida && /^foto_/.test(elegida.r.tipo) && elegida.r.contenido.ancho >= MIN_HERO ? { url: elegida.r.contenido.url, alt: elegida.r.descripcion, tipo: elegida.r.tipo } : candidatas[0] || null;
-  res.colores = [...new Set([...(res.logo?.colores || []), ...coloresDePalabras(brief.marca?.colores || [])])].slice(0, 5);
+  // Lo que dijo el cliente manda sobre los colores detectados en el logo.
+  res.colores = [...new Set([...coloresDePalabras(brief.marca?.colores || []), ...(res.logo?.colores || [])])].slice(0, 6);
 
   // Si el cliente ya dijo que no tiene mejores, se trabaja con lo que mandó: la mejor imagen disponible va a la portada.
   if (!res.hero && aceptarLoQueHay) {
