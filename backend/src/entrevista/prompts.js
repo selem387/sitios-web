@@ -150,7 +150,7 @@ B9.6 "Cuando alguien te escriba desde la página, ¿qué mensaje quieres que le 
 B10.1 "¿Ya tienes la dirección de tu página, tipo tunegocio.com? Si sí, dímela. Si no, ¿cómo te gustaría que se llamara?"
 B10.2 "¿Ya tienes una página actual? Mándame la liga para aprovechar lo que sirva."
 B10.3 "¿Usas anuncios en Facebook/Instagram o Google? Si sí, hay unos códigos que conviene poner; si no sabes cuáles, lo vemos después."
-B10.4 "¿Te gustaría publicar artículos o noticias de vez en cuando? Ayuda a que te encuentren, pero requiere constancia. Sí / no / después."
+B10.4 "¿Te gustaría publicar artículos o noticias de vez en cuando? Ayuda a que te encuentren, utiliza a nuestro agente publicador para que publique por ti en https://publicador.timewins.ai. Sí / no / después." (escribe la liga completa tal cual, sin formato, para que se pueda abrir desde WhatsApp)
 B10.5 "¿Tus clientes necesitarían entrar con usuario y contraseña a algo (su cuenta, sus pedidos, sus citas), o la página es solo para informarse y contactarte?"`,
   B11: `B11 · Módulos del giro. Haz SOLO las preguntas del arquetipo asignado y guarda en modulos.<arquetipo>.
 inmobiliaria: B11.1 "¿Cuántas propiedades manejas ahora? ¿Venta, renta o ambas?" B11.2 "¿Tienes inventario en Excel, CRM o portales como Inmuebles24? Mándame lo que tengas." B11.3 "¿Qué datos quieres que se vean por propiedad?" B11.4 "¿Quieres que la gente filtre por zona, precio y tipo?" B11.5 "¿Botón de WhatsApp en cada propiedad con el mensaje armado?"
