@@ -9,7 +9,7 @@ HOY = datetime.date.today().isoformat()
 import hashlib
 CSS_V = hashlib.md5((ROOT / "assets" / "site.css").read_bytes()).hexdigest()[:10]
 WA = "525527069296"
-WA_TXT = "Hola Sebastián, vengo de lemoss.co y quiero platicar sobre un proyecto de IA."
+WA_TXT = "Hola, vengo de lemoss.co y quiero platicar sobre un proyecto de IA."
 EMAIL = "contacto@lemoss.co"
 
 SAME_AS = [
@@ -31,7 +31,7 @@ def e(s):
     return html.escape(s, quote=True)
 
 
-NAV = [("/servicios/", "Servicios"), ("/casos/", "Casos"), ("/autodiagnostico/", "Autodiagnóstico"), ("/blog/", "Blog"), ("/sobre/", "Sobre mí")]
+NAV = [("/servicios/", "Servicios"), ("/casos/", "Casos"), ("/autodiagnostico/", "Autodiagnóstico"), ("/blog/", "Blog"), ("/sobre/", "Nosotros")]
 
 
 def layout(path, title, desc, body, schema=None, og_type="website", extra_head=""):
@@ -76,7 +76,7 @@ def layout(path, title, desc, body, schema=None, og_type="website", extra_head="
     <a class="btn btn-sm" href="{wa()}" rel="noopener">WhatsApp</a>
     <details class="menu">
       <summary aria-label="Abrir menú">Menú</summary>
-      <nav aria-label="Menú móvil">{nav}<a href="{wa()}" rel="noopener">Escríbeme por WhatsApp</a></nav>
+      <nav aria-label="Menú móvil">{nav}<a href="{wa()}" rel="noopener">Escríbenos por WhatsApp</a></nav>
     </details>
   </div>
 </header>
@@ -147,7 +147,7 @@ WEBSITE = {"@context": "https://schema.org", "@type": "WebSite", "@id": SITE + "
 
 ETAPAS = [
     ("Autodiagnóstico", "Gratis · 10 minutos", "Respondes ocho preguntas sobre tus procesos y sabes de inmediato qué tan lista está tu empresa para aprovechar la IA y por dónde conviene empezar.", "/autodiagnostico/", "Hacer el autodiagnóstico"),
-    ("Diagnóstico", "Desde $18,000 MXN · se acredita 100%", "Reviso contigo procesos, datos y sistemas, calculo cuánto te cuesta hoy cada proceso y te entrego un plan priorizado con el retorno esperado de cada caso. El monto se descuenta completo si avanzamos al piloto.", None, None),
+    ("Diagnóstico", "Desde $18,000 MXN · se acredita 100%", "Revisamos contigo procesos, datos y sistemas, calculamos cuánto te cuesta hoy cada proceso y te entregamos un plan priorizado con el retorno esperado de cada caso. El monto se descuenta completo si avanzamos al piloto.", None, None),
     ("Piloto con meta pactada", "Desde $45,000 MXN · 30 a 60 días", "Elegimos un proceso, fijamos por escrito una meta medible (por ejemplo tiempo de respuesta, prospectos atendidos o horas ahorradas) y lo ponemos a funcionar con tu equipo real.", None, None),
     ("Implementación", "Proyecto cerrado, honorario + bono o garantía", "Con el piloto probado, escalamos a más procesos o áreas. Tú eliges el modelo: precio cerrado, honorario base más bono por resultado, o garantía de resultado con condiciones por escrito.", None, None),
     ("Operación continua", "Mensualidad", "Monitoreo, ajustes, nuevas automatizaciones y reportes mensuales para que lo implementado siga rindiendo y crezca con tu operación.", None, None),
@@ -158,7 +158,7 @@ SERVICIOS = [
     ("Ventas y atención con IA", "Respuesta inmediata a cada prospecto, calificación automática, seguimiento por WhatsApp y un CRM que se actualiza solo. Tu equipo comercial habla solo con quien está listo para comprar.", ["Agentes de IA en WhatsApp y web", "Lead scoring y asignación automática", "CRM conectado a WhatsApp Business API", "Seguimiento y reactivación de prospectos"]),
     ("Operación y procesos", "Inventario, pedidos, cotizaciones y reportes que hoy dependen de capturas manuales y hojas de cálculo, conectados y automatizados de punta a punta.", ["Mapeo y rediseño de procesos", "Integración ERP, CRM y hojas de cálculo", "Inventario y ventas automatizados", "Tableros con la información en tiempo real"]),
     ("Contenido y comunicación", "Producción de contenido con IA y supervisión humana: investigación, redacción, piezas multimedia y publicación en redes con un flujo de aprobación claro.", ["Coordinación editorial asistida por IA", "Generación de video y carruseles", "Publicación programada multicanal", "Análisis de desempeño del contenido"]),
-    ("Plataformas y arquitectura", "Cuando lo que necesitas no existe en el mercado, diseño la arquitectura y construyo la plataforma: desde sistemas de gestión hasta servicios para entidades financieras.", ["Arquitectura de servicios (PaaS)", "Sistemas de gestión a la medida", "APIs, microservicios y migración a la nube", "Seguridad y manejo responsable de datos"]),
+    ("Plataformas y arquitectura", "Cuando lo que necesitas no existe en el mercado, diseñamos la arquitectura y construimos la plataforma: desde sistemas de gestión hasta servicios para entidades financieras.", ["Arquitectura de servicios (PaaS)", "Sistemas de gestión a la medida", "APIs, microservicios y migración a la nube", "Seguridad y manejo responsable de datos"]),
 ]
 
 CASOS = [
@@ -208,21 +208,21 @@ INDUSTRIAS = [
 ]
 
 FAQ = [
-    ("¿Qué significa consultoría en IA por resultados?", "Que antes de implementar acordamos por escrito una meta medible, como tiempo de respuesta, prospectos atendidos u horas ahorradas, y el trabajo se evalúa contra esa meta. En etapas avanzadas parte de mis honorarios puede depender de alcanzarla."),
-    ("¿Cuánto cuesta trabajar contigo?", "El autodiagnóstico es gratis. El diagnóstico empieza en $18,000 MXN más IVA y se acredita al 100% si continuamos. Un piloto con meta pactada empieza en $45,000 MXN más IVA y dura de 30 a 60 días. La implementación se cotiza según el alcance, con precio cerrado, honorario más bono o garantía de resultado."),
+    ("¿Qué significa consultoría en IA por resultados?", "Que antes de implementar acordamos por escrito una meta medible, como tiempo de respuesta, prospectos atendidos u horas ahorradas, y el trabajo se evalúa contra esa meta. En etapas avanzadas parte de nuestros honorarios puede depender de alcanzarla."),
+    ("¿Cuánto cuesta trabajar con Lemoss?", "El autodiagnóstico es gratis. El diagnóstico empieza en $18,000 MXN más IVA y se acredita al 100% si continuamos. Un piloto con meta pactada empieza en $45,000 MXN más IVA y dura de 30 a 60 días. La implementación se cotiza según el alcance, con precio cerrado, honorario más bono o garantía de resultado."),
     ("¿Cuánto tiempo tarda en verse un resultado?", "El piloto está diseñado para medir un resultado en 30 a 60 días sobre un proceso real de tu empresa."),
     ("¿Para qué tamaño de empresa es?", "Principalmente para empresas medianas, de 20 a 250 colaboradores, con venta consultiva o procesos operativos que hoy dependen de mucho trabajo manual."),
-    ("¿Trabajas solo en Mérida?", "No. Mi sede está en Mérida y atiendo a empresas de la Ciudad de México y de todo el país de forma remota, con visitas presenciales cuando el proyecto lo requiere."),
-    ("¿Tengo que cambiar mis sistemas actuales?", "Normalmente no. Primero conecto lo que ya usas (CRM, ERP, hojas de cálculo, WhatsApp, correo) y solo propongo cambiar una herramienta cuando el ahorro lo justifica."),
+    ("¿Trabajan solo en Mérida?", "No. Nuestra sede está en Mérida y atendemos a empresas de la Ciudad de México y de todo el país de forma remota, con visitas presenciales cuando el proyecto lo requiere."),
+    ("¿Tengo que cambiar mis sistemas actuales?", "Normalmente no. Primero conectamos lo que ya usas (CRM, ERP, hojas de cálculo, WhatsApp, correo) y solo proponemos cambiar una herramienta cuando el ahorro lo justifica."),
     ("¿Qué pasa con la información de mi empresa?", "Se usa solo para el proyecto, bajo confidencialidad, con accesos controlados y revisión humana en los procesos críticos. Los detalles están en el aviso de privacidad."),
 ]
 
 
 # ---------- Bloques ----------
-def cta_final(titulo="¿Platicamos de tu proyecto?", texto="Cuéntame qué proceso te quita más tiempo o dinero. En una llamada de 30 minutos te digo si la IA puede resolverlo y cómo lo mediríamos."):
+def cta_final(titulo="¿Platicamos de tu proyecto?", texto="Cuéntanos qué proceso te quita más tiempo o dinero. En una llamada de 30 minutos te decimos si la IA puede resolverlo y cómo lo mediríamos."):
     return f"""<section class="sec cta-fin"><div class="wrap"><div class="cta-in">
 <h2>{titulo}</h2><p class="lead">{texto}</p>
-<div class="acciones"><a class="btn" href="{wa()}" rel="noopener">Escríbeme por WhatsApp</a><a class="btn btn-2" href="/autodiagnostico/">Hacer el autodiagnóstico</a></div>
+<div class="acciones"><a class="btn" href="{wa()}" rel="noopener">Escríbenos por WhatsApp</a><a class="btn btn-2" href="/autodiagnostico/">Hacer el autodiagnóstico</a></div>
 </div></div></section>"""
 
 
@@ -270,16 +270,16 @@ def home():
     inds = "".join(f"<li><strong>{n}</strong><span>{d}</span></li>" for n, d in INDUSTRIAS)
     body = f"""
 <section class="hero"><div class="wrap">
-<h1>Adopción de <span class="az">IA</span> que se mide en <span class="az">resultados</span></h1>
-<p class="lead">Ayudo a empresas medianas en México a automatizar ventas, atención y operación con IA. Antes de empezar acordamos una meta medible, y el trabajo se evalúa contra ella.</p>
-<div class="acciones"><a class="btn" href="{wa()}" rel="noopener">Escríbeme por WhatsApp</a><a class="btn btn-2" href="/autodiagnostico/">Autodiagnóstico gratis</a></div>
+<h1>Adopción de <span class="az">IA</span> que se mide en <span class="az">RESULTADOS</span></h1>
+<p class="lead">Ayudamos a empresas medianas en México a automatizar ventas, atención y operación con IA. Antes de empezar acordamos una meta medible, y el trabajo se evalúa contra ella.</p>
+<div class="acciones"><a class="btn" href="{wa()}" rel="noopener">Escríbenos por WhatsApp</a><a class="btn btn-2" href="/autodiagnostico/">Autodiagnóstico gratis</a></div>
 <p class="sello">Sede en Mérida · atención en CDMX y todo México</p>
 </div></section>
 
 <section class="sec"><div class="wrap dos">
 <div><h2>El problema casi nunca es la tecnología</h2></div>
 <div><p>La mayoría de los proyectos de IA que no dan resultados fallan por otra razón: se eligió un proceso que no estaba listo, nadie midió cuánto costaba antes, o no había un responsable dentro de la empresa.</p>
-<p>Por eso trabajo al revés de lo habitual: primero el costo del problema y la meta, después la herramienta. Y avanzamos por etapas, para que solo inviertas más cuando ya viste un resultado.</p></div>
+<p>Por eso trabajamos al revés de lo habitual: primero el costo del problema y la meta, después la herramienta. Y avanzamos por etapas, para que solo inviertas más cuando ya viste un resultado.</p></div>
 </div></section>
 
 <section class="sec"><div class="wrap">
@@ -370,7 +370,7 @@ def casos():
 <p class="lead">Proyectos reales de ventas, operación, contenido y plataformas. Las cifras son las medidas en cada proyecto; donde no hay cifra, describo el cambio.</p>
 </div></section>
 <section class="sec"><div class="wrap lista-casos">{"".join(caso_tarjeta(c, True) for c in CASOS)}</div></section>
-{cta_final("¿Tu caso se parece a alguno?", "Escríbeme y te cuento cómo lo resolví y qué haría distinto en tu empresa.")}
+{cta_final("¿Tu caso se parece a alguno?", "Escríbenos y te contamos cómo lo resolvimos y qué haríamos distinto en tu empresa.")}
 """
     return layout("/casos/", "Casos de IA y automatización en empresas | Lemoss",
                   "Casos reales: de 2 horas a 5 segundos de respuesta en una inmobiliaria, coordinación editorial con IA para 5 sitios de noticias, plataformas para financieras y más.",
@@ -400,15 +400,15 @@ f.addEventListener('submit',function(ev){ev.preventDefault();var t=0,n=%d;for(va
 var pct=Math.round(t/(n*2)*100),h,p;
 if(pct>=70){h='Tu proceso está listo para un piloto';p='Tiene volumen, está claro y hay datos. Es el escenario ideal para una prueba de 30 a 60 días con una meta medible.'}
 else if(pct>=45){h='Vas bien, con un par de huecos por cerrar';p='Conviene resolver primero las respuestas más bajas (normalmente documentar el proceso o calcular su costo). Un diagnóstico te dice exactamente cuáles.'}
-else{h='Primero conviene ordenar el proceso';p='Antes de invertir en IA, define cómo se hace bien y dónde vive la información. Te puedo orientar en una llamada sin costo.'}
+else{h='Primero conviene ordenar el proceso';p='Antes de invertir en IA, define cómo se hace bien y dónde vive la información. Te podemos orientar en una llamada sin costo.'}
 r.querySelector('h2').textContent=h+' ('+pct+'%%)';r.querySelector('p').textContent=p;
-var msg='Hola Sebastián, hice el autodiagnóstico en lemoss.co y obtuve '+pct+'%%: '+h+'. Quiero platicar.';
+var msg='Hola, hice el autodiagnóstico en lemoss.co y obtuve '+pct+'%%: '+h+'. Quiero platicar.';
 r.querySelector('a').href='https://wa.me/%s?text='+encodeURIComponent(msg);r.hidden=false;r.focus();});})();
 </script>""" % (len(PREGUNTAS), WA)
     body = f"""
 <section class="hero hero-sm"><div class="wrap">
 <h1>Autodiagnóstico de IA</h1>
-<p class="lead">Piensa en un proceso concreto de tu empresa (atender prospectos, cotizar, inventario, cobranza) y responde ocho preguntas. Toma 5 minutos y no guardo tus respuestas.</p>
+<p class="lead">Piensa en un proceso concreto de tu empresa (atender prospectos, cotizar, inventario, cobranza) y responde ocho preguntas. Toma 5 minutos y no guardamos tus respuestas.</p>
 </div></section>
 <section class="sec"><div class="wrap estrecho">
 <form id="diag" class="diag">{preg}<button class="btn" type="submit">Ver mi resultado</button></form>
@@ -423,20 +423,20 @@ r.querySelector('a').href='https://wa.me/%s?text='+encodeURIComponent(msg);r.hid
 def sobre():
     body = f"""
 <section class="hero hero-sm"><div class="wrap">
-<h1>Sebastián Lemos</h1>
-<p class="lead">Consultor en inteligencia artificial y automatización. Trabajas directamente conmigo, sin intermediarios ni equipos que cambian a mitad del proyecto.</p>
+<h1>Nosotros</h1>
+<p class="lead">Lemoss es una consultoría en inteligencia artificial y automatización para empresas medianas en México. Trabajas directamente con el consultor que diseña y pone a funcionar tu proyecto, sin intermediarios ni equipos que cambian a mitad del camino.</p>
 </div></section>
 <section class="sec"><div class="wrap dos">
-<div><h2>De dirigir sistemas a aplicar IA</h2></div>
+<div><h2>Experiencia en sistemas críticos</h2></div>
 <div>
-<p>Llevo más de veinte años en tecnología. Fui director de sistemas y fundé una empresa de servicios de mensajería SMS para bancos, donde aprendí lo que cuesta que un sistema falle cuando de él depende la operación de un cliente.</p>
-<p>Hoy aplico esa experiencia a la inteligencia artificial: diseño y pongo a funcionar automatizaciones de ventas, atención y operación para empresas medianas, y desarrollo productos propios bajo las marcas timewins.ai, iaprop.tech y estrategia.dental.</p>
-<p>Trabajo desde Mérida con empresas de la Ciudad de México y de todo el país. Mi forma de trabajar es simple: medir antes, acordar una meta, probar en pequeño y crecer solo cuando el resultado está a la vista.</p>
-<p><a href="{PERSONA_SAME_AS[0]}" rel="noopener">Ver mi perfil en LinkedIn</a></p>
+<p>Lemoss la dirige <strong>Sebastián Lemos</strong>, con más de veinte años en tecnología. Fue director de sistemas y fundó una empresa de servicios de mensajería SMS para bancos, donde se aprende lo que cuesta que un sistema falle cuando de él depende la operación de un cliente.</p>
+<p>Hoy aplicamos esa experiencia a la inteligencia artificial: diseñamos y ponemos a funcionar automatizaciones de ventas, atención y operación para empresas medianas, y desarrollamos productos propios bajo las marcas timewins.ai, iaprop.tech y estrategia.dental.</p>
+<p>Trabajamos desde Mérida con empresas de la Ciudad de México y de todo el país. Nuestra forma de trabajar es simple: medir antes, acordar una meta, probar en pequeño y crecer solo cuando el resultado está a la vista.</p>
+<p><a href="{PERSONA_SAME_AS[0]}" rel="noopener">Perfil de Sebastián Lemos en LinkedIn</a></p>
 </div>
 </div></section>
 <section class="sec"><div class="wrap dos">
-<div><h2>Con qué trabajo</h2></div>
+<div><h2>Con qué trabajamos</h2></div>
 <ul class="puntos">
 <li>Agentes de IA y modelos de lenguaje (Claude, GPT) aplicados a procesos reales</li>
 <li>Automatización con n8n y flujos a la medida</li>
@@ -447,9 +447,9 @@ def sobre():
 </div></section>
 {cta_final()}
 """
-    return layout("/sobre/", "Sebastián Lemos, consultor en IA y automatización | Lemoss",
-                  "Más de 20 años en tecnología, ex director de sistemas. Consultoría en IA y automatización para empresas medianas en México desde Mérida.",
-                  body, [PERSONA, ORG, migas(("Sobre mí", "/sobre/"))], og_type="profile")
+    return layout("/sobre/", "Nosotros: consultoría en IA y automatización | Lemoss",
+                  "Lemoss, dirigida por Sebastián Lemos, con más de 20 años en tecnología. Consultoría en IA y automatización para empresas medianas en México desde Mérida.",
+                  body, [ORG, PERSONA, migas(("Nosotros", "/sobre/"))])
 
 
 ARTICULOS = [
@@ -487,7 +487,7 @@ ARTICULOS = [
     {"slug": "4-errores-al-implementar-ia", "titulo": "4 errores comunes al implementar IA en una empresa mediana (y cómo evitarlos)",
      "desc": "Empezar por la herramienta, automatizar un proceso desordenado, no nombrar responsable y querer todo a la vez. Cómo evitar los errores más comunes con IA.",
      "fecha": "2026-11-03",
-     "cuerpo": """<p>Estos son los cuatro errores que más veo cuando una empresa mediana arranca con inteligencia artificial. Los cuatro se evitan con la misma receta.</p>
+     "cuerpo": """<p>Estos son los cuatro errores que más vemos cuando una empresa mediana arranca con inteligencia artificial. Los cuatro se evitan con la misma receta.</p>
 <h2>1. Empezar por la herramienta</h2>
 <p>"Compramos licencias, ¿ahora qué hacemos con ellas?" Empieza por el problema y su costo; la herramienta se elige al final.</p>
 <h2>2. Automatizar un proceso desordenado</h2>
@@ -497,7 +497,7 @@ ARTICULOS = [
 <h2>4. Querer todo a la vez</h2>
 <p>Diez casos de uso en paralelo equivalen a ninguno terminado. Un proceso, una meta, de 30 a 60 días. Si funciona, escalas.</p>
 <h2>Lo que sí funciona</h2>
-<p>Un problema con costo medible, un proceso claro y un responsable, y una prueba corta con meta pactada antes de crecer. Es exactamente la <a href="/servicios/">ruta por etapas</a> con la que trabajo.</p>"""},
+<p>Un problema con costo medible, un proceso claro y un responsable, y una prueba corta con meta pactada antes de crecer. Es exactamente la <a href="/servicios/">ruta por etapas</a> con la que trabajamos.</p>"""},
 ]
 
 
@@ -542,7 +542,7 @@ def legal(nombre, src, path, title, desc):
 
 
 def no_encontrada():
-    body = f'<section class="hero hero-sm"><div class="wrap"><h1>Esta página no existe</h1><p class="lead">Puede que el enlace haya cambiado. Vuelve al <a href="/">inicio</a> o escríbeme por <a href="{wa()}">WhatsApp</a>.</p></div></section>'
+    body = f'<section class="hero hero-sm"><div class="wrap"><h1>Esta página no existe</h1><p class="lead">Puede que el enlace haya cambiado. Vuelve al <a href="/">inicio</a> o escríbenos por <a href="{wa()}">WhatsApp</a>.</p></div></section>'
     return layout("/404", "Página no encontrada | Lemoss", "La página que buscas no existe.", body).replace('<link rel="canonical" href="https://lemoss.co/404">', '<meta name="robots" content="noindex">')
 
 
@@ -575,7 +575,7 @@ Lemoss (también Lemoss Consulting) acuerda con cada cliente una meta medible an
 - [Servicios y precios]({SITE}/servicios/)
 - [Casos]({SITE}/casos/)
 - [Autodiagnóstico]({SITE}/autodiagnostico/)
-- [Sobre Sebastián Lemos]({SITE}/sobre/)
+- [Nosotros]({SITE}/sobre/)
 - [Blog]({SITE}/blog/)
 
 ## Artículos
