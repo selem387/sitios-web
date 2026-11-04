@@ -204,6 +204,9 @@ export async function procesarMensaje(b) {
 
   const t = await turnoAri(e, { mensajesRecientes, ultimoTexto: texto, regresaDePausa, arquetipos, assets });
   const brief = mergeProfundo(e.brief || {}, t.briefPatch);
+  // El estado de las propuestas lo maneja solo propuestas.js; Ari no puede tocarlo (antes lo pisaba con "pendiente").
+  if (brief.marca) { if (e.brief?.marca?.propuestas) brief.marca.propuestas = e.brief.marca.propuestas; else delete brief.marca.propuestas; }
+  if (brief.marca && e.brief?.marca?.vistazo) brief.marca.vistazo = e.brief.marca.vistazo; else if (brief.marca) delete brief.marca.vistazo;
   // Validar arquetipo/subtipo contra la tabla.
   if (brief.negocio?.arquetipo && !arquetipos.some((a) => a.slug === brief.negocio.arquetipo)) brief.negocio.arquetipo = 'generico';
   const arq = arquetipos.find((a) => a.slug === brief.negocio?.arquetipo);

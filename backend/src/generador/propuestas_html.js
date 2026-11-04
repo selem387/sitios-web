@@ -7,8 +7,10 @@ import path from 'node:path';
 import { config } from '../config.js';
 import { mezclar, contraste } from '../entrevista/tema.js';
 import { paresTipograficos, urlFuentes } from './fuentes.js';
-import { coloresDePalabras } from './materiales.js';
+import { coloresDePalabras, logoTenido } from './materiales.js';
 import { waUrl, formatoTel } from './bloques.js';
+import { paginasGenerales, logoHTML } from './propuestas_general.js';
+import { completarMaterial } from './validar_material.js';
 
 export const DIR_PROPUESTAS = path.join(config.dataDir, 'propuestas');
 const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -71,7 +73,7 @@ function pagina(d) {
   const top = prod.slice(0, 6);
   const heroImgs = d.heroImgs;
   const wa = d.wa ? ` href="${esc(d.wa)}" target="_blank" rel="noopener"` : '';
-  const logo = d.logo ? `<img class="logo" src="${esc(d.logo)}" alt="${esc(d.nombre)}">` : `<span class="nombre">${esc(d.nombre)}</span>`;
+  const logo = d.logoObj ? logoHTML(d.logoObj, p.bg, p.fg, { alt: d.nombre }) : `<span class="nombre">${esc(d.nombre)}</span>`;
   const tarjetas = top.map((x) => `<article class="prod"><div class="ph"><img src="${esc(x.img)}" alt="${esc(x.nombre)}" loading="lazy"></div><h3>${esc(x.nombre)}</h3>${x.precio ? `<p class="precio">${esc(x.precio)}</p>` : ''}</article>`).join('');
   const cats = d.categorias.map((c) => `<a class="cat" href="#menu"><b>${esc(c.nombre)}</b><span>desde $${c.desde}</span></a>`).join('');
   const menuTxt = d.categorias.map((c, i) => `<details${i === 0 ? ' open' : ''}><summary>${esc(c.nombre)} <span>desde $${c.desde}</span></summary><ul>${c.items.slice(0, 14).map((it) => `<li><span><b>${esc(it.nombre)}</b>${it.descripcion ? `<small>${esc(it.descripcion)}</small>` : ''}</span><em>${esc(it.precio || '')}</em></li>`).join('')}</ul></details>`).join('');
@@ -167,31 +169,53 @@ a.onclick=function(){ir(idx()-1)};b.onclick=function(){ir(idx()+1)};d.forEach(fu
  * @param {object} mat     procesarMateriales(...)
  * @param {object} textos  {variantes:[{titular, subtitulo, cta}], info:[], destacados, categorias, visita}
  */
-export async function crearPropuestasHTML(brief, mat, textos, { token = crypto.randomBytes(9).toString('base64url').replace(/[_-]/g, 'x') } = {}) {
+export async function crearPropuestasHTML(brief, mat, textos, { token = crypto.randomBytes(9).toString('base64url').replace(/[_-]/g, 'x'), ronda = 0 } = {}) {
+  // Cada ronda ("ninguna me gustó") usa otras tipografías y otro orden de color/fotos.
+  const todosPares = paresTipograficos(brief.marca?.estilo || 'calido', brief, 18);
+  const pares = [...todosPares.slice((ronda * 6) % todosPares.length), ...todosPares].slice(0, 6);
+  await fs.mkdir(path.join(DIR_PROPUESTAS, token), { recursive: true });
+  if (brief.negocio?.arquetipo !== 'restaurante') {
+    // Logo de un color: versión pintada con la tinta de cada propuesta (contraste garantizado sobre fondos claros u oscuros).
+    let pags = paginasGenerales({ brief, mat, textos, pares, urlFuentes, ronda });
+    if (mat.logo?.url && mat.logo.mono !== false) {
+      const tenidos = {};
+      for (const pg of pags) for (const hex of [pg.paleta.fg, '#FFFFFF']) if (!tenidos[hex]) tenidos[hex] = await logoTenido(mat.logo, hex).catch(() => null);
+      mat = { ...mat, logo: { ...mat.logo, tenidos: Object.fromEntries(Object.entries(tenidos).filter(([, v]) => v)) } };
+      pags = paginasGenerales({ brief, mat, textos, pares, urlFuentes, ronda });
+    }
+    const out = [];
+    for (const pg of pags) {
+      const { html, faltan } = completarMaterial(pg.html, mat);
+      if (faltan.length) throw new Error(`Propuesta ${pg.letra} sin material del cliente: ${faltan.map((f) => f.clave).join(', ')}`);
+      await fs.writeFile(path.join(DIR_PROPUESTAS, token, `${pg.letra}.html`), html);
+      out.push({ letra: pg.letra, layout: pg.layout, nombre: pg.nombre, url: `${config.publicUrl}/p/${token}/${pg.letra}`, fuentes: pg.fuentes, paleta: pg.paleta });
+    }
+    return { token, opciones: out };
+  }
   const colores = [...coloresDePalabras(brief.marca?.colores || []), ...(mat.colores || [])];
   const b = base(colores);
-  const pares = paresTipograficos(brief.marca?.estilo || 'calido', brief, 6);
   const prods = productos(mat, mat.menu_texto).sort((x, y) => (y.precio ? 1 : 0) - (x.precio ? 1 : 0));
   // Imágenes de portada: productos sin fondo más altos (vasos completos), distintos por propuesta.
   const altos = prods.filter((x) => x.img).sort((x, y) => (y.alto || 0) - (x.alto || 0));
   const c = brief.contacto || {};
   const dir = c.direccion && typeof c.direccion === 'object' ? [c.direccion.calle, c.direccion.colonia, c.direccion.ciudad].filter(Boolean).join(', ') : c.direccion;
   const cats = categorias(mat.menu_texto);
-  await fs.mkdir(path.join(DIR_PROPUESTAS, token), { recursive: true });
   const out = [];
   for (const [i, layout] of LAYOUTS.entries()) {
     const letra = 'ABCDEF'[i];
     const v = textos.variantes?.[i] || textos.variantes?.[0] || {};
     const rot = (k) => altos.length ? altos[(i * 2 + k) % altos.length].img : (mat.hero?.url || '');
     const d = {
-      letra, layout, nombre: brief.negocio?.nombre || '', logo: mat.logo?.url || null,
+      letra, layout, nombre: brief.negocio?.nombre || '', logo: mat.logo?.url || null, logoObj: mat.logo || null,
       pal: paleta(layout, b), f: pares[i % pares.length], fuentesUrl: urlFuentes([pares[i % pares.length]]),
       textos: { titular: v.titular, subtitulo: v.subtitulo, cta: v.cta || 'Pide por WhatsApp', destacados: textos.destacados, categorias: textos.categorias, visita: textos.visita },
       heroImgs: [rot(0), rot(1), rot(2)], productos: prods.slice(i % 2 ? 3 : 0).concat(prods.slice(0, i % 2 ? 3 : 0)),
       categorias: cats, menus: mat.menus.map((m) => m.url), info: (textos.info || []).slice(0, 3),
       wa: waUrl(c.whatsapp, c.mensaje_whatsapp_inicial), tel: c.whatsapp ? formatoTel(c.whatsapp) : null, direccion: dir, horarios: typeof c.horarios === 'string' ? c.horarios : null,
     };
-    await fs.writeFile(path.join(DIR_PROPUESTAS, token, `${letra}.html`), pagina(d));
+    const { html, faltan } = completarMaterial(pagina(d), mat, { titulo: 'Más de nosotros' });
+    if (faltan.length) throw new Error(`Propuesta ${letra} sin material del cliente: ${faltan.map((f) => f.clave).join(', ')}`);
+    await fs.writeFile(path.join(DIR_PROPUESTAS, token, `${letra}.html`), html);
     out.push({ letra, layout, nombre: NOMBRES[layout], url: `${config.publicUrl}/p/${token}/${letra}`, fuentes: d.f, paleta: d.pal });
   }
   return { token, opciones: out };
@@ -199,13 +223,16 @@ export async function crearPropuestasHTML(brief, mat, textos, { token = crypto.r
 
 /** Textos de las 6 propuestas con Claude (JSON en texto). Solo datos reales del brief y del menú. */
 export async function textosPropuestas(brief, mat) {
-  const prompt = `Escribe los textos de 6 propuestas de página de inicio para este negocio mexicano. Español de México, trato "${brief?.marca?.tono_textos === 'usted' ? 'usted' : 'tú'}", sin emojis, sin frases genéricas de IA, sin inventar datos (nada de años, clientes, premios ni promociones que no estén abajo). Cada titular con un enfoque distinto (producto, antojo, rapidez/pickup, ubicación, variedad del menú, experiencia).
-Brief: ${JSON.stringify({ negocio: brief.negocio, oferta: brief.oferta, cliente_ideal: brief.cliente_ideal, marca: { personalidad: brief.marca?.personalidad, evitar: brief.marca?.evitar }, contacto: { ciudad: brief.contacto?.direccion?.ciudad, horarios: brief.contacto?.horarios } })}
-Menú real (resumen): ${JSON.stringify((mat.menu_texto || []).map((s) => ({ seccion: s.seccion, items: (s.items || []).slice(0, 6).map((i) => `${i.nombre} ${i.precio || ''}`) })))}
-Responde SOLO JSON: {"variantes":[{"titular":"≤ 55 caracteres","subtitulo":"≤ 120 caracteres","cta":"≤ 22 caracteres, abre WhatsApp"} ×6],"info":["3 datos cortos y reales (≤ 30 caracteres) p. ej. modalidad, zona, servicio"],"destacados":"título ≤ 22","categorias":"título ≤ 22","visita":"título ≤ 22"}`;
+  const menu = brief.negocio?.arquetipo === 'restaurante';
+  const enfoques = menu ? 'producto, antojo, rapidez/pickup, ubicación, variedad del menú, experiencia'
+    : 'el resultado que se lleva el cliente, la especialidad más fuerte, la experiencia/años, la zona, la variedad de servicios o paquetes, el trato personal';
+  const prompt = `Escribe los textos de 6 propuestas de página de inicio para este negocio mexicano (giro: ${brief.negocio?.giro_texto || brief.negocio?.arquetipo || ''}). Español de México, trato "${brief?.marca?.tono_textos === 'usted' ? 'usted' : 'tú'}", ${brief.negocio?.tamano === 'solo_tu' ? 'en primera persona del singular (es una sola persona), ' : ''}sin emojis, sin frases genéricas de IA, sin inventar datos (nada de años, clientes, premios ni promociones que no estén abajo). Cada titular con un enfoque distinto (${enfoques}).
+Brief: ${JSON.stringify({ negocio: brief.negocio, oferta: brief.oferta, cliente_ideal: brief.cliente_ideal, confianza: { historia_corta: brief.confianza?.historia_corta, cifras: brief.confianza?.cifras }, marca: { personalidad: brief.marca?.personalidad, evitar: brief.marca?.evitar, comentarios_del_cliente: brief.marca?.referencias_que_gusta }, zona: brief.zona, contacto: { ciudad: brief.contacto?.direccion?.ciudad, horarios: brief.contacto?.horarios } })}
+${menu ? `Menú real (resumen): ${JSON.stringify((mat.menu_texto || []).map((s) => ({ seccion: s.seccion, items: (s.items || []).slice(0, 6).map((i) => `${i.nombre} ${i.precio || ''}`) })))}` : ''}
+Responde SOLO JSON: {"variantes":[{"titular":"≤ 55 caracteres","subtitulo":"≤ 120 caracteres","cta":"≤ 22 caracteres, abre WhatsApp"} ×6],"info":["3 datos cortos y reales (≤ 30 caracteres) p. ej. modalidad, zona, entrega"],"destacados":"título ≤ 22","categorias":"título ≤ 22","visita":"título ≤ 22"${menu ? '' : ',"secciones":{"trabajo":"≤ 22","servicios":"≤ 22","sobre":"≤ 22","resenas":"≤ 30","faq":"≤ 24","contacto":"≤ 22","galeria":"≤ 22"},"sobre":"la historia real del brief, pulida, ≤ 380 caracteres, sin agregar datos"'}}`;
   const res = await fetch('https://api.anthropic.com/v1/messages', {
     method: 'POST', headers: { 'x-api-key': config.anthropicApiKey, 'anthropic-version': '2023-06-01', 'content-type': 'application/json' },
-    body: JSON.stringify({ model: config.generadorModel || config.anthropicModel, max_tokens: 2500, messages: [{ role: 'user', content: prompt }] }),
+    body: JSON.stringify({ model: config.generadorModel || config.anthropicModel, max_tokens: 3200, messages: [{ role: 'user', content: prompt }] }),
     signal: AbortSignal.timeout(120000),
   });
   const j = await res.json();
@@ -214,5 +241,6 @@ Responde SOLO JSON: {"variantes":[{"titular":"≤ 55 caracteres","subtitulo":"�
   const d = JSON.parse(t.slice(t.indexOf('{'), t.lastIndexOf('}') + 1));
   const limpio = (s) => String(s || '').replace(/\p{Extended_Pictographic}/gu, '').replace(/\s*→\s*/g, ' ').trim();
   d.variantes = (d.variantes || []).map((v) => ({ titular: limpio(v.titular), subtitulo: limpio(v.subtitulo), cta: limpio(v.cta) }));
+  if (d.sobre) d.sobre = limpio(d.sobre);
   return d;
 }

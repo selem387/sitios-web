@@ -92,6 +92,8 @@ export function interpretarEleccion(texto = '') {
   const colores = t.match(/colores? (?:de|del|de la) (?:la |opci[oó]n |propuesta )?([a-f])\b/);
   if (/ninguna|ninguno|no me gusta(n)? ninguna/.test(t) && !letras.length) return { ninguna: true };
   const ord = { primera: 'A', primer: 'A', '1': 'A', segunda: 'B', '2': 'B', tercera: 'C', '3': 'C', cuarta: 'D', '4': 'D', quinta: 'E', '5': 'E', sexta: 'F', '6': 'F', ultima: 'F' };
+  // Preguntas ("¿cuáles 6?", "¿dónde las veo?") no son elección.
+  if (!letras.length && /\?|cu[aá]les|d[oó]nde|no (me )?(llegaron|abren|veo)|reenv/.test(t)) return null;
   if (!letras.length) { const m = t.normalize('NFD').replace(/[\u0300-\u036f]/g, '').match(/\b(primera|primer|segunda|tercera|cuarta|quinta|sexta|ultima|[1-6])\b/); if (m) letras.push(ord[m[1]]); }
   if (!letras.length) return null;
   const base = colores ? letras.find((l) => l !== colores[1].toUpperCase()) || letras[0] : letras[0];
