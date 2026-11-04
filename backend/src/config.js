@@ -15,6 +15,8 @@ export const config = {
   denoBin: env.DENO_BIN || 'deno',
   anthropicApiKey: env.ANTHROPIC_API_KEY || '',
   anthropicModel: env.ANTHROPIC_MODEL || 'claude-sonnet-5-5',
+  // 04-nov-2026: si se define, la IA pasa por el servicio interno ia-gateway de IAprop (Qwen + respaldo OpenRouter).
+  anthropicBaseUrl: (env.ANTHROPIC_BASE_URL || 'https://api.anthropic.com').replace(/\/$/, ''),
   openaiApiKey: env.OPENAI_API_KEY || '',
   smtpUrl: env.SMTP_URL || '',
   resendApiKey: env.RESEND_API_KEY || '',

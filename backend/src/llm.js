@@ -61,7 +61,7 @@ export async function invokeClaude(tenant, { prompt, response_json_schema, file_
   if (schema && add_context_from_internet) {
     body.system = `${system ? `${system}\n\n` : ''}Cuando tengas la información necesaria, entrega la respuesta final llamando a la herramienta "responder".`;
   }
-  const res = await fetch('https://api.anthropic.com/v1/messages', {
+  const res = await fetch(`${tenant?.secrets?.ANTHROPIC_API_KEY ? 'https://api.anthropic.com' : config.anthropicBaseUrl}/v1/messages`, {
     method: 'POST',
     headers: { 'x-api-key': apiKey, 'anthropic-version': '2023-06-01', 'content-type': 'application/json' },
     body: JSON.stringify(body),

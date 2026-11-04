@@ -88,7 +88,7 @@ export async function redactar(brief, diseno, { correcciones = [] } = {}) {
 
 async function jsonEnTexto({ system, contenido, model, max_tokens = 8000 }) {
   const t0 = Date.now();
-  const res = await fetch('https://api.anthropic.com/v1/messages', {
+  const res = await fetch(`${config.anthropicBaseUrl}/v1/messages`, {
     method: 'POST',
     headers: { 'x-api-key': config.anthropicApiKey, 'anthropic-version': '2023-06-01', 'content-type': 'application/json' },
     body: JSON.stringify({

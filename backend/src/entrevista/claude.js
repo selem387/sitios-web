@@ -18,7 +18,7 @@ export async function pedirJSON({ system, contenido, schema, model = MODELO_ARI,
     tool_choice: { type: 'auto' },
   };
   const t0 = Date.now();
-  const res = await fetch('https://api.anthropic.com/v1/messages', {
+  const res = await fetch(`${config.anthropicBaseUrl}/v1/messages`, {
     method: 'POST',
     headers: { 'x-api-key': apiKey, 'anthropic-version': '2023-06-01', 'content-type': 'application/json' },
     body: JSON.stringify(body),
