@@ -41,4 +41,10 @@ export const config = {
   easypanelToken: env.EASYPANEL_TOKEN || '',
   wpEasypanelProyecto: env.WP_EASYPANEL_PROYECTO || 'sitios-web',
   wpEasypanelServicio: env.WP_EASYPANEL_SERVICIO || 'wp-plantilla',
+  // Códigos de acceso por correo (verificación en la entrevista y login sin contraseña del administrador).
+  // Proveedor: GoHighLevel (LC Email). Location y remitente pendientes de definir; sin ellos se usa mail.js (Resend/SMTP) o solo log.
+  ghlApiKey: env.GHL_API_KEY || '',                 // token de integración privada de la location
+  ghlLocationId: env.GHL_LOCATION_ID || '',
+  correoRemitente: env.CORREO_REMITENTE || '',      // p. ej. acceso@mail.<dominio-neutro>
+  correoRemitenteNombre: env.CORREO_REMITENTE_NOMBRE || 'Acceso a tu página',
 };

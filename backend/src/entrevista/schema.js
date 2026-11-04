@@ -113,6 +113,21 @@ CREATE TABLE IF NOT EXISTS sitios (
   actualizado     timestamptz NOT NULL DEFAULT now()
 );
 
+-- Códigos de verificación del correo del administrador (contacto.email). Solo se guarda el hash del código.
+CREATE TABLE IF NOT EXISTS verificaciones_correo (
+  id             serial PRIMARY KEY,
+  entrevista_id  uuid NOT NULL REFERENCES entrevistas(id) ON DELETE CASCADE,
+  email          text NOT NULL,
+  codigo_hash    text NOT NULL,
+  intentos       int NOT NULL DEFAULT 0,
+  entregado      boolean NOT NULL DEFAULT false,
+  proveedor      text,
+  verificado     timestamptz,
+  expira         timestamptz NOT NULL,
+  creado         timestamptz NOT NULL DEFAULT now()
+);
+CREATE INDEX IF NOT EXISTS verificaciones_correo_entrevista_idx ON verificaciones_correo (entrevista_id, id DESC);
+
 INSERT INTO arquetipos (slug, nombre, cta_default, schema_types) VALUES
  ('inmobiliaria','Inmobiliaria','whatsapp_propiedad','["RealEstateAgent","RealEstateListing","FAQPage","BreadcrumbList"]'),
  ('clinica','Clínica / consultorio','agendar_cita','["MedicalClinic","Physician","MedicalProcedure","FAQPage"]'),

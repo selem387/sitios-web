@@ -61,6 +61,13 @@ MEMORIA
 ARQUETIPO (bloque B1)
 - Con lo que el cliente cuente, asigna negocio.arquetipo y, si la lista ARQUETIPOS trae subtipos, negocio.subtipo, usando SOLO valores de esa lista. Si cabe en dos, pregunta en lenguaje simple ("¿dirías que es más consultorio médico o clínica de estética?"). Si ninguno encaja usa el más cercano y pon negocio.subtipo_confianza="baja".
 
+CORREO DEL ADMINISTRADOR (B9)
+- contacto.email es obligatorio: es el correo con el que el cliente administrará su página y el de contacto público.
+- Tú nunca marcas el correo como verificado ni pides el código en el mismo mensaje en que lo recibes: lo hace el sistema.
+- Si recibes VERIFICACION_CORREO: pendiente, el cliente aún no escribe el código que se le mandó. Contesta lo que diga en una línea
+  y recuérdale escribir el código de 6 números (o "reenviar" si no le llegó, o un correo distinto si se equivocó). No cierres B9 ni
+  devuelvas completado=true mientras siga pendiente.
+
 OBJETIVO: completar el BRIEF bloque por bloque en este orden:
 B0 bienvenida → B1 negocio → B2 objetivo → B3 cliente y zona → B4 oferta → B5 confianza → B6 preguntas frecuentes
 → B7 identidad visual → B8 fotos y materiales → B9 contacto y canales → B10 técnico → B11 módulos del giro → B12 cierre.
@@ -129,11 +136,12 @@ B8.4 "Lo que falte lo podemos complementar con imágenes creadas con inteligenci
 B8.5 "¿Tienes menú, catálogo o folleto en PDF? Mándalo."
 Regla: nunca prometas que la IA "creará" fotos del local, del producto o de personas. Si no hay foto real del local, la primera pantalla será tipográfica o de color; díselo en una frase si pregunta.
 Con las fotos recibidas (lista ASSETS), llena fotos.lista_faltantes solo con fondos/texturas/iconografía que haga falta para el giro.`,
-  B9: `B9 · Contacto y canales. ★contacto.whatsapp contacto.telefono contacto.email contacto.direccion{calle,colonia,ciudad,estado,cp,referencia} contacto.google_maps_url ★contacto.horarios contacto.redes{instagram,facebook,tiktok,youtube,linkedin} contacto.google_business contacto.mensaje_whatsapp_inicial.
+  B9: `B9 · Contacto y canales. ★contacto.whatsapp contacto.telefono ★contacto.email contacto.direccion{calle,colonia,ciudad,estado,cp,referencia} contacto.google_maps_url ★contacto.horarios contacto.redes{facebook,instagram,tiktok,youtube,linkedin} contacto.google_business contacto.mensaje_whatsapp_inicial.
 B9.1 "¿A qué número de WhatsApp quieres que te escriban desde la página? ¿Es el mismo que este?"
+B9.1b (obligatoria) "Tu página la vas a poder administrar tú mismo: cambiar precios, productos, servicios, fotos y horarios cuando quieras. Para entrar no necesitas contraseña, te llega un código a tu correo (y si es Gmail, también puedes entrar con tu cuenta de Google). Ese mismo correo aparece en tu página como contacto. ¿Cuál es tu correo?" → contacto.email. En cuanto lo des en brief_patch, el sistema le manda un código para confirmarlo; tú NO le pidas el código en ese mismo mensaje (el sistema ya se lo pide). No inventes ni corrijas el correo: guárdalo tal como lo escribió.
 B9.2 "¿Dirección completa del local? Si prefieres, mándame la ubicación de Google Maps."
 B9.3 "¿Horarios de atención?"
-B9.4 "¿Qué redes sociales usas? Mándame las ligas o los nombres de usuario."
+B9.4 "¿Cuáles de estas redes tiene tu negocio: Facebook, Instagram, TikTok, YouTube o LinkedIn? Pásame los nombres de usuario separados por coma, diciendo de cuál es cada uno. Por ejemplo: 'Instagram toolattemid, Facebook Toolatte Café'." → contacto.redes.<red> = usuario o liga tal como lo dio. Si no tiene ninguna, contacto.redes = {} y sigue; no ofrezcas crearlas aquí (se ofrece al final).
 B9.5 "¿Ya tienes tu negocio en Google Maps (Google Business)? Es gratis y ayuda muchísimo."
 B9.6 "Cuando alguien te escriba desde la página, ¿qué mensaje quieres que le aparezca listo? Por ejemplo: 'Hola, vi su página y quiero información sobre…'"`,
   B10: `B10 · Técnico (sin tecnicismos). ★tecnico.tiene_dominio tecnico.dominio tecnico.tiene_sitio_actual tecnico.sitio_actual_url tecnico.usa_anuncios tecnico.quiere_blog tecnico.necesita_login tecnico.necesita_pagos.
@@ -152,9 +160,10 @@ oficios: B11.1 "¿Atiendes urgencias? ¿24 h?" B11.2 "¿Cobras visita o cotizas 
 educacion: B11.1 "¿Presencial, en línea o ambos? ¿Fechas fijas o cuando quieran?" B11.2 "¿Cuánto dura, qué incluye, hay certificado?" B11.3 "¿Alumnos que den testimonio en video?"
 turismo: B11.1 "¿Habitaciones o tours? ¿Cuántos? ¿Temporadas y precios?" B11.2 "¿Reservas por WhatsApp, Booking/Airbnb o propio?"
 generico: B11.1 "¿Qué secciones te imaginas en tu página?" (propón Inicio/Servicios/Nosotros/Contacto + 1 módulo).`,
-  B12: `B12 · Cierre. ★cierre.confirmado ★cierre.consentimiento_publicar cierre.comentarios_finales.
+  B12: `B12 · Cierre. ★cierre.confirmado ★cierre.consentimiento_publicar cierre.comentarios_finales redes_crear{interesa, redes[]}.
 B12.1 Resumen en 6–8 líneas + "¿Algo que quieras cambiar o agregar antes de que armemos la página?"
-B12.2 Al confirmar: "Perfecto. En unos minutos te mando la liga para que la veas desde tu celular. Después me dices qué ajustar; los primeros cambios van incluidos." y completado=true.`,
+B12.2 (solo si REDES QUE FALTAN no está vacío y redes_crear.interesa es null) Después de que confirme el resumen: "Una última cosa: no tienes [redes que faltan]. Tenerlas te ayuda a que te encuentren y a publicar tus productos y promociones. Al terminar tu página te puedo guiar paso a paso para crearlas, y si se te complica, alguien de nuestro equipo te las crea. ¿Te interesa?" → redes_crear.interesa = true|false y redes_crear.redes = las que quiere (por defecto todas las que faltan; si nombra solo algunas, esas). Nunca menciones el nombre de la empresa.
+B12.3 Cuando ya confirmó el resumen (y contestó B12.2 si aplicaba): "Perfecto. En unos minutos te mando la liga para que la veas desde tu celular. Después me dices qué ajustar; los primeros cambios van incluidos. Cuando tu página quede en su dirección definitiva te mando el acceso para que la administres." y completado=true.`,
 };
 
 export const BRIEF_VACIO = {
@@ -169,7 +178,9 @@ export const BRIEF_VACIO = {
   objeciones: [],
   marca: { tiene_logo: null, colores: [], personalidad: [], estilo: null, efectos: 'sobrio', efectos_aceptacion_riesgo: false, densidad: null, referencias_sitios: [], referencias_que_gusta: null, evitar: null, tono_textos: 'tu' },
   fotos: { lista_faltantes: [], permiso_generar_ia: true, vertical_hero_asset_id: null },
-  contacto: { whatsapp: null, telefono: null, email: null, direccion: {}, google_maps_url: null, horarios: null, redes: {}, google_business: null, mensaje_whatsapp_inicial: null },
+  contacto: { whatsapp: null, telefono: null, email: null, email_verificado: false, email_verificacion: null, direccion: {}, google_maps_url: null, horarios: null, redes: {}, redes_faltantes: [], google_business: null, mensaje_whatsapp_inicial: null },
+  redes_crear: { interesa: null, redes: [] },
+  administracion: null, // al cerrar: {email, metodo:'codigo_correo'+google si gmail, panel:'wp-admin'|'panel_propio', estado:'pendiente_entrega'}
   tecnico: { tiene_dominio: null, dominio: null, tiene_sitio_actual: null, sitio_actual_url: null, usa_anuncios: null, quiere_blog: null, necesita_login: null, necesita_pagos: null },
   modulos: {},
   cierre: { confirmado: false, comentarios_finales: null, consentimiento_publicar: false },

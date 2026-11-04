@@ -8,6 +8,8 @@ import { isObject } from '../util.js';
 import { resolverSubtipo } from './subtipo.js';
 import { estudiarReferencias } from './referencias.js';
 import { propuestasPendientes, tocaPropuestas, atenderPropuestas, iniciarPropuestas } from './propuestas.js';
+import { verificacionPendiente, atenderVerificacion, enviarVerificacion, correoCambio, faltaCorreo } from './verificacion.js';
+import { normalizarRedes, redesFaltantes, listaNombres } from './redes.js';
 
 const MAX_MSGS_CLIENTE = 120;
 const PAUSA_MS = 2 * 3600 * 1000;
@@ -72,7 +74,7 @@ async function decidirPlataforma(brief) {
   }
 }
 
-async function turnoAri(e, { mensajesRecientes, ultimoTexto, regresaDePausa, arquetipos, assets }) {
+async function turnoAri(e, { mensajesRecientes, ultimoTexto, regresaDePausa, arquetipos, assets, notaAri = null }) {
   const bloque = BLOQUES.includes(e.bloque_actual) ? e.bloque_actual : 'B0';
   const mem = e.memoria && Object.keys(e.memoria).length ? JSON.stringify(e.memoria, null, 1) : 'vacía';
   const brief = mergeProfundo(BRIEF_VACIO, e.brief || {});
@@ -90,6 +92,12 @@ async function turnoAri(e, { mensajesRecientes, ultimoTexto, regresaDePausa, arq
   }
   if (bloque === 'B11' && brief.negocio?.arquetipo) partes.push(`ARQUETIPO ASIGNADO: ${brief.negocio.arquetipo}`);
   if (assets.length) partes.push(`ASSETS recibidos:\n${assets.map((a) => `${a.clave} [${a.tipo}, ${a.calidad || '?'}, usar=${a.usar}] ${a.descripcion_ia || a.nota || ''}`).join('\n')}`);
+  if (verificacionPendiente(brief)) partes.push(`VERIFICACION_CORREO: pendiente (código enviado a ${brief.contacto.email})`);
+  if (bloque === 'B12') {
+    const faltan = redesFaltantes(brief);
+    partes.push(`REDES QUE FALTAN: ${faltan.length ? listaNombres(faltan) : '(ninguna; no hagas la pregunta B12.2)'}`);
+  }
+  if (notaAri) partes.push(`NOTA DEL SISTEMA: ${notaAri}`);
   partes.push(`BRIEF:\n${JSON.stringify(brief)}`);
   partes.push(`ÚLTIMOS MENSAJES:\n${historial || '(ninguno)'}`);
   partes.push(`regresa_de_pausa: ${regresaDePausa}\nÚLTIMO MENSAJE DEL CLIENTE: ${ultimoTexto || '(sin texto)'}`);
@@ -196,22 +204,61 @@ export async function procesarMensaje(b) {
     }
   }
 
+  // Código de verificación del correo pendiente: se atiende antes que Ari (código, correo nuevo o "no me llegó").
+  let notaAri = null;
+  if (!nueva && verificacionPendiente(e.brief) && texto) {
+    const r = await atenderVerificacion(e, e.brief || {}, texto);
+    if (r.brief !== e.brief) { await db.guardar(e.id, { brief: r.brief }); e.brief = r.brief; }
+    if (!r.seguirConAri) return responder([...prefijo, ...r.textos], 'texto');
+    prefijo.push(...r.textos);
+    notaAri = r.notaAri || null;
+  }
+
   const mensajes = [...prefijo];
   if (nueva) mensajes.push(INSTRUCCIONES);
   const [mensajesRecientes, arquetipos] = await Promise.all([db.ultimosMensajes(e.id, 8), db.arquetipos()]);
   const assets = [...assetsPrevios, ...nuevosAssets];
   const bloqueAnterior = e.bloque_actual;
 
-  const t = await turnoAri(e, { mensajesRecientes, ultimoTexto: texto, regresaDePausa, arquetipos, assets });
+  const t = await turnoAri(e, { mensajesRecientes, ultimoTexto: texto, regresaDePausa, arquetipos, assets, notaAri });
   const brief = mergeProfundo(e.brief || {}, t.briefPatch);
   // El estado de las propuestas lo maneja solo propuestas.js; Ari no puede tocarlo (antes lo pisaba con "pendiente").
   if (brief.marca) { if (e.brief?.marca?.propuestas) brief.marca.propuestas = e.brief.marca.propuestas; else delete brief.marca.propuestas; }
   if (brief.marca && e.brief?.marca?.vistazo) brief.marca.vistazo = e.brief.marca.vistazo; else if (brief.marca) delete brief.marca.vistazo;
+  // La verificación del correo la maneja solo verificacion.js; Ari no puede marcarla.
+  if (brief.contacto) {
+    brief.contacto.email_verificado = e.brief?.contacto?.email_verificado === true;
+    brief.contacto.email_verificacion = e.brief?.contacto?.email_verificacion || null;
+    if (brief.contacto.redes) brief.contacto.redes = normalizarRedes(brief.contacto.redes);
+  }
   // Validar arquetipo/subtipo contra la tabla.
   if (brief.negocio?.arquetipo && !arquetipos.some((a) => a.slug === brief.negocio.arquetipo)) brief.negocio.arquetipo = 'generico';
   const arq = arquetipos.find((a) => a.slug === brief.negocio?.arquetipo);
   if (brief.negocio?.subtipo && !(arq?.subtipos && brief.negocio.subtipo in arq.subtipos)) brief.negocio.subtipo = null;
   if (t.assetsPatch.length) await db.actualizarAssets(e.id, t.assetsPatch);
+
+  // Correo nuevo o corregido → mandar código (el mensaje va después de la respuesta de Ari).
+  let avisoCorreo = null;
+  if (correoCambio(e.brief, brief)) {
+    const r = await enviarVerificacion(e, brief);
+    Object.assign(brief, r.brief);
+    avisoCorreo = r.texto;
+  }
+  // No se cierra la entrevista sin correo confirmado ni sin contestar la oferta de redes.
+  if (t.completado) {
+    const falta = faltaCorreo(brief);
+    const faltanRedes = redesFaltantes(brief);
+    if (falta === 'sin_email') {
+      t.completado = false; t.bloque = 'B12';
+      t.reply = 'Antes de armar tu página me falta tu correo: con él vas a entrar a administrarla (precios, productos, fotos) sin contraseña, con un código que te llega ahí. ¿Cuál es?';
+    } else if (falta === 'sin_verificar' || avisoCorreo) {
+      t.completado = false; t.bloque = 'B12';
+      if (!avisoCorreo) t.reply = `Solo me falta que me escribas el código de 6 números que te mandé a *${brief.contacto.email}* para confirmar tu correo. Si no te llegó, escríbeme *reenviar*.`;
+    } else if (faltanRedes.length && (brief.redes_crear?.interesa === null || brief.redes_crear?.interesa === undefined)) {
+      t.completado = false; t.bloque = 'B12';
+      t.reply = `Una última cosa: no tienes ${listaNombres(faltanRedes)}. Tenerlas te ayuda a que te encuentren y a publicar tus productos y promociones. Al terminar tu página te puedo guiar paso a paso para crearlas, y si se te complica, alguien de nuestro equipo te las crea. ¿Te interesa?`;
+    }
+  }
 
   const cambios = { brief, bloque_actual: t.bloque, pendientes_bloque: t.pendientes, arquetipo_slug: brief.negocio?.arquetipo || null, nombre: brief.cliente?.nombre || e.nombre };
   await db.guardar(e.id, cambios);
@@ -225,6 +272,7 @@ export async function procesarMensaje(b) {
     } catch (err) { console.error('iniciarPropuestas', err); }
   }
   mensajes.push(t.reply);
+  if (avisoCorreo) mensajes.push(avisoCorreo);
 
   const demasiado = e.mensajes_cliente + 1 >= MAX_MSGS_CLIENTE;
   if (!t.completado && !demasiado) {
@@ -246,7 +294,19 @@ export async function procesarMensaje(b) {
   if (!marca.efectos) marca.efectos = 'sobrio';
   // Estudio de ligas de referencia (web → render /v1/estudiar; Figma → REST). No bloquea el cierre si falla.
   marca.referencias_estudio = await estudiarReferencias(brief).catch(() => []);
-  const briefFinal = { ...brief, marca, negocio: { ...(brief.negocio || {}), arquetipo: sub.arquetipo, subtipo_resuelto: sub.subtipo, subtipo_fuente: sub.fuente }, plataforma };
+  const faltantes = redesFaltantes(brief);
+  const contacto = { ...(brief.contacto || {}), redes_faltantes: faltantes };
+  const redesCrear = { interesa: brief.redes_crear?.interesa ?? null, redes: (brief.redes_crear?.redes?.length ? brief.redes_crear.redes : faltantes).filter((r) => faltantes.includes(r)) };
+  // Acceso del dueño (único administrador): se entrega cuando el sitio queda en su dominio con HTTPS (paso "listo" de dominios).
+  const email = contacto.email || null;
+  const administracion = {
+    email,
+    metodos: ['codigo_correo', ...(/@(gmail|googlemail)\.com$/i.test(email || '') ? ['google'] : [])],
+    panel: plataforma.plataforma === 'wordpress' ? 'wp-admin' : 'panel_propio',
+    email_verificado: contacto.email_verificado === true,
+    estado: 'pendiente_entrega',
+  };
+  const briefFinal = { ...brief, marca, contacto, redes_crear: redesCrear, administracion, negocio: { ...(brief.negocio || {}), arquetipo: sub.arquetipo, subtipo_resuelto: sub.subtipo, subtipo_fuente: sub.fuente }, plataforma };
   await db.evento(e.id, 'subtipo_resuelto', sub);
   await db.guardar(e.id, { brief: briefFinal, estado: 'completada' });
   e.brief = briefFinal; e.estado = 'completada';
