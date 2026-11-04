@@ -268,7 +268,7 @@ def home():
     inds = "".join(f"<li><strong>{n}</strong><span>{d}</span></li>" for n, d in INDUSTRIAS)
     body = f"""
 <section class="hero"><div class="wrap">
-<h1>Adopción de IA que se mide en resultados.</h1>
+<h1>Adopción de <span class="az">IA</span> que se mide en <span class="az">resultados</span></h1>
 <p class="lead">Ayudo a empresas medianas en México a automatizar ventas, atención y operación con IA. Antes de empezar acordamos una meta medible, y el trabajo se evalúa contra ella.</p>
 <div class="acciones"><a class="btn" href="{wa()}" rel="noopener">Escríbeme por WhatsApp</a><a class="btn btn-2" href="/autodiagnostico/">Autodiagnóstico gratis</a></div>
 <p class="sello">Sede en Mérida · atención en CDMX y todo México</p>
