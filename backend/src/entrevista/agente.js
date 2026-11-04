@@ -1,4 +1,7 @@
 // Ari: conduce la entrevista por mensajes (mismo contrato que creador_video/entrevista).
+import { coloresDePalabras } from '../generador/materiales.js';
+import { contextoColorParaAri } from '../generador/asesor_color.js';
+import { paresTipograficos } from '../generador/fuentes.js';
 import crypto from 'node:crypto';
 import * as db from './db.js';
 import { pedirJSON, describirImagen, transcribirAudio, MODELO_ARI } from './claude.js';
@@ -89,6 +92,13 @@ async function turnoAri(e, { mensajesRecientes, ultimoTexto, regresaDePausa, arq
       return `${a.slug}:\n  ${subs.join('\n  ')}`;
     });
     partes.push(`ARQUETIPOS (slug → subtipos con palabras clave). Asigna negocio.arquetipo y negocio.subtipo SOLO con estos valores:\n${lista.join('\n')}`);
+  }
+  if (bloque === 'B7') {
+    // Asesor de color: evalúa los colores que dio y trae tendencias 2026–2027 de su giro con letras coherentes.
+    try {
+      const coloresCliente = coloresDePalabras(brief.marca?.colores || []);
+      partes.push(contextoColorParaAri({ brief, coloresCliente, pares: paresTipograficos(brief.marca?.estilo || 'calido', brief, 18) }));
+    } catch (err) { console.error('asesor color', err.message); }
   }
   if (bloque === 'B11' && brief.negocio?.arquetipo) partes.push(`ARQUETIPO ASIGNADO: ${brief.negocio.arquetipo}`);
   if (assets.length) partes.push(`ASSETS recibidos:\n${assets.map((a) => `${a.clave} [${a.tipo}, ${a.calidad || '?'}, usar=${a.usar}] ${a.descripcion_ia || a.nota || ''}`).join('\n')}`);

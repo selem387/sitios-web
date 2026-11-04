@@ -39,10 +39,15 @@ function queIncluye(brief, mat) {
 
 function mensajeOpciones(op, brief, mat, ronda = 0) {
   const lista = op.opciones.map((o) => `*${o.letra}* · ${o.nombre}\n${o.url}`).join('\n\n');
+  // Asesor de color: si sus colores no siguen las mejores prácticas, se avisa una vez con la razón y la F muestra el ajuste.
+  const h = !brief.marca?.colores_aviso_aceptado && op.asesor?.hallazgos?.[0];
+  const conF = op.opciones.find((o) => o.letra === 'F')?.paleta?.origen === 'sugerencia';
+  const nota = h ? `Una nota sobre tus colores: ${h.mensaje_cliente}${conF ? ' La *F* ya trae ese ajuste para que compares; las demás usan tus colores tal cual.' : ''}` : null;
   return {
     textos: [
       `${ronda ? 'Aquí van 6 propuestas nuevas, con otros colores, letras y acomodo' : 'Te preparé 6 propuestas de tu página'}, con ${queIncluye(brief, mat)}. Ábrelas en tu celular y recórrelas completas 👇`,
       lista,
+      ...(nota ? [nota] : []),
       '¿Cuál te gusta más? Respóndeme con la letra (*A* a *F*). También puedes pedir mezclas, por ejemplo _la B con los colores de la E_. Si ninguna te convence, dime *ninguna* y qué te gustaría distinto.',
     ],
     media: [],
@@ -69,7 +74,7 @@ async function mostrar(e, brief, mat, { ronda = 0 } = {}) {
   const r = await crearPropuestasHTML(brief, mat, textos, { ronda });
   const prev = brief.marca?.propuestas || {};
   const opciones = r.opciones.map((o) => ({ etiqueta: o.letra, letra: o.letra, layout: o.layout, nombre: o.nombre, url: o.url, estilo: o.fuentes.estilo, tipografia: { titulos: o.fuentes.titulos, cuerpo: o.fuentes.cuerpo }, paleta: o.paleta }));
-  return { propuestas: { ...prev, estado: 'mostradas', token: r.token, opciones, textos, ronda, usados: [...(prev.usados || []), r.token] }, salida: mensajeOpciones({ opciones }, brief, mat, ronda) };
+  return { propuestas: { ...prev, estado: 'mostradas', token: r.token, opciones, textos, ronda, asesor_color: r.asesor?.hallazgos || [], usados: [...(prev.usados || []), r.token] }, salida: mensajeOpciones({ opciones, asesor: r.asesor }, brief, mat, ronda) };
 }
 
 /**

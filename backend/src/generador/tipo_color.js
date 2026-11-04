@@ -49,6 +49,22 @@ export const METRICAS = {
   Chango: { clase: 'display', sub: 'pesada-ancha', rol: 'titulos', xh: 0.509, ancho: 0.766, pesos: [400] },
 };
 
+// Personalidad que transmite cada subclase tipográfica (Aaker 1997; Lupton, Thinking with Type: el título lleva la voz).
+export const DIM_SUB = {
+  didona: ['sofisticada'], 'serif-condensada': ['sofisticada', 'emocionante'], 'elegante-fina': ['sofisticada'], glifica: ['sofisticada', 'competente'],
+  garalda: ['sofisticada', 'sincera'], transicional: ['competente', 'sofisticada'], 'serif-pesada': ['sincera', 'emocionante'],
+  neogrotesca: ['competente'], grotesca: ['competente', 'sincera'], geometrica: ['competente', 'emocionante'], humanista: ['sincera', 'competente'],
+  'geometrica-display': ['emocionante', 'sincera'], 'grotesca-expresiva': ['emocionante', 'sincera'], 'grotesca-condensada': ['ruda', 'emocionante'],
+  'expresiva-ancha': ['emocionante', 'sofisticada'], 'geometrica-ancha': ['emocionante', 'competente'], 'tecnica-cuadrada': ['competente', 'emocionante', 'ruda'],
+  mono: ['competente'], 'redondeada-ludica': ['emocionante', 'sincera'], 'ludica-caligrafica': ['emocionante', 'sincera'],
+  'redondeada-pesada': ['emocionante'], 'pesada-ancha': ['emocionante', 'ruda'],
+};
+/** Dimensiones de personalidad de un par (manda la letra de títulos; el cuerpo suma). */
+export function dimensionesFuente({ titulos, cuerpo } = {}) {
+  const t = DIM_SUB[METRICAS[titulos]?.sub] || [], c = DIM_SUB[METRICAS[cuerpo]?.sub] || [];
+  return { titulos: t, todas: [...new Set([...t, ...c])] };
+}
+
 // Altura x mínima para cuerpo de texto en pantalla a 16–18 px (por debajo se lee pequeño y cansa).
 const XH_MIN_CUERPO = { sans: 0.48, serif: 0.44 };
 

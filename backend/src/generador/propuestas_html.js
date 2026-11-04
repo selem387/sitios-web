@@ -9,6 +9,7 @@ import { mezclar, contraste } from '../entrevista/tema.js';
 import { paresTipograficos, urlFuentes } from './fuentes.js';
 import { corregirPaleta, auditarPaleta, cssTipografia } from './tipo_color.js';
 import { coloresParaPropuesta, avisosDeGiro } from './paletas_giro.js';
+import { evaluarColoresCliente, asignarFuentes } from './asesor_color.js';
 import { coloresDePalabras, logoTenido } from './materiales.js';
 import { waUrl, formatoTel } from './bloques.js';
 import { paginasGenerales, logoHTML } from './propuestas_general.js';
@@ -178,16 +179,25 @@ export async function crearPropuestasHTML(brief, mat, textos, { token = crypto.r
   // Cada ronda ("ninguna me gustó") usa otras tipografías y otro orden de color/fotos.
   const estilo = brief.marca?.estilo || 'calido';
   const todosPares = paresTipograficos(estilo, brief, 18);
-  const pares = [...todosPares.slice((ronda * 6) % todosPares.length), ...todosPares].slice(0, 6);
+  const candidatos = [...todosPares.slice((ronda * 6) % todosPares.length), ...todosPares].filter((p, k, a) => a.findIndex((x) => x.titulos === p.titulos && x.cuerpo === p.cuerpo) === k);
+  // Colores por propuesta (regla de paletas por giro) + asesor: si los colores del cliente tienen hallazgos sin aceptar,
+  // la propuesta F se arma con los colores sugeridos para que pueda comparar.
+  const coloresCliente = [...new Set([...coloresDePalabras(brief.marca?.colores || []), ...(mat.colores || [])])];
+  const evitarHex = coloresDePalabras(String(brief.marca?.evitar || '').split(/[,;y]+/));
+  const asesor = evaluarColoresCliente({ brief, colores: coloresCliente });
+  const cps = [0, 1, 2, 3, 4, 5].map((i) => coloresParaPropuesta({ brief, coloresCliente, i, ronda, evitarHex }));
+  if (asesor.corregidos && !brief.marca?.colores_aviso_aceptado) cps[5] = { ...coloresParaPropuesta({ brief, coloresCliente: asesor.corregidos, i: 5, ronda, evitarHex }), origen: 'sugerencia', familia: 'Tus colores con el ajuste sugerido' };
+  // Regla de coherencia letra–paleta: cada paleta recibe el par tipográfico que transmite la misma personalidad.
+  const pares = asignarFuentes(cps.map((c) => c.colores), candidatos);
   await fs.mkdir(path.join(DIR_PROPUESTAS, token), { recursive: true });
   if (brief.negocio?.arquetipo !== 'restaurante') {
     // Logo de un color: versión pintada con la tinta de cada propuesta (contraste garantizado sobre fondos claros u oscuros).
-    let pags = paginasGenerales({ brief, mat, textos, pares, urlFuentes, ronda });
+    let pags = paginasGenerales({ brief, mat, textos, pares, urlFuentes, ronda, cps });
     if (mat.logo?.url && mat.logo.mono !== false) {
       const tenidos = {};
       for (const pg of pags) for (const hex of [pg.paleta.fg, '#FFFFFF']) if (!tenidos[hex]) tenidos[hex] = await logoTenido(mat.logo, hex).catch(() => null);
       mat = { ...mat, logo: { ...mat.logo, tenidos: Object.fromEntries(Object.entries(tenidos).filter(([, v]) => v)) } };
-      pags = paginasGenerales({ brief, mat, textos, pares, urlFuentes, ronda });
+      pags = paginasGenerales({ brief, mat, textos, pares, urlFuentes, ronda, cps });
     }
     const out = [];
     for (const pg of pags) {
@@ -199,10 +209,9 @@ export async function crearPropuestasHTML(brief, mat, textos, { token = crypto.r
       await fs.writeFile(path.join(DIR_PROPUESTAS, token, `${pg.letra}.html`), html);
       out.push({ letra: pg.letra, layout: pg.layout, nombre: pg.nombre, url: `${config.publicUrl}/p/${token}/${pg.letra}`, fuentes: pg.fuentes, paleta: pg.paleta });
     }
-    return { token, opciones: out, avisos_color: avisosDeGiro({ arquetipo: brief.negocio?.arquetipo, subtipo: brief.negocio?.subtipo_resuelto || brief.negocio?.subtipo, colores: mat.colores || [] }) };
+    return { token, opciones: out, avisos_color: avisosDeGiro({ arquetipo: brief.negocio?.arquetipo, subtipo: brief.negocio?.subtipo_resuelto || brief.negocio?.subtipo, colores: coloresCliente }), asesor };
   }
-  const colores = [...new Set([...coloresDePalabras(brief.marca?.colores || []), ...(mat.colores || [])])];
-  const evitarHex = coloresDePalabras(String(brief.marca?.evitar || '').split(/[,;y]+/));
+  const colores = coloresCliente;
   const prods = productos(mat, mat.menu_texto).sort((x, y) => (y.precio ? 1 : 0) - (x.precio ? 1 : 0));
   // Imágenes de portada: productos sin fondo más altos (vasos completos), distintos por propuesta.
   const altos = prods.filter((x) => x.img).sort((x, y) => (y.alto || 0) - (x.alto || 0));
@@ -214,7 +223,7 @@ export async function crearPropuestasHTML(brief, mat, textos, { token = crypto.r
     const letra = 'ABCDEF'[i];
     const v = textos.variantes?.[i] || textos.variantes?.[0] || {};
     // Regla de paletas por giro: colores del cliente mandan; si faltan, familias del giro según personalidad y estilo.
-    const cp = coloresParaPropuesta({ brief, coloresCliente: colores, i, ronda, evitarHex });
+    const cp = cps[i];
     const b = base(cp.colores);
     const rot = (k) => altos.length ? altos[(i * 2 + k) % altos.length].img : (mat.hero?.url || '');
     const d = {
@@ -232,7 +241,7 @@ export async function crearPropuestasHTML(brief, mat, textos, { token = crypto.r
     await fs.writeFile(path.join(DIR_PROPUESTAS, token, `${letra}.html`), html);
     out.push({ letra, layout, nombre: NOMBRES[layout], url: `${config.publicUrl}/p/${token}/${letra}`, fuentes: d.f, paleta: { ...d.pal, familia: cp.familia, origen: cp.origen } });
   }
-  return { token, opciones: out, avisos_color: avisosDeGiro({ arquetipo: brief.negocio?.arquetipo, subtipo: brief.negocio?.subtipo_resuelto || brief.negocio?.subtipo, colores }) };
+  return { token, opciones: out, avisos_color: avisosDeGiro({ arquetipo: brief.negocio?.arquetipo, subtipo: brief.negocio?.subtipo_resuelto || brief.negocio?.subtipo, colores }), asesor };
 }
 
 /** Textos de las 6 propuestas con Claude (JSON en texto). Solo datos reales del brief y del menú. */

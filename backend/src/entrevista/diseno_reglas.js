@@ -2,14 +2,17 @@
 // Se siembran en la tabla diseno_reglas al arrancar (upsert por clave); editar aquí y redesplegar, o editar la fila.
 import { REGLA_TIPO_COLOR } from '../generador/tipo_color.js';
 import { REGLA_PALETAS } from '../generador/paletas_giro.js';
+import { REGLA_ASESOR } from '../generador/asesor_color.js';
 
-export const VERSION_REGLAS = 'v5-2026-11-04';
+export const VERSION_REGLAS = 'v6-2026-11-04';
 
 export const REGLAS = {
   // REGLA DURA de combinación tipográfica y de color (bibliografía 2026). Se ejecuta en código; esta fila es la referencia para prompts y auditoría.
   tipografia_color: REGLA_TIPO_COLOR,
   // REGLA DURA de paletas por giro, personalidad y estilo.
   paletas_giro: REGLA_PALETAS,
+  // REGLA DURA: asesor de color (avisos sustentados a los colores del cliente, tendencias en B7, coherencia letra–paleta).
+  asesor_color: REGLA_ASESOR,
 
   // Clichés de diseño hecho con IA: recursos que aparecen en miles de páginas generadas sin importar el giro. No se usan salvo que el brief los pida por su nombre.
   cliches_ia: {

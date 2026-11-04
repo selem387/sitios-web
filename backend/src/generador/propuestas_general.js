@@ -275,13 +275,13 @@ a:focus-visible,summary:focus-visible{outline:3px solid var(--p);outline-offset:
 }
 
 /** Datos de las 6 páginas generales. */
-export function paginasGenerales({ brief, mat, textos, pares, urlFuentes, ronda = 0 }) {
+export function paginasGenerales({ brief, mat, textos, pares, urlFuentes, ronda = 0, cps: cpsDados = null }) {
   const arq = TITULOS[brief.negocio?.arquetipo] ? brief.negocio.arquetipo : 'generico';
   const titulos = { ...TITULOS[arq], ...(textos.secciones || {}) };
   const colores = [...new Set([...(mat.colores || [])])];
   const pastel = esPastel(brief);
   const evitarHex = coloresDePalabras(String(brief.marca?.evitar || '').split(/[,;y]+/));
-  const cps = LAYOUTS_GENERAL.map((_, i) => coloresParaPropuesta({ brief, coloresCliente: colores, i, ronda, evitarHex }));
+  const cps = cpsDados || LAYOUTS_GENERAL.map((_, i) => coloresParaPropuesta({ brief, coloresCliente: colores, i, ronda, evitarHex }));
   const c = brief.contacto || {};
   return LAYOUTS_GENERAL.map((layout, i) => {
     const letra = 'ABCDEF'[i];
