@@ -1,0 +1,28 @@
+// Regla de paletas por giro (generador/paletas_giro.js).
+import { PALETAS, paletasPara, coloresParaPropuesta, avisosDeGiro, dimensionesDe } from '../src/generador/paletas_giro.js';
+import { corregirPaleta, auditarPaleta, oklch } from '../src/generador/tipo_color.js';
+let ok = 0, n = 0;
+const t = (c, m) => { n++; if (c) ok++; console.log(c ? 'OK  ' : 'FAIL', m); };
+const hex = /^#[0-9A-F]{6}$/i;
+const todas = Object.values(PALETAS).flatMap((g) => g.familias);
+t(Object.keys(PALETAS).length === 22, '22 slugs de subtipo (23 subtipos; servicio_local se comparte)');
+t(todas.every((f) => [f.m, f.a, f.c, f.o].every((c) => hex.test(c))), 'todas las familias con 4 hex válidos');
+t(todas.every((f) => auditarPaleta(corregirPaleta({ bg: f.c, fg: f.o, primary: f.m, accent: f.a, card: '#FFFFFF' }).paleta).length === 0), 'toda familia pasa la regla de contraste tras corregir');
+const comida = [...PALETAS.restaurante.familias, ...PALETAS.cafeteria_panaderia.familias];
+t(comida.every((f) => { const h = oklch(f.m).h; return !(h > 220 && h < 310); }), 'sin azul/morado como marca en comida');
+const salud = [...PALETAS.medica.familias, ...PALETAS.dental.familias, ...PALETAS.veterinaria.familias];
+t(salud.every((f) => { const { h, c } = oklch(f.m); return !(c > 0.1 && h >= 15 && h <= 42); }), 'sin rojo como marca en salud');
+t(dimensionesDe({ marca: { personalidad: ['elegante', 'exclusivo', 'profesional'] } }).join() === 'competente,sofisticada', 'personalidad → dimensiones');
+const p = paletasPara({ arquetipo: 'servicios', subtipo: 'legal', estilo: 'lujo', dimensiones: ['sofisticada'] });
+t(p.familias[0].n === 'Vino y piedra', 'orden por estilo + personalidad');
+const sin = [0, 1, 2, 3, 4, 5].map((i) => coloresParaPropuesta({ brief: { negocio: { arquetipo: 'restaurante', subtipo_resuelto: 'restaurante' }, marca: { estilo: 'calido' } }, i }));
+t(new Set(sin.map((x) => x.familia)).size === 6 && sin.every((x) => x.origen === 'giro'), 'sin colores del cliente: 6 familias distintas');
+const uno = coloresParaPropuesta({ brief: { negocio: { arquetipo: 'clinica', subtipo_resuelto: 'dental' }, marca: {} }, coloresCliente: ['#0B7A88'] });
+t(uno.colores[0] === '#0B7A88' && uno.origen === 'cliente+giro', 'un color del cliente: es la marca');
+const dos = coloresParaPropuesta({ brief: { negocio: { arquetipo: 'tienda' }, marca: {} }, coloresCliente: ['#123456', '#ABCDEF'] });
+t(dos.colores[0] === '#123456' && dos.colores[1] === '#ABCDEF' && dos.origen === 'cliente', 'dos colores del cliente mandan');
+const ev = paletasPara({ arquetipo: 'restaurante', subtipo: 'restaurante', evitarHex: ['#C1272D'] });
+t(!ev.familias.some((f) => f.n === 'Rojo chile y verde hoja'), 'excluye familias con el tono que el cliente no quiere');
+t(avisosDeGiro({ subtipo: 'restaurante', colores: ['#2B4FE0'] }).length === 1 && avisosDeGiro({ subtipo: 'dental', colores: ['#F2B705'] }).length === 1, 'avisos de choque con el giro');
+console.log(`${ok}/${n}`);
+if (ok !== n) process.exit(1);

@@ -8,6 +8,7 @@ import { config } from '../config.js';
 import { mezclar, contraste } from '../entrevista/tema.js';
 import { paresTipograficos, urlFuentes } from './fuentes.js';
 import { corregirPaleta, auditarPaleta, cssTipografia } from './tipo_color.js';
+import { coloresParaPropuesta, avisosDeGiro } from './paletas_giro.js';
 import { coloresDePalabras, logoTenido } from './materiales.js';
 import { waUrl, formatoTel } from './bloques.js';
 import { paginasGenerales, logoHTML } from './propuestas_general.js';
@@ -198,10 +199,10 @@ export async function crearPropuestasHTML(brief, mat, textos, { token = crypto.r
       await fs.writeFile(path.join(DIR_PROPUESTAS, token, `${pg.letra}.html`), html);
       out.push({ letra: pg.letra, layout: pg.layout, nombre: pg.nombre, url: `${config.publicUrl}/p/${token}/${pg.letra}`, fuentes: pg.fuentes, paleta: pg.paleta });
     }
-    return { token, opciones: out };
+    return { token, opciones: out, avisos_color: avisosDeGiro({ arquetipo: brief.negocio?.arquetipo, subtipo: brief.negocio?.subtipo_resuelto || brief.negocio?.subtipo, colores: mat.colores || [] }) };
   }
-  const colores = [...coloresDePalabras(brief.marca?.colores || []), ...(mat.colores || [])];
-  const b = base(colores);
+  const colores = [...new Set([...coloresDePalabras(brief.marca?.colores || []), ...(mat.colores || [])])];
+  const evitarHex = coloresDePalabras(String(brief.marca?.evitar || '').split(/[,;y]+/));
   const prods = productos(mat, mat.menu_texto).sort((x, y) => (y.precio ? 1 : 0) - (x.precio ? 1 : 0));
   // Imágenes de portada: productos sin fondo más altos (vasos completos), distintos por propuesta.
   const altos = prods.filter((x) => x.img).sort((x, y) => (y.alto || 0) - (x.alto || 0));
@@ -212,6 +213,9 @@ export async function crearPropuestasHTML(brief, mat, textos, { token = crypto.r
   for (const [i, layout] of LAYOUTS.entries()) {
     const letra = 'ABCDEF'[i];
     const v = textos.variantes?.[i] || textos.variantes?.[0] || {};
+    // Regla de paletas por giro: colores del cliente mandan; si faltan, familias del giro según personalidad y estilo.
+    const cp = coloresParaPropuesta({ brief, coloresCliente: colores, i, ronda, evitarHex });
+    const b = base(cp.colores);
     const rot = (k) => altos.length ? altos[(i * 2 + k) % altos.length].img : (mat.hero?.url || '');
     const d = {
       letra, layout, nombre: brief.negocio?.nombre || '', logo: mat.logo?.url || null, logoObj: mat.logo || null,
@@ -226,9 +230,9 @@ export async function crearPropuestasHTML(brief, mat, textos, { token = crypto.r
     const { html, faltan } = completarMaterial(conReglaTipo(pagina(d), d.f, estilo), mat, { titulo: 'Más de nosotros' });
     if (faltan.length) throw new Error(`Propuesta ${letra} sin material del cliente: ${faltan.map((f) => f.clave).join(', ')}`);
     await fs.writeFile(path.join(DIR_PROPUESTAS, token, `${letra}.html`), html);
-    out.push({ letra, layout, nombre: NOMBRES[layout], url: `${config.publicUrl}/p/${token}/${letra}`, fuentes: d.f, paleta: d.pal });
+    out.push({ letra, layout, nombre: NOMBRES[layout], url: `${config.publicUrl}/p/${token}/${letra}`, fuentes: d.f, paleta: { ...d.pal, familia: cp.familia, origen: cp.origen } });
   }
-  return { token, opciones: out };
+  return { token, opciones: out, avisos_color: avisosDeGiro({ arquetipo: brief.negocio?.arquetipo, subtipo: brief.negocio?.subtipo_resuelto || brief.negocio?.subtipo, colores }) };
 }
 
 /** Textos de las 6 propuestas con Claude (JSON en texto). Solo datos reales del brief y del menú. */

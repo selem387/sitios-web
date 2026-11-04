@@ -3,8 +3,9 @@
 // REGLA DURA: todo el material del cliente (logo, fotos, su foto, reseñas, catálogos, documentos, video) aparece en
 // cada una de las 6. Lo que no cabe en una sección temática va a la galería final; el validador lo confirma.
 import { corregirPaleta } from './tipo_color.js';
+import { coloresParaPropuesta } from './paletas_giro.js';
 import { mezclar, contraste } from '../entrevista/tema.js';
-import { esPastel } from './materiales.js';
+import { esPastel, coloresDePalabras } from './materiales.js';
 import { waUrl, formatoTel } from './bloques.js';
 
 const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -279,6 +280,8 @@ export function paginasGenerales({ brief, mat, textos, pares, urlFuentes, ronda 
   const titulos = { ...TITULOS[arq], ...(textos.secciones || {}) };
   const colores = [...new Set([...(mat.colores || [])])];
   const pastel = esPastel(brief);
+  const evitarHex = coloresDePalabras(String(brief.marca?.evitar || '').split(/[,;y]+/));
+  const cps = LAYOUTS_GENERAL.map((_, i) => coloresParaPropuesta({ brief, coloresCliente: colores, i, ronda, evitarHex }));
   const c = brief.contacto || {};
   return LAYOUTS_GENERAL.map((layout, i) => {
     const letra = 'ABCDEF'[i];
@@ -286,7 +289,7 @@ export function paginasGenerales({ brief, mat, textos, pares, urlFuentes, ronda 
     const par = pares[i % pares.length];
     const d = {
       i: i + ronda * 3, letra, layout, nombre: brief.negocio?.nombre || '', brief, mat, titulos,
-      pal: corregirPaleta(paletaGeneral(layout, colores, pastel, i + ronda * 2)).paleta, f: par, fuentesUrl: urlFuentes([par]),
+      pal: { ...corregirPaleta(paletaGeneral(layout, cps[i].colores, pastel, i + ronda * 2)).paleta, familia: cps[i].familia, origen: cps[i].origen }, f: par, fuentesUrl: urlFuentes([par]),
       t: { titular: v.titular, subtitulo: v.subtitulo, cta: v.cta || 'Escríbeme por WhatsApp', info: (textos.info || []).slice(0, 3), sobre: textos.sobre, proceso: textos.proceso },
       wa: waUrl(c.whatsapp, c.mensaje_whatsapp_inicial), tel: c.whatsapp ? formatoTel(c.whatsapp) : null,
     };
