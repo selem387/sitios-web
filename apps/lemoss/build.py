@@ -6,6 +6,8 @@ ROOT = pathlib.Path(__file__).parent
 DIST = ROOT / "dist"
 SITE = "https://lemoss.co"
 HOY = datetime.date.today().isoformat()
+import hashlib
+CSS_V = hashlib.md5((ROOT / "assets" / "site.css").read_bytes()).hexdigest()[:10]
 WA = "525527069296"
 WA_TXT = "Hola Sebastián, vengo de lemoss.co y quiero platicar sobre un proyecto de IA."
 EMAIL = "contacto@lemoss.co"
@@ -62,7 +64,7 @@ def layout(path, title, desc, body, schema=None, og_type="website", extra_head="
 <link rel="icon" href="/assets/favicon-192.png" type="image/png" sizes="192x192">
 <link rel="apple-touch-icon" href="/assets/favicon-180.png">
 <link rel="preload" href="/assets/fonts/poppins-bold.woff2" as="font" type="font/woff2" crossorigin>
-<link rel="stylesheet" href="/assets/site.css?v={HOY}">
+<link rel="stylesheet" href="/assets/site.css?v={CSS_V}">
 <link rel="alternate" type="text/plain" href="/llms.txt" title="llms.txt">
 {extra_head}{ld}</head>
 <body>
