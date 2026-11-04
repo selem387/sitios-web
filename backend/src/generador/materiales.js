@@ -118,6 +118,16 @@ async function coloresDe(buf) {
     .map((c) => '#' + [c.r / c.n, c.g / c.n, c.b / c.n].map((v) => Math.round(v).toString(16).padStart(2, '0')).join('').toUpperCase());
 }
 
+/** Huella visual (dHash 16x16 = 256 bits). Dos fotos con < 32% de bits distintos son la misma foto (aunque cambie tamaño o recorte). */
+async function huella(buf) {
+  const { data } = await sharp(buf).rotate().greyscale().resize(17, 16, { fit: 'fill' }).raw().toBuffer({ resolveWithObject: true });
+  let bits = '';
+  for (let r = 0; r < 16; r++) for (let c = 0; c < 16; c++) bits += data[r * 17 + c] > data[r * 17 + c + 1] ? '1' : '0';
+  return bits;
+}
+export const distanciaHuella = (a, b) => { if (!a || !b || a.length !== b.length) return 1; let d = 0; for (let i = 0; i < a.length; i++) if (a[i] !== b[i]) d++; return d / a.length; };
+const MISMA_FOTO = 0.32;
+
 /** Tono del logo (pixeles visibles): claro/oscuro y si es de un solo color. Decide si necesita placa o inversión. */
 async function tonoLogo(buf) {
   const { data } = await sharp(buf).ensureAlpha().resize(96, 96, { fit: 'inside' }).raw().toBuffer({ resolveWithObject: true });
@@ -155,7 +165,13 @@ async function recortar(original, area, trim = true) {
 
 /** Analiza (o reutiliza el análisis guardado de) un asset de imagen y genera sus recortes. */
 export async function analizarAsset(a, { negocio = '' } = {}) {
-  if (a.analisis?.version === VERSION) return a.analisis;
+  if (a.analisis?.version === VERSION) {
+    if (!a.analisis.huella) {
+      a.analisis.huella = await descargar(a.analisis.contenido?.url || a.url).then(huella).catch(() => null);
+      if (a.analisis.huella) await db.q(`UPDATE assets SET analisis = analisis || jsonb_build_object('huella', $2::text) WHERE id=$1`, [a.id, a.analisis.huella]).catch(() => {});
+    }
+    return a.analisis;
+  }
   const original = await descargar(a.url);
   const meta = await sharp(original).rotate().metadata();
   const giro = (meta.orientation || 1) >= 5;
@@ -192,6 +208,7 @@ export async function analizarAsset(a, { negocio = '' } = {}) {
   }
   // Producto suelto (un objeto, sin personas): sin fondo para usarlo en portada. Nunca a retratos ni fotos de trabajo.
   if (v.tipo === 'foto_producto' && out.aislable) { const sf = await sinFondo(out.contenido.url); if (sf) out.sin_fondo = sf; }
+  out.huella = await huella(out.contenido.url === a.url ? original : await descargar(out.contenido.url)).catch(() => null);
   await db.q(`UPDATE assets SET analisis=$2, tipo=COALESCE(NULLIF($3,''), tipo), calidad=COALESCE($4, calidad), descripcion_ia=COALESCE(descripcion_ia,$5) WHERE id=$1`,
     [a.id, JSON.stringify(out), mapaTipo(v.tipo), ['buena', 'regular', 'mala'].includes(v.calidad) ? v.calidad : null, v.descripcion || null]).catch(() => {});
   return out;
@@ -241,14 +258,29 @@ export async function procesarMateriales(entrevistaId, brief = {}, { aceptarLoQu
     try { analisis.push({ a, r: await analizarAsset(a, { negocio }) }); }
     catch (e) { res.avisos.push(`No pude analizar ${a.clave}: ${e.message}`); res.otras.push({ url: a.url, alt: a.descripcion_ia || '', clave: a.clave }); res.usables.push({ id: a.id, clave: a.clave, tipo: a.tipo, urls: [a.url] }); }
   }
+  // REGLA DURA: ninguna foto se repite. Si el cliente mandó la misma foto dos veces (aunque cambie tamaño o recorte),
+  // se usa una sola vez: la de mayor resolución; las URLs de la copia cuentan como usadas para el validador.
+  const copias = new Map(); // id copia → asset que se queda
+  const porArea = [...analisis].filter((x) => x.r.tipo !== 'logo' && x.r.huella).sort((p, q) => (q.r.contenido.ancho * q.r.contenido.alto) - (p.r.contenido.ancho * p.r.contenido.alto));
+  for (let i = 0; i < porArea.length; i++) {
+    if (copias.has(porArea[i].a.id)) continue;
+    for (let j = i + 1; j < porArea.length; j++) {
+      if (!copias.has(porArea[j].a.id) && distanciaHuella(porArea[i].r.huella, porArea[j].r.huella) < MISMA_FOTO) copias.set(porArea[j].a.id, porArea[i]);
+    }
+  }
+  res.duplicadas = [...copias].map(([id, k]) => ({ copia: analisis.find((x) => x.a.id === id)?.a.clave, se_queda: k.a.clave }));
   // Logo: primero los de un asset que ES el logo; los detectados dentro de otras imágenes solo si no hay, y nunca miniaturas.
   const logos = analisis.filter((x) => x.r.logo).map((x) => ({ ...x.r.logo, propio: x.r.tipo === 'logo' || x.r.logo.propio }))
     .filter((l, _, arr) => l.propio || (!arr.some((o) => o.propio) && l.ancho >= MIN_LOGO))
     .sort((p, q) => (q.propio - p.propio) || (q.ancho * q.alto - p.ancho * p.alto));
   if (logos[0]) res.logo = logos[0];
   const ficha = (a, r, extra = {}) => ({ url: r.contenido.url, ancho: r.contenido.ancho, alto: r.contenido.alto, alt: r.descripcion || '', tipo: r.tipo, clave: a.clave, ...extra });
+  const urlsDe = (a, r) => [a.url, r.contenido?.url, r.sin_fondo?.url, r.logo?.url, ...(r.productos || []).map((p) => p.url)].filter(Boolean);
   for (const { a, r } of analisis) {
-    res.usables.push({ id: a.id, clave: a.clave, tipo: r.tipo, urls: [a.url, r.contenido?.url, r.sin_fondo?.url, r.logo?.url, ...(r.productos || []).map((p) => p.url)].filter(Boolean) });
+    const original = copias.get(a.id);
+    // Copia de otra foto: no se muestra; cuenta como usada a través de la foto que se queda.
+    res.usables.push({ id: a.id, clave: a.clave, tipo: r.tipo, urls: original ? [...urlsDe(a, r), ...urlsDe(original.a, original.r)] : urlsDe(a, r) });
+    if (original) continue;
     if (r.tipo === 'logo') continue; // se usa como logo (su URL recortada está en usables)
     const f = ficha(a, r, { sin_fondo: r.sin_fondo?.url || null, personas: r.personas, captura: r.es_captura, calidad: r.calidad });
     const chica = r.calidad === 'mala' || r.contenido.ancho < MIN_FOTO;
@@ -266,7 +298,8 @@ export async function procesarMateriales(entrevistaId, brief = {}, { aceptarLoQu
     for (const p of r.productos || []) res.fotos.push({ url: p.url, ancho: p.ancho, alto: p.alto, alt: p.nombre, tipo: 'foto_producto', sin_fondo: p.sin_fondo ? p.url : null, recorte: true });
   }
   const vertical = brief.fotos?.vertical_hero_asset_id;
-  const elegida = vertical && analisis.find((x) => String(x.a.id) === String(vertical) || x.a.clave === vertical);
+  const elegida0 = vertical && analisis.find((x) => String(x.a.id) === String(vertical) || x.a.clave === vertical);
+  const elegida = elegida0 && (copias.get(elegida0.a.id) || elegida0);
   const prioridad = (t) => ({ foto_local: 3, foto_trabajo: 2, foto_fundador: 1 }[t] || 0);
   const candidatas = res.fotos.filter((f) => f.ancho >= MIN_HERO && !f.recorte).sort((p, q) => prioridad(q.tipo) - prioridad(p.tipo) || q.ancho - p.ancho);
   res.hero = elegida && /^foto_/.test(elegida.r.tipo) && elegida.r.contenido.ancho >= MIN_HERO ? { url: elegida.r.contenido.url, alt: elegida.r.descripcion, tipo: elegida.r.tipo } : candidatas[0] || null;

@@ -104,7 +104,7 @@ function pagina(d) {
 <style>
 :root{--bg:${p.bg};--fg:${p.fg};--p:${p.primary};--on:${p.onPrimary};--acc:${p.accent};--mut:${p.muted};--card:${p.card};--soft:${p.soft};--bor:${p.border};--ft:'${f.titulos}',serif;--fc:'${f.cuerpo}',sans-serif}
 *{box-sizing:border-box;margin:0;padding:0}html{scroll-behavior:smooth}body{background:var(--bg);color:var(--fg);font-family:var(--fc);font-size:16px;line-height:1.5;-webkit-font-smoothing:antialiased}
-img{max-width:100%;display:block}a{color:inherit}
+img{max-width:100%;height:auto;display:block}a{color:inherit}
 h1,h2,h3{font-family:var(--ft);line-height:1.08;letter-spacing:-.01em;text-wrap:balance}h1{font-size:clamp(32px,8.5vw,60px)}h2{font-size:clamp(24px,6vw,36px);margin-bottom:16px}
 .barra{position:sticky;top:0;z-index:20;background:color-mix(in srgb,var(--bg) 92%,transparent);backdrop-filter:blur(8px);border-bottom:1px solid var(--bor)}
 .barra .in{max-width:1120px;margin:0 auto;display:flex;align-items:center;justify-content:space-between;padding:10px 20px}
@@ -185,8 +185,9 @@ export async function crearPropuestasHTML(brief, mat, textos, { token = crypto.r
     }
     const out = [];
     for (const pg of pags) {
-      const { html, faltan } = completarMaterial(pg.html, mat);
+      const { html, faltan, repetidas } = completarMaterial(pg.html, mat);
       if (faltan.length) throw new Error(`Propuesta ${pg.letra} sin material del cliente: ${faltan.map((f) => f.clave).join(', ')}`);
+      if (repetidas.length) throw new Error(`Propuesta ${pg.letra} con fotos repetidas: ${repetidas.map((f) => f.url.split('/').pop()).join(', ')}`);
       await fs.writeFile(path.join(DIR_PROPUESTAS, token, `${pg.letra}.html`), html);
       out.push({ letra: pg.letra, layout: pg.layout, nombre: pg.nombre, url: `${config.publicUrl}/p/${token}/${pg.letra}`, fuentes: pg.fuentes, paleta: pg.paleta });
     }
