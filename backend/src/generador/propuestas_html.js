@@ -7,10 +7,14 @@ import path from 'node:path';
 import { config } from '../config.js';
 import { mezclar, contraste } from '../entrevista/tema.js';
 import { paresTipograficos, urlFuentes } from './fuentes.js';
+import { corregirPaleta, auditarPaleta, cssTipografia } from './tipo_color.js';
 import { coloresDePalabras, logoTenido } from './materiales.js';
 import { waUrl, formatoTel } from './bloques.js';
 import { paginasGenerales, logoHTML } from './propuestas_general.js';
 import { completarMaterial } from './validar_material.js';
+
+// Regla dura de tipografía: la escala, el interlineado y la medida se agregan al final del CSS (mandan sobre la plantilla).
+const conReglaTipo = (html, par, estilo) => html.replace('</style>', `${cssTipografia(par, estilo)}</style>`);
 
 export const DIR_PROPUESTAS = path.join(config.dataDir, 'propuestas');
 const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -171,7 +175,8 @@ a.onclick=function(){ir(idx()-1)};b.onclick=function(){ir(idx()+1)};d.forEach(fu
  */
 export async function crearPropuestasHTML(brief, mat, textos, { token = crypto.randomBytes(9).toString('base64url').replace(/[_-]/g, 'x'), ronda = 0 } = {}) {
   // Cada ronda ("ninguna me gustó") usa otras tipografías y otro orden de color/fotos.
-  const todosPares = paresTipograficos(brief.marca?.estilo || 'calido', brief, 18);
+  const estilo = brief.marca?.estilo || 'calido';
+  const todosPares = paresTipograficos(estilo, brief, 18);
   const pares = [...todosPares.slice((ronda * 6) % todosPares.length), ...todosPares].slice(0, 6);
   await fs.mkdir(path.join(DIR_PROPUESTAS, token), { recursive: true });
   if (brief.negocio?.arquetipo !== 'restaurante') {
@@ -185,7 +190,9 @@ export async function crearPropuestasHTML(brief, mat, textos, { token = crypto.r
     }
     const out = [];
     for (const pg of pags) {
-      const { html, faltan, repetidas } = completarMaterial(pg.html, mat);
+      const errColor = auditarPaleta(pg.paleta);
+      if (errColor.length) throw new Error(`Propuesta ${pg.letra} no cumple la regla de color: ${errColor.join('; ')}`);
+      const { html, faltan, repetidas } = completarMaterial(conReglaTipo(pg.html, pg.fuentes, estilo), mat);
       if (faltan.length) throw new Error(`Propuesta ${pg.letra} sin material del cliente: ${faltan.map((f) => f.clave).join(', ')}`);
       if (repetidas.length) throw new Error(`Propuesta ${pg.letra} con fotos repetidas: ${repetidas.map((f) => f.url.split('/').pop()).join(', ')}`);
       await fs.writeFile(path.join(DIR_PROPUESTAS, token, `${pg.letra}.html`), html);
@@ -208,13 +215,15 @@ export async function crearPropuestasHTML(brief, mat, textos, { token = crypto.r
     const rot = (k) => altos.length ? altos[(i * 2 + k) % altos.length].img : (mat.hero?.url || '');
     const d = {
       letra, layout, nombre: brief.negocio?.nombre || '', logo: mat.logo?.url || null, logoObj: mat.logo || null,
-      pal: paleta(layout, b), f: pares[i % pares.length], fuentesUrl: urlFuentes([pares[i % pares.length]]),
+      pal: corregirPaleta(paleta(layout, b)).paleta, f: pares[i % pares.length], fuentesUrl: urlFuentes([pares[i % pares.length]]),
       textos: { titular: v.titular, subtitulo: v.subtitulo, cta: v.cta || 'Pide por WhatsApp', destacados: textos.destacados, categorias: textos.categorias, visita: textos.visita },
       heroImgs: [rot(0), rot(1), rot(2)], productos: prods.slice(i % 2 ? 3 : 0).concat(prods.slice(0, i % 2 ? 3 : 0)),
       categorias: cats, menus: mat.menus.map((m) => m.url), info: (textos.info || []).slice(0, 3),
       wa: waUrl(c.whatsapp, c.mensaje_whatsapp_inicial), tel: c.whatsapp ? formatoTel(c.whatsapp) : null, direccion: dir, horarios: typeof c.horarios === 'string' ? c.horarios : null,
     };
-    const { html, faltan } = completarMaterial(pagina(d), mat, { titulo: 'Más de nosotros' });
+    const errColor = auditarPaleta(d.pal);
+    if (errColor.length) throw new Error(`Propuesta ${letra} no cumple la regla de color: ${errColor.join('; ')}`);
+    const { html, faltan } = completarMaterial(conReglaTipo(pagina(d), d.f, estilo), mat, { titulo: 'Más de nosotros' });
     if (faltan.length) throw new Error(`Propuesta ${letra} sin material del cliente: ${faltan.map((f) => f.clave).join(', ')}`);
     await fs.writeFile(path.join(DIR_PROPUESTAS, token, `${letra}.html`), html);
     out.push({ letra, layout, nombre: NOMBRES[layout], url: `${config.publicUrl}/p/${token}/${letra}`, fuentes: d.f, paleta: d.pal });

@@ -3,6 +3,8 @@
 // El generador escribe un styles/colors/<slug>.json y un styles/typography/<slug>.json por sitio; WordPress
 // los aplica como variación de estilo sin tocar theme.json ni los patrones.
 
+import { ajustarContraste, cumple, escalaTipografica, validarPar } from '../generador/tipo_color.js';
+
 const SCHEMA = 'https://schemas.wp.org/trunk/theme.json';
 const FUENTES_VETADAS = new Set(['inter', 'roboto', 'arial', 'fraunces']);
 
@@ -53,6 +55,15 @@ export function mapearPaleta(paletaUupm = {}, coloresMarca = []) {
     ['Border Contrast', 'border-dark', mezclar(foreground, background, 0.8)], // foreground al 20 %
   ].map(([name, slug, color]) => ({ name, slug, color }));
   const avisos = [];
+  // REGLA DURA de color (tipo_color.js): solo se mueve la luminosidad, el tono del cliente se conserva.
+  const fijar = (slug, uso, fondos) => {
+    const it = palette.find((x) => x.slug === slug);
+    for (const f of fondos) { const bg = palette.find((x) => x.slug === f).color; if (!cumple(it.color, bg, uso)) { const n = ajustarContraste(it.color, bg, uso); avisos.push(`${slug} ${it.color} → ${n} (${uso} sobre ${f})`); it.color = n; } }
+  };
+  fijar('main', 'cuerpo', ['base', 'tertiary', 'secondary']);
+  fijar('main-accent', 'secundario', ['base', 'tertiary']);
+  fijar('primary', 'secundario', ['base', 'tertiary']);
+  fijar('primary-alt-accent', 'boton', ['primary-alt']);
   const c = Object.fromEntries(palette.map((x) => [x.slug, x.color]));
   if (contraste(c.main, c.base) < 4.5) avisos.push(`Contraste texto/fondo ${contraste(c.main, c.base).toFixed(2)} < 4.5`);
   if (contraste('#FFFFFF', c.primary) < 4.5 && contraste(c.main, c.primary) < 4.5) avisos.push('Ni blanco ni el texto principal contrastan 4.5 sobre primary; revisar color de botones');
@@ -71,7 +82,8 @@ const SOLO_MAYUSCULAS = /^(Cinzel|Cinzel Decorative|Trajan|Bebas Neue|Anton)$/i;
 export function elegirTipografia(estilo = {}, subtipoDiseno = {}, semilla = 0) {
   const candidatas = [estilo.tipografia, estilo.tipografia_alternativa, subtipoDiseno.tipografia_giro].filter((t) => t && t.titulos && t.cuerpo);
   const validas = candidatas.filter((t) => !FUENTES_VETADAS.has(t.cuerpo.toLowerCase()) && !FUENTES_VETADAS.has(t.titulos.toLowerCase()));
-  const lista = validas.length ? validas : candidatas;
+  const conRegla = validas.filter((t) => validarPar(t).ok);
+  const lista = conRegla.length ? conRegla : validas.length ? validas : candidatas;
   if (!lista.length) return { nombre: 'Predeterminada', titulos: 'DM Serif Display', cuerpo: 'Work Sans', fuente: 'default' };
   const elegida = lista[Math.abs(semilla) % lista.length];
   // Fuentes que solo tienen mayúsculas/versalitas (Cinzel…) vuelven ilegible un H1 largo: se sustituyen.
@@ -102,13 +114,23 @@ export function generarVariaciones({ estilo = {}, subtipo_diseno = {}, colores_m
     { fontFamily: 'ui-monospace, SFMono-Regular, Menlo, monospace', name: 'Monospace', slug: 'monospace' },
   ];
   const colores = { $schema: SCHEMA, version: 3, title: `Colores ${slug}`, settings: { color: { palette } } };
+  // Escala modular fluida de la regla dura, mapeada a los slugs de tamaño de iaprop-base.
+  const esc = escalaTipografica(estilo.slug, tipo);
+  const fontSizes = [
+    ['Extra pequeño', 'x-small', esc.pasos['-1']], ['Pequeño', 'small', esc.pasos['-1'].replace(/clamp\(([\d.]+)rem/, (m, a) => `clamp(${Math.max(Number(a), 0.95)}rem`)],
+    ['Base', 'base', esc.pasos[0]], ['Mediano', 'medium', esc.pasos[2]], ['Grande', 'large', esc.h2], ['Extra grande', 'x-large', esc.h1], ['Enorme', 'xx-large', esc.pasos[5]],
+  ].map(([name, s, size]) => ({ name, slug: s, size, fluid: false }));
   const tipografia = {
     $schema: SCHEMA, version: 3, title: `Tipografía ${slug}`, slug: `typography-${slug}`,
     styles: {
-      typography: { fontFamily: 'var(--wp--preset--font-family--primary)' },
-      elements: { heading: { typography: { fontFamily: 'var(--wp--preset--font-family--expanded)', fontWeight: '600' } } },
+      typography: { fontFamily: 'var(--wp--preset--font-family--primary)', lineHeight: String(esc.interlineado.cuerpo) },
+      elements: {
+        heading: { typography: { fontFamily: 'var(--wp--preset--font-family--expanded)', fontWeight: '600' } },
+        h1: { typography: { lineHeight: String(esc.interlineado.h1), letterSpacing: esc.tracking.h1 } },
+        h2: { typography: { lineHeight: String(esc.interlineado.h2), letterSpacing: esc.tracking.h2 } },
+      },
     },
-    settings: { typography: { fontFamilies } },
+    settings: { typography: { fontFamilies, fontSizes }, custom: { 'line-height': { body: esc.interlineado.cuerpo, snug: esc.interlineado.h2 } } },
     // Campo propio (fuera del esquema de WP, el editor lo ignora): el generador debe encolar esta hoja de Google Fonts.
     googleFontsUrl: url,
   };

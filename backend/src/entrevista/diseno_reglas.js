@@ -1,8 +1,13 @@
 // Reglas de diseño que el generador recibe junto con arquetipos.diseno y diseno_estilos.
 // Se siembran en la tabla diseno_reglas al arrancar (upsert por clave); editar aquí y redesplegar, o editar la fila.
-export const VERSION_REGLAS = 'v3-2026-11-01';
+import { REGLA_TIPO_COLOR } from '../generador/tipo_color.js';
+
+export const VERSION_REGLAS = 'v4-2026-11-04';
 
 export const REGLAS = {
+  // REGLA DURA de combinación tipográfica y de color (bibliografía 2026). Se ejecuta en código; esta fila es la referencia para prompts y auditoría.
+  tipografia_color: REGLA_TIPO_COLOR,
+
   // Clichés de diseño hecho con IA: recursos que aparecen en miles de páginas generadas sin importar el giro. No se usan salvo que el brief los pida por su nombre.
   cliches_ia: {
     descripcion: 'Clichés de diseño hecho con IA. El generador NO los usa salvo que el brief los pida por su nombre.',

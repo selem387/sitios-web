@@ -1,4 +1,5 @@
 import { generarVariaciones, generarThemeJsonHints, contraste } from '../src/entrevista/tema.js';
+import { oklch, cumple } from '../src/generador/tipo_color.js';
 const estilo = { slug: 'elegante', tipografia: { nombre: 'Classic Elegant', titulos: 'Playfair Display', cuerpo: 'Inter' }, tipografia_alternativa: { nombre: 'Luxury Serif', titulos: 'Cormorant', cuerpo: 'Montserrat' }, theme_json_hints: { radius: '2px', shadow: 'none', spacing: 'amplio', contrast: 'alto' } };
 const dental = { paleta: { primary: '#0EA5E9', on_primary: '#0F172A', secondary: '#38BDF8', accent: '#0EA5E9', on_accent: '#0F172A', background: '#F0F9FF', foreground: '#0C4A6E', card: '#FFFFFF', muted: '#E8F2F8', muted_foreground: '#475569', border: '#BAE6FD' }, tipografia_giro: { nombre: 'Medical Clean', titulos: 'Figtree', cuerpo: 'Noto Sans' } };
 let ok = 0, n = 0;
@@ -10,7 +11,8 @@ const col = r1.archivos['styles/colors/clinica-sonrisa.json'];
 const tip = r1.archivos['styles/typography/clinica-sonrisa.json'];
 t(col && col.version === 3 && col.settings.color.palette.length === 11, 'colores: 11 slugs v3');
 t(col.settings.color.palette.map((p) => p.slug).join(',') === 'primary,primary-accent,primary-alt,primary-alt-accent,main,main-accent,base,secondary,tertiary,border-light,border-dark', 'slugs en orden de Ollie');
-t(r1.paleta.primary === '#0EA5E9' && r1.paleta.base === '#F0F9FF' && r1.paleta.main === '#0C4A6E', 'mapeo primary/base/main');
+t(r1.paleta.base === '#F0F9FF' && r1.paleta.main === '#0C4A6E', 'mapeo base/main');
+t(Math.abs(oklch(r1.paleta.primary).h - oklch('#0EA5E9').h) < 3 && cumple(r1.paleta.primary, r1.paleta.base, 'secundario'), 'regla dura: primary conserva el tono y se oscurece hasta leerse sobre base');
 t(r1.paleta['primary-accent'] !== r1.paleta.primary, 'primary-accent distinto de primary cuando UUPM los repite');
 t(r1.tipografia.cuerpo === 'Montserrat' && r1.tipografia.fuente === 'alternativa', 'Inter vetada → alternativa (Cormorant/Montserrat)');
 t(tip.settings.typography.fontFamilies.map((f) => f.slug).join(',') === 'primary,expanded,condensed,narrow,monospace', 'slugs tipográficos de Ollie');
