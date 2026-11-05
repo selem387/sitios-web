@@ -16,8 +16,10 @@ import { normalizarRedes, redesFaltantes, listaNombres } from './redes.js';
 import { dominioEnCurso, atenderDominio, tocaDominio, iniciarDominio, notaParaAri, quiereRetomar, retomarDominio, leerFlujo, borrarFlujo } from './dominio.js';
 import { limpiarDominio } from '../dominio/registrador.js';
 
-const MAX_MSGS_CLIENTE = 120;
+// Tope de seguridad (fotos y audios cuentan como mensajes). Una entrevista real ronda 60–130.
+const MAX_MSGS_CLIENTE = 400;
 const PAUSA_MS = 2 * 3600 * 1000;
+const CIERRE_POR_TOPE = 'Ya tengo todo lo necesario para armar tu página 🙌. Empiezo ahora mismo con lo que me contaste; en unos minutos te mando la liga aquí. Cuando la veas me dices qué ajustar.';
 
 // Una cola por usuario para que los mensajes rápidos (varias fotos) no se pisen.
 const colas = new Map();
@@ -56,6 +58,21 @@ function salida(e, respuestas, esperando) {
     bloque: e.bloque_actual, paso: idx, total_pasos: TOTAL_BLOQUES,
     esperando, respuestas, metadata: e.metadata || {},
   };
+}
+
+// Respuesta a mensajes que llegan después de cerrar la entrevista: según el estado real del sitio, sin repetir el mismo texto.
+async function respuestaPostCierre(u) {
+  const s = (await db.q(`SELECT estado, url_publica FROM sitios WHERE entrevista_id=$1 ORDER BY id DESC LIMIT 1`, [u.id]).catch(() => ({ rows: [] }))).rows[0];
+  let base;
+  if (s?.estado === 'listo' && s.url_publica) base = `Tu página ya está lista 🎉: ${s.url_publica}\nÁbrela desde tu celular y dime qué quieres ajustar; ya anoté tu comentario.`;
+  else if (s?.estado === 'requiere_revision') base = 'Tu página ya está armada y el equipo la está revisando antes de mostrártela. Te mando la liga en cuanto quede; ya anoté tu comentario.';
+  else if (s?.estado === 'error') base = 'Hubo un problema al armar tu página y el equipo ya lo está revisando. Te aviso aquí en cuanto quede; ya anoté tu comentario.';
+  else base = 'Sigo armando tu página; en cuanto quede te mando la liga aquí. Ya anoté tu comentario.';
+  const previos = await db.ultimosMensajes(u.id, 6).catch(() => []);
+  const ultimoAgente = [...previos].reverse().find((m) => m.rol === 'agente')?.contenido || '';
+  if (ultimoAgente.startsWith(base)) return 'Anotado 👍';
+  const pista = previos.some((m) => m.rol === 'agente' && m.contenido?.includes(`*${PALABRA_INICIO}*`)) ? '' : `\nSi quieres empezar otra página, escribe *${PALABRA_INICIO}*.`;
+  return base + pista;
 }
 
 async function notificar(e, payload) {
@@ -144,10 +161,12 @@ export async function procesarMensaje(b) {
   if (!e) {
     const u = await db.ultima(usuario_id);
     if (u && u.estado === 'completada' && !comando && Date.now() - new Date(u.actualizado).getTime() < 7 * 864e5) {
-      // Entrevista ya cerrada hace poco: se registra lo que diga como comentario y se avisa.
+      // Entrevista ya cerrada hace poco: se registra lo que diga como comentario y se responde según el estado del sitio.
       await db.insertarMensaje(u.id, { rol: 'cliente', contenido: texto || '(media)' });
       await db.evento(u.id, 'comentario_post_cierre', { texto: texto.slice(0, 300) });
-      return salida(u, [`Tu página ya está en proceso 🙌. Anoté tu comentario para tomarlo en cuenta. Si quieres empezar una página nueva escribe *${PALABRA_INICIO}*.`], 'nada');
+      const r = await respuestaPostCierre(u);
+      await db.insertarMensaje(u.id, { rol: 'agente', contenido: r });
+      return salida(u, [r], 'nada');
     }
     e = await db.crear({ id: crypto.randomUUID(), usuario_id, canal: b.canal, callback_url: b.callback_url, metadata: b.metadata || {} });
     nueva = true;
@@ -317,10 +336,11 @@ export async function procesarMensaje(b) {
       return responder([...mensajes, ...r.textos, ...(avisoCorreo ? [avisoCorreo] : [])], 'texto');
     } catch (err) { console.error('iniciarDominio', err); }
   }
-  mensajes.push(t.reply);
-  if (avisoCorreo) mensajes.push(avisoCorreo);
+  const demasiado = !t.completado && e.mensajes_cliente + 1 >= MAX_MSGS_CLIENTE;
+  // Cierre forzado por tope: nunca dejar una pregunta de Ari sin respuesta posible.
+  mensajes.push(demasiado ? CIERRE_POR_TOPE : t.reply);
+  if (avisoCorreo && !demasiado) mensajes.push(avisoCorreo);
 
-  const demasiado = e.mensajes_cliente + 1 >= MAX_MSGS_CLIENTE;
   if (!t.completado && !demasiado) {
     const res = await responder(mensajes, e.bloque_actual === 'B8' ? 'media' : 'texto');
     // Memoria en segundo plano: cierre de bloque o ventana de 10 mensajes.
