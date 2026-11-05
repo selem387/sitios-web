@@ -22,7 +22,7 @@ export const LAYOUTS_GENERAL = ['portada', 'editorial', 'mosaico', 'logo', 'dost
 export const NOMBRES_GENERAL = { portada: 'Foto a pantalla completa', editorial: 'Editorial', mosaico: 'Mosaico de tu trabajo', logo: 'Tu logo al centro', dostonos: 'Dos tonos', carta: 'Minimalista' };
 
 // Títulos por arquetipo (Claude puede reemplazarlos con textos.secciones).
-const TITULOS = {
+export const TITULOS = {
   servicios: { trabajo: 'Mi trabajo', servicios: 'Paquetes', sobre: 'Sobre mí', resenas: 'Lo que dicen mis clientes', faq: 'Preguntas frecuentes', contacto: 'Hablemos', galeria: 'Más momentos' },
   clinica: { trabajo: 'Resultados', servicios: 'Tratamientos', sobre: 'Quién te atiende', resenas: 'Pacientes', faq: 'Preguntas frecuentes', contacto: 'Agenda tu cita', galeria: 'Nuestro espacio' },
   inmobiliaria: { trabajo: 'Propiedades', servicios: 'Cómo te ayudamos', sobre: 'Quiénes somos', resenas: 'Clientes', faq: 'Preguntas frecuentes', contacto: 'Contáctanos', galeria: 'Más fotos' },
@@ -104,7 +104,7 @@ export function agruparOferta(items = []) {
   return [...grupos.values()];
 }
 
-function redes(c = {}) {
+export function redes(c = {}) {
   const r = c.redes || {};
   const url = (v, base) => (!v ? null : /^https?:/i.test(v) ? v : `${base}${String(v).replace(/^@/, '')}`);
   return [['Instagram', url(r.instagram, 'https://instagram.com/')], ['Facebook', url(r.facebook, 'https://facebook.com/')], ['TikTok', url(r.tiktok, 'https://tiktok.com/@')], ['YouTube', url(r.youtube, 'https://youtube.com/@')]].filter((x) => x[1]);

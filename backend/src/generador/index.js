@@ -17,6 +17,8 @@ import { asignarDominio } from './dominios.js';
 import { apuntarDominio, registros as registrosDns } from './dns_godaddy.js';
 import { crearPropuestasHTML, textosPropuestas } from './propuestas_html.js';
 import * as wp from './wp.js';
+import { sitioDePropuesta } from './sitio_propuesta.js';
+import { NOMBRES_GENERAL } from './propuestas_general.js';
 
 const q = db.q;
 const igual = (a, b) => { const x = Buffer.from(String(a || '')); const y = Buffer.from(String(b || '')); return y.length > 0 && x.length === y.length && crypto.timingSafeEqual(x, y); };
@@ -162,7 +164,7 @@ export async function generarSitio(sitioId, entrevista, { slug } = {}) {
     const mat = await procesarMateriales(entrevista.id, brief, { aceptarLoQueHay: true });
     await paso('materiales', { logo: !!mat.logo, hero: mat.hero?.url || null, fotos: mat.fotos.length, menus: mat.menus.length, otras: mat.otras.length, items_menu: mat.menu_texto.reduce((n, x) => n + (x.items?.length || 0), 0), avisos: mat.avisos });
     await guardarSitio(sitioId, { subtipo_resuelto: `${arquetipo}/${subtipo}`, subtipo_fuente: fuente });
-    await paso('diseno', { arquetipo, subtipo, estilo: estiloSlug, tipografia: dd.tipografia_recomendada });
+    await paso('diseno', { arquetipo, subtipo, estilo: estiloSlug, propuesta: elegida?.letra || null, tipografia: elegida?.tipografia || dd.tipografia_recomendada });
 
     // 2) Variaciones de tema (paleta + tipografía) → estilos globales del sitio.
     // Con propuesta elegida: misma tipografía y paleta que vio el cliente (o la paleta de la opción que pidió mezclar).
@@ -170,10 +172,19 @@ export async function generarSitio(sitioId, entrevista, { slug } = {}) {
     const subBase = elegida ? { ...(dd.subtipo_diseno || {}), tipografia_giro: null } : (dd.subtipo_diseno || {});
     const palRef = (deColores || elegida)?.paleta;
     const coloresMarca = palRef ? [palRef.primary, palRef['primary-accent'] || palRef.accent].filter(Boolean) : mat.colores;
-    const vars = generarVariaciones({ estilo: estiloBase, subtipo_diseno: subBase, colores_marca: coloresMarca, slug_sitio: slug, semilla: hash(entrevista.id) });
-    reporte.avisos.push(...vars.avisos);
-    const estilos = estilosGlobales(vars, dd.estilo_diseno);
-    await paso('tema', { paleta: vars.paleta, tipografia: vars.tipografia });
+    // Propuesta elegida (servicios, clínica, etc.): el sitio reproduce esa propuesta tal cual. Nada se regenera.
+    const fiel = elegida && NOMBRES_GENERAL[elegida.layout] ? await sitioDePropuesta({ brief, mat, prop, elegida, deColores }) : null;
+    let vars, estilos;
+    if (fiel) {
+      vars = { googleFontsUrl: fiel.fuentesUrl };
+      estilos = fiel.estilos;
+      await paso('tema', { fuente: 'propuesta', propuesta: elegida.letra, layout: elegida.layout, paleta: fiel.esperado.paleta, tipografia: fiel.esperado.fuentes });
+    } else {
+      vars = generarVariaciones({ estilo: estiloBase, subtipo_diseno: subBase, colores_marca: coloresMarca, slug_sitio: slug, semilla: hash(entrevista.id) });
+      reporte.avisos.push(...vars.avisos);
+      estilos = estilosGlobales(vars, dd.estilo_diseno);
+      await paso('tema', { paleta: vars.paleta, tipografia: vars.tipografia });
+    }
 
     // 3) Textos.
     let red = await redactar(brief, { ...dd, menu_texto: mat.menu_texto });
@@ -194,6 +205,21 @@ export async function generarSitio(sitioId, entrevista, { slug } = {}) {
     const mensajeWa = contacto.mensaje_whatsapp_inicial || red.data.whatsapp_mensaje || `Hola, vi su página y quiero información.`;
 
     const publicar = async (cont, ajustes = {}) => {
+      if (fiel) {
+        return wp.aplicar(sitio.blog_id, {
+          estilos, fuentes_url: fiel.fuentesUrl, medios: fiel.medios,
+          paginas: [
+            { slug: 'inicio', titulo: cont.titulo_sitio || brief.negocio?.nombre, contenido: fiel.contenido, inicio: true, descripcion: cont.descripcion_meta, plantilla: 'page-no-title' },
+            { slug: 'aviso-de-privacidad', titulo: 'Aviso de privacidad', contenido: paginaTexto('Aviso de privacidad', avisoPrivacidad(brief)), descripcion: `Aviso de privacidad de ${brief.negocio?.nombre || ''}`, plantilla: 'page-no-title' },
+          ],
+          menu: fiel.menu,
+          partes: { header: fiel.header, footer: fiel.footer },
+          opciones: {
+            logo_clave: fiel.logoClave, descripcion: cont.lema || cont.descripcion_meta, whatsapp: waUrl(contacto.whatsapp) ? String(contacto.whatsapp) : '', whatsapp_mensaje: mensajeWa,
+            jsonld: jsonLd(brief, cont, url, arquetipo), llms: llmsTxt(brief, cont, url),
+          },
+        });
+      }
       const medios = [];
       const heroUrl = mat.hero?.url || fotos.hero?.url;
       if (heroUrl && !ajustes.heroSinFoto) medios.push({ clave: 'hero', url: heroUrl, alt: cont.alt_hero || mat.hero?.alt || brief.negocio?.nombre, provisional: !!mat.hero?.provisional });
@@ -270,6 +296,19 @@ export async function generarSitio(sitioId, entrevista, { slug } = {}) {
       if (minimo && imgs < minimo) a.p0.push(`Solo ${imgs} imágenes en la página; el cliente mandó ${mat.total_imagenes}`);
       if (mat.logo && !/custom-logo/.test(html)) a.p0.push('No se ve el logo del cliente');
       if (!mat.total_imagenes && imgs < 1) a.p0.push('Página sin imágenes');
+      // Fidelidad a la propuesta elegida: misma composición, paleta, fuentes, titular y todas sus fotos sin repetir.
+      if (fiel) {
+        const e = fiel.esperado, h = html.toLowerCase();
+        if (!h.includes(`iap l-${e.layout}`)) a.p0.push(`La composición no es la de la propuesta ${e.letra} (${e.layout})`);
+        for (const [n, col] of [['fondo', e.paleta.bg], ['texto', e.paleta.fg], ['botón', e.paleta.primary]]) if (col && !h.includes(String(col).toLowerCase())) a.p0.push(`El color de ${n} ${col} de la propuesta no está en el sitio`);
+        for (const fam of [e.fuentes.titulos, e.fuentes.cuerpo]) if (fam && !h.includes(String(fam).toLowerCase().replace(/ /g, '+'))) a.p0.push(`Falta la fuente ${fam} de la propuesta`);
+        if (e.titular && !html.includes(e.titular.replace(/&/g, '&amp;'))) a.p0.push('El titular no es el de la propuesta');
+        const ids = (html.match(/wp-image-(\d+)/g) || []);
+        const unicos = new Set(ids);
+        if (unicos.size < e.fotos.length) a.p0.push(`Solo ${unicos.size} de las ${e.fotos.length} fotos de la propuesta están en el sitio`);
+        if (ids.length > unicos.size) a.p0.push('Hay fotos repetidas en la página');
+        if (e.layout === 'portada' && e.heroFoto && !/wp-block-cover[^>]*h-portada|h-portada[^>]*wp-block-cover/.test(html)) a.p0.push('La portada no tiene la foto a pantalla completa de la propuesta');
+      }
       if (a.p0.length) a.publicable = false;
       return a;
     };
