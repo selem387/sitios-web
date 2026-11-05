@@ -119,12 +119,22 @@ async function enviar(texto, media = [], opciones = {}, oculto = false) {
     ind.remove();
     for (const r of d.respuestas || []) agregar({ de:'ari', texto: r });
     for (const m of d.media || []) agregar({ de:'ari', texto: m.caption || '', media: [m] });
+    iniciarAvisos();
     if (d.total_pasos) $('#estado').textContent = 'Paso ' + Math.min(d.paso, d.total_pasos) + ' de ' + d.total_pasos;
     if (d.estado === 'completada') { $('#estado').textContent = 'Entrevista terminada'; if (d.generando) agregar({ tipo:'sis', texto:'Estoy armando tu página. Tarda unos minutos; aquí te aviso.' }); iniciarSondeo(); }
   } catch (e) { ind.remove(); if (e.message !== 'codigo') agregar({ tipo:'sis', texto:'No se pudo enviar: ' + e.message }); }
   finally { ocupado = false; $('#enviar').disabled = false; t.focus(); }
 }
 
+// Avisos de Ari que llegan sin que el cliente escriba (pago recibido, dirección conectada).
+let sondeoAvisos = null;
+function iniciarAvisos(){
+  if (sondeoAvisos) return;
+  sondeoAvisos = setInterval(async () => {
+    if (!codigo || !usuario || ocupado || document.hidden) return;
+    try { const d = await api('/chat/v1/avisos?usuario_id=' + encodeURIComponent(usuario)); for (const a of d.avisos || []) agregar({ de:'ari', texto: a.texto }); } catch {}
+  }, 20000);
+}
 function iniciarSondeo(){
   if (sondeo || mem.get('ari_sitio_'+usuario)) return;
   sondeo = setInterval(async () => {
@@ -181,6 +191,7 @@ function arrancar(){
   chat.innerHTML=''; const h = historial(); h.forEach(pintar);
   if (!h.length) enviar('pagina', [], {}, true);
   else api('/chat/v1/sitio?usuario_id=' + encodeURIComponent(usuario)).then((s) => { if (s.id) iniciarSondeo(); }).catch(() => {});
+  if (h.length) iniciarAvisos();
   t.focus();
 }
 if (!codigo) $('#puerta').hidden = false; else arrancar();

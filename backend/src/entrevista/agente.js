@@ -13,6 +13,8 @@ import { estudiarReferencias } from './referencias.js';
 import { propuestasPendientes, tocaPropuestas, atenderPropuestas, iniciarPropuestas } from './propuestas.js';
 import { verificacionPendiente, atenderVerificacion, enviarVerificacion, correoCambio, faltaCorreo } from './verificacion.js';
 import { normalizarRedes, redesFaltantes, listaNombres } from './redes.js';
+import { dominioEnCurso, atenderDominio, tocaDominio, iniciarDominio, notaParaAri, quiereRetomar, retomarDominio, leerFlujo, borrarFlujo } from './dominio.js';
+import { limpiarDominio } from '../dominio/registrador.js';
 
 const MAX_MSGS_CLIENTE = 120;
 const PAUSA_MS = 2 * 3600 * 1000;
@@ -107,6 +109,8 @@ async function turnoAri(e, { mensajesRecientes, ultimoTexto, regresaDePausa, arq
     const faltan = redesFaltantes(brief);
     partes.push(`REDES QUE FALTAN: ${faltan.length ? listaNombres(faltan) : '(ninguna; no hagas la pregunta B12.2)'}`);
   }
+  const notaDominio = notaParaAri(brief);
+  if (notaDominio) partes.push(notaDominio);
   if (notaAri) partes.push(`NOTA DEL SISTEMA: ${notaAri}`);
   partes.push(`BRIEF:\n${JSON.stringify(brief)}`);
   partes.push(`ÚLTIMOS MENSAJES:\n${historial || '(ninguno)'}`);
@@ -214,14 +218,28 @@ export async function procesarMensaje(b) {
     }
   }
 
-  // Código de verificación del correo pendiente: se atiende antes que Ari (código, correo nuevo o "no me llegó").
+  // Dirección de la página (B10): opciones, a nombre de quién, condiciones, pago, "listo". Se atiende antes que Ari.
   let notaAri = null;
+  if (!nueva && texto && (dominioEnCurso(e.brief) || quiereRetomar(e.brief, texto))) {
+    try {
+      const r = dominioEnCurso(e.brief) ? await atenderDominio(e, e.brief || {}, texto) : await retomarDominio(e, e.brief || {});
+      e.brief = (await db.obtener(e.id)).brief; // el flujo se guarda de forma atómica; se recarga
+      if (!r.seguirConAri) return responder([...prefijo, ...r.textos], 'texto');
+      prefijo.push(...r.textos);
+      notaAri = r.notaAri || null;
+    } catch (err) {
+      console.error('dominio', err);
+      return responder([...prefijo, 'Dame un momento, estoy revisando lo de tu dirección. Escríbeme de nuevo en un par de minutos 🙏'], 'texto');
+    }
+  }
+
+  // Código de verificación del correo pendiente: se atiende antes que Ari (código, correo nuevo o "no me llegó").
   if (!nueva && verificacionPendiente(e.brief) && texto) {
     const r = await atenderVerificacion(e, e.brief || {}, texto);
     if (r.brief !== e.brief) { await db.guardar(e.id, { brief: r.brief }); e.brief = r.brief; }
     if (!r.seguirConAri) return responder([...prefijo, ...r.textos], 'texto');
     prefijo.push(...r.textos);
-    notaAri = r.notaAri || null;
+    notaAri = r.notaAri || notaAri;
   }
 
   const mensajes = [...prefijo];
@@ -241,6 +259,16 @@ export async function procesarMensaje(b) {
     brief.contacto.email_verificacion = e.brief?.contacto?.email_verificacion || null;
     if (brief.contacto.redes) brief.contacto.redes = normalizarRedes(brief.contacto.redes);
   }
+  // La dirección la lleva solo dominio.js (escritura atómica): se toma de la base, Ari no puede tocar el flujo.
+  const flujoDb = await leerFlujo(e.id);
+  brief.tecnico = { ...(brief.tecnico || {}) };
+  if (flujoDb?.modo === 'propio' && brief.tecnico.dominio && limpiarDominio(brief.tecnico.dominio) !== flujoDb.dominio && !['conectando', 'lista'].includes(flujoDb.estado)) {
+    await borrarFlujo(e.id); // corrigió la dirección: se vuelve a investigar
+    delete brief.tecnico.dominio_flujo;
+  } else if (flujoDb) {
+    brief.tecnico.dominio_flujo = flujoDb;
+    if (flujoDb.modo === 'compra' && ['registrada', 'conectando', 'lista'].includes(flujoDb.estado)) { brief.tecnico.tiene_dominio = true; brief.tecnico.dominio = flujoDb.dominio; }
+  } else delete brief.tecnico.dominio_flujo;
   // Validar arquetipo/subtipo contra la tabla.
   if (brief.negocio?.arquetipo && !arquetipos.some((a) => a.slug === brief.negocio.arquetipo)) brief.negocio.arquetipo = 'generico';
   const arq = arquetipos.find((a) => a.slug === brief.negocio?.arquetipo);
@@ -280,6 +308,14 @@ export async function procesarMensaje(b) {
       await db.guardar(e.id, { brief: r.brief }); e.brief = r.brief;
       return responderConMedia([...mensajes, ...r.responder.textos], r.responder.media);
     } catch (err) { console.error('iniciarPropuestas', err); }
+  }
+  // Ya dijo si tiene dirección (y cuál) o cómo le gustaría: el sistema investiga o busca opciones; la respuesta de Ari se sustituye.
+  if (!t.completado && tocaDominio(e.brief)) {
+    try {
+      const r = await iniciarDominio(e, e.brief);
+      e.brief = (await db.obtener(e.id)).brief;
+      return responder([...mensajes, ...r.textos, ...(avisoCorreo ? [avisoCorreo] : [])], 'texto');
+    } catch (err) { console.error('iniciarDominio', err); }
   }
   mensajes.push(t.reply);
   if (avisoCorreo) mensajes.push(avisoCorreo);

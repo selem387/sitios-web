@@ -3,6 +3,7 @@
 //   POST /chat/v1/mensajes             {usuario_id, texto?, media?[]}      (header X-Chat-Codigo)
 //   POST /chat/v1/subir                multipart "archivo" → {url, mime, tipo}
 //   GET  /chat/v1/sitio?usuario_id=     estado del sitio generado de su última entrevista
+//   GET  /chat/v1/avisos?usuario_id=    mensajes de Ari pendientes de mostrar (pago, dirección lista)
 //   GET  /chat/archivos/:nombre         archivos subidos
 // Mismo flujo que WhatsApp: procesarMensaje(). Al cerrar la entrevista se lanza el generador.
 import crypto from 'node:crypto';
@@ -15,6 +16,7 @@ import { procesarMensaje, enSerie } from '../entrevista/agente.js';
 import { encolar } from '../generador/index.js';
 import { paginaChat } from './pagina.js';
 import { DIR_PROPUESTAS } from '../generador/propuestas_html.js';
+import { pendientesChat } from '../entrevista/avisos.js';
 
 const DIR = path.join(config.dataDir, 'chat');
 const CODIGO = process.env.CHAT_CODIGO || '';
@@ -102,6 +104,14 @@ export function registerChatRoutes(app, wrap) {
       }
     }
     return res;
+  }));
+
+  // Mensajes de Ari que llegaron sin que el cliente escribiera (pago recibido, dirección conectada…).
+  app.get('/chat/v1/avisos', wrap(async (c) => {
+    auth(c);
+    const u = c.req.query('usuario_id');
+    if (!usuarioValido(u)) throw new HttpError(400, 'usuario_id inválido');
+    return { avisos: (await pendientesChat(u)).map((x) => ({ texto: x.texto, evento: x.evento })) };
   }));
 
   app.get('/chat/v1/sitio', wrap(async (c) => {

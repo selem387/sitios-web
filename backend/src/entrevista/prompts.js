@@ -68,6 +68,12 @@ CORREO DEL ADMINISTRADOR (B9)
   y recuérdale escribir el código de 6 números (o "reenviar" si no le llegó, o un correo distinto si se equivocó). No cierres B9 ni
   devuelvas completado=true mientras siga pendiente.
 
+DIRECCIÓN DE LA PÁGINA (B10.1)
+- Tú solo averiguas si YA la tiene comprada y cuál es (tecnico.tiene_dominio, tecnico.dominio), o si no la tiene, cómo le gustaría que se llamara (tecnico.dominio_deseado).
+- En cuanto tengas eso en brief_patch, el sistema toma el control: revisa dónde está registrada y le manda los pasos, o busca opciones libres con precio, cobra y la registra.
+- Tú NUNCA digas si una dirección está libre u ocupada, ni precios, ni pasos para configurarla, ni prometas comprarla. Responde solo una frase corta de confirmación.
+- Si te llega una línea "DIRECCIÓN DE LA PÁGINA: la lleva el sistema…", no vuelvas a preguntar por ella.
+
 OBJETIVO: completar el BRIEF bloque por bloque en este orden:
 B0 bienvenida → B1 negocio → B2 objetivo → B3 cliente y zona → B4 oferta → B5 confianza → B6 preguntas frecuentes
 → B7 identidad visual → B8 fotos y materiales → B9 contacto y canales → B10 técnico → B11 módulos del giro → B12 cierre.
@@ -146,8 +152,12 @@ B9.3 "¿Horarios de atención?"
 B9.4 "¿Cuáles de estas redes tiene tu negocio: Facebook, Instagram, TikTok, YouTube o LinkedIn? Pásame los nombres de usuario separados por coma, diciendo de cuál es cada uno. Por ejemplo: 'Instagram toolattemid, Facebook Toolatte Café'." → contacto.redes.<red> = usuario o liga tal como lo dio. Si no tiene ninguna, contacto.redes = {} y sigue; no ofrezcas crearlas aquí (se ofrece al final).
 B9.5 "¿Ya tienes tu negocio en Google Maps (Google Business)? Es gratis y ayuda muchísimo."
 B9.6 "Cuando alguien te escriba desde la página, ¿qué mensaje quieres que le aparezca listo? Por ejemplo: 'Hola, vi su página y quiero información sobre…'"`,
-  B10: `B10 · Técnico (sin tecnicismos). ★tecnico.tiene_dominio tecnico.dominio tecnico.tiene_sitio_actual tecnico.sitio_actual_url tecnico.usa_anuncios tecnico.quiere_blog tecnico.necesita_login tecnico.necesita_pagos.
-B10.1 "¿Ya tienes la dirección de tu página, tipo tunegocio.com? Si sí, dímela. Si no, ¿cómo te gustaría que se llamara?"
+  B10: `B10 · Técnico (sin tecnicismos). ★tecnico.tiene_dominio tecnico.dominio tecnico.dominio_deseado tecnico.quiere_dominio tecnico.tiene_sitio_actual tecnico.sitio_actual_url tecnico.usa_anuncios tecnico.quiere_blog tecnico.necesita_login tecnico.necesita_pagos.
+B10.1 "Ahora la dirección de tu página en internet, por ejemplo tunegocio.com. ¿Ya tienes una comprada?" → tecnico.tiene_dominio = true | false.
+B10.1a (si sí) "¿Cuál es? Escríbemela tal cual, por ejemplo toolatte.cafe." → tecnico.dominio = la dirección tal como la dio (sin https:// ni www).
+B10.1b (si no) "¿Cómo te gustaría que se llamara? Dame una o dos ideas, por ejemplo el nombre de tu negocio con o sin tu ciudad; yo reviso cuáles están libres." → tecnico.dominio_deseado = sus ideas tal cual. Si dice "tú decide" o "no sé", pon tecnico.dominio_deseado = negocio.nombre.
+B10.1c Si dice que no quiere dirección propia por ahora → tecnico.quiere_dominio = false y sigue con B10.2 (su página queda con una dirección temporal).
+En cuanto llenes tecnico.dominio o tecnico.dominio_deseado, tu reply es SOLO una frase como "Va, déjame revisarla 👀" o "Va, reviso cuáles están libres 👀", sin otra pregunta: el sistema sigue."
 B10.2 "¿Ya tienes una página actual? Mándame la liga para aprovechar lo que sirva."
 B10.3 "¿Usas anuncios en Facebook/Instagram o Google? Si sí, hay unos códigos que conviene poner; si no sabes cuáles, lo vemos después."
 B10.4 "¿Te gustaría publicar artículos o noticias de vez en cuando? Ayuda a que te encuentren, utiliza a nuestro agente publicador para que publique por ti en https://publicador.timewins.ai. Sí / no / después." (escribe la liga completa tal cual, sin formato, para que se pueda abrir desde WhatsApp)
@@ -183,7 +193,7 @@ export const BRIEF_VACIO = {
   contacto: { whatsapp: null, telefono: null, email: null, email_verificado: false, email_verificacion: null, direccion: {}, google_maps_url: null, horarios: null, redes: {}, redes_faltantes: [], google_business: null, mensaje_whatsapp_inicial: null },
   redes_crear: { interesa: null, redes: [] },
   administracion: null, // al cerrar: {email, metodo:'codigo_correo'+google si gmail, panel:'wp-admin'|'panel_propio', estado:'pendiente_entrega'}
-  tecnico: { tiene_dominio: null, dominio: null, tiene_sitio_actual: null, sitio_actual_url: null, usa_anuncios: null, quiere_blog: null, necesita_login: null, necesita_pagos: null },
+  tecnico: { tiene_dominio: null, dominio: null, dominio_deseado: null, quiere_dominio: null, tiene_sitio_actual: null, sitio_actual_url: null, usa_anuncios: null, quiere_blog: null, necesita_login: null, necesita_pagos: null },
   modulos: {},
   cierre: { confirmado: false, comentarios_finales: null, consentimiento_publicar: false },
   plataforma: null,

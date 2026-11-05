@@ -4,7 +4,8 @@
 //   3 mapeo dominio→propuestas + capturas  4 Easypanel (apex + www, Let's Encrypt)  5 DNS GoDaddy (@ y www)
 //   6 propagación (Google DNS)  7 HTTPS válido (reintenta el certificado si sale autofirmado)  → listo
 // API (header X-API-Key = DOMINIOS_API_KEY):
-//   POST /v1/dominios {dominio, sesion_id?, modo?: 'propuestas'|'chat', regenerar?, logo_url?}  → 202 {trabajo_id}
+//   POST /v1/dominios {dominio, sesion_id?, modo?: 'propuestas'|'chat', regenerar?, logo_url?, dns?: 'auto'|'cliente'}  → 202 {trabajo_id}
+//        dns='cliente': el dueño ya apuntó sus registros (otro proveedor); se omite el paso de DNS.
 //   DNS: GoDaddy (GODADDY_PAT) o Cloudflare (CLOUDFLARE_API_TOKEN), detectado por nameservers.
 //   GET  /v1/dominios/:dominio                                    → último trabajo con pasos
 //   GET  /v1/dominios/:dominio/dns                                → registros actuales en GoDaddy
@@ -31,7 +32,7 @@ await q(`UPDATE dominios_trabajos SET estado='interrumpido', actualizado=now() W
 const dormir = (ms) => new Promise((r) => setTimeout(r, ms));
 const enCurso = new Set();
 
-async function ejecutar(id, { dominio, sesion_id, regenerar, logo_url, modo }) {
+async function ejecutar(id, { dominio, sesion_id, regenerar, logo_url, modo, dnsCliente }) {
   const pasos = [];
   const paso = async (nombre, datos = {}) => {
     pasos.push({ paso: nombre, t: new Date().toISOString(), ...datos });
@@ -40,9 +41,13 @@ async function ejecutar(id, { dominio, sesion_id, regenerar, logo_url, modo }) {
   enCurso.add(dominio);
   try {
     // 1) Proveedor DNS (GoDaddy o Cloudflare, por nameservers) y acceso a la zona con el token.
-    const zonaInfo = await DNS.registros(dominio);
+    //    dns='cliente': el dueño ya cambió sus registros en su propio proveedor; aquí no se toca DNS.
     const raiz = DNS.partes(dominio).nombre === '@';
-    await paso('validado', { proveedor: zonaInfo.proveedor, zona: zonaInfo.zona, registros: zonaInfo.registros.length });
+    if (dnsCliente) await paso('validado', { proveedor: 'cliente', ips: await DNS.dnsPublico(dominio) });
+    else {
+      const zonaInfo = await DNS.registros(dominio);
+      await paso('validado', { proveedor: zonaInfo.proveedor, zona: zonaInfo.zona, registros: zonaInfo.registros.length });
+    }
 
     if (modo === 'propuestas') {
       // 2) Propuestas: reutiliza las de la sesión salvo que se pida regenerar.
@@ -62,8 +67,9 @@ async function ejecutar(id, { dominio, sesion_id, regenerar, logo_url, modo }) {
     // 4) Easypanel: rutas de Traefik con Let's Encrypt (apex + www, o solo el subdominio).
     await paso('easypanel', await P.easypanelDominios(raiz ? [dominio, `www.${dominio}`] : [dominio]));
 
-    // 5) DNS en el proveedor del cliente.
-    await paso('dns', await DNS.apuntar(dominio));
+    // 5) DNS en el proveedor del cliente (salvo que lo haya hecho él).
+    if (dnsCliente) await paso('dns', { omitido: 'lo configuró el cliente' });
+    else await paso('dns', await DNS.apuntar(dominio));
 
     // 6) Propagación: Google DNS debe responder solo la IP del servidor (hasta 30 min).
     let ips = [];
@@ -112,7 +118,7 @@ app.post('/v1/dominios', async (c) => {
   if (modo === 'propuestas' && !/^[0-9a-f-]{36}$/.test(String(b.sesion_id || ''))) return c.json({ error: 'sesion_id inválido' }, 400);
   if (enCurso.has(dominio)) return c.json({ error: 'ya hay un trabajo en curso para ese dominio' }, 409);
   const r = await q(`INSERT INTO dominios_trabajos (dominio, sesion_id, estado) VALUES ($1,$2,'pendiente') RETURNING id`, [dominio, b.sesion_id || null]);
-  ejecutar(r.rows[0].id, { dominio, sesion_id: b.sesion_id || null, regenerar: !!b.regenerar, logo_url: b.logo_url || undefined, modo });
+  ejecutar(r.rows[0].id, { dominio, sesion_id: b.sesion_id || null, regenerar: !!b.regenerar, logo_url: b.logo_url || undefined, modo, dnsCliente: b.dns === 'cliente' });
   return c.json({ trabajo_id: r.rows[0].id, dominio, modo, estado: 'pendiente', consulta: `/v1/dominios/${dominio}` }, 202);
 });
 

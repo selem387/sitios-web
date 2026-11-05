@@ -128,6 +128,64 @@ CREATE TABLE IF NOT EXISTS verificaciones_correo (
 );
 CREATE INDEX IF NOT EXISTS verificaciones_correo_entrevista_idx ON verificaciones_correo (entrevista_id, id DESC);
 
+-- Dirección de la página (B10). Compra: costo GoDaddy sin margen + tolerancia de tipo de cambio + comisión Stripe.
+CREATE TABLE IF NOT EXISTS dominios_compras (
+  id                    uuid PRIMARY KEY,
+  entrevista_id         uuid NOT NULL REFERENCES entrevistas(id) ON DELETE CASCADE,
+  dominio               text NOT NULL,
+  estado                text NOT NULL DEFAULT 'cotizada'
+    CHECK (estado IN ('cotizada','pago_pendiente','pago_vencido','pagada','registrando','registrada','conectando','lista','reembolsada','requiere_revision')),
+  titularidad           text CHECK (titularidad IN ('iaprop','traspaso','aviso_vencimiento')),
+  traspaso_email        text,
+  costo                 numeric(12,2),
+  costo_final           numeric(12,2),
+  moneda                text,
+  precio                jsonb NOT NULL DEFAULT '{}',
+  acuerdos              jsonb NOT NULL DEFAULT '[]',
+  acuerdo_aceptado      timestamptz,
+  stripe_session_id     text,
+  stripe_url            text,
+  stripe_expira         timestamptz,
+  stripe_payment_intent text,
+  cobrado_centavos      int,
+  pagado                timestamptz,
+  registro_id           text,
+  registro              jsonb,
+  renovacion_apagada    boolean NOT NULL DEFAULT false,
+  vence                 timestamptz,
+  aviso_vencimiento     timestamptz,
+  conexion              jsonb,
+  reembolso             jsonb,
+  intentos              int NOT NULL DEFAULT 0,
+  error                 text,
+  creado                timestamptz NOT NULL DEFAULT now(),
+  actualizado           timestamptz NOT NULL DEFAULT now()
+);
+CREATE INDEX IF NOT EXISTS dominios_compras_estado_idx ON dominios_compras (estado, actualizado);
+CREATE INDEX IF NOT EXISTS dominios_compras_entrevista_idx ON dominios_compras (entrevista_id);
+CREATE UNIQUE INDEX IF NOT EXISTS dominios_compras_session_uq ON dominios_compras (stripe_session_id) WHERE stripe_session_id IS NOT NULL;
+
+-- Pasos vigentes por proveedor DNS (refrescados desde la ayuda oficial cada 14 días).
+CREATE TABLE IF NOT EXISTS dominios_guias (
+  proveedor  text PRIMARY KEY,
+  pasos      jsonb NOT NULL,
+  fuente     text,
+  notas      jsonb NOT NULL DEFAULT '[]',
+  revisado   timestamptz NOT NULL DEFAULT now()
+);
+
+-- Mensajes de Ari que no responden a un mensaje del cliente (pago recibido, dominio listo…).
+CREATE TABLE IF NOT EXISTS avisos (
+  id             serial PRIMARY KEY,
+  entrevista_id  uuid NOT NULL REFERENCES entrevistas(id) ON DELETE CASCADE,
+  usuario_id     text NOT NULL,
+  texto          text NOT NULL,
+  evento         text,
+  entregado      timestamptz,
+  creado         timestamptz NOT NULL DEFAULT now()
+);
+CREATE INDEX IF NOT EXISTS avisos_usuario_pend_idx ON avisos (usuario_id, id) WHERE entregado IS NULL;
+
 INSERT INTO arquetipos (slug, nombre, cta_default, schema_types) VALUES
  ('inmobiliaria','Inmobiliaria','whatsapp_propiedad','["RealEstateAgent","RealEstateListing","FAQPage","BreadcrumbList"]'),
  ('clinica','Clínica / consultorio','agendar_cita','["MedicalClinic","Physician","MedicalProcedure","FAQPage"]'),
