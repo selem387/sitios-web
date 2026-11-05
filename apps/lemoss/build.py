@@ -31,6 +31,8 @@ def e(s):
     return html.escape(s, quote=True)
 
 
+GTM_ID = "GTM-WWSJ3Q4P"  # Google Tag Manager, cuenta Lemoss (contacto@lemoss.co)
+
 NAV = [("/servicios/", "Servicios"), ("/casos/", "Casos"), ("/autodiagnostico/", "Autodiagnóstico"), ("/blog/", "Blog"), ("/sobre/", "Nosotros")]
 
 
@@ -44,6 +46,13 @@ def layout(path, title, desc, body, schema=None, og_type="website", extra_head="
 <html lang="es-MX">
 <head>
 <meta charset="utf-8">
+<!-- Google Tag Manager -->
+<script>(function(w,d,s,l,i){{w[l]=w[l]||[];w[l].push({{'gtm.start':
+new Date().getTime(),event:'gtm.js'}});var f=d.getElementsByTagName(s)[0],
+j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
+'https://www.googletagmanager.com/gtm.js?id='+i+dl;f.parentNode.insertBefore(j,f);
+}})(window,document,'script','dataLayer','{GTM_ID}');</script>
+<!-- End Google Tag Manager -->
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>{e(title)}</title>
 <meta name="description" content="{e(desc)}">
@@ -68,6 +77,7 @@ def layout(path, title, desc, body, schema=None, og_type="website", extra_head="
 <link rel="alternate" type="text/plain" href="/llms.txt" title="llms.txt">
 {extra_head}{ld}</head>
 <body>
+<noscript><iframe src="https://www.googletagmanager.com/ns.html?id={GTM_ID}" height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
 <a class="skip" href="#contenido">Saltar al contenido</a>
 <header class="top">
   <div class="wrap top-in">
