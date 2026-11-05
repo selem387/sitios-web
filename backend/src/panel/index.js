@@ -20,6 +20,7 @@ import { procesarMateriales } from '../generador/materiales.js';
 import * as S from './sitios.js';
 import * as A from './sesion.js';
 import { paginaPanel } from './pagina.js';
+import { enviarCodigo } from '../correo_codigos.js';
 
 const q = db.q;
 const DIR_SUBIDAS = path.join(config.dataDir, 'chat'); // mismas rutas públicas que el chat: /chat/archivos/<nombre>
@@ -193,10 +194,35 @@ export function registerPanelRoutes(app, wrap) {
   app.get('/acceso/google/callback', async (c) => {
     await S.migrarPanel();
     const r = await A.callbackGoogle({ code: c.req.query('code'), state: c.req.query('state') }, S.porId);
+    if (r.wp) {
+      if (r.wp.pase) return c.redirect(`${r.wp.url}?pase=${encodeURIComponent(r.wp.pase)}`, 302);
+      return c.redirect(`${r.wp.url}?error=${encodeURIComponent(r.error || 'No se pudo entrar con Google')}`, 302);
+    }
     const destino = r.sv ? (r.sv.dominio ? `https://${r.sv.dominio}` : `${config.publicUrl}/s/${r.sv.slug}`) : null;
     if (r.pase) return c.redirect(`${destino}/admin/sso?pase=${encodeURIComponent(r.pase)}`, 302);
     const volver = destino ? `<p><a href="${destino}/admin">Volver a intentarlo</a></p>` : '';
     return c.html(`<!doctype html><meta charset="utf-8"><meta name="viewport" content="width=device-width"><title>No se pudo entrar</title><div style="font:17px/1.5 system-ui;max-width:440px;margin:60px auto;padding:0 20px"><h1 style="font-size:22px">No se pudo entrar</h1><p>${String(r.error || '').replace(/[<>&]/g, '')}</p>${volver}</div>`, 400);
+  });
+
+  // WordPress (mu-plugin iaprop-acceso): el sitio genera el código y aquí solo se manda por el servicio de correo.
+  const authWp = (c) => { if (!config.wpGenKey || config.wpGenKey.length < 24 || !igual(c.req.header('x-iaprop-key'), config.wpGenKey)) throw new HttpError(401, 'X-IAprop-Key inválida'); };
+  const porCorreo = new Map();
+  app.post('/acceso/v1/enviar-codigo', wrap(async (c) => {
+    authWp(c);
+    const b = await c.req.json().catch(() => ({}));
+    const email = String(b.email || '').trim().toLowerCase();
+    if (!/^[^\s@]+@[^\s@]+\.[a-z]{2,}$/i.test(email) || !/^\d{6}$/.test(String(b.codigo || ''))) throw new HttpError(400, 'datos inválidos');
+    const ahora = Date.now(); const l = (porCorreo.get(email) || []).filter((t) => ahora - t < 3600000);
+    if (l.length >= 8) throw new HttpError(429, 'demasiados códigos');
+    l.push(ahora); porCorreo.set(email, l);
+    const r = await enviarCodigo(email, String(b.codigo), { negocio: String(b.negocio || '').slice(0, 80), motivo: 'acceso' });
+    if (!r.entregado) throw new HttpError(503, 'no se pudo enviar');
+    return { ok: true };
+  }));
+  app.get('/acceso/google/wp', async (c) => {
+    const u = A.googleActivo() ? await A.urlGoogleWp(c.req.query('d'), c.req.query('s')) : null;
+    if (u) return c.redirect(u, 302);
+    return c.text('La liga para entrar ya venció. Vuelve a intentarlo desde tu página.', 400);
   });
 
   app.post('/entrevista/v1/sesiones/:id/sitio-vivo', wrap(async (c) => {

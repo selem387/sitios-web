@@ -74,24 +74,51 @@ export async function urlGoogle(sv) {
   return `https://accounts.google.com/o/oauth2/v2/auth?${p}`;
 }
 
-/** Callback en ACCESO_URL → {sv, pase} o {error}. */
-export async function callbackGoogle({ code, state }, buscarSitio) {
-  let sid;
-  try { const { payload } = await jwtVerify(String(state || ''), secreto()); if (payload.typ !== 'g-state') throw new Error(); sid = payload.sid; }
-  catch { return { error: 'La liga para entrar ya venció. Vuelve a intentarlo desde tu página.' }; }
-  const sv = await buscarSitio(sid);
-  if (!sv) return { error: 'Sitio no encontrado.' };
+/* WordPress: /acceso del sitio manda {url, email, blog, exp} firmado con la clave compartida (WP_GEN_KEY). */
+const hmacWp = (d) => crypto.createHmac('sha256', config.wpGenKey).update(d).digest('hex');
+export async function urlGoogleWp(d, s) {
+  if (!config.wpGenKey || config.wpGenKey.length < 24 || !s || hmacWp(String(d)) !== String(s)) return null;
+  let x; try { x = JSON.parse(Buffer.from(String(d), 'base64url').toString('utf8')); } catch { return null; }
+  if (!x?.url || !x?.email || !x?.blog || Number(x.exp) < Date.now() / 1000 || !/^https:\/\/[^/]+\/acceso\/$/.test(x.url)) return null;
+  const state = await new SignJWT({ typ: 'g-state-wp', url: x.url, email: x.email, blog: Number(x.blog) })
+    .setProtectedHeader({ alg: 'HS256' }).setExpirationTime('10m').sign(secreto());
+  const p = new URLSearchParams({ client_id: config.googleClientId, redirect_uri: regreso(), response_type: 'code', scope: 'openid email', state, prompt: 'select_account', login_hint: x.email });
+  return `https://accounts.google.com/o/oauth2/v2/auth?${p}`;
+}
+const paseWp = (email, blog) => { const d = Buffer.from(JSON.stringify({ email, blog, exp: Math.floor(Date.now() / 1000) + 120, jti: crypto.randomUUID() })).toString('base64url'); return `${d}.${hmacWp(d)}`; };
+
+async function emailDeGoogle(code) {
   const r = await fetch('https://oauth2.googleapis.com/token', {
     method: 'POST', headers: { 'content-type': 'application/x-www-form-urlencoded' },
     body: new URLSearchParams({ code: String(code || ''), client_id: config.googleClientId, client_secret: config.googleClientSecret, redirect_uri: regreso(), grant_type: 'authorization_code' }),
     signal: AbortSignal.timeout(15000),
   });
   const t = await r.json().catch(() => ({}));
-  if (!r.ok || !t.id_token) return { sv, error: 'Google no confirmó tu cuenta. Inténtalo de nuevo.' };
+  if (!r.ok || !t.id_token) return { error: 'Google no confirmó tu cuenta. Inténtalo de nuevo.' };
   // El id_token llega directo de Google por TLS; se revisan emisor, audiencia y correo verificado.
   const claims = JSON.parse(Buffer.from(t.id_token.split('.')[1], 'base64url').toString('utf8'));
-  if (!['https://accounts.google.com', 'accounts.google.com'].includes(claims.iss) || claims.aud !== config.googleClientId || !claims.email_verified) return { sv, error: 'No pudimos verificar tu cuenta de Google.' };
-  if (!igualEmail(claims.email, sv.admin_email)) return { sv, error: `Esa cuenta (${claims.email}) no es la que administra esta página. Entra con ${sv.admin_email} o pide un código a tu correo.` };
+  if (!['https://accounts.google.com', 'accounts.google.com'].includes(claims.iss) || claims.aud !== config.googleClientId || !claims.email_verified) return { error: 'No pudimos verificar tu cuenta de Google.' };
+  return { email: claims.email };
+}
+
+/** Callback en ACCESO_URL → {sv, pase} | {wp:{url, pase}} | {error, sv?, wp?}. */
+export async function callbackGoogle({ code, state }, buscarSitio) {
+  let payload;
+  try { ({ payload } = await jwtVerify(String(state || ''), secreto())); if (!['g-state', 'g-state-wp'].includes(payload.typ)) throw new Error(); }
+  catch { return { error: 'La liga para entrar ya venció. Vuelve a intentarlo desde tu página.' }; }
+  if (payload.typ === 'g-state-wp') {
+    const wp = { url: payload.url };
+    const g = await emailDeGoogle(code);
+    if (g.error) return { wp, error: g.error };
+    if (!igualEmail(g.email, payload.email)) return { wp, error: `Esa cuenta (${g.email}) no es la que administra esta página. Entra con ${payload.email} o pide un código a tu correo.` };
+    return { wp: { ...wp, pase: paseWp(payload.email, payload.blog) } };
+  }
+  const sid = payload.sid;
+  const sv = await buscarSitio(sid);
+  if (!sv) return { error: 'Sitio no encontrado.' };
+  const g = await emailDeGoogle(code);
+  if (g.error) return { sv, error: g.error };
+  if (!igualEmail(g.email, sv.admin_email)) return { sv, error: `Esa cuenta (${g.email}) no es la que administra esta página. Entra con ${sv.admin_email} o pide un código a tu correo.` };
   const pase = await new SignJWT({ sid: sv.id, typ: 'g-pase', jti: crypto.randomUUID() })
     .setProtectedHeader({ alg: 'HS256' }).setExpirationTime('2m').sign(secreto());
   return { sv, pase };

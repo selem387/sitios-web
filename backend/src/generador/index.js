@@ -273,6 +273,15 @@ export async function generarSitio(sitioId, entrevista, { slug } = {}) {
     const ap = await publicar(red.data);
     await paso('publicado', { log: ap.log, paginas: ap.paginas });
 
+    // Cuenta del dueño en wp-admin (sin contraseña: código al correo o Google). Si falla, se avisa y se puede repetir.
+    const correoDueno = brief.administracion?.email || contacto.email;
+    if (correoDueno) {
+      try {
+        const d = await wp.asignarDueno(sitio.blog_id, { email: correoDueno, nombre: brief.cliente?.nombre || '', apiUrl: config.publicUrl, google: Boolean(config.googleClientId && config.googleClientSecret) });
+        await paso('dueno_wp', { email: d.email, acceso: d.acceso });
+      } catch (err) { reporte.avisos.push(`No se pudo dar de alta al dueño en WordPress: ${err.message}`); }
+    } else reporte.avisos.push('El brief no tiene correo del dueño; no se creó su acceso a wp-admin.');
+
     // 5) Dominio de vista previa (Traefik) si aún no responde.
     if (!(await wp.responde(url))) {
       const d = await wp.registrarDominioEasypanel(dominio);

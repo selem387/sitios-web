@@ -21,6 +21,8 @@ export const salud = () => llamar('GET', '/salud');
 export const crearSitio = ({ dominio, titulo }) => llamar('POST', '/sitios', { dominio, titulo });
 export const estadoSitio = (id) => llamar('GET', `/sitios/${id}`);
 export const aplicar = (id, cuerpo) => llamar('POST', `/sitios/${id}/aplicar`, cuerpo, 300000);
+// Dueño del sitio (mu-plugin iaprop-acceso): único usuario del cliente, entra sin contraseña en /acceso.
+export const asignarDueno = (id, { email, nombre, apiUrl, google }) => llamar('POST', `/sitios/${id}/dueno`, { email, nombre, api_url: apiUrl, google: !!google });
 
 /**
  * Registra host → servicio WordPress en Easypanel (Traefik). Best effort: si no hay token, devuelve {ok:false}
