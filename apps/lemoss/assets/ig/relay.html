@@ -1,0 +1,6 @@
+<!doctype html><meta charset="utf-8"><meta name="robots" content="noindex"><title>relay</title><p id="s">enviando…</p>
+<script>
+(async()=>{const q=new URLSearchParams(location.search);const set=q.get('set'),n=+q.get('n');const files=[];
+for(let i=1;i<=n;i++){const name=`${set}-${String(i).padStart(2,'0')}.jpg`;const b=await (await fetch(name)).arrayBuffer();files.push({name,b});}
+(window.opener||window.parent).postMessage({lemossIg:files},'*');document.getElementById('s').textContent='enviado '+files.length;})();
+</script>
