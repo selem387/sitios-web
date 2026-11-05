@@ -8,6 +8,9 @@ import { urlFuentes } from './fuentes.js';
 import { waUrl, formatoTel } from './bloques.js';
 import { contraste } from '../entrevista/tema.js';
 import { logoTenido } from './materiales.js';
+import { DIR_PROPUESTAS } from './propuestas_html.js';
+import fs from 'node:fs/promises';
+import path from 'node:path';
 
 const esc = (s) => String(s ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 // JSON de atributos dentro de un comentario HTML: no puede contener "--".
@@ -135,7 +138,7 @@ html{scroll-behavior:smooth}
 .iap .firma{font-weight:700;margin-bottom:10px}.iap .historia{font-size:18px;max-width:58ch}.iap .cred{margin-top:12px;color:var(--soft);font-size:15px}
 .iap .cifras{list-style:none;display:flex;flex-wrap:wrap;gap:12px;margin-top:22px;padding:0}.iap .cifras li{font-family:var(--ft);font-size:22px;padding:10px 16px;border:1px solid var(--bor);border-radius:999px;background:var(--bg)}
 /* reseñas */
-.iap .quotes{display:grid;gap:14px;grid-template-columns:repeat(auto-fill,minmax(260px,1fr))}.iap .wp-block-quote{background:var(--card);border:1px solid var(--bor);border-radius:20px;padding:22px;margin:0}
+.iap .quotes{display:grid;gap:14px;grid-template-columns:repeat(auto-fill,minmax(260px,1fr))}.iap .wp-block-quote{background:var(--card);border:1px solid var(--bor)!important;border-radius:20px;padding:22px;margin:0}
 .iap .wp-block-quote p{font-family:var(--ft);font-size:20px;line-height:1.3;max-width:none}.iap .wp-block-quote cite{display:block;margin-top:12px;font-style:normal;font-weight:700;font-size:14px;color:var(--soft)}
 .iap .capturas{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:12px;margin-top:18px;align-items:start}.iap .capturas figure{margin:0}.iap .capturas img{width:100%;height:auto;border-radius:14px;border:1px solid var(--bor)}
 .iap .pasos{counter-reset:p;list-style:none;display:grid;gap:12px;padding:0}.iap .pasos li{counter-increment:p;padding-left:52px;position:relative;min-height:40px}.iap .pasos li::before{content:counter(p);position:absolute;left:0;top:-4px;width:38px;height:38px;border-radius:50%;background:var(--p);color:var(--on);display:grid;place-items:center;font-weight:800}
@@ -309,9 +312,15 @@ export async function sitioDePropuesta({ brief, mat, prop, elegida, deColores = 
     ['base', pal.bg], ['main', pal.fg], ['primary', pal.primary], ['on-primary', onP], ['main-accent', pal.soft], ['border-light', pal.border],
     ['secondary', pal.muted], ['tertiary', pal.card], ['tinte', pal.tinte || pal.muted], ['banda', pal.banda || pal.primary],
   ].filter(([, col]) => /^#[0-9a-f]{6}$/i.test(col || '')).map(([slug, color]) => ({ slug, color, name: slug }));
+  // Escala tipográfica: la misma que vio el cliente. Si su propuesta se generó sin la regla de escala, el sitio tampoco la usa.
+  let conEscala = true;
+  if (prop.token) {
+    const html = await fs.readFile(path.join(DIR_PROPUESTAS, prop.token, `${elegida.letra || elegida.etiqueta}.html`), 'utf8').catch(() => null);
+    if (html !== null) conEscala = html.includes('Regla dura tipograf');
+  }
   const css = cssPropuesta()
     + (lg?.placa ? `\n.wp-block-site-logo.con-placa{--placa:${lg.placa}}` : '')
-    + reforzar(cssTipografia({ titulos: f.titulos, cuerpo: f.cuerpo }, elegida.estilo || brief.marca?.estilo || 'calido'));
+    + (conEscala ? reforzar(cssTipografia({ titulos: f.titulos, cuerpo: f.cuerpo }, elegida.estilo || brief.marca?.estilo || 'calido')) : '');
   const estilos = {
     settings: {
       color: { palette: paleta },
