@@ -53,6 +53,7 @@ function iaprop_acc_alta_dueno( WP_REST_Request $req ) {
 	$blog_id = (int) $req['id'];
 	$email   = strtolower( sanitize_email( (string) $req->get_param( 'email' ) ) );
 	$nombre  = sanitize_text_field( (string) $req->get_param( 'nombre' ) );
+	$giro    = sanitize_key( (string) $req->get_param( 'arquetipo' ) );
 	if ( ! get_site( $blog_id ) ) return new WP_Error( 'iaprop_no_existe', 'sitio no existe', array( 'status' => 404 ) );
 	if ( ! is_email( $email ) ) return new WP_Error( 'iaprop_email', 'correo inválido', array( 'status' => 400 ) );
 	$api = esc_url_raw( (string) $req->get_param( 'api_url' ) );
@@ -79,6 +80,7 @@ function iaprop_acc_alta_dueno( WP_REST_Request $req ) {
 		add_user_to_blog( $blog_id, $u->ID, IAPROP_ROL );
 		update_option( 'iaprop_dueno_id', (int) $u->ID );
 		update_option( 'iaprop_dueno_email', $email );
+		if ( $giro ) update_option( 'iaprop_arquetipo', $giro );
 		$acceso = home_url( '/acceso/' );
 		$admin  = admin_url();
 	} finally {
@@ -264,6 +266,8 @@ add_action( 'load-index.php', function () { if ( iaprop_acc_es_dueno() ) { wp_sa
 add_action( 'admin_menu', function () {
 	if ( ! iaprop_acc_es_dueno() ) return;
 	foreach ( array( 'index.php', 'edit-comments.php', 'tools.php', 'profile.php', 'themes.php', 'plugins.php', 'users.php', 'options-general.php', 'separator1', 'separator2', 'separator-last' ) as $m ) remove_menu_page( $m );
+	// Inventario de propiedades solo en inmobiliarias.
+	if ( 'inmobiliaria' !== get_option( 'iaprop_arquetipo' ) ) remove_menu_page( 'edit.php?post_type=propiedad' );
 	add_menu_page( 'Datos del negocio', 'Datos del negocio', 'edit_pages', 'iaprop-negocio', 'iaprop_acc_pagina_negocio', 'dashicons-store', 3 );
 }, 999 );
 

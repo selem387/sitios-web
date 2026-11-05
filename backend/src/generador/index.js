@@ -277,7 +277,7 @@ export async function generarSitio(sitioId, entrevista, { slug } = {}) {
     const correoDueno = brief.administracion?.email || contacto.email;
     if (correoDueno) {
       try {
-        const d = await wp.asignarDueno(sitio.blog_id, { email: correoDueno, nombre: brief.cliente?.nombre || '', apiUrl: config.publicUrl, google: Boolean(config.googleClientId && config.googleClientSecret) });
+        const d = await wp.asignarDueno(sitio.blog_id, { email: correoDueno, nombre: brief.cliente?.nombre || '', apiUrl: config.publicUrl, google: Boolean(config.googleClientId && config.googleClientSecret), arquetipo });
         await paso('dueno_wp', { email: d.email, acceso: d.acceso });
       } catch (err) { reporte.avisos.push(`No se pudo dar de alta al dueño en WordPress: ${err.message}`); }
     } else reporte.avisos.push('El brief no tiene correo del dueño; no se creó su acceso a wp-admin.');
