@@ -12,7 +12,7 @@ import { coloresParaPropuesta, avisosDeGiro } from './paletas_giro.js';
 import { evaluarColoresCliente, asignarFuentes } from './asesor_color.js';
 import { coloresDePalabras, logoTenido } from './materiales.js';
 import { waUrl, formatoTel } from './bloques.js';
-import { paginasGenerales, logoHTML } from './propuestas_general.js';
+import { paginasGenerales, logoHTML, redes } from './propuestas_general.js';
 import { completarMaterial } from './validar_material.js';
 
 // Regla dura de tipografía: la escala, el interlineado y la medida se agregan al final del CSS (mandan sobre la plantilla).
@@ -85,7 +85,7 @@ function pagina(d) {
   const menuTxt = d.categorias.map((c, i) => `<details${i === 0 ? ' open' : ''}><summary>${esc(c.nombre)} <span>desde $${c.desde}</span></summary><ul>${c.items.slice(0, 14).map((it) => `<li><span><b>${esc(it.nombre)}</b>${it.descripcion ? `<small>${esc(it.descripcion)}</small>` : ''}</span><em>${esc(it.precio || '')}</em></li>`).join('')}</ul></details>`).join('');
   const menuImgs = d.menus.length ? `<div class="carr" aria-roledescription="carrusel" aria-label="Imágenes del menú"><div class="pista">${d.menus.map((u, i) => `<a class="slide" href="${esc(u)}" target="_blank" rel="noopener" aria-label="Menú ${i + 1} de ${d.menus.length}"><img src="${esc(u)}" alt="Menú de ${esc(d.nombre)} (${i + 1} de ${d.menus.length})" loading="${i < 2 ? 'eager' : 'lazy'}"></a>`).join('')}</div>${d.menus.length > 1 ? `<button class="cb prev" type="button" aria-label="Anterior">‹</button><button class="cb next" type="button" aria-label="Siguiente">›</button><div class="puntos">${d.menus.map((_, i) => `<button type="button" aria-label="Ir al menú ${i + 1}"${i === 0 ? ' aria-current="true"' : ''}></button>`).join('')}</div>` : ''}</div>` : '';
   const info = d.info.map((t) => `<li>${esc(t)}</li>`).join('');
-  const vis = `<section class="sec visita" id="contacto"><h2>${esc(d.textos.visita || 'Visítanos')}</h2><div class="vis">${d.direccion ? `<p><b>Dónde</b>${esc(d.direccion)}</p>` : ''}${d.horarios ? `<p><b>Horario</b>${esc(d.horarios)}</p>` : ''}${d.tel ? `<p><b>WhatsApp</b><a${wa}>${esc(d.tel)}</a></p>` : ''}</div><a class="btn"${wa}>${esc(d.textos.cta)}</a></section>`;
+  const vis = `<section class="sec visita" id="contacto"><h2>${esc(d.textos.visita || 'Visítanos')}</h2><div class="vis">${d.direccion ? `<p><b>Dónde</b>${esc(d.direccion)}</p>` : ''}${d.horarios ? `<p><b>Horario</b>${esc(d.horarios)}</p>` : ''}${d.email ? `<p><b>Correo</b><a href="mailto:${esc(d.email)}">${esc(d.email)}</a></p>` : ''}${(d.redes || []).length ? `<p><b>Redes</b><span class="rs">${d.redes.map(([n, u]) => `<a href="${esc(u)}" target="_blank" rel="noopener">${n}</a>`).join(' · ')}</span></p>` : ''}${d.tel ? `<p><b>WhatsApp</b><a${wa}>${esc(d.tel)}</a></p>` : ''}</div><a class="btn"${wa}>${esc(d.textos.cta)}</a></section>`;
 
   const heros = {
     protagonista: `<section class="hero h-prot"><div class="txt"><h1>${esc(d.textos.titular)}</h1><p class="sub">${esc(d.textos.subtitulo)}</p><div class="ctas"><a class="btn"${wa}>${esc(d.textos.cta)}</a><a class="lnk" href="#menu">Ver menú</a></div><ul class="info">${info}</ul></div><div class="vis1"><img src="${esc(heroImgs[0])}" alt=""></div></section>`,
@@ -145,6 +145,7 @@ body.menu .prod,body.menu .cat{color:var(--fg)}
 .mtxt details{border-bottom:1px solid var(--bor);padding:14px 0}.mtxt summary{font-family:var(--ft);font-size:20px;cursor:pointer;display:flex;justify-content:space-between;align-items:baseline;list-style:none}.mtxt summary::-webkit-details-marker{display:none}.mtxt summary span{font-family:var(--fc);font-size:14px;font-weight:700;color:var(--acc)}
 .mtxt ul{list-style:none;margin-top:10px}.mtxt li{display:flex;justify-content:space-between;gap:12px;padding:8px 0;border-bottom:1px dashed var(--bor)}.mtxt li small{display:block;color:var(--soft);font-size:13px}.mtxt li em{font-style:normal;font-weight:800;color:var(--p);white-space:nowrap}
 
+.promo{background:var(--p);color:var(--on);border-radius:18px;padding:14px 18px;margin-top:22px;text-align:center}.promo b{margin-right:8px;text-transform:uppercase;letter-spacing:.08em;font-size:13px}
 .vis{display:grid;gap:12px}.vis p{display:flex;flex-direction:column}.vis b{font-family:var(--ft);font-size:18px}
 footer{margin-top:48px;padding:24px 20px 90px;border-top:1px solid var(--bor);font-size:14px;color:var(--soft);text-align:center}
 .wa{position:fixed;right:16px;bottom:16px;width:58px;height:58px;border-radius:50%;background:#1F7A4C;display:grid;place-items:center;box-shadow:0 8px 20px rgba(0,0,0,.25);z-index:30}.wa svg{width:30px;height:30px;fill:#fff}
@@ -155,7 +156,7 @@ footer{margin-top:48px;padding:24px 20px 90px;border-top:1px solid var(--bor);fo
 </style></head>
 <body class="${d.layout}">
 <header class="barra"><div class="in">${logo}<nav><a href="#destacados">${esc(d.textos.destacados || 'Lo más pedido')}</a><a href="#menu">Menú</a><a href="#contacto">Contacto</a></nav></div></header>
-<main class="wrap">${heros[d.layout]}${orden.join('')}</main>
+<main class="wrap">${heros[d.layout]}${d.promo ? `<section class="promo" id="promocion"><p><b>Promoción</b> ${esc(d.promo)}</p></section>` : ''}${orden.join('')}</main>
 <footer>© ${new Date().getFullYear()} ${esc(d.nombre)} · Propuesta ${d.letra}: ${esc(NOMBRES[d.layout])}</footer>
 <span class="etq">Propuesta ${d.letra}</span>
 <a class="wa"${wa} aria-label="Escríbenos por WhatsApp"><svg viewBox="0 0 32 32" aria-hidden="true"><path d="M16 3a13 13 0 0 0-11.2 19.6L3 29l6.6-1.7A13 13 0 1 0 16 3Zm0 23.7c-2 0-4-.6-5.7-1.6l-.4-.2-3.9 1 1-3.8-.3-.4A10.7 10.7 0 1 1 16 26.7Zm5.9-8c-.3-.2-1.9-1-2.2-1-.3-.1-.5-.2-.7.1l-1 1.3c-.2.2-.4.2-.7.1a8.8 8.8 0 0 1-4.4-3.8c-.3-.6.3-.5.9-1.7.1-.2 0-.4 0-.6l-1-2.4c-.3-.6-.5-.5-.7-.5h-.6c-.2 0-.6.1-.9.4-.3.3-1.2 1.1-1.2 2.8s1.2 3.2 1.4 3.5c.2.2 2.4 3.6 5.7 5 2.1.9 3 1 4 .8.7-.1 1.9-.8 2.2-1.5.3-.8.3-1.4.2-1.5l-.6-.3Z"/></svg></a>
@@ -176,6 +177,23 @@ a.onclick=function(){ir(idx()-1)};b.onclick=function(){ir(idx()+1)};d.forEach(fu
  * @param {object} textos  {variantes:[{titular, subtitulo, cta}], info:[], destacados, categorias, visita}
  */
 export async function crearPropuestasHTML(brief, mat, textos, { token = crypto.randomBytes(9).toString('base64url').replace(/[_-]/g, 'x'), ronda = 0 } = {}) {
+  const r = await renderPropuestas(brief, mat, textos, { ronda });
+  await fs.mkdir(path.join(DIR_PROPUESTAS, token), { recursive: true });
+  const opciones = [];
+  for (const pg of r.paginas) {
+    await fs.writeFile(path.join(DIR_PROPUESTAS, token, `${pg.letra}.html`), pg.html);
+    opciones.push({ letra: pg.letra, layout: pg.layout, nombre: pg.nombre, url: `${config.publicUrl}/p/${token}/${pg.letra}`, fuentes: pg.fuentes, paleta: pg.paleta });
+  }
+  return { token, opciones, avisos_color: r.avisos_color, asesor: r.asesor };
+}
+
+/**
+ * Arma el HTML de las propuestas sin escribirlo. Con fijo = {letra, fuentes, paleta} arma solo esa letra con la
+ * tipografía y paleta que el cliente eligió (sitio en vivo): no valida material ni color para no tumbar el sitio.
+ * → {paginas:[{letra, layout, nombre, html, fuentes, paleta}], avisos_color, asesor, faltan}
+ */
+export async function renderPropuestas(brief, mat, textos, { ronda = 0, fijo = null } = {}) {
+  const faltanTodas = [];
   // Cada ronda ("ninguna me gustó") usa otras tipografías y otro orden de color/fotos.
   const estilo = brief.marca?.estilo || 'calido';
   const todosPares = paresTipograficos(estilo, brief, 18);
@@ -189,27 +207,26 @@ export async function crearPropuestasHTML(brief, mat, textos, { token = crypto.r
   if (asesor.corregidos && !brief.marca?.colores_aviso_aceptado) cps[5] = { ...coloresParaPropuesta({ brief, coloresCliente: asesor.corregidos, i: 5, ronda, evitarHex }), origen: 'sugerencia', familia: 'Tus colores con el ajuste sugerido' };
   // Regla de coherencia letra–paleta: cada paleta recibe el par tipográfico que transmite la misma personalidad.
   const pares = asignarFuentes(cps.map((c) => c.colores), candidatos);
-  await fs.mkdir(path.join(DIR_PROPUESTAS, token), { recursive: true });
   if (brief.negocio?.arquetipo !== 'restaurante') {
     // Logo de un color: versión pintada con la tinta de cada propuesta (contraste garantizado sobre fondos claros u oscuros).
-    let pags = paginasGenerales({ brief, mat, textos, pares, urlFuentes, ronda, cps });
+    let pags = paginasGenerales({ brief, mat, textos, pares, urlFuentes, ronda, cps, fijo });
     if (mat.logo?.url && mat.logo.mono !== false) {
       const tenidos = {};
       for (const pg of pags) for (const hex of [pg.paleta.fg, '#FFFFFF']) if (!tenidos[hex]) tenidos[hex] = await logoTenido(mat.logo, hex).catch(() => null);
       mat = { ...mat, logo: { ...mat.logo, tenidos: Object.fromEntries(Object.entries(tenidos).filter(([, v]) => v)) } };
-      pags = paginasGenerales({ brief, mat, textos, pares, urlFuentes, ronda, cps });
+      pags = paginasGenerales({ brief, mat, textos, pares, urlFuentes, ronda, cps, fijo });
     }
     const out = [];
     for (const pg of pags) {
-      const errColor = auditarPaleta(pg.paleta);
+      const errColor = fijo ? [] : auditarPaleta(pg.paleta);
       if (errColor.length) throw new Error(`Propuesta ${pg.letra} no cumple la regla de color: ${errColor.join('; ')}`);
-      const { html, faltan, repetidas } = completarMaterial(conReglaTipo(pg.html, pg.fuentes, estilo), mat);
-      if (faltan.length) throw new Error(`Propuesta ${pg.letra} sin material del cliente: ${faltan.map((f) => f.clave).join(', ')}`);
-      if (repetidas.length) throw new Error(`Propuesta ${pg.letra} con fotos repetidas: ${repetidas.map((f) => f.url.split('/').pop()).join(', ')}`);
-      await fs.writeFile(path.join(DIR_PROPUESTAS, token, `${pg.letra}.html`), html);
-      out.push({ letra: pg.letra, layout: pg.layout, nombre: pg.nombre, url: `${config.publicUrl}/p/${token}/${pg.letra}`, fuentes: pg.fuentes, paleta: pg.paleta });
+      const { html, faltan, repetidas } = completarMaterial(conReglaTipo(pg.html, pg.fuentes, fijo?.fuentes?.estilo || estilo), mat);
+      faltanTodas.push(...faltan);
+      if (faltan.length && !fijo) throw new Error(`Propuesta ${pg.letra} sin material del cliente: ${faltan.map((f) => f.clave).join(', ')}`);
+      if (repetidas.length && !fijo) throw new Error(`Propuesta ${pg.letra} con fotos repetidas: ${repetidas.map((f) => f.url.split('/').pop()).join(', ')}`);
+      out.push({ letra: pg.letra, layout: pg.layout, nombre: pg.nombre, html, fuentes: pg.fuentes, paleta: pg.paleta });
     }
-    return { token, opciones: out, avisos_color: avisosDeGiro({ arquetipo: brief.negocio?.arquetipo, subtipo: brief.negocio?.subtipo_resuelto || brief.negocio?.subtipo, colores: coloresCliente }), asesor };
+    return { paginas: out, faltan: faltanTodas, avisos_color: avisosDeGiro({ arquetipo: brief.negocio?.arquetipo, subtipo: brief.negocio?.subtipo_resuelto || brief.negocio?.subtipo, colores: coloresCliente }), asesor };
   }
   const colores = coloresCliente;
   const prods = productos(mat, mat.menu_texto).sort((x, y) => (y.precio ? 1 : 0) - (x.precio ? 1 : 0));
@@ -221,6 +238,7 @@ export async function crearPropuestasHTML(brief, mat, textos, { token = crypto.r
   const out = [];
   for (const [i, layout] of LAYOUTS.entries()) {
     const letra = 'ABCDEF'[i];
+    if (fijo && fijo.letra !== letra) continue;
     const v = textos.variantes?.[i] || textos.variantes?.[0] || {};
     // Regla de paletas por giro: colores del cliente mandan; si faltan, familias del giro según personalidad y estilo.
     const cp = cps[i];
@@ -228,20 +246,21 @@ export async function crearPropuestasHTML(brief, mat, textos, { token = crypto.r
     const rot = (k) => altos.length ? altos[(i * 2 + k) % altos.length].img : (mat.hero?.url || '');
     const d = {
       letra, layout, nombre: brief.negocio?.nombre || '', logo: mat.logo?.url || null, logoObj: mat.logo || null,
-      pal: corregirPaleta(paleta(layout, b)).paleta, f: pares[i % pares.length], fuentesUrl: urlFuentes([pares[i % pares.length]]),
+      pal: fijo?.paleta || corregirPaleta(paleta(layout, b)).paleta, f: fijo?.fuentes || pares[i % pares.length], fuentesUrl: urlFuentes([fijo?.fuentes || pares[i % pares.length]]),
       textos: { titular: v.titular, subtitulo: v.subtitulo, cta: v.cta || 'Pide por WhatsApp', destacados: textos.destacados, categorias: textos.categorias, visita: textos.visita },
       heroImgs: [rot(0), rot(1), rot(2)], productos: prods.slice(i % 2 ? 3 : 0).concat(prods.slice(0, i % 2 ? 3 : 0)),
       categorias: cats, menus: mat.menus.map((m) => m.url), info: (textos.info || []).slice(0, 3),
       wa: waUrl(c.whatsapp, c.mensaje_whatsapp_inicial), tel: c.whatsapp ? formatoTel(c.whatsapp) : null, direccion: dir, horarios: typeof c.horarios === 'string' ? c.horarios : null,
+      promo: brief.oferta?.promocion_actual || null, email: c.email || null, redes: redes(c),
     };
-    const errColor = auditarPaleta(d.pal);
+    const errColor = fijo ? [] : auditarPaleta(d.pal);
     if (errColor.length) throw new Error(`Propuesta ${letra} no cumple la regla de color: ${errColor.join('; ')}`);
-    const { html, faltan } = completarMaterial(conReglaTipo(pagina(d), d.f, estilo), mat, { titulo: 'Más de nosotros' });
-    if (faltan.length) throw new Error(`Propuesta ${letra} sin material del cliente: ${faltan.map((f) => f.clave).join(', ')}`);
-    await fs.writeFile(path.join(DIR_PROPUESTAS, token, `${letra}.html`), html);
-    out.push({ letra, layout, nombre: NOMBRES[layout], url: `${config.publicUrl}/p/${token}/${letra}`, fuentes: d.f, paleta: { ...d.pal, familia: cp.familia, origen: cp.origen } });
+    const { html, faltan } = completarMaterial(conReglaTipo(pagina(d), d.f, fijo?.fuentes?.estilo || estilo), mat, { titulo: 'Más de nosotros' });
+    faltanTodas.push(...faltan);
+    if (faltan.length && !fijo) throw new Error(`Propuesta ${letra} sin material del cliente: ${faltan.map((f) => f.clave).join(', ')}`);
+    out.push({ letra, layout, nombre: NOMBRES[layout], html, fuentes: d.f, paleta: fijo?.paleta || { ...d.pal, familia: cp.familia, origen: cp.origen } });
   }
-  return { token, opciones: out, avisos_color: avisosDeGiro({ arquetipo: brief.negocio?.arquetipo, subtipo: brief.negocio?.subtipo_resuelto || brief.negocio?.subtipo, colores }), asesor };
+  return { paginas: out, faltan: faltanTodas, avisos_color: avisosDeGiro({ arquetipo: brief.negocio?.arquetipo, subtipo: brief.negocio?.subtipo_resuelto || brief.negocio?.subtipo, colores }), asesor };
 }
 
 /** Textos de las 6 propuestas con Claude (JSON en texto). Solo datos reales del brief y del menú. */

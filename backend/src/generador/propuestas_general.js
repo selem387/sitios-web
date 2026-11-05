@@ -107,7 +107,7 @@ export function agruparOferta(items = []) {
 export function redes(c = {}) {
   const r = c.redes || {};
   const url = (v, base) => (!v ? null : /^https?:/i.test(v) ? v : `${base}${String(v).replace(/^@/, '')}`);
-  return [['Instagram', url(r.instagram, 'https://instagram.com/')], ['Facebook', url(r.facebook, 'https://facebook.com/')], ['TikTok', url(r.tiktok, 'https://tiktok.com/@')], ['YouTube', url(r.youtube, 'https://youtube.com/@')]].filter((x) => x[1]);
+  return [['Instagram', url(r.instagram, 'https://instagram.com/')], ['Facebook', url(r.facebook, 'https://facebook.com/')], ['TikTok', url(r.tiktok, 'https://tiktok.com/@')], ['YouTube', url(r.youtube, 'https://youtube.com/@')], ['LinkedIn', url(r.linkedin, 'https://www.linkedin.com/company/')]].filter((x) => x[1]);
 }
 
 /* ---------------- Página ---------------- */
@@ -127,7 +127,8 @@ function pagina(d) {
   const rot = (arr, k) => (arr.length ? [...arr.slice(k % arr.length), ...arr.slice(0, k % arr.length)] : []);
   const fotosT = [...rot(trabajos, d.i * 2), ...capturasT];
   // La foto que el cliente eligió para la portada va en las propuestas A y D; las demás abren con su trabajo.
-  const heroFoto = (d.layout === 'portada' || d.layout === 'logo') ? (mat.hero || fotosT[0]) : (fotosT[0] || mat.hero || mat.fundador);
+  // En el sitio en vivo, si el dueño eligió la foto de portada desde su panel, esa abre la página en cualquier diseño.
+  const heroFoto = (d.layout === 'portada' || d.layout === 'logo' || (brief.fotos?.portada_manual && mat.hero)) ? (mat.hero || fotosT[0]) : (fotosT[0] || mat.hero || mat.fundador);
 
   const cta = (cls = '') => `<a class="btn ${cls}"${wa}>${esc(t.cta)}</a>`;
   const info = (t.info || []).map((x) => `<li>${esc(x)}</li>`).join('');
@@ -141,7 +142,8 @@ function pagina(d) {
     dostonos: () => `<section class="hero h-dos"><div class="wrap in"><div class="txt"><h1>${esc(t.titular)}</h1><p class="sub">${esc(t.subtitulo)}</p>${cta('inv')}</div>${heroFoto ? `<figure class="marco">${img(heroFoto, { eager: true })}</figure>` : ''}</div></section>`,
     carta: () => `<section class="hero h-carta wrap"><p class="kicker">${esc(d.nombre)}</p><h1>${esc(t.titular)}</h1><p class="sub">${esc(t.subtitulo)}</p>${cta()}</section>${fotosT.length ? `<div class="tira" aria-label="Fotos">${fotosT.slice(0, 8).map((x, k) => img(x, { eager: k < 2 })).join('')}</div>` : ''}`,
   };
-  const hero = heros[d.layout]();
+  const promo = brief.oferta?.promocion_actual ? `<section class="promo" id="promocion"><div class="wrap"><p><b>Promoción</b> ${esc(brief.oferta.promocion_actual)}</p></div></section>` : '';
+  const hero = heros[d.layout]() + promo;
 
   /* --- Secciones --- */
   const T = d.titulos;
@@ -186,7 +188,7 @@ function pagina(d) {
     const dir = c.direccion && typeof c.direccion === 'object' ? [c.direccion.calle, c.direccion.colonia, c.direccion.ciudad].filter(Boolean).join(', ') : c.direccion;
     const zona = (brief.zona?.cobertura || []).join(' · ');
     const rs = redes(c).map(([n, u]) => `<a href="${esc(u)}" target="_blank" rel="noopener">${n}</a>`).join('');
-    return `<section class="sec contacto" id="contacto"><div class="wrap"><h2>${esc(T.contacto)}</h2><div class="datos">${d.tel ? `<p><b>WhatsApp</b><a${wa}>${esc(d.tel)}</a></p>` : ''}${dir ? `<p><b>Dónde</b>${esc(dir)}</p>` : zona ? `<p><b>Dónde</b>${esc(zona)}</p>` : ''}${typeof c.horarios === 'string' ? `<p><b>Horario</b>${esc(c.horarios)}</p>` : ''}${rs ? `<p><b>Redes</b><span class="rs">${rs}</span></p>` : ''}</div>${cta()}</div></section>`;
+    return `<section class="sec contacto" id="contacto"><div class="wrap"><h2>${esc(T.contacto)}</h2><div class="datos">${d.tel ? `<p><b>WhatsApp</b><a${wa}>${esc(d.tel)}</a></p>` : ''}${dir ? `<p><b>Dónde</b>${esc(dir)}</p>` : zona ? `<p><b>Dónde</b>${esc(zona)}</p>` : ''}${typeof c.horarios === 'string' ? `<p><b>Horario</b>${esc(c.horarios)}</p>` : ''}${c.email ? `<p><b>Correo</b><a href="mailto:${esc(c.email)}">${esc(c.email)}</a></p>` : ''}${rs ? `<p><b>Redes</b><span class="rs">${rs}</span></p>` : ''}</div>${cta()}</div></section>`;
   };
 
   const ORDEN = {
@@ -254,6 +256,7 @@ body.l-carta .paq{background:none;border:0;border-top:2px solid var(--fg);border
 .pasos{counter-reset:p;list-style:none;display:grid;gap:12px}.pasos li{counter-increment:p;padding-left:52px;position:relative;min-height:40px}.pasos li::before{content:counter(p);position:absolute;left:0;top:-4px;width:38px;height:38px;border-radius:50%;background:var(--p);color:var(--on);display:grid;place-items:center;font-weight:800}
 details{border-bottom:1px solid var(--bor);padding:16px 0}summary{font-family:var(--ft);font-size:21px;cursor:pointer;list-style:none}summary::-webkit-details-marker{display:none}details p{margin-top:10px;color:var(--soft)}
 .video{width:100%;border-radius:18px}
+.promo{background:var(--p);color:var(--on);padding:16px 0;text-align:center;font-size:17px}.promo b{margin-right:8px;text-transform:uppercase;letter-spacing:.08em;font-size:13px}
 .contacto .datos{display:grid;gap:14px}.datos p{display:flex;flex-direction:column}.datos b{font-family:var(--ft);font-weight:400;font-size:20px}.rs{display:flex;gap:16px;flex-wrap:wrap}.rs a{font-weight:700}
 footer{margin-top:64px;padding:26px 20px 92px;border-top:1px solid var(--bor);font-size:14px;color:var(--soft);text-align:center}
 .wa{position:fixed;right:16px;bottom:16px;width:58px;height:58px;border-radius:50%;background:#1F7A4C;display:grid;place-items:center;box-shadow:0 8px 20px rgba(0,0,0,.25);z-index:30}.wa svg{width:30px;height:30px;fill:#fff}
@@ -275,7 +278,7 @@ a:focus-visible,summary:focus-visible{outline:3px solid var(--p);outline-offset:
 }
 
 /** Datos de las 6 páginas generales. */
-export function paginasGenerales({ brief, mat, textos, pares, urlFuentes, ronda = 0, cps: cpsDados = null }) {
+export function paginasGenerales({ brief, mat, textos, pares, urlFuentes, ronda = 0, cps: cpsDados = null, fijo = null }) {
   const arq = TITULOS[brief.negocio?.arquetipo] ? brief.negocio.arquetipo : 'generico';
   const titulos = { ...TITULOS[arq], ...(textos.secciones || {}) };
   const colores = [...new Set([...(mat.colores || [])])];
@@ -283,13 +286,14 @@ export function paginasGenerales({ brief, mat, textos, pares, urlFuentes, ronda 
   const evitarHex = coloresDePalabras(String(brief.marca?.evitar || '').split(/[,;y]+/));
   const cps = cpsDados || LAYOUTS_GENERAL.map((_, i) => coloresParaPropuesta({ brief, coloresCliente: colores, i, ronda, evitarHex }));
   const c = brief.contacto || {};
-  return LAYOUTS_GENERAL.map((layout, i) => {
+  const todas = LAYOUTS_GENERAL.map((layout, i) => ({ layout, i })).filter(({ i }) => !fijo || 'ABCDEF'[i] === fijo.letra);
+  return todas.map(({ layout, i }) => {
     const letra = 'ABCDEF'[i];
     const v = textos.variantes?.[i] || textos.variantes?.[0] || {};
-    const par = pares[i % pares.length];
+    const par = fijo?.fuentes || pares[i % pares.length];
     const d = {
       i: i + ronda * 3, letra, layout, nombre: brief.negocio?.nombre || '', brief, mat, titulos,
-      pal: { ...corregirPaleta(paletaGeneral(layout, cps[i].colores, pastel, i + ronda * 2)).paleta, familia: cps[i].familia, origen: cps[i].origen }, f: par, fuentesUrl: urlFuentes([par]),
+      pal: fijo?.paleta || { ...corregirPaleta(paletaGeneral(layout, cps[i].colores, pastel, i + ronda * 2)).paleta, familia: cps[i].familia, origen: cps[i].origen }, f: par, fuentesUrl: urlFuentes([par]),
       t: { titular: v.titular, subtitulo: v.subtitulo, cta: v.cta || 'Escríbeme por WhatsApp', info: (textos.info || []).slice(0, 3), sobre: textos.sobre, proceso: textos.proceso },
       wa: waUrl(c.whatsapp, c.mensaje_whatsapp_inicial), tel: c.whatsapp ? formatoTel(c.whatsapp) : null,
     };

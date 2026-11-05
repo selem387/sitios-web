@@ -56,6 +56,10 @@ a.op:hover,a.op:focus-visible{transform:translateY(-3px);box-shadow:0 14px 30px 
 </div></body></html>`;
 }
 
+// Otros módulos atienden sus propios modos (p. ej. "vivo": sitio en vivo + panel del dueño).
+const modos = new Map();
+export const registrarModo = (modo, fn) => modos.set(modo, fn);
+
 /** Middleware Hono: atiende peticiones cuyo Host es un dominio de cliente registrado. */
 export function middlewareDominios() {
   return async (c, next) => {
@@ -67,6 +71,7 @@ export function middlewareDominios() {
     const reg = m.get(host);
     if (!reg) return next();
     // Dominio del chat de Ari (p. ej. weber.lemoss.co): la raíz es el chat; /chat/v1, /chat/archivos y /p/ siguen normales.
+    if (modos.has(reg.modo)) return modos.get(reg.modo)(c, reg, next, host);
     if (reg.modo === 'chat') {
       if (c.req.path === '/' || c.req.path === '/chat') return c.html(paginaChat(), 200, { 'cache-control': 'no-cache' });
       return next();

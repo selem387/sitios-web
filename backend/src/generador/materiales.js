@@ -14,7 +14,7 @@ const MIN_HERO = 900;   // ancho mínimo para foto de portada
 const MIN_FOTO = 420;   // ancho mínimo para galería
 const MIN_LOGO = 160;
 
-const VERSION = 5;
+export const VERSION = 5;
 const PROMPT = (negocio) => `Analiza esta imagen que el dueño de "${negocio || 'un negocio'}" mandó para su página web. Responde SOLO con JSON:
 {
  "tipo": "logo" | "foto_trabajo" | "foto_producto" | "foto_local" | "foto_equipo" | "foto_fundador" | "captura_resena" | "menu" | "catalogo" | "flyer" | "documento" | "otro",

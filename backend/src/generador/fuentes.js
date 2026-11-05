@@ -44,6 +44,15 @@ const pesosDe = (f) => {
   if (m) { const w = [400, 500, 600, 700].filter((x) => m.includes(x)); return w.length > 1 ? `:wght@${w.join(';')}` : ''; }
   return SOLO_400.has(f) ? (f === 'Atkinson Hyperlegible' ? ':wght@400;700' : '') : ':wght@400;500;600;700';
 };
+/** Par tipográfico completo (con métricas del catálogo) a partir de los nombres guardados en la opción elegida. */
+export function parPorNombres({ titulos, cuerpo, estilo } = {}) {
+  for (const [e, ps] of Object.entries(CATALOGO)) {
+    const p = ps.find((x) => x.titulos === titulos && x.cuerpo === cuerpo);
+    if (p) return { ...p, estilo: estilo || e };
+  }
+  return { titulos, cuerpo, estilo: estilo || 'calido' };
+}
+
 export const urlFuentes = (pares) => {
   const fams = [...new Set(pares.flatMap((p) => [p.titulos, p.cuerpo]))];
   const q = fams.map((f) => `family=${encodeURIComponent(f).replace(/%20/g, '+')}${pesosDe(f)}`);

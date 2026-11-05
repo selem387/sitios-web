@@ -19,6 +19,7 @@ import { crearPropuestasHTML, textosPropuestas } from './propuestas_html.js';
 import * as wp from './wp.js';
 import { sitioDePropuesta } from './sitio_propuesta.js';
 import { NOMBRES_GENERAL } from './propuestas_general.js';
+import { crearSitioVivo } from '../panel/sitios.js';
 
 const q = db.q;
 const igual = (a, b) => { const x = Buffer.from(String(a || '')); const y = Buffer.from(String(b || '')); return y.length > 0 && x.length === y.length && crypto.timingSafeEqual(x, y); };
@@ -342,7 +343,11 @@ export async function generarSitio(sitioId, entrevista, { slug } = {}) {
 
 export async function encolar(entrevista, { slug, forzarWordpress }) {
   const plat = entrevista.brief?.plataforma?.plataforma || entrevista.brief?.plataforma;
-  if (plat === 'app' && !forzarWordpress) throw new HttpError(409, 'El brief salió para plataforma "app"; usa forzar_wordpress:true para generar una landing en WordPress.');
+  // Plataforma "app": sitio en vivo desde la base, administrado por el dueño en su panel propio.
+  if (plat === 'app' && !forzarWordpress) {
+    const sv = await crearSitioVivo(entrevista, { slug }).catch((x) => { throw new HttpError(x.status || 500, x.message); });
+    return { sitio_vivo_id: sv.id, slug: sv.slug, estado: 'vivo', previa: `${config.publicUrl}/s/${sv.slug}` };
+  }
   const s = slugify(slug || entrevista.brief?.negocio?.nombre || entrevista.id.slice(0, 8));
   const r = await q(`INSERT INTO sitios (entrevista_id, estado) VALUES ($1,'generando') RETURNING id`, [entrevista.id]);
   const sitioId = r.rows[0].id;

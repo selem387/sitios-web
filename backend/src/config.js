@@ -49,4 +49,10 @@ export const config = {
   ghlLocationId: env.GHL_LOCATION_ID || '',
   correoRemitente: env.CORREO_REMITENTE || '',      // p. ej. acceso@mail.<dominio-neutro>
   correoRemitenteNombre: env.CORREO_REMITENTE_NOMBRE || 'Acceso a tu página',
+  // Panel del dueño (sitios en vivo). PANEL_SECRET firma las sesiones; ACCESO_URL es el dominio neutro del login con Google
+  // (su /acceso/google/callback va registrado en Google Cloud). Sin GOOGLE_CLIENT_ID/SECRET solo se ofrece el código al correo.
+  panelSecret: env.PANEL_SECRET || env.ADMIN_TOKEN || env.ENTREVISTA_API_KEY || '',
+  accesoUrl: (env.ACCESO_URL || '').replace(/\/$/, ''),
+  googleClientId: env.GOOGLE_CLIENT_ID || '',
+  googleClientSecret: env.GOOGLE_CLIENT_SECRET || '',
 };

@@ -16,6 +16,7 @@ import { registerAdminRoutes } from './admin.js';
 import { registerEntrevistaRoutes, initEntrevista } from './entrevista/index.js';
 import { registerGeneradorRoutes } from './generador/index.js';
 import { registerChatRoutes } from './chat/index.js';
+import { registerPanelRoutes } from './panel/index.js';
 import { middlewareDominios } from './generador/dominios.js';
 import { invokeFunction } from './functions.js';
 import { attachRealtime } from './realtime.js';
@@ -105,6 +106,7 @@ registerAdminRoutes(app, wrap);
 registerEntrevistaRoutes(app, wrap);
 registerGeneradorRoutes(app, wrap);
 registerChatRoutes(app, wrap);
+registerPanelRoutes(app, wrap);
 
 // Funciones backend: el SDK hace POST /api/apps/:appId/functions/:name.
 async function proxyFunction(c, tenant, name) {
