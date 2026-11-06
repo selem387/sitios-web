@@ -10,7 +10,7 @@ import { avisar } from '../entrevista/avisos.js';
 import { procesarMateriales } from '../generador/materiales.js';
 import { config } from '../config.js';
 import { SECCIONES, limpiarSeccion, contenidoActual, disenoElegido, renderSitio, invalidar, porId } from './sitios.js';
-import { textosInventados } from './reinterpretar.js';
+import { textosInventados, separarPrecio } from './reinterpretar.js';
 
 const q = db.q;
 const NO_PUDE = 'No pude aplicar ese cambio a tu página 😔 ¿Me lo explicas de otra forma? Por ejemplo, dime en qué parte de la página está y cómo quieres que quede.';
@@ -102,6 +102,7 @@ function validar(plan, act, fuentes) {
   const secciones = {};
   for (const [k, v] of Object.entries(plan.secciones || {})) {
     if (!SECCIONES.includes(k)) { errores.push(`Sección desconocida "${k}"`); continue; }
+    if (k === 'oferta' && Array.isArray(v?.items)) v = { ...v, items: v.items.map(separarPrecio) };
     try { secciones[k] = limpiarSeccion(k, v); } catch (err) { errores.push(`${k}: ${err.message}`); }
   }
   errores.push(...textosInventados(secciones, fuentes));

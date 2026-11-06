@@ -113,6 +113,13 @@ export function agruparOferta(items = []) {
   return [...grupos.values()];
 }
 
+/** Texto largo del cliente: un <p> por párrafo (renglón en blanco), saltos simples respetados y **negritas** del chat como <strong>. */
+export function parrafosHTML(texto, clase = '') {
+  const ps = String(texto || '').replace(/\r/g, '').split(/\n\s*\n/).map((x) => x.trim()).filter(Boolean);
+  const neg = (x) => esc(x).replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>').replace(/\n/g, '<br>');
+  return ps.map((x) => `<p${clase ? ` class="${clase}"` : ''}>${neg(x)}</p>`).join('');
+}
+
 /** Descripción de un paquete tal cual la escribió el cliente: cada renglón con "- " o "• " va en su propio <li>; los demás, párrafos. */
 export function detalleHTML(texto) {
   const lineas = String(texto || '').replace(/\r/g, '').split('\n').map((x) => x.trim()).filter(Boolean);
@@ -193,7 +200,7 @@ function pagina(d) {
     if (!foto && !conf.historia_corta) return '';
     const cifras = (conf.cifras || []).slice(0, 3).map((c) => `<li>${esc(c)}</li>`).join('');
     const cred = (fund.credenciales || []).map((c) => esc(c)).join(' · ');
-    return `<section class="sec sobre" id="sobre"><div class="wrap s-in">${foto ? `<figure class="retrato">${img(foto)}</figure>` : ''}<div><h2>${esc(T.sobre)}</h2>${fund.nombre ? `<p class="firma">${esc(fund.nombre)}${fund.rol ? ` · ${esc(fund.rol)}` : ''}</p>` : ''}<p class="historia">${esc(t.sobre || conf.historia_corta || '')}</p>${cred ? `<p class="cred">${cred}</p>` : ''}${cifras ? `<ul class="cifras">${cifras}</ul>` : ''}</div></div></section>`;
+    return `<section class="sec sobre" id="sobre"><div class="wrap s-in">${foto ? `<figure class="retrato">${img(foto)}</figure>` : ''}<div><h2>${esc(T.sobre)}</h2>${fund.nombre ? `<p class="firma">${esc(fund.nombre)}${fund.rol ? ` · ${esc(fund.rol)}` : ''}</p>` : ''}${parrafosHTML(t.sobre || conf.historia_corta || '', 'historia')}${cred ? `<p class="cred">${cred}</p>` : ''}${cifras ? `<ul class="cifras">${cifras}</ul>` : ''}</div></div></section>`;
   };
   const secEquipo = () => { const eq = mat.equipo.filter((x) => !usadas.has(x.url)); return eq.length ? `<div class="wrap"><div class="galeria g-eq">${eq.map((x) => `<figure>${img(x)}</figure>`).join('')}</div></div>` : ''; };
   const secResenas = () => {
@@ -266,7 +273,7 @@ h1,h2,h3{font-family:var(--ft);font-weight:400;line-height:1.06;letter-spacing:-
 /* paquetes */
 .paqs{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:16px}
 .paq{background:var(--card);border:1px solid var(--bor);border-radius:20px;padding:22px}.paq h3{margin-bottom:10px}.paq ul{list-style:none}.paq li{display:flex;justify-content:space-between;gap:14px;padding:11px 0;border-top:1px dashed var(--bor)}.paq li:first-child{border-top:0}
-.paq li b{display:block;font-size:15px}.paq li span{display:block;color:var(--soft);font-size:14px}.paq li em{font-style:normal;font-weight:800;color:var(--p);white-space:nowrap}.paq li span+span{margin-top:6px}.paq ul.inc{list-style:disc;padding-left:18px;margin-top:6px;color:var(--soft);font-size:14px}.paq ul.inc li{display:list-item;border:0;padding:2px 0}
+.paq li b{display:block;font-size:15px}.paq li span{display:block;color:var(--soft);font-size:14px}.paq li em{font-style:normal;font-weight:800;color:var(--p);white-space:nowrap}.paq li span+span{margin-top:6px}p.historia+p.historia{margin-top:14px}.paq ul.inc{list-style:disc;padding-left:18px;margin-top:6px;color:var(--soft);font-size:14px}.paq ul.inc li{display:list-item;border:0;padding:2px 0}
 body.l-carta .paq{background:none;border:0;border-top:2px solid var(--fg);border-radius:0;padding:18px 0}body.l-dostonos .paq{border-top:6px solid var(--p)}
 .cats{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:12px;margin-top:18px}.catimg img{width:100%;height:auto;border-radius:14px;border:1px solid var(--bor)}
 .doc{display:inline-block;margin-top:18px;font-weight:700;text-underline-offset:5px}

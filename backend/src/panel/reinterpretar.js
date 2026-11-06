@@ -36,6 +36,14 @@ export function textosInventados(secciones, fuentes) {
   return fallos;
 }
 
+/** "Paquete #1 — $1,200 MXN" con precio "$1,200 MXN": el nombre queda "Paquete #1" (se parte el renglón sin cambiar caracteres). */
+export function separarPrecio(it) {
+  const precio = String(it.precio_o_rango || '').trim();
+  let nombre = String(it.nombre || '').trim();
+  if (precio && nombre.endsWith(precio)) nombre = nombre.slice(0, -precio.length).replace(/\s*[—–-]\s*$/, '').trim() || nombre;
+  return { ...it, nombre };
+}
+
 /* ---------------- Historial ---------------- */
 
 export async function historialCompleto(entrevistaId) {
@@ -112,7 +120,7 @@ export function briefReinterpretado(brief, d) {
   const contacto = { ...(brief.contacto || {}), ...lleno(d.contacto) };
   if (d.redes && Object.keys(lleno(d.redes)).length) contacto.redes = normalizarRedes({ ...(brief.contacto?.redes || {}), ...lleno(d.redes) });
   const oferta = { ...(brief.oferta || {}) };
-  if (d.oferta?.items?.length) oferta.items = d.oferta.items.map((x) => ({ grupo: x.grupo || '', nombre: x.nombre, descripcion_corta: x.descripcion_corta || '', precio_o_rango: x.precio_o_rango || '', destacado: !!x.destacado }));
+  if (d.oferta?.items?.length) oferta.items = d.oferta.items.map(separarPrecio).map((x) => ({ grupo: x.grupo || '', nombre: x.nombre, descripcion_corta: x.descripcion_corta || '', precio_o_rango: x.precio_o_rango || '', destacado: !!x.destacado }));
   if (typeof d.oferta?.mostrar_precios === 'boolean') oferta.mostrar_precios = d.oferta.mostrar_precios;
   if (d.oferta?.promocion_actual !== undefined) oferta.promocion_actual = d.oferta.promocion_actual || null;
   const confianza = { ...(brief.confianza || {}) };

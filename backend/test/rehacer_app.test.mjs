@@ -2,7 +2,8 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { agruparOferta, detalleHTML } from '../src/generador/propuestas_general.js';
 import { limpiarSeccion } from '../src/panel/sitios.js';
-import { renglonesAjenos, textosInventados, briefReinterpretado } from '../src/panel/reinterpretar.js';
+import { renglonesAjenos, textosInventados, briefReinterpretado, separarPrecio } from '../src/panel/reinterpretar.js';
+import { parrafosHTML } from '../src/generador/propuestas_general.js';
 
 const CLIENTE = `quiero que ajustes los paquetes, los quiero asi;
 ## 🎂 Smash Cake | Primer Añito
@@ -45,4 +46,14 @@ test('brief reinterpretado reemplaza paquetes y guarda lo dictado', () => {
   assert.equal(brief.contacto.email, 'a@b.mx');
   assert.equal(brief.contacto.telefono, '9991112233');
   assert.deepEqual(dictado.historia, { texto: 'Hola' });
+});
+
+test('el precio no se repite en el nombre', () => {
+  assert.equal(separarPrecio({ nombre: 'Paquete #1 — $1,200 MXN', precio_o_rango: '$1,200 MXN' }).nombre, 'Paquete #1');
+  assert.equal(separarPrecio({ nombre: 'Maternidad | Paquete #2 — $1,000 MXN', precio_o_rango: '$1,000 MXN' }).nombre, 'Maternidad | Paquete #2');
+  assert.equal(separarPrecio({ nombre: 'Sesión', precio_o_rango: '$900' }).nombre, 'Sesión');
+});
+
+test('historia en párrafos con negritas del chat', () => {
+  assert.equal(parrafosHTML('Hola\n\nCon **12 años**', 'historia'), '<p class="historia">Hola</p><p class="historia">Con <strong>12 años</strong></p>');
 });
