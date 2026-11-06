@@ -18,9 +18,11 @@ const ver = (brief) => brief?.contacto?.email_verificacion || null;
 const conContacto = (brief, cambios) => ({ ...brief, contacto: { ...(brief.contacto || {}), ...cambios } });
 
 export const emailVerificado = (brief) => brief?.contacto?.email_verificado === true && normalizarEmail(ver(brief)?.email) === normalizarEmail(brief?.contacto?.email);
-export const verificacionPendiente = (brief) => ver(brief)?.estado === 'enviado' && !emailVerificado(brief);
+// 5-nov-2026: ya no se verifica el correo con código (el acceso al panel se entrega por chat con enlace).
+export const verificacionPendiente = () => false;
 // Para el cierre: ¿falta algo del correo que impida completar?
-export function faltaCorreo(brief) {
+export function faltaCorreo() { return null; }
+export function faltaCorreoAnterior(brief) {
   if (!esEmail(brief?.contacto?.email)) return 'sin_email';
   if (emailVerificado(brief)) return null;
   if (!correoConfigurado()) return null; // sin proveedor: se verifica al entregar el acceso
@@ -88,7 +90,8 @@ export async function atenderVerificacion(e, brief, texto) {
 }
 
 // Después del turno de Ari: si el correo del brief es nuevo o cambió, manda el código.
-export function correoCambio(antes, despues) {
+export function correoCambio() { return false; }
+export function correoCambioAnterior(antes, despues) {
   const a = normalizarEmail(antes?.contacto?.email);
   const d = normalizarEmail(despues?.contacto?.email);
   return esEmail(d) && d !== a && normalizarEmail(ver(despues)?.email) !== d;

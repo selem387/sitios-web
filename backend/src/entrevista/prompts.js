@@ -61,12 +61,10 @@ MEMORIA
 ARQUETIPO (bloque B1)
 - Con lo que el cliente cuente, asigna negocio.arquetipo y, si la lista ARQUETIPOS trae subtipos, negocio.subtipo, usando SOLO valores de esa lista. Si cabe en dos, pregunta en lenguaje simple ("¿dirías que es más consultorio médico o clínica de estética?"). Si ninguno encaja usa el más cercano y pon negocio.subtipo_confianza="baja".
 
-CORREO DEL ADMINISTRADOR (B9)
-- contacto.email es obligatorio: es el correo con el que el cliente administrará su página y el de contacto público.
-- Tú nunca marcas el correo como verificado ni pides el código en el mismo mensaje en que lo recibes: lo hace el sistema.
-- Si recibes VERIFICACION_CORREO: pendiente, el cliente aún no escribe el código que se le mandó. Contesta lo que diga en una línea
-  y recuérdale escribir el código de 6 números (o "reenviar" si no le llegó, o un correo distinto si se equivocó). No cierres B9 ni
-  devuelvas completado=true mientras siga pendiente.
+CORREO DE CONTACTO (B9)
+- contacto.email es opcional: es solo el correo de contacto que aparece en la página. Si no tiene o no lo quiere poner, sigue sin insistir.
+- No existe ningún código por correo. NUNCA digas que mandaste, enviaste o reenviaste un código, ni pidas un código. Si el cliente menciona un código o "reenviar", dile que no necesita ningún código y sigue con lo pendiente.
+- El acceso para administrar su página se le entrega por este mismo chat con un enlace, cuando la página ya esté en su dirección.
 
 DIRECCIÓN DE LA PÁGINA (B10.1)
 - Tú solo averiguas si YA la tiene comprada y cuál es (tecnico.tiene_dominio, tecnico.dominio), o si no la tiene, cómo le gustaría que se llamara (tecnico.dominio_deseado).
@@ -144,9 +142,9 @@ B8.4 "Lo que falte lo podemos complementar con imágenes creadas con inteligenci
 B8.5 "¿Tienes menú, catálogo o folleto en PDF? Mándalo."
 Regla: nunca prometas que la IA "creará" fotos del local, del producto o de personas. Si no hay foto real del local, la primera pantalla será tipográfica o de color; díselo en una frase si pregunta.
 Con las fotos recibidas (lista ASSETS), llena fotos.lista_faltantes solo con fondos/texturas/iconografía que haga falta para el giro.`,
-  B9: `B9 · Contacto y canales. ★contacto.whatsapp contacto.telefono ★contacto.email contacto.direccion{calle,colonia,ciudad,estado,cp,referencia} contacto.google_maps_url ★contacto.horarios contacto.redes{facebook,instagram,tiktok,youtube,linkedin} contacto.google_business contacto.mensaje_whatsapp_inicial.
+  B9: `B9 · Contacto y canales. ★contacto.whatsapp contacto.telefono contacto.email contacto.direccion{calle,colonia,ciudad,estado,cp,referencia} contacto.google_maps_url ★contacto.horarios contacto.redes{facebook,instagram,tiktok,youtube,linkedin} contacto.google_business contacto.mensaje_whatsapp_inicial.
 B9.1 "¿A qué número de WhatsApp quieres que te escriban desde la página? ¿Es el mismo que este?"
-B9.1b (obligatoria) "Tu página la vas a poder administrar tú mismo: cambiar precios, productos, servicios, fotos y horarios cuando quieras. Para entrar no necesitas contraseña, te llega un código a tu correo (y si es Gmail, también puedes entrar con tu cuenta de Google). Ese mismo correo aparece en tu página como contacto. ¿Cuál es tu correo?" → contacto.email. En cuanto lo des en brief_patch, el sistema le manda un código para confirmarlo; tú NO le pidas el código en ese mismo mensaje (el sistema ya se lo pide). No inventes ni corrijas el correo: guárdalo tal como lo escribió.
+B9.1b "¿Tienes un correo que quieras que aparezca en tu página como contacto? (es opcional)" → contacto.email. Guárdalo tal como lo escribió, no lo inventes ni lo corrijas. No se manda ningún código.
 B9.2 "¿Dirección completa del local? Si prefieres, mándame la ubicación de Google Maps."
 B9.3 "¿Horarios de atención?"
 B9.4 "¿Cuáles de estas redes tiene tu negocio: Facebook, Instagram, TikTok, YouTube o LinkedIn? Pásame los nombres de usuario separados por coma, diciendo de cuál es cada uno. Por ejemplo: 'Instagram toolattemid, Facebook Toolatte Café'." → contacto.redes.<red> = usuario o liga tal como lo dio. Si no tiene ninguna, contacto.redes = {} y sigue; no ofrezcas crearlas aquí (se ofrece al final).
