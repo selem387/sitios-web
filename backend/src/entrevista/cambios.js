@@ -170,6 +170,8 @@ Aplicas EXACTAMENTE lo que pide, editando el marcado publicado. Todo lo demás q
 REGLA NÚMERO UNO: EL TEXTO DEL CLIENTE NO SE TOCA
 - Todo lo que el cliente escribió para su página (títulos, descripciones, listas, precios, emojis, signos, mayúsculas, orden) se pone EXACTAMENTE como lo escribió, letra por letra. No corriges, no resumes, no reordenas, no cambias palabras ni puntuación, no agregas emojis, no juntas renglones en uno.
 - Solo lo acomodas en el diseño: cada renglón o parte suya va en el elemento que corresponda (título, párrafo, lista, precio). Puedes partir un renglón en dos elementos (p. ej. "Nombre — $900 MXN" en título y precio) pero sin cambiar ni un carácter de cada parte.
+- Si el cliente manda renglones con viñetas ("- 1 hora de sesión."), cada renglón va en su propio <li> dentro de un bloque de lista (<!-- wp:list --><ul class="wp-block-list"><!-- wp:list-item --><li>…</li><!-- /wp:list-item -->…</ul><!-- /wp:list -->), separado del párrafo de descripción. Nunca juntes la descripción y las viñetas en un mismo párrafo.
+- Los "## " y *asteriscos* del chat son formato: "## Título" va como título y "*Paquete #1 — $1,200 MXN*" como subtítulo, sin los símbolos.
 - Si una frase de la página no viene del cliente, se queda como ya estaba en la página; no redactas textos nuevos. (Quitar viñetas "- " o marcas ** del chat sí está permitido.)
 
 CÓMO EDITAR
@@ -332,7 +334,9 @@ const ENT = { amp: '&', lt: '<', gt: '>', quot: '"', apos: "'", nbsp: ' ', ndash
 const decodificar = (t) => texto(t).replace(/&(#x?[0-9a-f]+|[a-z]+);/gi, (m, c) => (c[0] === '#' ? String.fromCodePoint(c[1].toLowerCase() === 'x' ? parseInt(c.slice(2), 16) : parseInt(c.slice(1), 10)) : (ENT[c.toLowerCase()] ?? m)));
 const normTexto = (t) => decodificar(t).replace(/\u00a0/g, ' ').replace(/\s+/g, ' ').trim();
 const nodosTexto = (html) => texto(html).replace(/<!--[\s\S]*?-->/g, '\n').split(/<[^>]+>/).map(normTexto).filter((x) => x.length >= 3 && /\p{L}/u.test(x));
-const textoCliente = (t) => normTexto(texto(t).split('\n').map((l) => l.replace(/^\s*(?:[-•*]|\d+[.)])\s+/, '').replace(/\*\*|__/g, '')).join('\n'));
+// Limpia el formato de chat (markdown) de un renglón del cliente: viñetas, "## ", *énfasis*, **negritas**, _cursivas_.
+const limpiarRenglon = (l) => texto(l).replace(/^\s*#{1,6}\s+/, '').replace(/^\s*(?:[-•*]|\d+[.)])\s+/, '').replace(/\*\*|__/g, '').replace(/(^|\s)[*_](\S(?:.*?\S)?)[*_](?=\s|$|[.,;:!?])/g, '$1$2').trim();
+const textoCliente = (t) => normTexto(texto(t).split('\n').map(limpiarRenglon).join('\n'));
 // El fragmento aparece en el texto del cliente sin cortar palabras a la mitad.
 function contienePalabraEntera(hay, frag) {
   const esLetra = (ch) => !!ch && /[\p{L}\p{N}]/u.test(ch);
@@ -367,7 +371,7 @@ export function textosFaltantes(actual, destinos, mensajesCliente, quitados = []
   const q2 = (quitados || []).map(normTexto);
   const faltan = [];
   for (const m of mensajesCliente || []) {
-    const lineas = texto(m).split('\n').map((l) => normTexto(l.replace(/^\s*(?:[-•*]|\d+[.)])\s+/, '').replace(/\*\*|__/g, ''))).filter((l) => l.length >= 12 && /\p{L}/u.test(l));
+    const lineas = texto(m).split('\n').map((l) => normTexto(limpiarRenglon(l))).filter((l) => l.length >= 12 && /\p{L}/u.test(l) && !/[:;]$/.test(l)); // "los quiero así:" es instrucción, no contenido
     if (texto(m).length < 400 || lineas.length < 5) continue; // solo mensajes de contenido (listas, paquetes, textos largos)
     for (const l of lineas) {
       const partes = l.split(/\s+[—–]\s+|\s+\|\s+/).filter((x) => x.length >= 3); // "Nombre — $900 MXN" puede ir en dos elementos
