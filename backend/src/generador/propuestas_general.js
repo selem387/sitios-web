@@ -222,8 +222,11 @@ function pagina(d) {
     if (!tes.length && !mat.resenas.length) return '';
     const limpio = (s) => String(s).replace(/\p{Extended_Pictographic}/gu, '').trim();
     const cards = tes.map((x) => `<blockquote><p>${esc(limpio(x.texto))}</p>${x.nombre ? `<cite>${esc(x.nombre)}</cite>` : ''}</blockquote>`).join('');
-    const caps = mat.resenas.map((x) => `<figure>${img(x)}</figure>`).join('');
-    return `<section class="sec resenas" id="resenas"><div class="wrap"><h2>${esc(T.resenas)}</h2>${cards ? `<div class="quotes">${cards}</div>` : ''}${caps ? `<div class="capturas">${caps}</div>` : ''}</div></section>`;
+    const caps = mat.resenas.map((x) => `<figure class="cap">${img(x)}</figure>`).join('');
+    // Testimonios y capturas de reseñas en una sola fila a todo el ancho (hasta 4); más de 4 siguen en filas parejas.
+    const n = tes.length + mat.resenas.length;
+    const fila = `<div class="quotes q${Math.min(n, 4)}">${cards}${caps}</div>`;
+    return `<section class="sec resenas" id="resenas"><div class="wrap"><h2>${esc(T.resenas)}</h2>${fila}</div></section>`;
   };
   const secProceso = () => { const ps = brief.oferta?.proceso_pasos || []; return ps.length >= 3 ? `<section class="sec"><div class="wrap"><h2>${esc(t.proceso || 'Cómo funciona')}</h2><ol class="pasos">${ps.map((x) => `<li>${esc(x)}</li>`).join('')}</ol></div></section>` : ''; };
   const secFaq = () => { const fq = (brief.faq || []).filter((x) => x.pregunta && x.respuesta); return fq.length ? `<section class="sec" id="faq"><div class="wrap estrecho"><h2>${esc(T.faq)}</h2>${fq.map((x, k) => `<details${k === 0 ? ' open' : ''}><summary>${esc(x.pregunta)}</summary><p>${esc(x.respuesta)}</p></details>`).join('')}</div></section>` : ''; };
@@ -301,6 +304,8 @@ body.l-carta .paq{background:none;border:0;border-top:2px solid var(--fg);border
 .cifras{list-style:none;display:flex;flex-wrap:wrap;gap:12px;margin-top:22px}.cifras li{font-family:var(--ft);font-size:22px;padding:10px 16px;border:1px solid var(--bor);border-radius:999px;background:var(--bg)}
 /* reseñas */
 .quotes{display:grid;gap:14px;grid-template-columns:repeat(auto-fill,minmax(260px,1fr))}blockquote{background:var(--card);border:1px solid var(--bor);border-radius:20px;padding:22px}blockquote p{font-family:var(--ft);font-size:20px;line-height:1.3}blockquote cite{display:block;margin-top:12px;font-style:normal;font-weight:700;font-size:14px;color:var(--soft)}
+.quotes .cap{margin:0}.quotes .cap img{width:100%;height:auto;border-radius:20px;border:1px solid var(--bor);display:block}
+@media (min-width:900px){.quotes.q2{grid-template-columns:repeat(2,minmax(0,1fr))}.quotes.q3{grid-template-columns:repeat(3,minmax(0,1fr))}.quotes.q4{grid-template-columns:repeat(4,minmax(0,1fr))}}
 .capturas{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:12px;margin-top:18px;align-items:start}.capturas img{width:100%;height:auto;border-radius:14px;border:1px solid var(--bor)}
 .pasos{counter-reset:p;list-style:none;display:grid;gap:12px}.pasos li{counter-increment:p;padding-left:52px;position:relative;min-height:40px}.pasos li::before{content:counter(p);position:absolute;left:0;top:-4px;width:38px;height:38px;border-radius:50%;background:var(--p);color:var(--on);display:grid;place-items:center;font-weight:800}
 details{border-bottom:1px solid var(--bor);padding:16px 0}summary{font-family:var(--ft);font-size:21px;cursor:pointer;list-style:none}summary::-webkit-details-marker{display:none}details p{margin-top:10px;color:var(--soft)}
