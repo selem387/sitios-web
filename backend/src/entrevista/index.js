@@ -16,6 +16,7 @@ import { MODELO_ARI, MODELO_MEMORIA } from './claude.js';
 import { verificarWebhook } from '../dominio/stripe.js';
 import { procesarEventoStripe, cronCompras, obtener as obtenerCompra } from '../dominio/compra.js';
 import { cronDominiosPropios } from './dominio.js';
+import { esReferenciaPagina, procesarEventoPagina, confirmarPago } from './pago_pagina.js';
 import { cronCambios } from './cambios.js';
 import { investigar } from '../dominio/registrador.js';
 import { actualizarGuia, BASE as GUIAS } from '../dominio/guias.js';
@@ -67,7 +68,10 @@ export function registerEntrevistaRoutes(app, wrap) {
     let ev;
     try { ev = verificarWebhook(crudo, c.req.header('stripe-signature')); }
     catch (err) { return c.json({ error: err.message }, 400); }
-    try { return c.json(await procesarEventoStripe(ev)); }
+    try {
+      const esPagina = esReferenciaPagina(ev?.data?.object?.client_reference_id);
+      return c.json(await (esPagina ? procesarEventoPagina(ev) : procesarEventoStripe(ev)));
+    }
     catch (err) { console.error('webhook stripe', err); return c.json({ error: 'error interno' }, 500); } // Stripe reintenta
   });
   app.get('/pago/listo', (c) => c.html(paginaPago('Pago recibido ✅', 'Gracias. Ya puedes regresar a la conversación con Ari: en cuanto quede registrada tu dirección te aviso ahí.')));
@@ -105,6 +109,12 @@ export function registerEntrevistaRoutes(app, wrap) {
     const sv = (await db.q(`SELECT id FROM sitios_vivos WHERE entrevista_id=$1`, [e.id]).catch(() => ({ rows: [] }))).rows[0];
     const panel = b.panel || (sv ? 'panel_propio' : 'wp-admin');
     return entregarAcceso(e.id, { dominio, panel, sitio_vivo_id: sv?.id }, { forzar: b.forzar === true });
+  }));
+
+  // Confirmación manual del pago de la página (si el webhook de Stripe no llegó o se pagó por otro medio).
+  app.post('/entrevista/v1/sesiones/:id/pago-pagina', wrap(async (c) => {
+    auth(c);
+    return confirmarPago(c.req.param('id'), { fuente: 'manual' });
   }));
 
   app.get('/entrevista/v1/usuarios/ultima', wrap(async (c) => {

@@ -1,6 +1,6 @@
 // Materiales del cliente → listos para diseño: clasificación con visión, recorte de capturas de pantalla,
 // extracción del logo, del menú (con precios) y de fotos de producto, colores del logo y lista de faltantes.
-// Lo usan las opciones de diseño (B7/B8) y el generador. El análisis se guarda en assets.analisis.
+// Lo usan las opciones de diseño (B5/B6) y el generador. El análisis se guarda en assets.analisis.
 import crypto from 'node:crypto';
 import fs from 'node:fs/promises';
 import path from 'node:path';

@@ -14,10 +14,11 @@ import { propuestasPendientes, tocaPropuestas, atenderPropuestas, iniciarPropues
 import { verificacionPendiente, atenderVerificacion, enviarVerificacion, correoCambio, faltaCorreo } from './verificacion.js';
 import { normalizarRedes, redesFaltantes, listaNombres } from './redes.js';
 import { redesEnCurso, atenderRedes } from './entrega.js';
-import { dominioEnCurso, atenderDominio, tocaDominio, iniciarDominio, notaParaAri, quiereRetomar, retomarDominio, leerFlujo, borrarFlujo } from './dominio.js';
+import { dominioEnCurso, atenderDominio, notaParaAri, quiereRetomar, retomarDominio, leerFlujo, borrarFlujo } from './dominio.js';
 import { limpiarDominio } from '../dominio/registrador.js';
 import { sitioEditable, estadoCambios, registrarPedido, clasificarMensaje } from './cambios.js';
 import { avisarEquipo } from './avisos.js';
+import { dominioRespondido, quiereDominio, PREGUNTA_DOMINIO, mensajePago, pagoPendiente, atenderPostCierre } from './pago_pagina.js';
 
 // Tope de seguridad (fotos y audios cuentan como mensajes). Una entrevista real ronda 60–130.
 const MAX_MSGS_CLIENTE = 400;
@@ -171,7 +172,7 @@ async function turnoAri(e, { mensajesRecientes, ultimoTexto, regresaDePausa, arq
     });
     partes.push(`ARQUETIPOS (slug → subtipos con palabras clave). Asigna negocio.arquetipo y negocio.subtipo SOLO con estos valores:\n${lista.join('\n')}`);
   }
-  if (bloque === 'B7') {
+  if (bloque === 'B5') {
     // Asesor de color: evalúa los colores que dio y trae tendencias 2026–2027 de su giro con letras coherentes.
     try {
       const coloresCliente = coloresDePalabras(brief.marca?.colores || []);
@@ -225,6 +226,15 @@ export async function procesarMensaje(b) {
       const rs = (await atenderRedes(u, texto)).filter(Boolean);
       for (const r of rs) await db.insertarMensaje(u.id, { rol: 'agente', contenido: r });
       return salida(u, rs, 'texto');
+    }
+    // Pago de la página y dirección (después del cierre): reenviar enlace, "ya pagué", pasos de la dirección.
+    if (u && u.estado === 'completada' && !comando && texto && u.brief?.pago_pagina) {
+      const rs = await atenderPostCierre(u, texto).catch((err) => { console.error('pago/dirección post cierre', err); return null; });
+      if (rs?.length) {
+        await db.insertarMensaje(u.id, { rol: 'cliente', contenido: texto });
+        for (const r of rs) await db.insertarMensaje(u.id, { rol: 'agente', contenido: r });
+        return salida(u, rs, 'texto');
+      }
     }
     if (u && u.estado === 'completada' && !comando && (Date.now() - new Date(u.actualizado).getTime() < 7 * 864e5 || await sitioEditable(u.id))) {
       // Entrevista ya cerrada (o con página publicada): los cambios que pida se aplican a su página; si no, se responde según el estado del sitio.
@@ -382,13 +392,25 @@ export async function procesarMensaje(b) {
     } else if (faltanRedes.length && (brief.redes_crear?.interesa === null || brief.redes_crear?.interesa === undefined)) {
       t.completado = false; t.bloque = 'B12';
       t.reply = `Una última cosa: no tienes ${listaNombres(faltanRedes)}. Tenerlas te ayuda a que te encuentren y a publicar tus productos y promociones. Al terminar tu página te puedo guiar paso a paso para crearlas, y si se te complica, alguien de nuestro equipo te las crea. ¿Te interesa?`;
+    } else if (!dominioRespondido(brief)) {
+      // La dirección es siempre la última pregunta antes de armar la página.
+      t.completado = false; t.bloque = 'B12';
+      t.reply = PREGUNTA_DOMINIO;
     }
+  }
+  // Cierre: tras la dirección, el enlace de pago para alojarla en su dominio y el aviso de que se arma la página.
+  if (t.completado) {
+    const cierre = 'Mientras tanto ya estoy armando tu página: en unos minutos te mando la liga para que la veas desde tu celular. Después me dices qué ajustar; los primeros cambios van incluidos.';
+    if (quiereDominio(brief)) {
+      brief.pago_pagina = pagoPendiente(e.id);
+      t.reply = `${mensajePago(e.id)}\n\n${cierre} En cuanto se refleje tu pago seguimos con tu dirección.`;
+    } else t.reply = `Va 👍 ${cierre} Cuando quieras tu propia dirección, escríbeme *comprar dirección*.`;
   }
 
   const cambios = { brief, bloque_actual: t.bloque, pendientes_bloque: t.pendientes, arquetipo_slug: brief.negocio?.arquetipo || null, nombre: brief.cliente?.nombre || e.nombre };
   await db.guardar(e.id, cambios);
   Object.assign(e, cambios);
-  // Al salir de B8 (fotos): revisar materiales y mandar las 3 propuestas, o pedir mejores imágenes.
+  // Al salir de B6 (fotos): revisar materiales y mandar las 3 propuestas, o pedir mejores imágenes.
   if (!t.completado && tocaPropuestas(e.brief, bloqueAnterior, t.bloque)) {
     try {
       const r = await iniciarPropuestas(e, e.brief);
@@ -396,21 +418,14 @@ export async function procesarMensaje(b) {
       return responderConMedia([...mensajes, ...r.responder.textos], r.responder.media);
     } catch (err) { console.error('iniciarPropuestas', err); }
   }
-  // Ya dijo si tiene dirección (y cuál) o cómo le gustaría: el sistema investiga o busca opciones; la respuesta de Ari se sustituye.
-  if (!t.completado && tocaDominio(e.brief)) {
-    try {
-      const r = await iniciarDominio(e, e.brief);
-      e.brief = (await db.obtener(e.id)).brief;
-      return responder([...mensajes, ...r.textos, ...(avisoCorreo ? [avisoCorreo] : [])], 'texto');
-    } catch (err) { console.error('iniciarDominio', err); }
-  }
+  // La dirección ya no arranca aquí: es la última pregunta y su flujo empieza al confirmarse el pago de la página (pago_pagina.js).
   const demasiado = !t.completado && e.mensajes_cliente + 1 >= MAX_MSGS_CLIENTE;
   // Cierre forzado por tope: nunca dejar una pregunta de Ari sin respuesta posible.
   mensajes.push(demasiado ? CIERRE_POR_TOPE : t.reply);
   if (avisoCorreo && !demasiado) mensajes.push(avisoCorreo);
 
   if (!t.completado && !demasiado) {
-    const res = await responder(mensajes, e.bloque_actual === 'B8' ? 'media' : 'texto');
+    const res = await responder(mensajes, e.bloque_actual === 'B6' ? 'media' : 'texto');
     // Memoria en segundo plano: cierre de bloque o ventana de 10 mensajes.
     tocaActualizar(e, bloqueAnterior).then((d) => d && actualizarMemoria(e.id, d)).catch((err) => console.error('memoria', err));
     return res;

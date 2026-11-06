@@ -47,7 +47,7 @@ const T = TENDENCIAS;
 
 /**
  * Familias por subtipo. Cada familia: marca (10 % botón/enlaces), acento, claro (fondo 60 %), oscuro (texto).
- * e = estilos de B7 donde encaja; d = dimensiones de personalidad.
+ * e = estilos de B5 donde encaja; d = dimensiones de personalidad.
  */
 export const PALETAS = {
   inmobiliaria: {
@@ -270,7 +270,7 @@ PALETAS.servicio_b2b = PALETAS.contador_consultor;
 // Subtipo por defecto de cada arquetipo (mismo orden que subtipo.js).
 const DEFAULT_ARQ = { inmobiliaria: 'inmobiliaria', clinica: 'medica', restaurante: 'restaurante', servicios: 'contador_consultor', tienda: 'general', oficios: 'servicio_local', educacion: 'cursos', turismo: 'hotel', generico: 'servicio_b2b' };
 
-/** Dimensiones de personalidad que el cliente expresó (marca.personalidad, B7.3). */
+/** Dimensiones de personalidad que el cliente expresó (marca.personalidad, B5.3). */
 export function dimensionesDe(brief = {}) {
   const txt = [].concat(brief.marca?.personalidad || []).join(' ') + ' ' + String(brief.marca?.tono_textos || '');
   return Object.entries(DIM).filter(([, re]) => re.test(txt)).map(([k]) => k);
@@ -287,7 +287,7 @@ function chocaConEvitar(fam, evitar) {
 
 /**
  * Familias ordenadas por ajuste para un negocio.
- * Puntaje: estilo elegido (B7.4) 3, cada dimensión de personalidad (B7.3) 2; se descartan las que chocan con marca.evitar.
+ * Puntaje: estilo elegido (B5.4) 3, cada dimensión de personalidad (B5.3) 2; se descartan las que chocan con marca.evitar.
  * @returns {{subtipo:string, codigo:string, evitar:string[], familias:object[]}}
  */
 export function paletasPara({ arquetipo, subtipo, estilo, dimensiones = [], evitarHex = [] } = {}) {
@@ -342,7 +342,7 @@ export const REGLA_PALETAS = {
   descripcion: 'REGLA DURA (4-nov-2026): paletas por giro, personalidad y estilo. Se ejecuta en generador/paletas_giro.js; después pasa por la regla de contraste.',
   reglas: [
     'Los colores del cliente mandan; el giro solo completa lo que falte (acento, neutros) y avisa si algo choca con el giro',
-    'Elegir por ajuste con la personalidad que dio el cliente (B7.3) y el estilo (B7.4), no por "significados" universales del color',
+    'Elegir por ajuste con la personalidad que dio el cliente (B5.3) y el estilo (B5.4), no por "significados" universales del color',
     'Respetar el código del giro para que se reconozca y diferenciarse con el acento',
     'Restricciones por giro: sin azul/morado dominante en comida; sin rojo dominante en salud; sin amarillo/café en dental; neutros en fotografía y florería (el color lo ponen las fotos)',
     'Tendencias 2026–2027 (Cloud Dancer, Transformative Teal, Cocoa Powder, Luminous Blue, Energy Orange, Clay…) solo como neutros o acentos',

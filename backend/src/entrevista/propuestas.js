@@ -1,4 +1,4 @@
-// Paso de propuestas visuales dentro de la entrevista (entre B8 fotos y B9 contacto):
+// Paso de propuestas visuales dentro de la entrevista (entre B6 fotos y B7 confianza):
 // 1) revisar materiales (logo, fotos, menú); si no alcanzan para una propuesta digna, decirlo y pedir mejores,
 //    con la opción "no las tengo" → se trabaja con lo que mandó (nunca se omiten sus imágenes);
 // 2) mandar 3 opciones A/B/C con su logo, colores y fotos; 3) registrar la elegida (o mezclas / ninguna).
@@ -13,7 +13,7 @@ const hash = (s) => [...String(s)].reduce((h, c) => (h * 31 + c.charCodeAt(0)) >
 
 export const propuestasPendientes = (brief) => ['pendiente_material', 'mostradas', 'rechazadas'].includes(brief?.marca?.propuestas?.estado);
 export const tocaPropuestas = (brief, bloqueAnterior, bloqueNuevo) =>
-  !brief?.marca?.propuestas && BLOQUES_ORDEN.indexOf(bloqueAnterior) >= BLOQUES_ORDEN.indexOf('B8') && bloqueNuevo !== 'B8' && bloqueAnterior !== bloqueNuevo;
+  !brief?.marca?.propuestas && BLOQUES_ORDEN.indexOf(bloqueAnterior) >= BLOQUES_ORDEN.indexOf('B6') && bloqueNuevo !== 'B6' && bloqueAnterior !== bloqueNuevo;
 const BLOQUES_ORDEN = ['B0', 'B1', 'B2', 'B3', 'B4', 'B5', 'B6', 'B7', 'B8', 'B9', 'B10', 'B11', 'B12'];
 
 function mensajeFaltan(mat) {
@@ -129,7 +129,7 @@ export async function atenderPropuestas(e, brief, { texto = '', huboMedia = fals
   return { responder: null, brief, seguirConAri: true };
 }
 
-/** Se llama DESPUÉS del turno de Ari cuando el cliente terminó las fotos (sale de B8). */
+/** Se llama DESPUÉS del turno de Ari cuando el cliente terminó las fotos (sale de B6). */
 export async function iniciarPropuestas(e, brief) {
   const mat = await procesarMateriales(e.id, brief);
   if (!mat.material_suficiente) {

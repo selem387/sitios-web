@@ -11,7 +11,7 @@ export const REGLAS = {
   tipografia_color: REGLA_TIPO_COLOR,
   // REGLA DURA de paletas por giro, personalidad y estilo.
   paletas_giro: REGLA_PALETAS,
-  // REGLA DURA: asesor de color (avisos sustentados a los colores del cliente, tendencias en B7, coherencia letra–paleta).
+  // REGLA DURA: asesor de color (avisos sustentados a los colores del cliente, tendencias en B5, coherencia letra–paleta).
   asesor_color: REGLA_ASESOR,
 
   // Clichés de diseño hecho con IA: recursos que aparecen en miles de páginas generadas sin importar el giro. No se usan salvo que el brief los pida por su nombre.
@@ -38,7 +38,7 @@ export const REGLAS = {
     ],
   },
 
-  // Presupuesto de efectos según marca.efectos (el cliente elige en B7.8 conociendo los contras).
+  // Presupuesto de efectos según marca.efectos (el cliente elige en B5.8 conociendo los contras).
   niveles_efectos: {
     descripcion: 'Presupuesto de efectos según marca.efectos. Si el nivel no viene en el brief, aplica "sobrio".',
     sobrio: {
@@ -86,14 +86,14 @@ export const REGLAS = {
       'Hero: SIEMPRE foto real del cliente si existe una utilizable (assets con usar=true y calidad != mala); la IA nunca sustituye el local, los productos, al dueño ni al equipo',
       'IA (Higgsfield) solo para fondos abstractos, texturas, iconografía y composiciones sin personas ni lugares reconocibles; nunca personas, nunca "el local"',
       'Si no hay foto real para el hero: hero tipográfico o de color pleno con la paleta, no stock ni IA de personas',
-      'Pedir en B8 una foto vertical (9:16) del local o del dueño para el hero móvil; si solo hay horizontales, encuadrar con object-position al sujeto',
+      'Pedir en B6 una foto vertical (9:16) del local o del dueño para el hero móvil; si solo hay horizontales, encuadrar con object-position al sujeto',
       'Fotos reales se sirven en WebP/AVIF con srcset; la del hero sin lazy load y con dimensiones declaradas (evitar CLS)',
       'Fotos borrosas, oscuras o con texto superpuesto se descartan (usar=false) y se avisa al cliente una sola vez',
       'Todas las imágenes con alt descriptivo en español; decorativas con alt vacío',
     ],
   },
 
-  // Densidad visual (dial de Taste v2 adaptado): se infiere del giro y se puede corregir en B7.
+  // Densidad visual (dial de Taste v2 adaptado): se infiere del giro y se puede corregir en B5.
   densidad: {
     descripcion: 'Qué tan apretado o aireado es el sitio. marca.densidad = compacta | media | aireada. Ari la infiere por giro y solo pregunta si hay duda.',
     por_defecto: {

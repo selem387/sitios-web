@@ -1,6 +1,6 @@
 // Asesor de color (v1, 4-nov-2026). Tres trabajos:
 // 1. Evaluar los colores que da el cliente contra la evidencia y avisar con sugerencias concretas (sus colores mandan).
-// 2. Ofrecer en B7 las tendencias 2026–2027 de fuentes serias, ya combinadas con su giro, personalidad y letras.
+// 2. Ofrecer en B5 las tendencias 2026–2027 de fuentes serias, ya combinadas con su giro, personalidad y letras.
 // 3. Coherencia letra–paleta: que la personalidad de la tipografía y la de los colores digan lo mismo.
 //
 // Evidencia (ver doc claude/asesor-color-2026.md):
@@ -215,7 +215,7 @@ export function evaluarColoresCliente({ brief = {}, colores = [] }) {
 }
 
 /**
- * 3 opciones de paleta para ofrecer en B7 (si el cliente no tiene colores o pide ideas): las familias del giro
+ * 3 opciones de paleta para ofrecer en B5 (si el cliente no tiene colores o pide ideas): las familias del giro
  * mejor ajustadas a su estilo y personalidad, priorizando las que usan colores de tendencia 2026–2027,
  * cada una con la letra de títulos coherente con esos colores.
  */
@@ -237,7 +237,7 @@ export function opcionesTendencia({ brief = {}, pares = [] }) {
   }));
 }
 
-/** Texto del asesor para el prompt de Ari en B7. */
+/** Texto del asesor para el prompt de Ari en B5. */
 export function contextoColorParaAri({ brief = {}, coloresCliente = [], pares = [] }) {
   const partes = [];
   const ev = coloresCliente.length ? evaluarColoresCliente({ brief, colores: coloresCliente }) : { hallazgos: [] };
@@ -250,7 +250,7 @@ export function contextoColorParaAri({ brief = {}, coloresCliente = [], pares = 
 }
 
 export const REGLA_ASESOR = {
-  descripcion: 'REGLA DURA (4-nov-2026): los colores del cliente se evalúan y, si no cumplen las mejores prácticas, Ari avisa con una razón simple y una sugerencia sustentada; el cliente decide. En B7 Ari ofrece tendencias 2026–2027 combinadas con su giro y con letras coherentes.',
+  descripcion: 'REGLA DURA (4-nov-2026): los colores del cliente se evalúan y, si no cumplen las mejores prácticas, Ari avisa con una razón simple y una sugerencia sustentada; el cliente decide. En B5 Ari ofrece tendencias 2026–2027 combinadas con su giro y con letras coherentes.',
   reglas: [
     'Se evalúa: choque con el código del giro, ajuste con la personalidad que dijo (saturación/luminosidad), legibilidad para botón y texto, neón en áreas grandes, más de 3 colores, vibración de opuestos saturados de igual claridad, rojo-verde con igual claridad',
     'Cada aviso lleva: explicación en palabras simples, razón, fuente y al menos una sugerencia en hex con nombre de color',
