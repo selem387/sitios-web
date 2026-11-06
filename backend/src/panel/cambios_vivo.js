@@ -10,7 +10,8 @@ import { avisar } from '../entrevista/avisos.js';
 import { procesarMateriales } from '../generador/materiales.js';
 import { config } from '../config.js';
 import { SECCIONES, limpiarSeccion, contenidoActual, disenoElegido, renderSitio, invalidar, porId } from './sitios.js';
-import { textosInventados, separarPrecio } from './reinterpretar.js';
+import { textosInventados, separarPrecio, renglonesAjenos } from './reinterpretar.js';
+import { validarEstructura, textoDe } from './estructura.js';
 
 const q = db.q;
 const NO_PUDE = 'No pude aplicar ese cambio a tu página 😔 ¿Me lo explicas de otra forma? Por ejemplo, dime en qué parte de la página está y cómo quieres que quede.';
@@ -29,6 +30,19 @@ const esquema = () => ({
     portada_foto: { type: 'string', description: 'Clave de la foto que debe abrir la página, si lo pide.' },
     fotos_quitar: { type: 'array', items: { type: 'string' }, description: 'Claves de fotos que pide quitar de la página.' },
     fotos_poner: { type: 'array', items: { type: 'string' }, description: 'Claves de fotos (quitadas antes o recién mandadas) que pide poner.' },
+    estructura: {
+      type: 'object',
+      description: 'Estructura COMPLETA propia del sitio como debe quedar (incluye lo vigente de ESTRUCTURA ACTUAL). Omítela si no cambia.',
+      properties: {
+        ocultas: { type: 'array', items: { type: 'string' }, description: 'ids de secciones que no se muestran' },
+        orden: { type: 'array', items: { type: 'string' }, description: 'ids de secciones en el orden deseado después de la portada' },
+        extras: { type: 'array', items: { type: 'object', properties: { id: { type: 'string' }, despues_de: { type: 'string' }, html: { type: 'string' } }, required: ['id', 'html'] }, description: 'Secciones nuevas: HTML interior con las clases del tema (h2, p, .paqs/.paq, .quotes, .galeria, .btn…)' },
+        reemplazos: { type: 'object', description: 'HTML nuevo para "portada", "encabezado", "pie" o una sección extra-…' },
+        menu: { type: 'array', items: { type: 'object', properties: { texto: { type: 'string' }, href: { type: 'string' } }, required: ['texto', 'href'] }, description: 'Menú completo nuevo, si cambia' },
+      },
+    },
+    propuesta: { type: 'string', description: 'Letra de otra de sus 6 propuestas (PROPUESTAS) si pide cambiar todo el diseño por otra.' },
+    fuentes: { type: 'object', properties: { titulos: { type: 'string' }, cuerpo: { type: 'string' } }, description: 'Familias de Google Fonts si pide cambiar la letra.' },
     css: { type: 'string', description: 'Ajustes de diseño: la hoja COMPLETA de reglas CSS propias del sitio como debe quedar (incluye las de CSS PROPIO ACTUAL que sigan vigentes). Vacío si no cambia el diseño.' },
     verificar: { type: 'array', items: { type: 'string' }, description: 'Selectores CSS de las secciones que cambian visualmente (p. ej. "#servicios", "#resenas") para revisarlas con capturas.' },
     no_pude: { type: 'array', items: { type: 'string' }, description: 'Partes del pedido que no se pueden hacer con estas herramientas, en palabras del cliente.' },
@@ -53,7 +67,10 @@ QUÉ PUEDES HACER
 - Si pide dejarlo como estaba antes del último cambio: accion=revertir.
 - Si no se entiende qué o dónde: accion=preguntar con UNA pregunta concreta.
 - Acomodo y diseño (poner cosas en una fila, usar todo el ancho, columnas, tamaños, espacios, separadores, alinear, cambiar cómo se ven tarjetas o secciones, letra más grande, etc.): escribe reglas en "css" usando las clases e ids reales de HTML ACTUAL (sección por id: #servicios, #resenas, #sobre, #trabajo, #faq, #contacto…). "css" es la hoja completa propia del sitio: conserva las reglas de CSS PROPIO ACTUAL que sigan vigentes. Usa las variables del tema (var(--p), var(--fg), var(--bor), var(--card), var(--soft)…) para no salirte de la paleta. Piensa en celular primero: lo de pantallas anchas va en @media (min-width:900px). Nunca deformes fotos (si cambias tamaño de imágenes usa object-fit:cover o height:auto) ni ocultes material del cliente que no pidió quitar. Pon en "verificar" los selectores de las secciones que cambias.
-- Lo que no se puede (agregar páginas nuevas, funciones que no existen): va en no_pude; si nada se puede, accion=no_se_puede.
+- Estructura ("estructura", completa como debe quedar): ocultar secciones, reordenarlas, agregar secciones nuevas (extras, con su HTML interior usando las clases del tema), rehacer la portada, el encabezado o el pie (reemplazos) y cambiar el menú. Las secciones que el dueño edita en su panel (servicios, menu, faq, resenas, sobre, contacto, propiedades, trabajo, promocion) no se reescriben a mano: su contenido se cambia en "secciones" y su aspecto con CSS. En HTML nuevo usa solo imágenes de FOTOS (su URL) o que ya estén en la página, y solo textos que escribió el cliente o que ya están en la página; nada de scripts ni formularios. Para mapas o videos usa <iframe> de Google Maps o YouTube.
+- Cambiar todo el diseño por otra de sus propuestas: "propuesta" con la letra. Cambiar la letra: "fuentes" con familias de Google Fonts poco comunes y acordes a su estilo (nunca Arial, Roboto, Open Sans, Montserrat, Poppins, Lato ni Inter).
+- Elige la herramienta más simple que cumpla exactamente lo pedido: secciones (contenido) → CSS (aspecto) → estructura (agregar, quitar, reordenar, rehacer).
+- Si de verdad no hay forma (p. ej. cobrar en línea, una página aparte con su propia dirección): va en no_pude; si nada se puede, accion=no_se_puede.
 - resumen_cliente: simple y cálido, sin tecnicismos.`;
 
 async function guardar(id, cambios) {
@@ -82,10 +99,15 @@ async function estadoActual(e, sv) {
   delete contenido.es_menu;
   const paleta = { ...(disenoElegido(e.brief)?.paleta || {}), ...(sv.contenido?.diseno?.paleta || {}) };
   const fotos = (await db.assetsDe(e.id)).filter((a) => a.url && (/^foto_|logo|imagen/.test(a.tipo) || /^image\//.test(a.mime || '')));
-  let html = '';
-  try { html = await renderSitio(sv, { previa: true }); } catch { /* sin html */ }
+  let html = '', htmlCompleto = '';
+  try { html = await renderSitio(sv, { previa: true }); htmlCompleto = html; } catch { /* sin html */ }
   html = html.replace(/<script[\s\S]*?<\/script>/g, '').replace(/<svg[\s\S]*?<\/svg>/g, '<svg/>').replace(/<style id="ajustes">[\s\S]*?<\/style>/, '').slice(0, 90000);
-  return { contenido, paleta, fotos, css: sv.contenido?.diseno?.css || '', html };
+  const dz = sv.contenido?.diseno || {};
+  const prop = e.brief?.marca?.propuestas || {};
+  const propuestas = (prop.opciones || []).map((o) => ({ letra: o.letra || o.etiqueta, nombre: o.nombre, tipografia: o.tipografia }));
+  const propuesta = dz.propuesta || prop.elegido;
+  const fuentes = dz.fuentes || propuestas.find((o) => o.letra === propuesta)?.tipografia || null;
+  return { contenido, paleta, fotos, css: dz.css || '', estructura: dz.estructura || null, propuestas, propuesta, fuentes, html, htmlCompleto: htmlCompleto || html };
 }
 
 /** CSS propio: sin importar nada externo ni scripts, tamaño acotado. Devuelve errores. */
@@ -109,6 +131,9 @@ async function planear(e, act, pedidos, conv, errores) {
     `CONTENIDO ACTUAL (secciones):\n${JSON.stringify(act.contenido, null, 1)}`,
     `PALETA ACTUAL: ${JSON.stringify(act.paleta)}`,
     `CSS PROPIO ACTUAL (ajustes de diseño ya aplicados a este sitio):\n${act.css || '(ninguno)'}`,
+    `ESTRUCTURA ACTUAL: ${JSON.stringify(act.estructura || {})}`,
+    `PROPUESTAS (puede cambiar a otra): ${act.propuestas.map((o) => `${o.letra}${o.letra === act.propuesta ? ' (la actual)' : ''}: ${o.nombre} · letras ${o.tipografia?.titulos}/${o.tipografia?.cuerpo}`).join(' | ') || '(no hay)'}`,
+    `LETRA ACTUAL: ${JSON.stringify(act.fuentes || {})}`,
     `HTML ACTUAL DE LA PÁGINA (estructura y estilos del tema; los textos pueden venir recortados):\n${act.html || '(no disponible)'}`,
     `FOTOS (clave · tipo · en la página · descripción):\n${act.fotos.map((a) => `${a.clave} · ${a.tipo} · ${a.usar ? 'sí' : 'no'} · ${(a.descripcion_ia || a.nota || '').slice(0, 120)}`).join('\n') || '(ninguna)'}`,
   ];
@@ -134,9 +159,22 @@ function validar(plan, act, fuentes) {
     else paleta[k] = v.toUpperCase();
   }
   if (typeof plan.css === 'string' && plan.css.trim() && plan.css.trim() !== (act.css || '').trim()) errores.push(...revisarCss(plan.css));
+  let estructura = null;
+  if (plan.estructura && typeof plan.estructura === 'object') {
+    const r = validarEstructura(plan.estructura, { html: act.htmlCompleto, imagenes: act.fotos.map((a) => a.url) });
+    errores.push(...r.errores);
+    // Texto nuevo solo del cliente o de lo que ya está en la página.
+    const base = `${fuentes}\n${textoDe(act.htmlCompleto)}`;
+    for (const h of [...r.estructura.extras.map((x) => x.html), ...Object.values(r.estructura.reemplazos)]) for (const l of renglonesAjenos(textoDe(h), base)) errores.push(`Texto que no escribió el cliente ni está en la página: "${l.slice(0, 80)}"`);
+    estructura = r.estructura;
+  }
+  if (plan.propuesta && !act.propuestas.some((o) => o.letra === plan.propuesta)) errores.push(`La propuesta "${plan.propuesta}" no existe`);
+  const comunes = /^(arial|helvetica|roboto|open sans|montserrat|poppins|lato|inter|times new roman)$/i;
+  if (plan.fuentes && (!plan.fuentes.titulos || !plan.fuentes.cuerpo)) errores.push('Para cambiar la letra indica titulos y cuerpo');
+  if (plan.fuentes && [plan.fuentes.titulos, plan.fuentes.cuerpo].some((f) => comunes.test(String(f || '').trim()))) errores.push('Usa tipografías poco comunes, no Arial, Roboto, Open Sans, Montserrat, Poppins, Lato ni Inter');
   const claves = new Set(act.fotos.map((a) => a.clave));
   for (const k of [plan.portada_foto, ...(plan.fotos_quitar || []), ...(plan.fotos_poner || [])].filter(Boolean)) if (!claves.has(k)) errores.push(`La foto "${k}" no existe`);
-  return { secciones, paleta, errores };
+  return { secciones, paleta, estructura, errores };
 }
 
 /** Escribe el contenido y las fotos; devuelve el sitio actualizado. */
@@ -236,19 +274,24 @@ export async function aplicarCambioVivo(c, e, sv) {
     }
     if (plan.accion === 'revertir') return revertir(c, e, sv);
     const cssNuevo = typeof plan.css === 'string' && plan.css.trim() !== (act.css || '').trim() ? plan.css.trim() : null;
-    const hay = plan.accion === 'editar' && (Object.keys(v.secciones).length || Object.keys(v.paleta).length || cssNuevo !== null || plan.portada_foto || plan.fotos_quitar?.length || plan.fotos_poner?.length);
+    const estNueva = v.estructura && JSON.stringify(v.estructura) !== JSON.stringify(act.estructura || null) ? v.estructura : null;
+    const propNueva = plan.propuesta && plan.propuesta !== act.propuesta ? plan.propuesta : null;
+    const fuentesNuevas = plan.fuentes?.titulos && plan.fuentes?.cuerpo && JSON.stringify(plan.fuentes) !== JSON.stringify(act.fuentes || null) ? { titulos: plan.fuentes.titulos, cuerpo: plan.fuentes.cuerpo } : null;
+    const hay = plan.accion === 'editar' && (Object.keys(v.secciones).length || Object.keys(v.paleta).length || cssNuevo !== null || estNueva || propNueva || fuentesNuevas || plan.portada_foto || plan.fotos_quitar?.length || plan.fotos_poner?.length);
     if (!hay || errores.length) return noPude(c, e, { errores, no_pude: plan.no_pude || [] });
 
     // 2) Capturas de ANTES de las secciones que cambian de diseño (una sola vez).
-    const selectores = (plan.verificar || []).filter((x) => /^[#.a-z][\w\s#.>:()-]{0,80}$/i.test(x));
-    const revisar = cssNuevo !== null && selectores.length > 0;
+    const cambiaVista = cssNuevo !== null || estNueva || propNueva || fuentesNuevas || Object.keys(v.paleta).length;
+    let selectores = (plan.verificar || []).filter((x) => /^[#.a-z][\w\s#.>:()-]{0,80}$/i.test(x));
+    if (cambiaVista && !selectores.length) selectores = ['main'];
+    const revisar = !!cambiaVista;
     if (revisar && !antes) antes = await capturas(sv, selectores);
 
     // 3) Respaldo exacto y escritura.
     const usar = {};
     for (const cl of plan.fotos_quitar || []) usar[cl] = false;
     for (const cl of plan.fotos_poner || []) usar[cl] = true;
-    const tocaDiseno = Object.keys(v.paleta).length || cssNuevo !== null;
+    const tocaDiseno = !!cambiaVista;
     respaldo = {
       secciones: Object.fromEntries(Object.keys(v.secciones).map((s) => [s, k[s] ?? null])),
       diseno: tocaDiseno ? (k.diseno ?? null) : undefined,
@@ -256,7 +299,7 @@ export async function aplicarCambioVivo(c, e, sv) {
       usar: Object.fromEntries(Object.keys(usar).map((cl) => [cl, act.fotos.find((a) => a.clave === cl)?.usar !== false])),
     };
     await guardar(c.id, { respaldo: { vivo: respaldo } });
-    const diseno = tocaDiseno ? { ...(k.diseno || {}), ...(Object.keys(v.paleta).length ? { paleta: { ...(k.diseno?.paleta || {}), ...v.paleta } } : {}), ...(cssNuevo !== null ? { css: cssNuevo } : {}) } : undefined;
+    const diseno = tocaDiseno ? { ...(k.diseno || {}), ...(Object.keys(v.paleta).length ? { paleta: { ...(k.diseno?.paleta || {}), ...v.paleta } } : {}), ...(cssNuevo !== null ? { css: cssNuevo } : {}), ...(estNueva ? { estructura: estNueva } : {}), ...(propNueva ? { propuesta: propNueva } : {}), ...(fuentesNuevas ? { fuentes: fuentesNuevas } : {}) } : undefined;
     nuevo = await escribir(sv, e, { secciones: v.secciones, diseno, fotos: plan.portada_foto ? { ...(k.fotos || {}), portada_asset_id: plan.portada_foto } : undefined, usar });
 
     // 4) La página se arma con lo nuevo.
@@ -282,5 +325,5 @@ export async function aplicarCambioVivo(c, e, sv) {
   const pendientes = (plan.no_pude || []).filter(Boolean);
   await guardar(c.id, { estado: 'aplicado', resultado: { secciones: Object.keys(v.secciones), paleta: v.paleta, css: !!plan.css, vista, pendientes } });
   const extra = pendientes.length ? `\nLo de ${pendientes.join(', ')} no pude hacerlo; ¿me lo explicas de otra forma?` : '';
-  return avisar(e.id, `${plan.resumen_cliente}\nYa quedó ✅: ${urlSitio(nuevo)}\nSi no ves el cambio, recarga la página.${extra}\n¿Hay algo más que quieras ajustar?`, { evento: 'cambios_sitio', datos: { cambio_id: c.id } });
+  return avisar(e.id, `${plan.resumen_cliente}\nYa quedó ✅ Recarga tu página para verlo:\n${urlSitio(nuevo)}${extra}\n¿Hay algo más que quieras ajustar?`, { evento: 'cambios_sitio', datos: { cambio_id: c.id } });
 }

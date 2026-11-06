@@ -184,12 +184,18 @@ export function invalidar(id) { for (const k of cache.keys()) if (k.startsWith(`
 export async function renderSitio(sv, { previa = false } = {}) {
   const clave = `${sv.id}:${sv.version}:${previa ? 'p' : 's'}`;
   if (cache.has(clave)) return cache.get(clave);
-  const e = await db.obtener(sv.entrevista_id);
-  if (!e) throw new Error('entrevista no encontrada');
+  const e0 = await db.obtener(sv.entrevista_id);
+  if (!e0) throw new Error('entrevista no encontrada');
+  const dz = sv.contenido?.diseno || {};
+  // Otra de sus 6 propuestas, si la pidió después por chat.
+  const prop0 = e0.brief?.marca?.propuestas;
+  const e = dz.propuesta && prop0?.opciones?.some((o) => (o.etiqueta || o.letra) === dz.propuesta)
+    ? { ...e0, brief: { ...e0.brief, marca: { ...e0.brief.marca, propuestas: { ...prop0, elegido: dz.propuesta, colores_de: dz.colores_de ?? null } } } }
+    : e0;
   const fijo0 = disenoElegido(e.brief);
   if (!fijo0) throw new Error('el cliente aún no elige propuesta');
-  // Colores que el cliente cambió después (cambios automáticos): se encima a la paleta de su propuesta.
-  const fijo = sv.contenido?.diseno?.paleta ? { ...fijo0, paleta: { ...fijo0.paleta, ...sv.contenido.diseno.paleta } } : fijo0;
+  // Colores y letra que el cliente cambió después (cambios automáticos): se enciman a los de su propuesta.
+  const fijo = { ...fijo0, ...(dz.paleta ? { paleta: { ...fijo0.paleta, ...dz.paleta } } : {}), ...(dz.fuentes?.titulos && dz.fuentes?.cuerpo ? { fuentes: parPorNombres({ titulos: dz.fuentes.titulos, cuerpo: dz.fuentes.cuerpo, estilo: fijo0.fuentes?.estilo }) } : {}) };
   const { brief, textos } = aplicarContenido(e, sv);
   const mat = await procesarMateriales(e.id, brief, { aceptarLoQueHay: true });
   if (sv.contenido?.menu?.secciones) mat.menu_texto = sv.contenido.menu.secciones;
@@ -202,8 +208,9 @@ export async function renderSitio(sv, { previa = false } = {}) {
     const { listar, conPropiedades } = await import('./propiedades.js');
     html = conPropiedades(html, await listar(sv.id, { publicas: true }), { base: previa ? `/s/${sv.slug}` : '' });
   }
-  // Ajustes de diseño propios de este sitio (los escribe el editor de cambios a pedido del cliente).
-  const css = sv.contenido?.diseno?.css;
+  // Estructura y ajustes de diseño propios de este sitio (los escribe el editor de cambios a pedido del cliente).
+  if (dz.estructura) { const { aplicarEstructura } = await import('./estructura.js'); html = aplicarEstructura(html, dz.estructura); }
+  const css = dz.css;
   if (css) html = html.replace('</head>', () => `<style id="ajustes">${String(css).replace(/<\/style/gi, '')}</style></head>`);
   for (const k of cache.keys()) if (k.startsWith(`${sv.id}:`) && !k.startsWith(`${sv.id}:${sv.version}:`)) cache.delete(k);
   cache.set(clave, html);
