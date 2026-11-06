@@ -151,6 +151,7 @@ const ESQUEMA_PLAN = {
       type: 'object', description: 'Datos de contacto que el cliente corrigió (para mantener su ficha al día).',
       properties: { telefono: { type: 'string' }, whatsapp: { type: 'string' }, email: { type: 'string' }, horario: { type: 'string' } },
     },
+    textos_quitados: { type: 'array', items: { type: 'string' }, description: 'Títulos de secciones, paquetes o tarjetas que se quitan a propósito (el cliente lo pidió o lo sustituyó por otro).' },
     fotos_quitadas: { type: 'integer', description: 'Cuántas fotos se quitan de la página a propósito (0 si ninguna).' },
     pendientes_equipo: { type: 'array', items: { type: 'string' }, description: 'Cosas pedidas que NO se pueden hacer editando (explicadas en lenguaje del cliente).' },
     resumen_cliente: { type: 'string', description: 'Qué se cambió, en 1–2 frases sencillas para el cliente, en primera persona ("Cambié…, puse…").' },
@@ -163,7 +164,8 @@ Aplicas EXACTAMENTE lo que pide, editando el marcado publicado. Todo lo demás q
 
 CÓMO EDITAR
 - El contenido de las páginas y partes viene marcado con ⟦B1⟧…⟦/B1⟧, ⟦B2⟧…⟦/B2⟧: son bloques que puedes reescribir completos. Las marcas NO son parte del contenido: nunca las copies dentro de "buscar" ni de "reemplazar".
-- Cambios grandes en una sección (reescribir paquetes, listas, varias tarjetas, reordenar): usa "bloque" con la marca y en "reemplazar" el marcado completo nuevo de ese bloque, copiando su estructura, clases y estilos y cambiando solo lo pedido. Puedes reescribir varios bloques.
+- Cambios grandes en una sección (reescribir paquetes, listas, varias tarjetas, reordenar, agrupar por categorías): usa "bloque" con la marca de la SECCIÓN completa y en "reemplazar" su marcado completo nuevo, copiando su estructura, clases y estilos y cambiando solo lo pedido. Así los títulos de categoría aparecen una sola vez y nada se pierde.
+- Cuando el cliente manda una lista nueva (paquetes, servicios, precios), incluye TODOS los elementos que mandó, en su orden, con sus textos tal cual; conserva los que ya estaban y no pidió quitar. Si quitas algo a propósito, ponlo en "textos_quitados".
 - Cambios pequeños (una palabra, un precio, un teléfono, un color): usa "buscar"/"reemplazar" con un fragmento copiado tal cual del contenido actual que aparezca UNA sola vez.
 - Nunca reemplaces la página entera.
 - Mantén el marcado de bloques válido: si cambias un atributo que está en el comentario JSON del bloque y también en el HTML (url, id, color, alineación), cámbialo en ambos.
@@ -197,10 +199,11 @@ async function fotosDisponibles(e, actual, clavesNuevas) {
 
 /** Lo que el cliente escribió desde que vio su página (o desde el último cambio aplicado): da contexto y rescata pedidos previos. */
 async function mensajesDesdePagina(e, s) {
-  const ult = (await q(`SELECT max(actualizado) AS t FROM cambios_sitio WHERE entrevista_id=$1 AND estado IN ('aplicado','revertido')`, [e.id])).rows[0]?.t;
-  const desde = [s?.publicado, ult].filter(Boolean).map((t) => new Date(t)).sort((a, b) => b - a)[0] || new Date(Date.now() - 7 * 864e5);
+  const desde = s?.publicado ? new Date(s.publicado) : new Date(Date.now() - 14 * 864e5);
   const r = await q(`SELECT rol, contenido, transcripcion FROM mensajes WHERE entrevista_id=$1 AND creado > $2 AND rol IN ('cliente','agente') ORDER BY id DESC LIMIT 40`, [e.id, desde]);
-  return r.rows.reverse().map((m) => `${m.rol === 'cliente' ? 'Cliente' : 'Ari'}: ${(m.transcripcion || m.contenido || '').slice(0, 3000)}`).join('\n');
+  const aplicados = (await q(`SELECT plan->>'resumen_cliente' AS r FROM cambios_sitio WHERE entrevista_id=$1 AND estado='aplicado' AND plan->>'accion'='editar' ORDER BY id`, [e.id])).rows.map((x) => x.r).filter(Boolean);
+  const conv = r.rows.reverse().map((m) => `${m.rol === 'cliente' ? 'Cliente' : 'Ari'}: ${(m.transcripcion || m.contenido || '').slice(0, 3000)}`).join('\n');
+  return `${conv}${aplicados.length ? `\n\nCAMBIOS YA APLICADOS Y VIGENTES (ya están en el contenido actual; no los repitas):\n- ${aplicados.join('\n- ')}` : ''}`;
 }
 
 async function planear(e, actual, pedidos, fotos, errores = [], historial = '') {
@@ -210,7 +213,7 @@ async function planear(e, actual, pedidos, fotos, errores = [], historial = '') 
   const partes = [
     `NEGOCIO: ${brief.negocio?.nombre || ''} · contacto actual: ${JSON.stringify(brief.contacto || {})}`,
     `PEDIDO DEL CLIENTE (en orden):\n${pedidoTxt}`,
-    ...(historial ? [`CONVERSACIÓN DESDE QUE VIO SU PÁGINA (incluye cambios que pidió antes y aún no se aplican; aplícalos también si son claros):\n${historial}`] : []),
+    ...(historial ? [`CONVERSACIÓN DESDE QUE VIO SU PÁGINA (aplica también los cambios claros que pidió antes y que no estén en CAMBIOS YA APLICADOS; los cambios deshechos con "déjalo como estaba" quedan pendientes solo si los vuelve a pedir):\n${historial}`] : []),
     `FOTOS DISPONIBLES:\n${fotosTxt || '(ninguna)'}`,
     `OPCIONES ACTUALES: ${JSON.stringify(actual.opciones || {})}`,
     `MENÚ ACTUAL: ${JSON.stringify(navALista(actual.menu))}`,
@@ -271,7 +274,7 @@ export function aplicarEdiciones(actual, ediciones) {
 }
 
 /* Bloques editables: se marca el árbol de bloques de WordPress hasta que cada unidad mida ≤ MAX_BLOQUE caracteres. */
-const MAX_BLOQUE = 7000;
+const MAX_BLOQUE = 20000; // una sección completa (p. ej. todos los paquetes) cabe en un bloque para reescribirla coherente
 function arbolBloques(txt) {
   const re = /<!--\s+(\/)?wp:([a-z0-9/_-]+)(?:\s+(\{[\s\S]*?\}))?\s+(\/)?-->/g;
   const raiz = { hijos: [] }; const pila = [raiz]; let m;
@@ -305,6 +308,29 @@ function buscarTolerante(txt, frag) {
   if (!patron) return { veces: 0, re: null };
   const re = new RegExp(patron, 'g');
   return { veces: (txt.match(re) || []).length, re };
+}
+
+// Ningún título (h1–h4) desaparece sin que el editor lo declare en textos_quitados.
+const titulos = (html) => new Set([...texto(html).matchAll(/<h[1-4][^>]*>([\s\S]*?)<\/h[1-4]>/g)].map((m) => normTit(m[1])).filter(Boolean));
+const normTit = (t) => quitarHtml(t).toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9$]+/g, ' ').trim();
+export function titulosPerdidos(actual, destinos, quitados = []) {
+  const q2 = (quitados || []).map(normTit);
+  const errores = [];
+  for (const [d, nuevo] of Object.entries(destinos)) {
+    if (!DESTINOS_HTML(d)) continue;
+    const viejo = d.startsWith('pagina:') ? actual.paginas.find((p) => p.slug === d.slice(7))?.contenido : actual.partes?.[d];
+    const ahora = titulos(nuevo);
+    const textoNuevo = normTit(nuevo);
+    for (const t of titulos(viejo)) {
+      if (ahora.has(t) || textoNuevo.includes(t) || q2.some((x) => x && (x.includes(t) || t.includes(x)))) continue;
+      errores.push(`En ${d} desapareció el título "${t}". Si el cliente no pidió quitarlo, consérvalo (o su versión nueva); si se quita a propósito, ponlo en textos_quitados.`);
+    }
+    // Títulos repetidos que antes no lo estaban (p. ej. la misma categoría encima de cada tarjeta).
+    const cuenta = (html) => { const c = {}; for (const m of texto(html).matchAll(/<h[1-4][^>]*>([\s\S]*?)<\/h[1-4]>/g)) { const k = normTit(m[1]); if (k) c[k] = (c[k] || 0) + 1; } return c; };
+    const cv = cuenta(viejo); const cn = cuenta(nuevo);
+    for (const [k, n] of Object.entries(cn)) if (n > 1 && n > (cv[k] || 0)) errores.push(`En ${d} el título "${k}" quedó repetido ${n} veces; cada título de categoría va una sola vez, encima de su grupo.`);
+  }
+  return errores;
 }
 
 const DESTINOS_HTML = (d) => d.startsWith('pagina:') || d === 'header' || d === 'footer';
@@ -409,6 +435,7 @@ export async function aplicarCambio(c) {
     if (plan.opciones?.logo) usadas.add(plan.opciones.logo);
     for (const k of usadas) if (!fotos.some((f) => f.clave === k)) errores.push(`La foto "${k}" no está en FOTOS DISPONIBLES`);
     for (const [d, v] of Object.entries(ed.destinos)) if (d === 'estilos' && /\{\{media:/.test(JSON.stringify(v))) errores.push('No pongas fotos en "estilos"');
+    errores.push(...titulosPerdidos(actual, ed.destinos, plan.textos_quitados));
     if (!errores.length) break;
   }
   await guardar(c.id, { plan });
