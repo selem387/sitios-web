@@ -45,7 +45,7 @@ const esquema = () => ({
     fuentes: { type: 'object', properties: { titulos: { type: 'string' }, cuerpo: { type: 'string' } }, description: 'Familias de Google Fonts si pide cambiar la letra.' },
     css: { type: 'string', description: 'Ajustes de diseño: la hoja COMPLETA de reglas CSS propias del sitio como debe quedar (incluye las de CSS PROPIO ACTUAL que sigan vigentes). Vacío si no cambia el diseño.' },
     verificar: { type: 'array', items: { type: 'string' }, description: 'Selectores CSS de las secciones que cambian visualmente (p. ej. "#servicios", "#resenas") para revisarlas con capturas.' },
-    no_pude: { type: 'array', items: { type: 'string' }, description: 'Partes del pedido que no se pueden hacer con estas herramientas, en palabras del cliente.' },
+    no_pude: { type: 'array', items: { type: 'string' }, description: 'Partes del pedido que no se pueden hacer, dichas al cliente en palabras sencillas (sin ids ni términos técnicos), p. ej. "mover las preguntas frecuentes: tu página todavía no tiene esa sección".' },
     resumen_cliente: { type: 'string', description: 'Qué cambiaste, 1–2 frases simples en primera persona ("Cambié…").' },
   },
   required: ['accion', 'resumen_cliente'],
@@ -71,7 +71,8 @@ QUÉ PUEDES HACER
 - Estructura ("estructura", completa como debe quedar): para QUITAR una sección usa siempre estructura.ocultas (quita también su liga del menú; nunca con CSS). Ocultar secciones, reordenarlas, agregar secciones nuevas (extras, con su HTML interior usando las clases del tema), rehacer la portada, el encabezado o el pie (reemplazos) y cambiar el menú. Las secciones que el dueño edita en su panel (servicios, menu, faq, resenas, sobre, contacto, propiedades, trabajo, promocion) no se reescriben a mano: su contenido se cambia en "secciones" y su aspecto con CSS. En HTML nuevo usa solo imágenes de FOTOS (su URL) o que ya estén en la página, y solo textos que escribió el cliente o que ya están en la página; nada de scripts ni formularios. Para mapas o videos usa <iframe> de Google Maps o YouTube.
 - Cambiar todo el diseño por otra de sus propuestas: "propuesta" con la letra. Cambiar la letra: "fuentes" con familias de Google Fonts poco comunes y acordes a su estilo (nunca Arial, Roboto, Open Sans, Montserrat, Poppins, Lato ni Inter).
 - Elige la herramienta más simple que cumpla exactamente lo pedido: secciones (contenido) → CSS (aspecto) → estructura (agregar, quitar, reordenar, rehacer).
-- Si de verdad no hay forma (p. ej. cobrar en línea, una página aparte con su propia dirección): va en no_pude; si nada se puede, accion=no_se_puede.
+- Si de verdad no hay forma (p. ej. cobrar en línea, una página aparte con su propia dirección, una sección que no existe): esa parte va en no_pude.
+- SIEMPRE haz todo lo que sí se pueda del pedido (accion=editar) y deja en no_pude solo lo que no. accion=no_se_puede únicamente si NADA de lo pedido es posible.
 - resumen_cliente: simple y cálido, sin tecnicismos.`;
 
 async function guardar(id, cambios) {
@@ -80,9 +81,12 @@ async function guardar(id, cambios) {
   await q(`UPDATE cambios_sitio SET ${cols.map((k, i) => `${k}=$${i + 2}`).join(', ')}, actualizado=now() WHERE id=$1`, [id, ...vals]);
 }
 async function noPude(c, e, resultado) {
+  // Si se sabe qué parte no se pudo, se le dice al cliente cuál; si no, el mensaje general. Siempre pide explicarlo de otra forma.
+  const partes = (resultado?.no_pude || []).filter(Boolean);
+  const texto = partes.length ? `No pude hacer esto en tu página 😔: ${partes.join('; ')}.\n¿Me lo explicas de otra forma o me dices qué prefieres?` : NO_PUDE;
   // Se conserva el plan que se intentó (para revisar después) y se agrega la pregunta.
-  await q(`UPDATE cambios_sitio SET estado='preguntar', plan = COALESCE(plan,'{}'::jsonb) || $2::jsonb, resultado=$3, actualizado=now() WHERE id=$1`, [c.id, JSON.stringify({ pregunta: NO_PUDE }), JSON.stringify(resultado)]);
-  return avisar(e.id, NO_PUDE, { evento: 'cambios_sitio', datos: { cambio_id: c.id } });
+  await q(`UPDATE cambios_sitio SET estado='preguntar', plan = COALESCE(plan,'{}'::jsonb) || $2::jsonb, resultado=$3, actualizado=now() WHERE id=$1`, [c.id, JSON.stringify({ pregunta: texto }), JSON.stringify(resultado)]);
+  return avisar(e.id, texto, { evento: 'cambios_sitio', datos: { cambio_id: c.id } });
 }
 
 async function conversacion(e, sv) {
