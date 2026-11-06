@@ -29,6 +29,8 @@ const esquema = () => ({
     portada_foto: { type: 'string', description: 'Clave de la foto que debe abrir la página, si lo pide.' },
     fotos_quitar: { type: 'array', items: { type: 'string' }, description: 'Claves de fotos que pide quitar de la página.' },
     fotos_poner: { type: 'array', items: { type: 'string' }, description: 'Claves de fotos (quitadas antes o recién mandadas) que pide poner.' },
+    css: { type: 'string', description: 'Ajustes de diseño: la hoja COMPLETA de reglas CSS propias del sitio como debe quedar (incluye las de CSS PROPIO ACTUAL que sigan vigentes). Vacío si no cambia el diseño.' },
+    verificar: { type: 'array', items: { type: 'string' }, description: 'Selectores CSS de las secciones que cambian visualmente (p. ej. "#servicios", "#resenas") para revisarlas con capturas.' },
     no_pude: { type: 'array', items: { type: 'string' }, description: 'Partes del pedido que no se pueden hacer con estas herramientas, en palabras del cliente.' },
     resumen_cliente: { type: 'string', description: 'Qué cambiaste, 1–2 frases simples en primera persona ("Cambié…").' },
   },
@@ -50,7 +52,8 @@ QUÉ PUEDES HACER
 - Fotos: portada_foto, fotos_quitar, fotos_poner, usando SOLO claves de FOTOS. Las fotos que manda el cliente se usan; ninguna se repite ni se deforma (el diseño ya lo cuida).
 - Si pide dejarlo como estaba antes del último cambio: accion=revertir.
 - Si no se entiende qué o dónde: accion=preguntar con UNA pregunta concreta.
-- Lo que no se puede (cambiar la letra o el acomodo/diseño de una sección, agregar páginas nuevas): va en no_pude; si nada se puede, accion=no_se_puede.
+- Acomodo y diseño (poner cosas en una fila, usar todo el ancho, columnas, tamaños, espacios, separadores, alinear, cambiar cómo se ven tarjetas o secciones, letra más grande, etc.): escribe reglas en "css" usando las clases e ids reales de HTML ACTUAL (sección por id: #servicios, #resenas, #sobre, #trabajo, #faq, #contacto…). "css" es la hoja completa propia del sitio: conserva las reglas de CSS PROPIO ACTUAL que sigan vigentes. Usa las variables del tema (var(--p), var(--fg), var(--bor), var(--card), var(--soft)…) para no salirte de la paleta. Piensa en celular primero: lo de pantallas anchas va en @media (min-width:900px). Nunca deformes fotos (si cambias tamaño de imágenes usa object-fit:cover o height:auto) ni ocultes material del cliente que no pidió quitar. Pon en "verificar" los selectores de las secciones que cambias.
+- Lo que no se puede (agregar páginas nuevas, funciones que no existen): va en no_pude; si nada se puede, accion=no_se_puede.
 - resumen_cliente: simple y cálido, sin tecnicismos.`;
 
 async function guardar(id, cambios) {
@@ -79,7 +82,23 @@ async function estadoActual(e, sv) {
   delete contenido.es_menu;
   const paleta = { ...(disenoElegido(e.brief)?.paleta || {}), ...(sv.contenido?.diseno?.paleta || {}) };
   const fotos = (await db.assetsDe(e.id)).filter((a) => a.url && (/^foto_|logo|imagen/.test(a.tipo) || /^image\//.test(a.mime || '')));
-  return { contenido, paleta, fotos };
+  let html = '';
+  try { html = await renderSitio(sv, { previa: true }); } catch { /* sin html */ }
+  html = html.replace(/<script[\s\S]*?<\/script>/g, '').replace(/<svg[\s\S]*?<\/svg>/g, '<svg/>').replace(/<style id="ajustes">[\s\S]*?<\/style>/, '').slice(0, 90000);
+  return { contenido, paleta, fotos, css: sv.contenido?.diseno?.css || '', html };
+}
+
+/** CSS propio: sin importar nada externo ni scripts, tamaño acotado. Devuelve errores. */
+export function revisarCss(css) {
+  const e = [];
+  const t = String(css || '');
+  if (t.length > 12000) e.push('El CSS propio pasa de 12,000 caracteres; simplifícalo');
+  if (/@import|expression\s*\(|javascript:|behavior\s*:|<\/?style|<script/i.test(t)) e.push('El CSS no puede importar nada ni llevar scripts');
+  if (/url\s*\(\s*['"]?(?!data:image\/svg)/i.test(t)) e.push('El CSS no puede cargar archivos externos (url())');
+  const abre = (t.match(/{/g) || []).length, cierra = (t.match(/}/g) || []).length;
+  if (abre !== cierra) e.push('El CSS tiene llaves sin cerrar');
+  if (/(^|[\s,}])(body|html|main|\.wrap|section)\s*{[^}]*display\s*:\s*none/i.test(t)) e.push('No ocultes la página completa ni secciones enteras que el cliente no pidió quitar');
+  return e;
 }
 
 async function planear(e, act, pedidos, conv, errores) {
@@ -89,6 +108,8 @@ async function planear(e, act, pedidos, conv, errores) {
     `CONVERSACIÓN DESDE QUE TIENE SU PÁGINA (aplica también lo que pidió antes y no esté ya en el contenido):\n${conv.texto || '(nada)'}`,
     `CONTENIDO ACTUAL (secciones):\n${JSON.stringify(act.contenido, null, 1)}`,
     `PALETA ACTUAL: ${JSON.stringify(act.paleta)}`,
+    `CSS PROPIO ACTUAL (ajustes de diseño ya aplicados a este sitio):\n${act.css || '(ninguno)'}`,
+    `HTML ACTUAL DE LA PÁGINA (estructura y estilos del tema; los textos pueden venir recortados):\n${act.html || '(no disponible)'}`,
     `FOTOS (clave · tipo · en la página · descripción):\n${act.fotos.map((a) => `${a.clave} · ${a.tipo} · ${a.usar ? 'sí' : 'no'} · ${(a.descripcion_ia || a.nota || '').slice(0, 120)}`).join('\n') || '(ninguna)'}`,
   ];
   if (errores.length) partes.push(`TU INTENTO ANTERIOR FALLÓ, corrige esto:\n- ${errores.join('\n- ')}`);
@@ -112,6 +133,7 @@ function validar(plan, act, fuentes) {
     else if (!/^#[0-9a-f]{6}$/i.test(String(v))) errores.push(`Color "${k}" debe ser hex #RRGGBB`);
     else paleta[k] = v.toUpperCase();
   }
+  if (typeof plan.css === 'string' && plan.css.trim() && plan.css.trim() !== (act.css || '').trim()) errores.push(...revisarCss(plan.css));
   const claves = new Set(act.fotos.map((a) => a.clave));
   for (const k of [plan.portada_foto, ...(plan.fotos_quitar || []), ...(plan.fotos_poner || [])].filter(Boolean)) if (!claves.has(k)) errores.push(`La foto "${k}" no existe`);
   return { secciones, paleta, errores };
@@ -143,58 +165,122 @@ async function revertir(c, e, sv) {
   return avisar(e.id, `Listo, dejé tu página como estaba antes del último cambio ✅: ${urlSitio(sv)}\nSi no lo ves, recarga la página. ¿Quieres ajustar algo más?`, { evento: 'cambios_sitio', datos: { cambio_id: c.id } });
 }
 
+/* ---------------- Verificación visual de ajustes de diseño ---------------- */
+
+async function captura(url, selector, ancho) {
+  if (!config.renderUrl) return null;
+  const r = await fetch(`${config.renderUrl}/v1/captura`, {
+    method: 'POST', headers: { 'content-type': 'application/json', 'x-api-key': config.renderApiKey },
+    body: JSON.stringify({ url, selector, ancho }), signal: AbortSignal.timeout(90000),
+  }).catch(() => null);
+  return r?.ok ? (await r.json()).url : null;
+}
+
+async function capturas(sv, selectores) {
+  const url = `${config.publicUrl}/s/${sv.slug}?v=${Date.now()}`;
+  const out = [];
+  for (const sel of selectores.slice(0, 3)) {
+    for (const ancho of [1366, 390]) { const u = await captura(url, sel, ancho); if (u) out.push({ sel, ancho, url: u }); }
+  }
+  return out;
+}
+
+const ESQUEMA_VISTA = {
+  type: 'object',
+  properties: {
+    ok: { type: 'boolean', description: 'true solo si el DESPUÉS cumple lo que pidió el cliente y se ve bien en computadora y en celular.' },
+    problemas: { type: 'array', items: { type: 'string' }, description: 'Qué falta o qué se ve mal, concreto (p. ej. "en computadora siguen en dos filas", "el texto se encima con la foto en celular").' },
+  },
+  required: ['ok'],
+};
+
+/** Compara capturas antes/después contra el pedido. Devuelve {ok, problemas}. Sin servicio de capturas, no bloquea. */
+async function revisarVista(pedidos, antes, despues) {
+  if (!despues.length) return { ok: true, problemas: [], sin_capturas: true };
+  const contenido = [{ type: 'text', text: `PEDIDO DEL CLIENTE:\n${pedidos.map((p) => `- ${p.texto}`).join('\n')}\n\nCompara ANTES y DESPUÉS de cada sección (computadora 1366 px y celular 390 px).` }];
+  for (const d of despues) {
+    const a = antes.find((x) => x.sel === d.sel && x.ancho === d.ancho);
+    if (a) contenido.push({ type: 'text', text: `ANTES · ${d.sel} · ${d.ancho}px` }, { type: 'image', source: { type: 'url', url: a.url } });
+    contenido.push({ type: 'text', text: `DESPUÉS · ${d.sel} · ${d.ancho}px` }, { type: 'image', source: { type: 'url', url: d.url } });
+  }
+  try {
+    const r = await pedirJSON({
+      system: 'Revisas cambios de diseño en la página web de un cliente. Dices si el DESPUÉS cumple exactamente lo que pidió y si se ve profesional: sin texto encimado ni cortado, sin desbordes horizontales, sin fotos deformadas, sin huecos raros, legible en celular. Sé estricto con lo pedido.',
+      contenido, schema: ESQUEMA_VISTA, model: config.anthropicModel, max_tokens: 800, timeoutMs: 180000,
+    });
+    return { ok: !!r.data.ok, problemas: r.data.problemas || [] };
+  } catch (err) { return { ok: true, problemas: [], error: err.message }; }
+}
+
 export async function aplicarCambioVivo(c, e, sv) {
   await guardar(c.id, { sitio_id: sv.id });
   const act = await estadoActual(e, sv);
   const conv = await conversacion(e, sv);
   const fuentes = `${c.pedidos.map((p) => p.texto).join('\n')}\n${conv.cliente}\n${JSON.stringify(act.contenido)}`.replace(/\\n/g, '\n');
-  let plan, v = { secciones: {}, paleta: {}, errores: [] }, errores = [];
-  for (let i = 0; i < 3; i++) {
-    plan = await planear(e, act, c.pedidos, conv, errores);
-    if (plan.accion !== 'editar') break;
-    v = validar(plan, act, fuentes);
-    errores = v.errores;
-    if (!errores.length) break;
-  }
-  await guardar(c.id, { plan });
-  if (plan.accion === 'preguntar') {
-    await guardar(c.id, { estado: 'preguntar' });
-    return avisar(e.id, plan.pregunta || '¿Me dices un poco más de lo que quieres cambiar?', { evento: 'cambios_sitio', datos: { cambio_id: c.id } });
-  }
-  if (plan.accion === 'revertir') return revertir(c, e, sv);
-  const hay = plan.accion === 'editar' && (Object.keys(v.secciones).length || Object.keys(v.paleta).length || plan.portada_foto || plan.fotos_quitar?.length || plan.fotos_poner?.length);
-  if (!hay || errores.length) return noPude(c, e, { errores, no_pude: plan.no_pude || [] });
-
-  // Respaldo exacto de lo que se toca (para "déjalo como estaba" y para restaurar si falla).
   const k = sv.contenido || {};
-  const usar = {};
-  for (const cl of plan.fotos_quitar || []) usar[cl] = false;
-  for (const cl of plan.fotos_poner || []) usar[cl] = true;
-  const respaldo = {
-    secciones: Object.fromEntries(Object.keys(v.secciones).map((s) => [s, k[s] ?? null])),
-    diseno: Object.keys(v.paleta).length ? (k.diseno ?? null) : undefined,
-    fotos: plan.portada_foto ? (k.fotos ?? null) : undefined,
-    usar: Object.fromEntries(Object.keys(usar).map((cl) => [cl, act.fotos.find((a) => a.clave === cl)?.usar !== false])),
-  };
-  await guardar(c.id, { respaldo: { vivo: respaldo } });
-  const nuevo = await escribir(sv, e, {
-    secciones: v.secciones,
-    diseno: Object.keys(v.paleta).length ? { ...(k.diseno || {}), paleta: { ...(k.diseno?.paleta || {}), ...v.paleta } } : undefined,
-    fotos: plan.portada_foto ? { ...(k.fotos || {}), portada_asset_id: plan.portada_foto } : undefined,
-    usar,
-  });
+  let errores = [], plan, v, nuevo = null, respaldo = null, vista = null, antes = null;
 
-  // Verificación: la página se arma con lo nuevo.
-  try {
-    const html = await renderSitio(await porId(nuevo.id), { previa: true });
-    if (!html || html.length < 500) throw new Error('página vacía');
-  } catch (err) {
+  for (let ronda = 0; ronda < 3; ronda++) {
+    // 1) Plan válido (hasta 3 intentos por ronda).
+    for (let i = 0; i < 3; i++) {
+      plan = await planear(e, act, c.pedidos, conv, errores);
+      if (plan.accion !== 'editar') break;
+      v = validar(plan, act, fuentes);
+      errores = v.errores;
+      if (!errores.length) break;
+    }
+    await guardar(c.id, { plan });
+    if (plan.accion === 'preguntar') {
+      await guardar(c.id, { estado: 'preguntar' });
+      return avisar(e.id, plan.pregunta || '¿Me dices un poco más de lo que quieres cambiar?', { evento: 'cambios_sitio', datos: { cambio_id: c.id } });
+    }
+    if (plan.accion === 'revertir') return revertir(c, e, sv);
+    const cssNuevo = typeof plan.css === 'string' && plan.css.trim() !== (act.css || '').trim() ? plan.css.trim() : null;
+    const hay = plan.accion === 'editar' && (Object.keys(v.secciones).length || Object.keys(v.paleta).length || cssNuevo !== null || plan.portada_foto || plan.fotos_quitar?.length || plan.fotos_poner?.length);
+    if (!hay || errores.length) return noPude(c, e, { errores, no_pude: plan.no_pude || [] });
+
+    // 2) Capturas de ANTES de las secciones que cambian de diseño (una sola vez).
+    const selectores = (plan.verificar || []).filter((x) => /^[#.a-z][\w\s#.>:()-]{0,80}$/i.test(x));
+    const revisar = cssNuevo !== null && selectores.length > 0;
+    if (revisar && !antes) antes = await capturas(sv, selectores);
+
+    // 3) Respaldo exacto y escritura.
+    const usar = {};
+    for (const cl of plan.fotos_quitar || []) usar[cl] = false;
+    for (const cl of plan.fotos_poner || []) usar[cl] = true;
+    const tocaDiseno = Object.keys(v.paleta).length || cssNuevo !== null;
+    respaldo = {
+      secciones: Object.fromEntries(Object.keys(v.secciones).map((s) => [s, k[s] ?? null])),
+      diseno: tocaDiseno ? (k.diseno ?? null) : undefined,
+      fotos: plan.portada_foto ? (k.fotos ?? null) : undefined,
+      usar: Object.fromEntries(Object.keys(usar).map((cl) => [cl, act.fotos.find((a) => a.clave === cl)?.usar !== false])),
+    };
+    await guardar(c.id, { respaldo: { vivo: respaldo } });
+    const diseno = tocaDiseno ? { ...(k.diseno || {}), ...(Object.keys(v.paleta).length ? { paleta: { ...(k.diseno?.paleta || {}), ...v.paleta } } : {}), ...(cssNuevo !== null ? { css: cssNuevo } : {}) } : undefined;
+    nuevo = await escribir(sv, e, { secciones: v.secciones, diseno, fotos: plan.portada_foto ? { ...(k.fotos || {}), portada_asset_id: plan.portada_foto } : undefined, usar });
+
+    // 4) La página se arma con lo nuevo.
+    try {
+      const html = await renderSitio(await porId(nuevo.id), { previa: true });
+      if (!html || html.length < 500) throw new Error('página vacía');
+    } catch (err) {
+      await escribir(nuevo, e, respaldo);
+      console.error('[cambios vivo] restaurado', c.id, err);
+      return noPude(c, e, { error: String(err.message || err).slice(0, 500) });
+    }
+
+    // 5) Ajustes de diseño: revisión visual contra lo pedido; si no cumple, se deshace y se vuelve a intentar.
+    if (!revisar) { vista = null; break; }
+    vista = await revisarVista(c.pedidos, antes || [], await capturas(nuevo, selectores));
+    if (vista.ok) break;
     await escribir(nuevo, e, respaldo);
-    console.error('[cambios vivo] restaurado', c.id, err);
-    return noPude(c, e, { error: String(err.message || err).slice(0, 500) });
+    errores = [`La revisión visual con capturas encontró: ${vista.problemas.join('; ') || 'no cumple lo pedido'}. Corrige el CSS.`];
+    nuevo = null;
   }
+  if (!nuevo) return noPude(c, e, { errores, vista });
+
   const pendientes = (plan.no_pude || []).filter(Boolean);
-  await guardar(c.id, { estado: 'aplicado', resultado: { secciones: Object.keys(v.secciones), paleta: v.paleta, pendientes } });
+  await guardar(c.id, { estado: 'aplicado', resultado: { secciones: Object.keys(v.secciones), paleta: v.paleta, css: !!plan.css, vista, pendientes } });
   const extra = pendientes.length ? `\nLo de ${pendientes.join(', ')} no pude hacerlo; ¿me lo explicas de otra forma?` : '';
   return avisar(e.id, `${plan.resumen_cliente}\nYa quedó ✅: ${urlSitio(nuevo)}\nSi no ves el cambio, recarga la página.${extra}\n¿Hay algo más que quieras ajustar?`, { evento: 'cambios_sitio', datos: { cambio_id: c.id } });
 }

@@ -124,6 +124,16 @@ app.post('/v1/captura', async (c) => {
   const t0 = Date.now();
   const buf = await conPagina({ width: b.ancho || 390, height: movil ? 844 : 800, scale: movil ? 2 : 1, movil }, async (page) => {
     await page.goto(b.url, { waitUntil: 'networkidle', timeout: 30000 });
+    // selector: captura solo esa sección (para verificar un cambio de diseño). Las imágenes diferidas se fuerzan a cargar.
+    if (b.selector) {
+      const el = page.locator(String(b.selector)).first();
+      if (await el.count()) {
+        await page.evaluate(() => document.querySelectorAll('img[loading=lazy]').forEach((i) => { i.loading = 'eager'; }));
+        await el.scrollIntoViewIfNeeded();
+        await page.waitForTimeout(600);
+        return el.screenshot({ type: 'png' });
+      }
+    }
     return page.screenshot({ type: 'png', fullPage: Boolean(b.completa) });
   });
   const f = await guardarPNG(buf, movil ? 'movil' : 'desktop');

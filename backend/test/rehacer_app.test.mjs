@@ -69,3 +69,12 @@ test('servicios con varios paquetes: título con línea por servicio y un cuadro
   const g = agruparOferta([{ grupo: 'A', nombre: 'P1', precio_o_rango: '$1' }, { grupo: 'A', nombre: 'P2', precio_o_rango: '$2' }, { grupo: 'B', nombre: 'P3', precio_o_rango: '$3' }]);
   assert.deepEqual(g.map((x) => x.opciones.length), [2, 1]);
 });
+
+test('CSS propio: se rechaza lo peligroso y se acepta lo normal', async () => {
+  const { revisarCss } = await import('../src/panel/cambios_vivo.js');
+  assert.deepEqual(revisarCss('@media (min-width:900px){#resenas .quotes{grid-template-columns:repeat(4,1fr)}}'), []);
+  assert.ok(revisarCss('@import url(https://x.com/a.css);').length);
+  assert.ok(revisarCss('#a{background:url(https://x.com/i.png)}').length);
+  assert.ok(revisarCss('#a{color:red').length);
+  assert.ok(revisarCss('section{display:none}').length);
+});

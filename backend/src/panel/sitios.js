@@ -202,6 +202,9 @@ export async function renderSitio(sv, { previa = false } = {}) {
     const { listar, conPropiedades } = await import('./propiedades.js');
     html = conPropiedades(html, await listar(sv.id, { publicas: true }), { base: previa ? `/s/${sv.slug}` : '' });
   }
+  // Ajustes de diseño propios de este sitio (los escribe el editor de cambios a pedido del cliente).
+  const css = sv.contenido?.diseno?.css;
+  if (css) html = html.replace('</head>', () => `<style id="ajustes">${String(css).replace(/<\/style/gi, '')}</style></head>`);
   for (const k of cache.keys()) if (k.startsWith(`${sv.id}:`) && !k.startsWith(`${sv.id}:${sv.version}:`)) cache.delete(k);
   cache.set(clave, html);
   return html;
