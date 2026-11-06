@@ -37,6 +37,8 @@ ALTER TABLE cambios_sitio ADD COLUMN IF NOT EXISTS intentos int NOT NULL DEFAULT
 -- Los que fallaron por tiempo de espera (antes de existir los reintentos) vuelven a la cola una vez.
 UPDATE cambios_sitio SET estado='pendiente', aplicar_en=now(), intentos=1
   WHERE estado='fallo' AND intentos=0 AND resultado->>'error' ILIKE '%timeout%' AND creado > now() - interval '1 day';
+-- Un reinicio corta los que estaban en curso: vuelven a la cola en un minuto.
+UPDATE cambios_sitio SET estado='pendiente', aplicar_en=now() + interval '60 seconds' WHERE estado='aplicando';
 -- Los que no se pudieron editar (fragmentos que no coincidían) se reintentan una vez con la edición por bloques.
 UPDATE cambios_sitio SET estado='pendiente', aplicar_en=now(), intentos=2
   WHERE estado='equipo' AND intentos<2 AND jsonb_array_length(COALESCE(resultado->'errores','[]'::jsonb)) > 0 AND creado > now() - interval '1 day';
@@ -161,6 +163,11 @@ const ESQUEMA_PLAN = {
 
 const SISTEMA_EDITOR = `Eres el editor web del equipo de Ari. El cliente ya tiene su página WordPress publicada y pide cambios.
 Aplicas EXACTAMENTE lo que pide, editando el marcado publicado. Todo lo demás queda idéntico.
+
+REGLA NÚMERO UNO: EL TEXTO DEL CLIENTE NO SE TOCA
+- Todo lo que el cliente escribió para su página (títulos, descripciones, listas, precios, emojis, signos, mayúsculas, orden) se pone EXACTAMENTE como lo escribió, letra por letra. No corriges, no resumes, no reordenas, no cambias palabras ni puntuación, no agregas emojis, no juntas renglones en uno.
+- Solo lo acomodas en el diseño: cada renglón o parte suya va en el elemento que corresponda (título, párrafo, lista, precio). Puedes partir un renglón en dos elementos (p. ej. "Nombre — $900 MXN" en título y precio) pero sin cambiar ni un carácter de cada parte.
+- Si una frase de la página no viene del cliente, se queda como ya estaba en la página; no redactas textos nuevos. (Quitar viñetas "- " o marcas ** del chat sí está permitido.)
 
 CÓMO EDITAR
 - El contenido de las páginas y partes viene marcado con ⟦B1⟧…⟦/B1⟧, ⟦B2⟧…⟦/B2⟧: son bloques que puedes reescribir completos. Las marcas NO son parte del contenido: nunca las copies dentro de "buscar" ni de "reemplazar".
@@ -315,6 +322,34 @@ function buscarTolerante(txt, frag) {
   return { veces: (txt.match(re) || []).length, re };
 }
 
+// Ningún texto nuevo en la página que no venga, tal cual, del cliente o de lo que ya estaba.
+const ENT = { amp: '&', lt: '<', gt: '>', quot: '"', apos: "'", nbsp: ' ', ndash: '–', mdash: '—', hellip: '…', laquo: '«', raquo: '»', ldquo: '“', rdquo: '”', lsquo: '‘', rsquo: '’', times: '×' };
+const decodificar = (t) => texto(t).replace(/&(#x?[0-9a-f]+|[a-z]+);/gi, (m, c) => (c[0] === '#' ? String.fromCodePoint(c[1].toLowerCase() === 'x' ? parseInt(c.slice(2), 16) : parseInt(c.slice(1), 10)) : (ENT[c.toLowerCase()] ?? m)));
+const normTexto = (t) => decodificar(t).replace(/\u00a0/g, ' ').replace(/\s+/g, ' ').trim();
+const nodosTexto = (html) => texto(html).replace(/<!--[\s\S]*?-->/g, '\n').split(/<[^>]+>/).map(normTexto).filter((x) => x.length >= 3 && /\p{L}/u.test(x));
+const textoCliente = (t) => normTexto(texto(t).split('\n').map((l) => l.replace(/^\s*(?:[-•*]|\d+[.)])\s+/, '').replace(/\*\*|__/g, '')).join('\n'));
+// El fragmento aparece en el texto del cliente sin cortar palabras a la mitad.
+function contienePalabraEntera(hay, frag) {
+  const esLetra = (ch) => !!ch && /[\p{L}\p{N}]/u.test(ch);
+  for (let i = hay.indexOf(frag); i !== -1; i = hay.indexOf(frag, i + 1)) {
+    if ((!esLetra(frag[0]) || !esLetra(hay[i - 1])) && (!esLetra(frag.at(-1)) || !esLetra(hay[i + frag.length]))) return true;
+  }
+  return false;
+}
+export function textosAjenos(actual, destinos, fuenteCliente) {
+  const cliente = textoCliente(fuenteCliente);
+  const errores = [];
+  for (const [d, nuevo] of Object.entries(destinos)) {
+    if (!DESTINOS_HTML(d)) continue;
+    const viejo = d.startsWith('pagina:') ? actual.paginas.find((p) => p.slug === d.slice(7))?.contenido : actual.partes?.[d];
+    const yaEstaba = new Set(nodosTexto(viejo));
+    const viejoTodo = normTexto(quitarHtml(viejo));
+    const ajenos = nodosTexto(nuevo).filter((n) => !yaEstaba.has(n) && !viejoTodo.includes(n) && !contienePalabraEntera(cliente, n) && !/\{\{media:/.test(n));
+    if (ajenos.length) errores.push(`En ${d} hay textos que no escribió el cliente ni estaban en la página (el texto del cliente va letra por letra, sin cambios): ${ajenos.slice(0, 8).map((x) => JSON.stringify(x.slice(0, 120))).join(' · ')}`);
+  }
+  return errores;
+}
+
 // Ninguna cifra nueva en la página que el cliente no haya escrito.
 const cifras = (t) => new Set((quitarHtml(t).match(/\d+(?:[.,]\d+)*/g) || []).map((n) => n.replace(/,(?=\d{3}\b)/g, '')));
 export function cifrasInventadas(actual, destinos, fuente) {
@@ -459,6 +494,7 @@ export async function aplicarCambio(c) {
     for (const k of usadas) if (!fotos.some((f) => f.clave === k)) errores.push(`La foto "${k}" no está en FOTOS DISPONIBLES`);
     for (const [d, v] of Object.entries(ed.destinos)) if (d === 'estilos' && /\{\{media:/.test(JSON.stringify(v))) errores.push('No pongas fotos en "estilos"');
     errores.push(...titulosPerdidos(actual, ed.destinos, plan.textos_quitados));
+    errores.push(...textosAjenos(actual, ed.destinos, `${c.pedidos.map((p) => p.texto).join('\n')}\n${soloCliente.get(e.id) || ''}`));
     errores.push(...cifrasInventadas(actual, ed.destinos, `${c.pedidos.map((p) => p.texto).join('\n')}\n${soloCliente.get(e.id) || ''}\n${JSON.stringify(e.brief?.contacto || {})}`));
     if (!errores.length) break;
   }
