@@ -37,6 +37,9 @@ ALTER TABLE cambios_sitio ADD COLUMN IF NOT EXISTS intentos int NOT NULL DEFAULT
 -- Los que fallaron por tiempo de espera (antes de existir los reintentos) vuelven a la cola una vez.
 UPDATE cambios_sitio SET estado='pendiente', aplicar_en=now(), intentos=1
   WHERE estado='fallo' AND intentos=0 AND resultado->>'error' ILIKE '%timeout%' AND creado > now() - interval '1 day';
+-- Los que no se pudieron editar (fragmentos que no coincidían) se reintentan una vez con la edición por bloques.
+UPDATE cambios_sitio SET estado='pendiente', aplicar_en=now(), intentos=2
+  WHERE estado='equipo' AND intentos<2 AND jsonb_array_length(COALESCE(resultado->'errores','[]'::jsonb)) > 0 AND creado > now() - interval '1 day';
 `;
 let migrado = false;
 async function migrar() { if (!migrado) { await q(SCHEMA_CAMBIOS); migrado = true; } }
@@ -127,11 +130,12 @@ const ESQUEMA_PLAN = {
         type: 'object',
         properties: {
           destino: { type: 'string', description: '"pagina:<slug>", "header", "footer" o "estilos"' },
-          buscar: { type: 'string', description: 'Fragmento EXACTO, copiado carácter por carácter del contenido actual; debe aparecer una sola vez (alarga el fragmento si se repite).' },
+          bloque: { type: 'string', description: 'Para reescribir una sección o bloque completo: su marca (p. ej. "B7"). Entonces "reemplazar" es el marcado completo nuevo de ese bloque y "buscar" va vacío.' },
+          buscar: { type: 'string', description: 'Para cambios pequeños: fragmento EXACTO copiado del contenido actual (sin las marcas ⟦B…⟧); debe aparecer una sola vez.' },
           reemplazar: { type: 'string' },
           todas: { type: 'boolean', description: 'true solo si a propósito se reemplazan todas las apariciones (p. ej. un color hex en estilos).' },
         },
-        required: ['destino', 'buscar', 'reemplazar'],
+        required: ['destino', 'reemplazar'],
       },
     },
     menu: { type: 'array', items: { type: 'object', properties: { texto: { type: 'string' }, url: { type: 'string' } }, required: ['texto', 'url'] }, description: 'Solo si cambia el menú: la lista completa nueva.' },
@@ -155,10 +159,13 @@ const ESQUEMA_PLAN = {
 };
 
 const SISTEMA_EDITOR = `Eres el editor web del equipo de Ari. El cliente ya tiene su página WordPress publicada y pide cambios.
-Aplicas EXACTAMENTE lo que pide, editando el marcado publicado con ediciones buscar/reemplazar. Todo lo demás queda idéntico.
+Aplicas EXACTAMENTE lo que pide, editando el marcado publicado. Todo lo demás queda idéntico.
 
-REGLAS
-- "buscar" se copia tal cual del contenido actual (mismos espacios, comillas, entidades y comentarios <!-- wp:... -->) y debe aparecer UNA sola vez en su destino; si se repite, alarga el fragmento. Ediciones pequeñas y precisas: nunca reemplaces la página entera.
+CÓMO EDITAR
+- El contenido de las páginas y partes viene marcado con ⟦B1⟧…⟦/B1⟧, ⟦B2⟧…⟦/B2⟧: son bloques que puedes reescribir completos. Las marcas NO son parte del contenido: nunca las copies dentro de "buscar" ni de "reemplazar".
+- Cambios grandes en una sección (reescribir paquetes, listas, varias tarjetas, reordenar): usa "bloque" con la marca y en "reemplazar" el marcado completo nuevo de ese bloque, copiando su estructura, clases y estilos y cambiando solo lo pedido. Puedes reescribir varios bloques.
+- Cambios pequeños (una palabra, un precio, un teléfono, un color): usa "buscar"/"reemplazar" con un fragmento copiado tal cual del contenido actual que aparezca UNA sola vez.
+- Nunca reemplaces la página entera.
 - Mantén el marcado de bloques válido: si cambias un atributo que está en el comentario JSON del bloque y también en el HTML (url, id, color, alineación), cámbialo en ambos.
 - Fotos: usa SOLO las claves de FOTOS DISPONIBLES. Para poner una foto escribe {{media:CLAVE}} donde va la URL, {{media:CLAVE:id}} donde va el número de id (en el JSON del bloque "id":{{media:CLAVE:id}} y en la clase wp-image-{{media:CLAVE:id}}) y {{media:CLAVE:grande}} para la versión grande. Al reemplazar una foto cambia su URL, su id y su alt en todos los lugares del bloque. Nunca deformes fotos: conserva los atributos de proporción/recorte (object-fit, aspect-ratio, focal point) que ya tenga el bloque. Ninguna foto se repite en la página: si pones una que ya está en otra sección, sustitúyela allá por otra o avisa en pendientes_equipo.
 - Colores: cambia el hex en "estilos" (paleta) y también donde aparezca escrito en el contenido (estilos en línea, clases has-…-color usan el slug de la paleta). Respeta contraste legible (texto oscuro sobre claro o al revés).
@@ -207,17 +214,17 @@ async function planear(e, actual, pedidos, fotos, errores = [], historial = '') 
     `FOTOS DISPONIBLES:\n${fotosTxt || '(ninguna)'}`,
     `OPCIONES ACTUALES: ${JSON.stringify(actual.opciones || {})}`,
     `MENÚ ACTUAL: ${JSON.stringify(navALista(actual.menu))}`,
-    ...(actual.paginas || []).filter((p) => p.inicio || !/privacidad/.test(p.slug) || /privacidad|aviso/i.test(pedidoTxt + historial)).map((p) => `=== DESTINO pagina:${p.slug} (título "${p.titulo}"${p.inicio ? ', página de inicio' : ''}) ===\n${p.contenido}`),
-    ...Object.entries(actual.partes || {}).map(([k, v]) => `=== DESTINO ${k} ===\n${v}`),
+    ...(actual.paginas || []).filter((p) => p.inicio || !/privacidad/.test(p.slug) || /privacidad|aviso/i.test(pedidoTxt + historial)).map((p) => `=== DESTINO pagina:${p.slug} (título "${p.titulo}"${p.inicio ? ', página de inicio' : ''}) ===\n${marcarBloques(p.contenido).marcado}`),
+    ...Object.entries(actual.partes || {}).map(([k, v]) => `=== DESTINO ${k} ===\n${marcarBloques(v).marcado}`),
     `=== DESTINO estilos (JSON) ===\n${JSON.stringify(actual.estilos || {}, null, 1)}`,
   ];
   if (errores.length) partes.push(`TU INTENTO ANTERIOR FALLÓ, corrige esto:\n- ${errores.join('\n- ')}`);
-  const r = await pedirJSON({ system: SISTEMA_EDITOR, contenido: partes.join('\n\n'), schema: ESQUEMA_PLAN, model: config.anthropicModel, max_tokens: 8000, timeoutMs: 360000 });
+  const r = await pedirJSON({ system: SISTEMA_EDITOR, contenido: partes.join('\n\n'), schema: ESQUEMA_PLAN, model: config.anthropicModel, max_tokens: 16000, timeoutMs: 420000 });
   return r.data;
 }
 
-/** Aplica las ediciones en memoria. Devuelve {destinos, errores}. */
-function aplicarEdiciones(actual, ediciones) {
+/** Aplica las ediciones en memoria. Devuelve {destinos, errores}. Primero bloques completos, luego buscar/reemplazar. */
+export function aplicarEdiciones(actual, ediciones) {
   const destinos = {};
   const errores = [];
   const leer = (d) => {
@@ -227,19 +234,77 @@ function aplicarEdiciones(actual, ediciones) {
     if (d.startsWith('pagina:')) return actual.paginas?.find((p) => p.slug === d.slice(7))?.contenido;
     return undefined;
   };
-  for (const [i, ed] of (ediciones || []).entries()) {
+  const lista = (ediciones || []).map((ed, i) => ({ ...ed, n: i + 1, buscar: sinMarcas(ed.buscar), reemplazar: sinMarcas(ed.reemplazar) }));
+  // 1) Bloques completos, sobre las posiciones originales (de atrás hacia adelante).
+  const porDestino = {};
+  for (const ed of lista.filter((x) => x.bloque)) (porDestino[ed.destino] ||= []).push(ed);
+  for (const [d, eds] of Object.entries(porDestino)) {
+    const original = leer(d);
+    if (original === undefined || !DESTINOS_HTML(d)) { errores.push(`El destino "${d}" no tiene bloques`); continue; }
+    const { unidades } = marcarBloques(original);
+    const cambios = [];
+    for (const ed of eds) {
+      const u = unidades.find((x) => x.id === String(ed.bloque).replace(/[⟦⟧\/]/g, '').trim());
+      if (!u) { errores.push(`Edición ${ed.n}: el bloque ${ed.bloque} no existe en ${d}`); continue; }
+      if (cambios.some((c) => c.u === u)) { errores.push(`Edición ${ed.n}: el bloque ${ed.bloque} se reescribe dos veces`); continue; }
+      cambios.push({ u, nuevo: ed.reemplazar });
+    }
+    let txt = original;
+    for (const c of cambios.sort((a, b) => b.u.ini - a.u.ini)) txt = txt.slice(0, c.u.ini) + c.nuevo + txt.slice(c.u.fin);
+    destinos[d] = txt;
+  }
+  // 2) Buscar/reemplazar.
+  for (const ed of lista.filter((x) => !x.bloque)) {
     const actualTxt = leer(ed.destino);
-    if (actualTxt === undefined) { errores.push(`Edición ${i + 1}: el destino "${ed.destino}" no existe`); continue; }
-    if (!ed.buscar) { errores.push(`Edición ${i + 1}: "buscar" vacío`); continue; }
-    const veces = actualTxt.split(ed.buscar).length - 1;
-    if (veces === 0) { errores.push(`Edición ${i + 1} (${ed.destino}): el fragmento a buscar no existe tal cual: ${JSON.stringify(ed.buscar.slice(0, 160))}`); continue; }
-    if (veces > 1 && !ed.todas) { errores.push(`Edición ${i + 1} (${ed.destino}): el fragmento aparece ${veces} veces; alárgalo para que sea único: ${JSON.stringify(ed.buscar.slice(0, 160))}`); continue; }
-    destinos[ed.destino] = ed.todas ? actualTxt.split(ed.buscar).join(ed.reemplazar) : actualTxt.replace(ed.buscar, () => ed.reemplazar);
+    if (actualTxt === undefined) { errores.push(`Edición ${ed.n}: el destino "${ed.destino}" no existe`); continue; }
+    if (!ed.buscar) { errores.push(`Edición ${ed.n}: falta "buscar" o "bloque"`); continue; }
+    const { veces, re } = buscarTolerante(actualTxt, ed.buscar);
+    if (veces === 0) { errores.push(`Edición ${ed.n} (${ed.destino}): el fragmento no existe en el contenido actual: ${JSON.stringify(ed.buscar.slice(0, 200))}. Cópialo tal cual o reescribe el bloque completo con "bloque".`); continue; }
+    if (veces > 1 && !ed.todas) { errores.push(`Edición ${ed.n} (${ed.destino}): el fragmento aparece ${veces} veces; alárgalo o usa "bloque": ${JSON.stringify(ed.buscar.slice(0, 200))}`); continue; }
+    if (re) destinos[ed.destino] = ed.todas ? actualTxt.replace(re, () => ed.reemplazar) : actualTxt.replace(new RegExp(re.source), () => ed.reemplazar);
+    else destinos[ed.destino] = ed.todas ? actualTxt.split(ed.buscar).join(ed.reemplazar) : actualTxt.replace(ed.buscar, () => ed.reemplazar);
   }
   if ('estilos' in destinos) {
     try { destinos.estilos = JSON.parse(destinos.estilos); } catch { errores.push('Las ediciones dejaron "estilos" como JSON inválido'); }
   }
   return { destinos, errores };
+}
+
+/* Bloques editables: se marca el árbol de bloques de WordPress hasta que cada unidad mida ≤ MAX_BLOQUE caracteres. */
+const MAX_BLOQUE = 7000;
+function arbolBloques(txt) {
+  const re = /<!--\s+(\/)?wp:([a-z0-9/_-]+)(?:\s+(\{[\s\S]*?\}))?\s+(\/)?-->/g;
+  const raiz = { hijos: [] }; const pila = [raiz]; let m;
+  while ((m = re.exec(txt))) {
+    const [todo, cierra, nombre, , auto] = m;
+    if (auto) { pila.at(-1).hijos.push({ nombre, ini: m.index, fin: m.index + todo.length, hijos: [] }); continue; }
+    if (!cierra) { const n = { nombre, ini: m.index, fin: null, hijos: [] }; pila.at(-1).hijos.push(n); pila.push(n); continue; }
+    const n = pila.at(-1);
+    if (n !== raiz && n.nombre === nombre) { n.fin = m.index + todo.length; pila.pop(); }
+  }
+  const limpiar = (n) => { n.hijos = n.hijos.filter((h) => h.fin !== null); n.hijos.forEach(limpiar); };
+  limpiar(raiz);
+  return raiz.hijos;
+}
+export function marcarBloques(txt, prefijo = 'B') {
+  const unidades = [];
+  const elegir = (n) => { if (n.fin - n.ini <= MAX_BLOQUE || !n.hijos.length) unidades.push(n); else n.hijos.forEach(elegir); };
+  arbolBloques(txt).forEach(elegir);
+  unidades.sort((a, b) => a.ini - b.ini);
+  unidades.forEach((u, i) => { u.id = `${prefijo}${i + 1}`; });
+  let out = ''; let pos = 0;
+  for (const u of unidades) { out += txt.slice(pos, u.ini) + `⟦${u.id}⟧` + txt.slice(u.ini, u.fin) + `⟦/${u.id}⟧`; pos = u.fin; }
+  return { marcado: out + txt.slice(pos), unidades };
+}
+const sinMarcas = (t) => texto(t).replace(/⟦\/?[A-Z]+\d+⟧/g, '');
+// Búsqueda tolerante a espacios: si el fragmento exacto no aparece, se prueba ignorando diferencias de espacios.
+function buscarTolerante(txt, frag) {
+  const exactas = txt.split(frag).length - 1;
+  if (exactas) return { veces: exactas, re: null };
+  const patron = frag.trim().split(/\s+/).map((x) => x.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('\\s*');
+  if (!patron) return { veces: 0, re: null };
+  const re = new RegExp(patron, 'g');
+  return { veces: (txt.match(re) || []).length, re };
 }
 
 const DESTINOS_HTML = (d) => d.startsWith('pagina:') || d === 'header' || d === 'footer';
