@@ -31,6 +31,9 @@ export const config = {
   entrevistaMemoriaModel: env.ENTREVISTA_MEMORIA_MODEL || 'claude-haiku-5-5',
   transcribirUrl: env.TRANSCRIBIR_URL || '',
   transcribirKey: env.TRANSCRIBIR_KEY || '',
+  // Publicación en redes (publicador.timewins.ai): URL interna o pública y clave de API (Bearer).
+  publicadorUrl: (env.PUBLICADOR_URL || 'https://publicador.timewins.ai').replace(/\/$/, ''),
+  publicadorClave: env.PUBLICADOR_API_KEY || '',
   // WordPress suspendido (6-nov-2026): todo sitio nuevo va a la plataforma "app". WORDPRESS_ACTIVO=1 lo reactiva.
   wordpressActivo: /^(1|true|si|sí)$/i.test(env.WORDPRESS_ACTIVO || ''),
   // Generador de sitios WordPress (módulo generador/).

@@ -22,6 +22,8 @@ import * as A from './sesion.js';
 import { paginaPanel } from './pagina.js';
 import { enviarCodigo } from '../correo_codigos.js';
 import { entregarAcceso } from '../entrevista/entrega.js';
+import * as P from './propiedades.js';
+import * as PUB from './publicador.js';
 
 const q = db.q;
 const DIR_SUBIDAS = path.join(config.dataDir, 'chat'); // mismas rutas públicas que el chat: /chat/archivos/<nombre>
@@ -153,8 +155,98 @@ async function atenderPanel(c, sv, base, ruta) {
       const nuevo = await S.subirVersion(sv, parche);
       return json(c, { ok: true, version: nuevo.version, fotos: await fotosDe(e, nuevo) });
     }
+    /* ---------- Propiedades (inmobiliarias) ---------- */
+    if (api.startsWith('/propiedades') || api.startsWith('/redes')) {
+      await P.migrarPropiedades();
+      const svp = await S.porId(sv.id); // con la columna publicador
+      const urlBase = svp.dominio ? `https://${svp.dominio}` : `${config.publicUrl}/s/${svp.slug}`;
+      const vista = (p) => ({ id: p.id, slug: p.slug, datos: p.datos, imagenes: p.imagenes, vistas: p.vistas, url: `${urlBase}/propiedad/${p.slug}`, publicaciones: (p.publicaciones || []).slice(-10) });
+      const refrescar = () => S.subirVersion(svp);
+      if (api === '/propiedades' && c.req.method === 'GET') {
+        let cuentas = [], errorRedes = null;
+        try { cuentas = await PUB.cuentas(svp); } catch (x) { errorRedes = x.message; }
+        return json(c, { propiedades: (await P.listar(svp.id)).map(vista), redes: { activo: PUB.publicadorActivo(), cuentas, error: errorRedes } });
+      }
+      if (api === '/propiedades' && c.req.method === 'POST') {
+        const p = await P.crear(svp.id, await c.req.json().catch(() => ({})));
+        await refrescar();
+        return json(c, { ok: true, propiedad: vista(p) });
+      }
+      if (api === '/propiedades/orden' && c.req.method === 'POST') {
+        const b = await c.req.json().catch(() => ({}));
+        await P.ordenar(svp.id, b.ids); await refrescar();
+        return json(c, { ok: true });
+      }
+      const mp = api.match(/^\/propiedades\/(\d+)(\/fotos|\/publicar|\/publicaciones)?$/);
+      if (mp) {
+        const p = await P.obtener(svp.id, mp[1]);
+        if (!p) return json(c, { error: 'Propiedad no encontrada' }, 404);
+        if (!mp[2] && c.req.method === 'PUT') { const n = await P.actualizar(svp.id, p.id, await c.req.json().catch(() => ({}))); await refrescar(); return json(c, { ok: true, propiedad: vista(n) }); }
+        if (!mp[2] && c.req.method === 'DELETE') { await P.borrar(svp.id, p.id); await refrescar(); return json(c, { ok: true }); }
+        if (mp[2] === '/fotos' && c.req.method === 'POST') {
+          const form = await c.req.parseBody({ all: true });
+          const archivos = [].concat(form.archivo || []).filter((f) => f && typeof f !== 'string');
+          if (!archivos.length) return json(c, { error: 'Falta la foto' }, 400);
+          const nuevas = [];
+          await fs.mkdir(DIR_SUBIDAS, { recursive: true });
+          for (const f of archivos.slice(0, 20)) {
+            const mime = String(f.type || '').split(';')[0];
+            if (!TIPOS_IMG[mime]) return json(c, { error: 'Sube las fotos en JPG, PNG o WEBP' }, 415);
+            if (f.size > 16 * 1024 * 1024) return json(c, { error: 'Una foto pesa más de 16 MB' }, 413);
+            const nombre = `${crypto.randomBytes(12).toString('base64url').replace(/_/g, '-')}.${TIPOS_IMG[mime]}`;
+            await fs.writeFile(path.join(DIR_SUBIDAS, nombre), Buffer.from(await f.arrayBuffer()));
+            nuevas.push(`${config.publicUrl}/chat/archivos/${nombre}`);
+          }
+          const n = await P.ponerImagenes(svp.id, p.id, [...(p.imagenes || []), ...nuevas]);
+          await refrescar();
+          return json(c, { ok: true, propiedad: vista(n) });
+        }
+        if (mp[2] === '/fotos' && c.req.method === 'PUT') {
+          // Reordenar o quitar: el panel manda la lista completa (solo de las que ya tiene).
+          const b = await c.req.json().catch(() => ({}));
+          const n = await P.ponerImagenes(svp.id, p.id, (b.imagenes || []).filter((u) => (p.imagenes || []).includes(u)));
+          await refrescar();
+          return json(c, { ok: true, propiedad: vista(n) });
+        }
+        if (mp[2] === '/publicar' && c.req.method === 'POST') {
+          const b = await c.req.json().catch(() => ({}));
+          const pubs = await PUB.publicarPropiedad(svp, e, p, { conexion_ids: b.conexion_ids, url: `${urlBase}/propiedad/${p.slug}` });
+          await P.registrarPublicacion(svp.id, p.id, { fecha: new Date().toISOString(), ids: pubs.map((x) => x.id), redes: pubs.map((x) => x.red) });
+          await db.evento(e.id, 'propiedad_publicada', { propiedad_id: p.id, publicaciones: pubs.length });
+          return json(c, { ok: true, publicaciones: pubs });
+        }
+        if (mp[2] === '/publicaciones' && c.req.method === 'GET') {
+          const ids = (p.publicaciones || []).flatMap((x) => x.ids || []).slice(-20);
+          return json(c, { publicaciones: ids.length ? await PUB.estadoPublicaciones(ids) : [] });
+        }
+      }
+      if (api === '/redes/conectar' && c.req.method === 'POST') {
+        const mat = await procesarMateriales(e.id, e.brief || {}, { aceptarLoQueHay: true }).catch(() => null);
+        const paleta = S.disenoElegido(e.brief)?.paleta || {};
+        const url = await PUB.ligaConexion(svp, e, { logo: mat?.logo?.url || null, colores: [paleta.p || paleta.primary, paleta.fg, paleta.bg].filter(Boolean) });
+        return json(c, { url });
+      }
+    }
     return json(c, { error: 'No encontrado' }, 404);
   } catch (e) { return err(c, e); }
+}
+
+/** Ficha pública de una propiedad (/propiedad/<slug>), con el diseño del sitio. */
+async function servirPropiedad(c, sv, slug, { previa }) {
+  try {
+    const p = await P.porSlug(sv.id, slug);
+    if (!p || !P.VISIBLES.includes(p.datos.estado)) return c.redirect(previa ? `/s/${sv.slug}` : '/', 302);
+    const e = await db.obtener(sv.entrevista_id);
+    const base = previa ? `/s/${sv.slug}` : '';
+    const url = previa ? `${config.publicUrl}/s/${sv.slug}/propiedad/${p.slug}` : `https://${sv.dominio}/propiedad/${p.slug}`;
+    const html = await S.renderSitio(sv, { previa });
+    const wa = String(sv.contenido?.contacto?.whatsapp || e?.brief?.contacto?.whatsapp || '').replace(/\D/g, '');
+    P.contarVista(p.id);
+    return c.html(P.paginaPropiedad(html, p, { base, url, negocio: e?.brief?.negocio?.nombre || '', wa: wa ? (wa.length === 10 ? `52${wa}` : wa) : null }), 200, { 'cache-control': 'no-cache', ...(previa ? { 'x-robots-tag': 'noindex' } : {}) });
+  } catch (x) {
+    console.error('[propiedad]', sv.id, slug, x);
+    return c.redirect(previa ? `/s/${sv.slug}` : '/', 302);
+  }
 }
 
 async function servirSitio(c, sv, { previa }) {
@@ -175,8 +267,14 @@ async function modoVivo(c, reg, next, host) {
   const ruta = c.req.path.replace(/\/+$/, '') || '/';
   if (ruta === '/') return servirSitio(c, sv, { previa: false });
   if (ruta === '/admin' || ruta.startsWith('/admin/')) return (await atenderPanel(c, sv, '', ruta)) || c.text('No encontrado', 404);
+  const mprop = ruta.match(/^\/propiedad\/([a-z0-9-]{1,80})$/);
+  if (mprop) return servirPropiedad(c, sv, mprop[1], { previa: false });
   if (ruta === '/robots.txt') return c.text(`User-agent: *\nDisallow: /admin\nSitemap: https://${host}/sitemap.xml\n`);
-  if (ruta === '/sitemap.xml') return c.body(`<?xml version="1.0" encoding="UTF-8"?><urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"><url><loc>https://${host}/</loc><lastmod>${new Date(sv.actualizado).toISOString().slice(0, 10)}</lastmod></url></urlset>`, 200, { 'content-type': 'application/xml' });
+  if (ruta === '/sitemap.xml') {
+    const props = await P.listar(sv.id, { publicas: true }).catch(() => []);
+    const urls = [`<url><loc>https://${host}/</loc><lastmod>${new Date(sv.actualizado).toISOString().slice(0, 10)}</lastmod></url>`, ...props.map((p) => `<url><loc>https://${host}/propiedad/${p.slug}</loc><lastmod>${new Date(p.actualizado).toISOString().slice(0, 10)}</lastmod></url>`)];
+    return c.body(`<?xml version="1.0" encoding="UTF-8"?><urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">${urls.join('')}</urlset>`, 200, { 'content-type': 'application/xml' });
+  }
   if (ruta.startsWith('/chat/archivos/') || ruta.startsWith('/files/')) return next();
   return c.redirect('/', 302);
 }
@@ -193,6 +291,8 @@ export function registerPanelRoutes(app, wrap) {
     const base = `/s/${sv.slug}`;
     const ruta = c.req.path.slice(base.length).replace(/\/+$/, '') || '/';
     if (ruta === '/') return servirSitio(c, sv, { previa: true });
+    const mprop = ruta.match(/^\/propiedad\/([a-z0-9-]{1,80})$/);
+    if (mprop) return servirPropiedad(c, sv, mprop[1], { previa: true });
     return (await atenderPanel(c, sv, base, ruta)) || c.text('No encontrado', 404);
   });
   app.get('/s/:slug', async (c) => {

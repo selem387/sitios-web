@@ -122,6 +122,7 @@ export function contenidoActual(entrevista, sv, mat = null) {
     testimonios: k.testimonios || { items: (b.confianza?.testimonios || []).map((x) => ({ nombre: x.nombre || '', texto: x.texto || '', fuente: x.fuente || '' })) },
     historia: k.historia || { texto: prop.textos?.sobre || b.confianza?.historia_corta || '' },
     es_menu: b.negocio?.arquetipo === 'restaurante',
+    es_inmobiliaria: b.negocio?.arquetipo === 'inmobiliaria',
   };
 }
 
@@ -194,7 +195,11 @@ export async function renderSitio(sv, { previa = false } = {}) {
   const pg = r.paginas[0];
   if (!pg) throw new Error('no se pudo armar la página');
   if (r.faltan?.length) console.warn('[sitio vivo]', sv.id, 'material sin mostrar:', r.faltan.map((f) => f.clave).join(','));
-  const html = comoSitio(pg.html, brief, { letra: fijo.letra, dominio: previa ? null : sv.dominio });
+  let html = comoSitio(pg.html, brief, { letra: fijo.letra, dominio: previa ? null : sv.dominio });
+  if (brief.negocio?.arquetipo === 'inmobiliaria') {
+    const { listar, conPropiedades } = await import('./propiedades.js');
+    html = conPropiedades(html, await listar(sv.id, { publicas: true }), { base: previa ? `/s/${sv.slug}` : '' });
+  }
   for (const k of cache.keys()) if (k.startsWith(`${sv.id}:`) && !k.startsWith(`${sv.id}:${sv.version}:`)) cache.delete(k);
   cache.set(clave, html);
   return html;

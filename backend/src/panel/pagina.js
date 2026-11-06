@@ -104,6 +104,7 @@ function seccion(id,titulo,sub,construir,guardar){var cuerpo=el('div',{class:'cu
  return el('details',{class:'card',id:'s-'+id},[el('summary',null,[el('span',{class:'sumtxt'},[titulo,sub?el('small',{text:sub}):null])]),cuerpo])}
 
 function pintar(){var S=$('#secciones');S.innerHTML='';var k=C;
+ if(k.es_inmobiliaria)S.appendChild(propiedadesSec());
  if(k.es_menu){var ms=JSON.parse(JSON.stringify(k.menu.secciones||[]));S.appendChild(seccion('menu','Menú y precios','Secciones, platillos y bebidas',function(c){var cont=el('div');c.appendChild(cont);
    function pinta(){cont.innerHTML='';ms.forEach(function(s,i){var f=el('div',{class:'fila'});f.appendChild(campo({l:'Nombre de la sección',ph:'Ej. Bebidas calientes'},s.seccion,function(v){s.seccion=v}));var it=el('div');f.appendChild(it);
      listaEd(it,s.items,[{k:'nombre',l:'Nombre'},{k:'precio',l:'Precio',ph:'$55',op:1},{k:'descripcion',l:'Descripción',op:1}],function(){return{nombre:'',precio:'',descripcion:''}},'platillo');
@@ -134,6 +135,75 @@ function fotosSec(){var cuerpo=el('div',{class:'cuerpo'});var grid=el('div',{cla
  cuerpo.appendChild(el('p',{class:'ayuda',text:'Oculta las que ya no quieras mostrar o elige cuál va en la portada. Para cambiar tu logo, sube el nuevo y elige "Logo".'}));cuerpo.appendChild(grid);
  cuerpo.appendChild(el('div',{class:'subir'},[el('label',{for:'archivo',text:'Agregar una foto'}),arch,el('label',{for:'tipo-foto',text:'¿Qué es?'}),sel,sb]));cuerpo.appendChild(msg);pinta();
  return el('details',{class:'card',id:'s-fotos'},[el('summary',null,[el('span',{class:'sumtxt'},['Fotos y logo',el('small',{text:'Agrega, oculta o elige la de portada'})])]),cuerpo])}
+
+/* ---------- Propiedades (inmobiliarias) ---------- */
+var OPS={venta:'Venta',renta:'Renta',preventa:'Preventa',venta_renta:'Venta o renta'};
+var TPS={casa:'Casa',departamento:'Departamento',terreno:'Terreno',bodega:'Bodega',oficina:'Oficina',local_comercial:'Local comercial',edificio:'Edificio',desarrollo:'Desarrollo',rancho:'Rancho',otro:'Otro'};
+var EST={disponible:'Disponible',reservado:'Apartada',vendido:'Vendida',rentado:'Rentada',suspendido:'Oculta'};
+var CND={'':'—',nuevo:'Nueva',usado:'Usada',en_construccion:'En construcción',en_remodelacion:'En remodelación',por_estrenar:'Por estrenar'};
+var USO={'':'—',habitacional:'Habitacional',comercial:'Comercial',industrial:'Industrial',mixto:'Mixto',rustico:'Rústico',turistico:'Turístico'};
+function opciones(def,val,on,ops){var id='c'+Math.random().toString(36).slice(2,9);var s=el('select',{id:id});Object.keys(ops).forEach(function(k){s.appendChild(el('option',{value:k,text:ops[k]}))});s.value=val==null?'':val;s.onchange=function(){on(s.value)};return el('div',null,[el('label',{for:id},[def.l]),s])}
+function precioTxt(d){if(d.precio==null||d.precio==='')return 'Precio a consultar';return '$'+Number(d.precio).toLocaleString('es-MX')+' '+(d.moneda||'MXN')+(d.operacion==='renta'?' al mes':'')}
+function propiedadesSec(){var cuerpo=el('div',{class:'cuerpo'});var lista=el('div');var redesBox=el('div',{class:'subir'});var msg=el('p',{class:'msg',role:'status',"aria-live":'polite'});var PR=[],RD={activo:false,cuentas:[]};
+ function cargarP(){return api('GET','/propiedades').then(function(r){PR=r.propiedades;RD=r.redes;pintaRedes();pintaLista()}).catch(function(e){aviso(msg,e.message,false)})}
+ function pintaRedes(){redesBox.innerHTML='';redesBox.appendChild(el('b',{text:'Publicar en redes sociales'}));
+  if(!RD.activo){redesBox.appendChild(el('p',{class:'ayuda',text:'Muy pronto podrás publicar tus propiedades en Facebook e Instagram desde aquí.'}));return}
+  if(RD.error)redesBox.appendChild(el('p',{class:'msg bad',text:'No pude revisar tus redes: '+RD.error}));
+  var act=(RD.cuentas||[]).filter(function(c){return c.estado==='activa'});
+  if(act.length){redesBox.appendChild(el('p',{class:'ayuda',text:'Cuentas conectadas: '+act.map(function(c){return (c.red==='instagram'?'Instagram':c.red==='facebook'?'Facebook':c.red)+(c.usuario?' @'+c.usuario:c.nombre?' '+c.nombre:'')}).join(', ')}))}
+  else redesBox.appendChild(el('p',{class:'ayuda',text:'Conecta tu página de Facebook y tu Instagram una sola vez. Después cada propiedad tiene su botón para publicarla.'}));
+  var b=el('button',{type:'button',class:act.length?'sec2 mini':'btn'},[act.length?'Conectar otra cuenta':'Conectar Facebook e Instagram']);
+  b.onclick=function(){b.disabled=true;api('POST','/redes/conectar',{}).then(function(r){window.open(r.url,'_blank','noopener');aviso(msg,'Se abrió una ventana para conectar tus cuentas. Al terminar, vuelve aquí y recarga la página.',true)}).catch(function(e){aviso(msg,e.message,false)}).finally(function(){b.disabled=false})};redesBox.appendChild(b)}
+ function pintaLista(){lista.innerHTML='';if(!PR.length)lista.appendChild(el('p',{class:'ayuda',text:'Todavía no tienes propiedades. Agrega la primera con el botón de abajo.'}));
+  PR.forEach(function(p){var d=p.datos;var f=el('div',{class:'fila'});var cab=el('div',{style:'display:flex;gap:12px;align-items:center;padding-top:10px'});
+   cab.appendChild(p.imagenes[0]?el('img',{src:p.imagenes[0],alt:'',style:'width:72px;height:72px;object-fit:cover;border-radius:10px;flex:0 0 auto'}):el('div',{style:'width:72px;height:72px;border-radius:10px;background:var(--bor);flex:0 0 auto'}));
+   cab.appendChild(el('div',{style:'min-width:0'},[el('b',{text:d.titulo,style:'display:block'}),el('span',{class:'ayuda',text:precioTxt(d)+' · '+OPS[d.operacion]+' · '+EST[d.estado]+(d.destacada?' · Destacada':'')+' · '+p.imagenes.length+' fotos · '+(p.vistas||0)+' visitas'})]));f.appendChild(cab);
+   var ed=el('button',{type:'button',class:'sec2 mini'},['Editar']);ed.onclick=function(){editor(p)};
+   var pb=el('button',{type:'button',class:'btn mini'},['Publicar en redes']);pb.onclick=function(){publicar(p,pb)};
+   var ver=el('a',{class:'lnk',href:p.url,target:'_blank',rel:'noopener',style:'align-self:center'},['Ver']);
+   f.appendChild(el('div',{class:'acc'},[ver,ed,pb]));
+   if(p.publicaciones&&p.publicaciones.length){var u=p.publicaciones[p.publicaciones.length-1];var est=el('button',{type:'button',class:'sec2 mini'},['Ver cómo va la última publicación']);est.onclick=function(){estado(p,f)};f.appendChild(el('p',{class:'ayuda',text:'Publicada el '+new Date(u.fecha).toLocaleString('es-MX')+' en '+(u.redes||[]).join(', ')}));f.appendChild(est)}
+   lista.appendChild(f)});
+  var add=el('button',{type:'button',class:'btn'},['+ Agregar propiedad']);add.onclick=function(){editor(null)};lista.appendChild(el('div',{class:'pie'},[add]))}
+ function estado(p,f){api('GET','/propiedades/'+p.id+'/publicaciones').then(function(r){var t=r.publicaciones.map(function(x){var e={publicada:'publicada ✅',error:'con error',procesando:'publicándose',aprobada:'en cola',por_aprobar:'por aprobar'}[x.estado]||x.estado;return (x.red||'')+': '+e+(x.error?' ('+x.error+')':'')}).join(' · ');var ps=r.publicaciones.filter(function(x){return x.permalink});var n=el('p',{class:'ayuda',text:t||'Sin datos todavía'});f.appendChild(n);ps.forEach(function(x){f.appendChild(el('a',{class:'lnk',href:x.permalink,target:'_blank',rel:'noopener',style:'display:block'},['Ver en '+x.red]))})}).catch(function(e){aviso(msg,e.message,false)})}
+ function publicar(p,b){if(!RD.activo){aviso(msg,'La publicación en redes todavía no está activa.',false);return}var act=(RD.cuentas||[]).filter(function(c){return c.estado==='activa'});if(!act.length){aviso(msg,'Primero conecta tu Facebook e Instagram (arriba).',false);redesBox.scrollIntoView({behavior:'smooth'});return}
+  if(!p.imagenes.length){aviso(msg,'Agrega al menos una foto a la propiedad para publicarla.',false);return}
+  if(!confirm('¿Publicar "'+p.datos.titulo+'" ahora en '+act.map(function(c){return c.red}).join(' y ')+'? Se escribe el texto con los datos de la propiedad y se publica con sus fotos.'))return;
+  b.disabled=true;aviso(msg,'Preparando la publicación… puede tardar un minuto.',true);
+  api('POST','/propiedades/'+p.id+'/publicar',{}).then(function(r){aviso(msg,'Listo: se está publicando en '+r.publicaciones.map(function(x){return x.red}).join(' y ')+'. En unos minutos aparece en tus redes.',true);cargarP()}).catch(function(e){aviso(msg,e.message,false)}).finally(function(){b.disabled=false})}
+ function editor(p){var d=p?JSON.parse(JSON.stringify(p.datos)):{titulo:'',operacion:'venta',tipo:'casa',estado:'disponible',moneda:'MXN',amenidades:[],servicios:[]};
+  var am={a:(d.amenidades||[]).join('\\n'),s:(d.servicios||[]).join('\\n')};var fr=el('div',{class:'fila'});var m2=el('p',{class:'msg',role:'status',"aria-live":'polite'});
+  function g(t){fr.appendChild(el('h2',{text:t,style:'margin-top:18px'}))}
+  function c(def){fr.appendChild(campo(def,d[def.k],function(v){d[def.k]=v}))}
+  function s(def,ops){fr.appendChild(opciones(def,d[def.k],function(v){d[def.k]=v},ops))}
+  g('Lo básico');c({k:'titulo',l:'Título del anuncio',max:140,ph:'Casa en privada con alberca en Cholul'});s({k:'operacion',l:'Operación'},OPS);s({k:'tipo',l:'Tipo'},TPS);s({k:'estado',l:'Estado'},EST);c({k:'destacada',l:'Mostrarla entre las primeras',t:'check'});c({k:'clave',l:'Clave interna',op:1,ph:'HRB-0001'});
+  g('Precio');c({k:'precio',l:'Precio',im:'numeric',ph:'3500000',op:1});s({k:'moneda',l:'Moneda'},{MXN:'Pesos (MXN)',USD:'Dólares (USD)'});c({k:'negociable',l:'Precio negociable',t:'check'});c({k:'mantenimiento',l:'Mantenimiento mensual',im:'numeric',op:1});
+  g('Medidas y espacios');[['recamaras','Recámaras'],['banos','Baños completos'],['medios_banos','Medios baños'],['estacionamientos','Estacionamientos'],['niveles','Niveles'],['m2_construccion','m² de construcción'],['m2_terreno','m² de terreno'],['frente_m','Frente (m)'],['fondo_m','Fondo (m)'],['antiguedad','Antigüedad en años (0 = nueva)']].forEach(function(x){c({k:x[0],l:x[1],im:'decimal',op:1})});s({k:'condicion',l:'Condición'},CND);s({k:'uso_suelo',l:'Uso de suelo'},USO);c({k:'situacion_legal',l:'Situación legal',op:1,ph:'Escriturada, libre de gravamen'});c({k:'disponible_desde',l:'Disponible desde',op:1});
+  g('Ubicación');c({k:'direccion',l:'Dirección',op:1});c({k:'colonia',l:'Colonia o fraccionamiento',op:1});c({k:'ciudad',l:'Ciudad',op:1});c({k:'estado_rep',l:'Estado',op:1});c({k:'cp',l:'Código postal',op:1,im:'numeric'});c({k:'mapa_url',l:'Liga de Google Maps',t:'url',op:1});
+  g('Descripción');c({k:'descripcion',l:'Descripción',t:'area',max:5000});
+  fr.appendChild(campo({l:'Amenidades (una por renglón)',t:'area',op:1,ph:'Alberca\\nTerraza\\nSeguridad 24 h'},am.a,function(v){am.a=v}));
+  fr.appendChild(campo({l:'Servicios (uno por renglón)',t:'area',op:1,ph:'Agua\\nLuz\\nDrenaje'},am.s,function(v){am.s=v}));
+  c({k:'inversion',l:'Potencial de inversión',t:'area',op:1,max:2000});c({k:'notas_internas',l:'Notas internas (no se muestran)',t:'area',op:1,max:2000});
+  var fotosBox=el('div');fr.appendChild(fotosBox);
+  function pintaFotos(cur){fotosBox.innerHTML='';g2('Fotos');function g2(t){fotosBox.appendChild(el('h2',{text:t,style:'margin-top:18px'}))}
+   if(!cur){fotosBox.appendChild(el('p',{class:'ayuda',text:'Guarda la propiedad y después podrás subir sus fotos.'}));return}
+   var grid=el('div',{class:'fotos'});cur.imagenes.forEach(function(u,i){var cc=el('div',{class:'foto'});cc.appendChild(el('img',{src:u,alt:'Foto '+(i+1),loading:'lazy'}));if(i===0)cc.appendChild(el('span',{class:'tag',text:'Principal'}));
+    var acc=el('div',{class:'acc'});if(i>0){var pr=el('button',{type:'button',class:'sec2 mini'},['Hacer principal']);pr.onclick=function(){var l=cur.imagenes.slice();l.splice(i,1);l.unshift(u);ordenF(cur,l)};acc.appendChild(pr)}
+    var q=el('button',{type:'button',class:'sec2 mini'},['Quitar']);q.onclick=function(){if(confirm('¿Quitar esta foto?')){var l=cur.imagenes.slice();l.splice(i,1);ordenF(cur,l)}};acc.appendChild(q);cc.appendChild(acc);grid.appendChild(cc)});fotosBox.appendChild(grid);
+   var inp=el('input',{type:'file',accept:'image/jpeg,image/png,image/webp',multiple:'multiple'});var sb=el('button',{type:'button',class:'btn'},['Subir fotos']);
+   sb.onclick=function(){if(!inp.files.length){aviso(m2,'Elige una o varias fotos',false);return}var fd=new FormData();for(var i=0;i<inp.files.length;i++)fd.append('archivo',inp.files[i]);sb.disabled=true;aviso(m2,'Subiendo fotos…',true);
+    api('POST','/propiedades/'+cur.id+'/fotos',undefined,fd).then(function(r){p=r.propiedad;pintaFotos(p);aviso(m2,'Fotos agregadas.',true);cargarP()}).catch(function(e){aviso(m2,e.message,false)}).finally(function(){sb.disabled=false})};
+   fotosBox.appendChild(el('div',{class:'subir'},[el('label',{text:'Agregar fotos'}),inp,sb]))}
+  function ordenF(cur,l){api('PUT','/propiedades/'+cur.id+'/fotos',{imagenes:l}).then(function(r){p=r.propiedad;pintaFotos(p);cargarP()}).catch(function(e){aviso(m2,e.message,false)})}
+  pintaFotos(p);
+  var gu=el('button',{type:'button',class:'btn'},['Guardar propiedad']);var ca=el('button',{type:'button',class:'sec2'},['Cerrar']);var bo=el('button',{type:'button',class:'sec2 mini'},['Borrar propiedad']);
+  gu.onclick=function(){d.amenidades=am.a;d.servicios=am.s;gu.disabled=true;aviso(m2,'Guardando…',true);(p?api('PUT','/propiedades/'+p.id,d):api('POST','/propiedades',d)).then(function(r){var nueva=!p;p=r.propiedad;aviso(m2,nueva?'Guardada. Ahora sube sus fotos aquí abajo.':'Guardada. Ya se ve en tu página.',true);if(nueva)pintaFotos(p);cargarP()}).catch(function(e){aviso(m2,e.message,false)}).finally(function(){gu.disabled=false})};
+  ca.onclick=function(){fr.remove();lista.classList.remove('oculto')};
+  bo.onclick=function(){if(!p){fr.remove();lista.classList.remove('oculto');return}if(confirm('¿Borrar "'+p.datos.titulo+'"? Ya no aparecerá en tu página.')){api('DELETE','/propiedades/'+p.id).then(function(){fr.remove();lista.classList.remove('oculto');cargarP()}).catch(function(e){aviso(m2,e.message,false)})}};
+  fr.appendChild(el('div',{class:'pie'},[gu,ca,m2]));fr.appendChild(el('div',{class:'acc'},[bo]));
+  lista.classList.add('oculto');cuerpo.insertBefore(fr,lista);fr.querySelector('input').focus()}
+ cuerpo.appendChild(el('p',{class:'ayuda',text:'Tus casas, departamentos y terrenos. Las disponibles y apartadas se ven en tu página, cada una con su propia ficha.'}));cuerpo.appendChild(redesBox);cuerpo.appendChild(lista);cuerpo.appendChild(msg);cargarP();
+ return el('details',{class:'card',id:'s-propiedades',open:'open'},[el('summary',null,[el('span',{class:'sumtxt'},['Propiedades',el('small',{text:'Agrega, edita y publica en tus redes'})])]),cuerpo])}
 
 function cargar(){return api('GET','/contenido').then(function(r){C=r.contenido;FOTOS=r.fotos;$('#ver').href=r.sitio;$('#acceso').classList.add('oculto');$('#panel').classList.remove('oculto');pintar();history.replaceState(null,'',BASE+'/admin')})}
 if(/error=llave/.test(location.search))aviso($('#m-acceso'),'Esa liga ya no es válida. Pídele a tu asistente la liga para administrar tu página.',false);
