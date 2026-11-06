@@ -20,6 +20,7 @@ async function llamar(metodo, ruta, cuerpo, timeoutMs = 120000) {
 export const salud = () => llamar('GET', '/salud');
 export const crearSitio = ({ dominio, titulo }) => llamar('POST', '/sitios', { dominio, titulo });
 export const estadoSitio = (id) => llamar('GET', `/sitios/${id}`);
+export const contenido = (id) => llamar('GET', `/sitios/${id}/contenido`);
 export const aplicar = (id, cuerpo) => llamar('POST', `/sitios/${id}/aplicar`, cuerpo, 300000);
 // Dueño del sitio (mu-plugin iaprop-acceso): único usuario del cliente, entra sin contraseña en /acceso.
 export const asignarDueno = (id, { email, nombre, apiUrl, google, arquetipo }) => llamar('POST', `/sitios/${id}/dueno`, { email, nombre, api_url: apiUrl, google: !!google, arquetipo });

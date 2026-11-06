@@ -16,6 +16,7 @@ import { MODELO_ARI, MODELO_MEMORIA } from './claude.js';
 import { verificarWebhook } from '../dominio/stripe.js';
 import { procesarEventoStripe, cronCompras, obtener as obtenerCompra } from '../dominio/compra.js';
 import { cronDominiosPropios } from './dominio.js';
+import { cronCambios } from './cambios.js';
 import { investigar } from '../dominio/registrador.js';
 import { actualizarGuia, BASE as GUIAS } from '../dominio/guias.js';
 
@@ -153,6 +154,8 @@ export async function initEntrevista() {
   };
   setInterval(cronDominios, 10 * 60e3).unref();
   setInterval(() => cronProgramados().catch((err) => console.error('cron programados', err)), 60e3).unref();
+  // Cambios que pidió el cliente sobre su página publicada: se aplican solos.
+  setInterval(() => cronCambios().catch((err) => console.error('cron cambios', err)), 30e3).unref();
   // Guías de proveedores: se revisa la ayuda oficial una vez por semana.
   setInterval(() => { for (const p of Object.keys(GUIAS)) actualizarGuia(p).catch(() => {}); }, 7 * 864e5).unref();
 }

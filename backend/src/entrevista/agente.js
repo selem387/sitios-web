@@ -16,6 +16,8 @@ import { normalizarRedes, redesFaltantes, listaNombres } from './redes.js';
 import { redesEnCurso, atenderRedes } from './entrega.js';
 import { dominioEnCurso, atenderDominio, tocaDominio, iniciarDominio, notaParaAri, quiereRetomar, retomarDominio, leerFlujo, borrarFlujo } from './dominio.js';
 import { limpiarDominio } from '../dominio/registrador.js';
+import { sitioEditable, estadoCambios, registrarPedido, clasificarMensaje } from './cambios.js';
+import { avisarEquipo } from './avisos.js';
 
 // Tope de seguridad (fotos y audios cuentan como mensajes). Una entrevista real ronda 60–130.
 const MAX_MSGS_CLIENTE = 400;
@@ -69,25 +71,67 @@ const ALGO_CONCRETO = /\b(foto\w*|imagen\w*|color\w*|texto\w*|titulo\w*|frase\w*
 // "quiero hacer unas correcciones" (sin decir cuáles) → se le pregunta qué quiere cambiar.
 export const pideCambiosSinDetalle = (texto) => { const t = SIN_ACENTOS(texto); return !!t && t.split(' ').length <= 14 && PIDE_CAMBIOS.test(t) && !ALGO_CONCRETO.test(t); };
 
-async function respuestaPostCierre(u, texto = '') {
+async function respuestaPostCierre(u, texto = '', media = []) {
   const s = (await db.q(`SELECT estado, url_publica FROM sitios WHERE entrevista_id=$1 ORDER BY id DESC LIMIT 1`, [u.id]).catch(() => ({ rows: [] }))).rows[0];
   const previos = await db.ultimosMensajes(u.id, 6).catch(() => []);
   const ultimoAgente = [...previos].reverse().find((m) => m.rol === 'agente')?.contenido || '';
   const adm = u.brief?.administracion;
+  // Página publicada en WordPress: los cambios que pide se aplican solos (cambios.js).
+  if (await sitioEditable(u.id)) {
+    const est = await estadoCambios(u.id);
+    let tipo;
+    if (media.length) tipo = 'cambio';
+    else {
+      const cl = await clasificarMensaje(u.id, texto, { abierto: est.abierto });
+      tipo = cl?.tipo || (pideCambiosSinDetalle(texto) ? 'sin_detalle' : 'cambio');
+      if (tipo === 'otro') return cl?.respuesta || '¡Con gusto! 🙌 Si quieres cambiar algo de tu página, dime qué y lo ajusto.';
+    }
+    if (tipo === 'sin_detalle') {
+      const panel = adm?.estado === 'entregado' && adm.url ? `\n(También puedes cambiar precios, fotos u horarios tú mismo en tu administrador: ${adm.url})` : '';
+      return `¡Claro! 🙌 Dime qué quieres cambiar de tu página: textos, fotos, colores, letra, secciones, precios, datos de contacto… Puedes escribirlo, mandarme un audio o fotos. Si son varias cosas, mándamelas todas y las aplico juntas.${panel}`;
+    }
+    const r = await registrarPedido(u.id, { texto, media });
+    if (r.enCurso) return 'Anotado ✅ En cuanto termine el cambio anterior aplico este y te aviso aquí.';
+    if (!r.nuevo) return 'Anotado ✅ También lo incluyo.';
+    return 'Anotado ✅ En un par de minutos lo aplico a tu página y te mando la liga aquí. Si quieres cambiar algo más, mándamelo ahora y lo incluyo.';
+  }
   let base;
   if (adm?.estado === 'entregado' && adm.url) base = `Tu página ya está publicada. Para cambiar precios, productos, fotos u horarios entra a tu administrador: ${adm.url}\nSi necesitas algo más, ya anoté tu comentario y el equipo lo revisa.`;
   else if (s?.estado === 'listo' && s.url_publica) {
-    if (pideCambiosSinDetalle(texto)) return '¡Claro! 🙌 Dime qué quieres cambiar de tu página: textos, fotos, colores, secciones, precios, datos de contacto… Puedes escribirlo, mandarme un audio o fotos. Si son varias cosas, mándamelas todas y las reviso juntas.';
-    const t = SIN_ACENTOS(texto);
-    if (t && !PIDE_CAMBIOS.test(t) && !ALGO_CONCRETO.test(t)) return '¡Qué gusto! 🙌 Si quieres cambiar algo de tu página, dime qué y lo ajustamos.';
-    const PEDIDO = 'Anotado ✅ Lo paso para ajustar tu página y te aviso aquí en cuanto quede.';
-    return ultimoAgente.startsWith(PEDIDO) || ultimoAgente.startsWith('Anotado ✅') ? 'Anotado ✅ ¿Algo más que quieras cambiar?' : `${PEDIDO}\n¿Hay algo más que quieras cambiar?`;
+    // Sitio en vivo (no WordPress): el comentario queda para el equipo.
+    if (pideCambiosSinDetalle(texto)) return '¡Claro! 🙌 Dime qué quieres cambiar de tu página: textos, fotos, colores, secciones, precios, datos de contacto… Puedes escribirlo, mandarme un audio o fotos.';
+    await avisarEquipo('Cambio pedido en sitio en vivo', `${u.brief?.negocio?.nombre || u.id}: ${texto || '(fotos)'}`, u.id).catch(() => {});
+    base = 'Anotado ✅ Lo paso para ajustar tu página y te aviso aquí en cuanto quede.';
   }
   else if (s?.estado === 'requiere_revision') base = 'Tu página ya está armada y el equipo la está revisando antes de mostrártela. Te mando la liga en cuanto quede; ya anoté tu comentario.';
   else if (s?.estado === 'error') base = 'Hubo un problema al armar tu página y el equipo ya lo está revisando. Te aviso aquí en cuanto quede; ya anoté tu comentario.';
   else base = 'Sigo armando tu página; en cuanto quede te mando la liga aquí. Ya anoté tu comentario.';
   if (ultimoAgente.startsWith(base)) return 'Anotado 👍';
   return base;
+}
+
+// Fotos y audios que manda después de cerrar la entrevista: se guardan como assets (para usarlos en los cambios).
+async function registrarMediaPostCierre(u, entrantes) {
+  let n = (await db.assetsDe(u.id)).length;
+  const claves = [];
+  const audios = [];
+  for (const m of entrantes) {
+    const tipo = tipoMedia(m.tipo, m.mime);
+    if (tipo === 'audio') {
+      const t = await transcribirAudio(m.url);
+      await db.insertarMensaje(u.id, { rol: 'cliente', tipo: 'audio', contenido: t?.texto ? null : '[audio sin transcripción]', transcripcion: t?.texto || null });
+      if (t?.texto) audios.push(t.texto);
+      continue;
+    }
+    if (tipo !== 'imagen') { await db.insertarMensaje(u.id, { rol: 'cliente', tipo, contenido: `[${tipo}] ${m.url}${m.caption ? ` ${m.caption}` : ''}` }); continue; }
+    const clave = `a${++n}`;
+    const desc = await describirImagen(m.url);
+    const msgId = await db.insertarMensaje(u.id, { rol: 'cliente', tipo, contenido: `[imagen ${clave}${m.caption ? `: ${m.caption}` : ''}${desc ? ` — ${desc.descripcion}` : ''}]` });
+    await db.insertarAsset(u.id, { mensaje_id: msgId, clave, tipo: desc?.tipo || 'foto_otro', url: m.url, mime: m.mime, nota: m.caption, descripcion_ia: desc?.descripcion, calidad: desc?.calidad, usar: true });
+    claves.push(clave);
+    if (m.caption) audios.push(m.caption);
+  }
+  return { claves, textoExtra: audios.join('\n') };
 }
 
 async function notificar(e, payload) {
@@ -182,11 +226,13 @@ export async function procesarMensaje(b) {
       for (const r of rs) await db.insertarMensaje(u.id, { rol: 'agente', contenido: r });
       return salida(u, rs, 'texto');
     }
-    if (u && u.estado === 'completada' && !comando && Date.now() - new Date(u.actualizado).getTime() < 7 * 864e5) {
-      // Entrevista ya cerrada hace poco: se registra lo que diga como comentario y se responde según el estado del sitio.
-      await db.insertarMensaje(u.id, { rol: 'cliente', contenido: texto || '(media)' });
-      await db.evento(u.id, 'comentario_post_cierre', { texto: texto.slice(0, 300) });
-      const r = await respuestaPostCierre(u, texto);
+    if (u && u.estado === 'completada' && !comando && (Date.now() - new Date(u.actualizado).getTime() < 7 * 864e5 || await sitioEditable(u.id))) {
+      // Entrevista ya cerrada (o con página publicada): los cambios que pida se aplican a su página; si no, se responde según el estado del sitio.
+      if (texto) await db.insertarMensaje(u.id, { rol: 'cliente', contenido: texto });
+      const md = entrantes.length ? await registrarMediaPostCierre(u, entrantes) : { claves: [], textoExtra: '' };
+      const textoTodo = [texto, md.textoExtra].filter(Boolean).join('\n');
+      await db.evento(u.id, 'comentario_post_cierre', { texto: textoTodo.slice(0, 300), media: md.claves });
+      const r = await respuestaPostCierre(u, textoTodo, md.claves);
       await db.insertarMensaje(u.id, { rol: 'agente', contenido: r });
       return salida(u, [r], 'nada');
     }

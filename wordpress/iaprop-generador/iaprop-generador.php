@@ -70,7 +70,66 @@ add_action( 'rest_api_init', function () {
 	register_rest_route( $ns, '/sitios/(?P<id>\d+)/aplicar', array(
 		'methods' => 'POST', 'permission_callback' => 'iaprop_gen_autorizado', 'callback' => 'iaprop_gen_aplicar',
 	) );
+	register_rest_route( $ns, '/sitios/(?P<id>\d+)/contenido', array(
+		'methods' => 'GET', 'permission_callback' => 'iaprop_gen_autorizado', 'callback' => 'iaprop_gen_contenido',
+	) );
 } );
+
+/**
+ * GET /sitios/{id}/contenido → lo que hoy está publicado, en el mismo formato que recibe /aplicar
+ * (para editar sobre lo existente: cambios del cliente y respaldo antes de aplicarlos).
+ */
+function iaprop_gen_contenido( WP_REST_Request $req ) {
+	$blog_id = (int) $req['id'];
+	if ( ! get_site( $blog_id ) ) return new WP_Error( 'iaprop_no_existe', 'sitio no existe', array( 'status' => 404 ) );
+	switch_to_blog( $blog_id );
+	try {
+		$paginas = array();
+		foreach ( get_posts( array( 'post_type' => 'page', 'post_status' => 'publish', 'numberposts' => 50 ) ) as $p ) {
+			$paginas[] = array(
+				'slug' => $p->post_name, 'titulo' => $p->post_title, 'contenido' => $p->post_content,
+				'inicio' => (int) get_option( 'page_on_front' ) === $p->ID,
+				'plantilla' => (string) get_post_meta( $p->ID, '_wp_page_template', true ),
+				'descripcion' => (string) get_post_meta( $p->ID, '_iaprop_descripcion', true ),
+			);
+		}
+		$partes = array();
+		$tema   = get_stylesheet();
+		foreach ( array( 'header', 'footer' ) as $parte ) {
+			$tp = get_posts( array(
+				'post_type' => 'wp_template_part', 'name' => $parte, 'post_status' => 'publish', 'numberposts' => 1,
+				'tax_query' => array( array( 'taxonomy' => 'wp_theme', 'field' => 'name', 'terms' => $tema ) ),
+			) );
+			if ( $tp ) $partes[ $parte ] = $tp[0]->post_content;
+		}
+		$estilos = null;
+		if ( class_exists( 'WP_Theme_JSON_Resolver' ) ) {
+			$datos = WP_Theme_JSON_Resolver::get_user_data_from_wp_global_styles( wp_get_theme(), false );
+			if ( ! empty( $datos['post_content'] ) ) {
+				$j = json_decode( $datos['post_content'], true );
+				if ( is_array( $j ) ) $estilos = array( 'settings' => $j['settings'] ?? new stdClass(), 'styles' => $j['styles'] ?? new stdClass() );
+			}
+		}
+		$medios = array();
+		foreach ( get_posts( array( 'post_type' => 'attachment', 'post_status' => 'any', 'numberposts' => 200, 'meta_key' => '_iaprop_clave' ) ) as $a ) {
+			$medios[] = array( 'id' => $a->ID, 'clave' => get_post_meta( $a->ID, '_iaprop_clave', true ), 'url' => wp_get_attachment_image_url( $a->ID, 'full' ), 'alt' => get_post_meta( $a->ID, '_wp_attachment_image_alt', true ), 'origen' => get_post_meta( $a->ID, '_iaprop_origen', true ) );
+		}
+		$nav = get_posts( array( 'post_type' => 'wp_navigation', 'numberposts' => 1, 'meta_key' => '_iaprop', 'meta_value' => '1', 'post_status' => 'publish' ) );
+		$out = array(
+			'blog_id' => $blog_id, 'url' => home_url( '/' ),
+			'paginas' => $paginas, 'partes' => $partes, 'estilos' => $estilos, 'medios' => $medios,
+			'menu' => $nav ? $nav[0]->post_content : '',
+			'opciones' => array(
+				'descripcion' => get_option( 'blogdescription' ), 'fuentes_url' => get_option( 'iaprop_fuentes_url' ),
+				'whatsapp' => get_option( 'iaprop_whatsapp' ), 'whatsapp_mensaje' => get_option( 'iaprop_whatsapp_mensaje' ),
+				'site_logo' => (int) get_option( 'site_logo' ),
+			),
+		);
+	} finally {
+		restore_current_blog();
+	}
+	return $out;
+}
 
 /** POST /sitios {dominio, titulo, email?} → crea (o reutiliza) el sitio y activa el tema base. */
 function iaprop_gen_crear_sitio( WP_REST_Request $req ) {
@@ -234,6 +293,10 @@ function iaprop_gen_aplicar( WP_REST_Request $req ) {
 				'post_type' => 'wp_template_part', 'name' => $parte, 'post_status' => 'any', 'numberposts' => 1,
 				'tax_query' => array( array( 'taxonomy' => 'wp_theme', 'field' => 'name', 'terms' => $tema ) ),
 			) );
+			$marcado = preg_replace_callback( '/\{\{media:([a-z0-9_-]+)(?::(id|grande))?\}\}/', function ( $mm ) use ( $medios ) {
+				$m = $medios[ $mm[1] ] ?? null;
+				return $m ? (string) $m[ $mm[2] ?? 'url' ] : '';
+			}, $marcado );
 			$tp = array( 'post_type' => 'wp_template_part', 'post_status' => 'publish', 'post_name' => $parte, 'post_title' => ucfirst( $parte ), 'post_content' => $marcado );
 			if ( $previa ) { $tp['ID'] = $previa[0]->ID; $pid = wp_update_post( wp_slash( $tp ), true ); }
 			else { $pid = wp_insert_post( wp_slash( $tp ), true ); }
@@ -253,6 +316,10 @@ function iaprop_gen_aplicar( WP_REST_Request $req ) {
 		if ( ! empty( $o['logo_clave'] ) && ! empty( $medios[ $o['logo_clave'] ]['id'] ) ) {
 			update_option( 'site_logo', (int) $medios[ $o['logo_clave'] ]['id'] );
 			update_option( 'site_icon', (int) $medios[ $o['logo_clave'] ]['id'] );
+		}
+		if ( ! empty( $o['site_logo'] ) && get_post( (int) $o['site_logo'] ) ) {
+			update_option( 'site_logo', (int) $o['site_logo'] );
+			update_option( 'site_icon', (int) $o['site_logo'] );
 		}
 		if ( isset( $o['jsonld'] ) ) update_option( 'iaprop_jsonld', wp_json_encode( $o['jsonld'] ) );
 		update_option( 'iaprop_generado', gmdate( 'c' ) );
