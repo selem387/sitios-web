@@ -69,7 +69,6 @@ const ESQUEMA = {
     testimonios: { type: 'array', items: { type: 'object', properties: { nombre: { type: 'string' }, texto: { type: 'string' }, fuente: { type: 'string' } }, required: ['texto'] } },
     historia: { type: 'object', properties: { texto: { type: 'string' }, dictado_por_cliente: { type: 'boolean', description: 'true solo si el cliente escribió él mismo ese texto para su página.' } } },
     portada: { type: 'object', properties: { titular: { type: 'string' }, subtitulo: { type: 'string' }, dictado_por_cliente: { type: 'boolean' } } },
-    fotos_no_usar: { type: 'array', items: { type: 'string' }, description: 'Claves de fotos que el cliente pidió quitar y no volvió a pedir.' },
     notas: { type: 'array', items: { type: 'string' }, description: 'Decisiones que tomaste al reinterpretar (breve).' },
   },
   required: ['oferta', 'notas'],
@@ -132,6 +131,6 @@ export function briefReinterpretado(brief, d) {
   const dictado = {};
   if (d.historia?.dictado_por_cliente && d.historia.texto) dictado.historia = { texto: d.historia.texto };
   if (d.portada?.dictado_por_cliente && (d.portada.titular || d.portada.subtitulo)) dictado.portada = { titular: d.portada.titular || '', subtitulo: d.portada.subtitulo || '', cta: '' };
-  nuevo.reinterpretacion = { fecha: new Date().toISOString(), notas: d.notas || [], dictado, fotos_no_usar: d.fotos_no_usar || [] };
+  nuevo.reinterpretacion = { fecha: new Date().toISOString(), notas: d.notas || [], dictado };
   return { brief: nuevo, dictado };
 }

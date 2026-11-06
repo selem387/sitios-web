@@ -35,7 +35,7 @@ export async function rehacerComoApp(entrevistaId, { enviar = false, reinterpret
     if (r.errores.length) resultado.avisos = r.errores;
     const { brief } = briefReinterpretado(e.brief || {}, r.data);
     await db.evento(e.id, 'brief_reinterpretado', { antes: e.brief, notas: r.data.notas || [], errores: r.errores, mensajes: r.mensajes });
-    for (const clave of brief.reinterpretacion.fotos_no_usar || []) await db.actualizarAssets(e.id, [{ clave, usar: false }]);
+    // Las fotos del cliente nunca se quitan al reinterpretar: quitar una foto solo pasa por un pedido explícito (cambios).
     e.brief = brief;
     resultado.notas = r.data.notas || [];
   }
