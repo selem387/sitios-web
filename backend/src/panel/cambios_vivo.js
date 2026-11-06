@@ -341,6 +341,6 @@ export async function aplicarCambioVivo(c, e, sv) {
 
   const pendientes = (plan.no_pude || []).filter(Boolean);
   await guardar(c.id, { estado: 'aplicado', resultado: { secciones: Object.keys(v.secciones), paleta: v.paleta, css: !!plan.css, vista, pendientes } });
-  const extra = pendientes.length ? `\nLo de ${pendientes.join(', ')} no pude hacerlo; ¿me lo explicas de otra forma?` : '';
+  const extra = pendientes.length ? `\n\nLo que no pude hacer: ${pendientes.join('; ')}. ¿Me lo explicas de otra forma o me dices qué prefieres?` : '';
   return avisar(e.id, `${plan.resumen_cliente}\nYa quedó ✅ Recarga tu página para verlo:\n${urlSitio(nuevo)}${extra}\n¿Hay algo más que quieras ajustar?`, { evento: 'cambios_sitio', datos: { cambio_id: c.id } });
 }
