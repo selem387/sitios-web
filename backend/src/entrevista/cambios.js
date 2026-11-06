@@ -209,7 +209,8 @@ async function fotosDisponibles(e, actual, clavesNuevas) {
 }
 
 /** Lo que el cliente escribió desde que vio su página (o desde el último cambio aplicado): da contexto y rescata pedidos previos. */
-const soloCliente = new Map(); // entrevista → lo que escribió el cliente (fuente de cifras permitidas)
+const soloCliente = new Map();
+const mensajesCli = new Map(); // entrevista → cada mensaje del cliente // entrevista → lo que escribió el cliente (fuente de cifras permitidas)
 async function mensajesDesdePagina(e, s) {
   // Desde la primera vez que se publicó su página (aunque luego se haya regenerado).
   const pub = (await q(`SELECT min(publicado) AS t FROM sitios WHERE entrevista_id=$1`, [e.id])).rows[0]?.t || s?.publicado;
@@ -218,6 +219,7 @@ async function mensajesDesdePagina(e, s) {
   const aplicados = (await q(`SELECT plan->>'resumen_cliente' AS r FROM cambios_sitio WHERE entrevista_id=$1 AND estado='aplicado' AND plan->>'accion'='editar' ORDER BY id`, [e.id])).rows.map((x) => x.r).filter(Boolean);
   const conv = r.rows.reverse().map((m) => `${m.rol === 'cliente' ? 'Cliente' : 'Ari'}: ${(m.transcripcion || m.contenido || '').slice(0, 12000)}`).join('\n');
   soloCliente.set(e.id, r.rows.filter((m) => m.rol === 'cliente').map((m) => m.transcripcion || m.contenido || '').join('\n'));
+  mensajesCli.set(e.id, r.rows.filter((m) => m.rol === 'cliente').map((m) => m.transcripcion || m.contenido || ''));
   return `${conv}${aplicados.length ? `\n\nCAMBIOS YA APLICADOS Y VIGENTES (ya están en el contenido actual; no los repitas):\n- ${aplicados.join('\n- ')}` : ''}`;
 }
 
@@ -355,6 +357,25 @@ export function textosAjenos(actual, destinos, fuenteCliente) {
     if (ajenos.length) errores.push(`En ${d} hay textos que no escribió el cliente ni estaban en la página (el texto del cliente va letra por letra, sin cambios): ${ajenos.slice(0, 8).map((x) => JSON.stringify(x.slice(0, 120))).join(' · ')}`);
   }
   return errores;
+}
+
+// Todo el contenido que mandó el cliente (mensajes largos tipo lista de paquetes) tiene que quedar en la página.
+export function textosFaltantes(actual, destinos, mensajesCliente, quitados = []) {
+  const paginaFinal = Object.entries(destinos).filter(([d]) => DESTINOS_HTML(d)).map(([, v]) => v);
+  if (!paginaFinal.length) return [];
+  const todo = normTexto((actual.paginas || []).map((p) => destinos[`pagina:${p.slug}`] ?? p.contenido).concat(Object.entries(actual.partes || {}).map(([k, v]) => destinos[k] ?? v)).map(quitarHtml).join(' '));
+  const q2 = (quitados || []).map(normTexto);
+  const faltan = [];
+  for (const m of mensajesCliente || []) {
+    const lineas = texto(m).split('\n').map((l) => normTexto(l.replace(/^\s*(?:[-•*]|\d+[.)])\s+/, '').replace(/\*\*|__/g, ''))).filter((l) => l.length >= 12 && /\p{L}/u.test(l));
+    if (texto(m).length < 400 || lineas.length < 5) continue; // solo mensajes de contenido (listas, paquetes, textos largos)
+    for (const l of lineas) {
+      const partes = l.split(/\s+[—–]\s+|\s+\|\s+/).filter((x) => x.length >= 3); // "Nombre — $900 MXN" puede ir en dos elementos
+      if (partes.every((x) => todo.includes(x)) || q2.some((x) => x && (x.includes(l) || l.includes(x)))) continue;
+      faltan.push(l);
+    }
+  }
+  return faltan.length ? [`Faltan en la página textos que mandó el cliente (van todos, letra por letra, en su lugar): ${faltan.slice(0, 10).map((x) => JSON.stringify(x.slice(0, 110))).join(' · ')}${faltan.length > 10 ? ` y ${faltan.length - 10} más` : ''}`] : [];
 }
 
 // Ninguna cifra nueva en la página que el cliente no haya escrito.
@@ -507,6 +528,7 @@ export async function aplicarCambio(c) {
     for (const k of usadas) if (!fotos.some((f) => f.clave === k)) errores.push(`La foto "${k}" no está en FOTOS DISPONIBLES`);
     for (const [d, v] of Object.entries(ed.destinos)) if (d === 'estilos' && /\{\{media:/.test(JSON.stringify(v))) errores.push('No pongas fotos en "estilos"');
     errores.push(...titulosPerdidos(actual, ed.destinos, plan.textos_quitados));
+    errores.push(...textosFaltantes(actual, ed.destinos, mensajesCli.get(e.id), plan.textos_quitados));
     errores.push(...textosAjenos(actual, ed.destinos, `${c.pedidos.map((p) => p.texto).join('\n')}\n${soloCliente.get(e.id) || ''}`));
     errores.push(...cifrasInventadas(actual, ed.destinos, `${c.pedidos.map((p) => p.texto).join('\n')}\n${soloCliente.get(e.id) || ''}\n${JSON.stringify(e.brief?.contacto || {})}`));
     if (!errores.length) break;
