@@ -4,7 +4,7 @@ import { config } from '../config.js';
 export const MODELO_ARI = config.entrevistaModel;
 export const MODELO_MEMORIA = config.entrevistaMemoriaModel;
 
-export async function pedirJSON({ system, contenido, schema, model = MODELO_ARI, max_tokens = 2000 }) {
+export async function pedirJSON({ system, contenido, schema, model = MODELO_ARI, max_tokens = 2000, timeoutMs = 120000 }) {
   const apiKey = config.anthropicApiKey;
   if (!apiKey) throw new Error('Falta ANTHROPIC_API_KEY');
   const content = typeof contenido === 'string' ? [{ type: 'text', text: contenido }] : contenido;
@@ -22,7 +22,7 @@ export async function pedirJSON({ system, contenido, schema, model = MODELO_ARI,
     method: 'POST',
     headers: { 'x-api-key': apiKey, 'anthropic-version': '2023-06-01', 'content-type': 'application/json' },
     body: JSON.stringify(body),
-    signal: AbortSignal.timeout(120000),
+    signal: AbortSignal.timeout(timeoutMs),
   });
   const json = await res.json();
   if (!res.ok) throw new Error(`Claude: ${json?.error?.message || res.status}`);

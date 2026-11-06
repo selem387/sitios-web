@@ -33,6 +33,10 @@ CREATE TABLE IF NOT EXISTS cambios_sitio (
 );
 CREATE INDEX IF NOT EXISTS cambios_sitio_pend_idx ON cambios_sitio (aplicar_en) WHERE estado = 'pendiente';
 CREATE INDEX IF NOT EXISTS cambios_sitio_ent_idx ON cambios_sitio (entrevista_id, id);
+ALTER TABLE cambios_sitio ADD COLUMN IF NOT EXISTS intentos int NOT NULL DEFAULT 0;
+-- Los que fallaron por tiempo de espera (antes de existir los reintentos) vuelven a la cola una vez.
+UPDATE cambios_sitio SET estado='pendiente', aplicar_en=now(), intentos=1
+  WHERE estado='fallo' AND intentos=0 AND resultado->>'error' ILIKE '%timeout%' AND creado > now() - interval '1 day';
 `;
 let migrado = false;
 async function migrar() { if (!migrado) { await q(SCHEMA_CAMBIOS); migrado = true; } }
@@ -203,12 +207,12 @@ async function planear(e, actual, pedidos, fotos, errores = [], historial = '') 
     `FOTOS DISPONIBLES:\n${fotosTxt || '(ninguna)'}`,
     `OPCIONES ACTUALES: ${JSON.stringify(actual.opciones || {})}`,
     `MENÚ ACTUAL: ${JSON.stringify(navALista(actual.menu))}`,
-    ...(actual.paginas || []).map((p) => `=== DESTINO pagina:${p.slug} (título "${p.titulo}"${p.inicio ? ', página de inicio' : ''}) ===\n${p.contenido}`),
+    ...(actual.paginas || []).filter((p) => p.inicio || !/privacidad/.test(p.slug) || /privacidad|aviso/i.test(pedidoTxt + historial)).map((p) => `=== DESTINO pagina:${p.slug} (título "${p.titulo}"${p.inicio ? ', página de inicio' : ''}) ===\n${p.contenido}`),
     ...Object.entries(actual.partes || {}).map(([k, v]) => `=== DESTINO ${k} ===\n${v}`),
     `=== DESTINO estilos (JSON) ===\n${JSON.stringify(actual.estilos || {}, null, 1)}`,
   ];
   if (errores.length) partes.push(`TU INTENTO ANTERIOR FALLÓ, corrige esto:\n- ${errores.join('\n- ')}`);
-  const r = await pedirJSON({ system: SISTEMA_EDITOR, contenido: partes.join('\n\n'), schema: ESQUEMA_PLAN, model: config.anthropicModel, max_tokens: 12000 });
+  const r = await pedirJSON({ system: SISTEMA_EDITOR, contenido: partes.join('\n\n'), schema: ESQUEMA_PLAN, model: config.anthropicModel, max_tokens: 8000, timeoutMs: 360000 });
   return r.data;
 }
 
@@ -415,7 +419,7 @@ export async function cronCambios() {
   try {
     await migrar();
     // Los que se quedaron a medias por un reinicio vuelven a la cola.
-    await q(`UPDATE cambios_sitio SET estado='pendiente', aplicar_en=now() WHERE estado='aplicando' AND actualizado < now() - interval '15 minutes'`);
+    await q(`UPDATE cambios_sitio SET estado='pendiente', aplicar_en=now() WHERE estado='aplicando' AND actualizado < now() - interval '30 minutes'`);
     for (let i = 0; i < 10; i++) {
       const c = (await q(`UPDATE cambios_sitio SET estado='aplicando', actualizado=now()
                           WHERE id = (SELECT id FROM cambios_sitio WHERE estado='pendiente' AND aplicar_en <= now() ORDER BY id LIMIT 1 FOR UPDATE SKIP LOCKED)
@@ -424,6 +428,11 @@ export async function cronCambios() {
       try { await aplicarCambio(c); }
       catch (err) {
         console.error('aplicarCambio', c.id, err);
+        // Fallas pasajeras (tiempo de espera, red): se reintenta hasta 2 veces sin molestar al cliente.
+        if ((c.intentos || 0) < 2 && /timeout|aborted|fetch failed|ECONN|overloaded|5\d\d/i.test(String(err.message || err))) {
+          await q(`UPDATE cambios_sitio SET estado='pendiente', aplicar_en=now() + interval '30 seconds', intentos=intentos+1, resultado=$2, actualizado=now() WHERE id=$1`, [c.id, JSON.stringify({ error: String(err.message || err).slice(0, 300) })]).catch(() => {});
+          continue;
+        }
         await guardar(c.id, { estado: 'fallo', resultado: { error: String(err.message || err).slice(0, 800) } }).catch(() => {});
         await avisarEquipo('Error al aplicar cambios de página', `Cambio ${c.id} (entrevista ${c.entrevista_id}): ${err.message}\nPedido:\n${c.pedidos.map((p) => `- ${p.texto}`).join('\n')}`, c.entrevista_id).catch(() => {});
         await avisar(c.entrevista_id, 'Ya tengo tus cambios 🙌 Alguien de nuestro equipo los está aplicando; te aviso aquí en cuanto queden.', { evento: 'cambios_sitio' }).catch(() => {});
