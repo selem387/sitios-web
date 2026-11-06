@@ -16,6 +16,9 @@ import { config } from '../config.js';
 
 const q = db.q;
 export const ESPERA_S = 75;
+// Si un cambio no se puede aplicar, Ari se lo dice al cliente y le pide explicarlo de otra forma (no hay equipo que lo retome).
+const NO_PUDE = 'No pude aplicar ese cambio a tu página 😔 ¿Me lo explicas de otra forma? Por ejemplo, dime en qué parte de la página está y cómo quieres que quede.';
+
 
 export const SCHEMA_CAMBIOS = `
 CREATE TABLE IF NOT EXISTS cambios_sitio (
@@ -184,7 +187,7 @@ CÓMO EDITAR
 - No inventes datos que el cliente no dio: nunca cambies precios, horas, cantidades de fotos ni otras cifras que el cliente no escribió. Si pide aplicar "las correcciones que mandó" y no las encuentras en la conversación, accion=preguntar.
 - No "mejores" textos que el cliente no pidió cambiar. Si no se entiende qué quiere o dónde, accion=preguntar con UNA pregunta concreta (p. ej. "¿Cuál foto quieres cambiar, la de la portada o la de 'Sobre mí'?").
 - Si pide dejarlo como estaba antes, accion=revertir.
-- Lo que no se puede hacer editando (cambiar todo el diseño por otra propuesta, una sección nueva muy compleja, algo que requiere material que no mandó) va a pendientes_equipo; si nada se puede hacer, accion=equipo.
+- Lo que no se puede hacer editando (cambiar todo el diseño por otra propuesta, una sección nueva muy compleja, algo que requiere material que no mandó) va a pendientes_equipo (se le dirá al cliente que no se pudo); si nada se puede hacer, accion=equipo.
 - resumen_cliente: lo que cambiaste, simple y cálido, sin tecnicismos ni mencionar WordPress, bloques o código.`;
 
 const texto = (v) => String(v ?? '');
@@ -442,6 +445,11 @@ const repetidas = (html) => { const ids = texto(html).match(/wp-image-(\d+)/g) |
 /* Aplicar                                                             */
 /* ------------------------------------------------------------------ */
 
+async function noPude(c, e, resultado) {
+  await guardar(c.id, { estado: 'preguntar', plan: { ...(c.plan || {}), pregunta: NO_PUDE }, resultado });
+  return avisar(e?.id || c.entrevista_id, NO_PUDE, { evento: 'cambios_sitio', datos: { cambio_id: c.id } });
+}
+
 async function guardar(id, cambios) {
   const cols = Object.keys(cambios);
   const vals = cols.map((k) => (cambios[k] !== null && typeof cambios[k] === 'object' ? JSON.stringify(cambios[k]) : cambios[k]));
@@ -474,7 +482,7 @@ export async function aplicarCambio(c) {
   if (!e || !s) {
     await guardar(c.id, { estado: 'equipo', resultado: { motivo: 'sin sitio WordPress editable' } });
     await avisarEquipo('Cambios sin sitio editable', `Pedido de cambios para ${e?.brief?.negocio?.nombre || c.entrevista_id}, pero no hay sitio WordPress en estado listo:\n${c.pedidos.map((p) => `- ${p.texto}`).join('\n')}`, c.entrevista_id);
-    if (e) await avisar(e.id, 'Ya tengo tus cambios; alguien de nuestro equipo los aplica y te aviso aquí en cuanto queden 🙌', { evento: 'cambios_sitio' });
+    if (e) await avisar(e.id, 'Por ahora no puedo aplicar cambios a esta página desde aquí 😔', { evento: 'cambios_sitio' });
     return;
   }
   await guardar(c.id, { sitio_id: s.id });
@@ -510,9 +518,8 @@ export async function aplicarCambio(c) {
   const hayEdiciones = plan.accion === 'editar' && ed && (Object.keys(ed.destinos).length || plan.menu?.length || Object.keys(plan.opciones || {}).length);
   if (!hayEdiciones || errores.length) {
     const motivo = errores.length ? `No se pudieron aplicar las ediciones:\n- ${errores.join('\n- ')}` : 'Nada se puede hacer editando.';
-    await guardar(c.id, { estado: 'equipo', resultado: { errores, pendientes } });
     await avisarEquipo('Cambios de página para revisar', `${e.brief?.negocio?.nombre || e.id} · ${s.url_publica}\nPedido:\n${c.pedidos.map((p) => `- ${p.texto}`).join('\n')}\n\n${motivo}${pendientes.length ? `\nPendientes: ${pendientes.join('; ')}` : ''}`, e.id);
-    return avisar(e.id, 'Ya tengo tus cambios 🙌 Este ajuste lo hace alguien de nuestro equipo con cuidado; te aviso aquí en cuanto quede.', { evento: 'cambios_sitio', datos: { cambio_id: c.id } });
+    return noPude(c, e, { errores, pendientes });
   }
 
   // Opciones → formato de /aplicar.
@@ -552,15 +559,14 @@ export async function aplicarCambio(c) {
 
   if (fallos.length) {
     try { await wp.aplicar(s.blog_id_wp, cuerpoAplicar(actual, respaldo.destinos, { menu: respaldo.menu, opciones: respaldo.opciones })); } catch (err) { fallos.push(`No se pudo restaurar: ${err.message}`); }
-    await guardar(c.id, { estado: 'fallo', resultado: { fallos, avisos, log: ap.log } });
     await avisarEquipo('Cambio de página revertido', `${e.brief?.negocio?.nombre || e.id} · ${s.url_publica}\nPedido:\n${c.pedidos.map((p) => `- ${p.texto}`).join('\n')}\n\nSe aplicó y se restauró porque:\n- ${fallos.join('\n- ')}`, e.id);
-    return avisar(e.id, 'Ya tengo tus cambios 🙌 Quiero que queden perfectos, así que alguien de nuestro equipo los está revisando; te aviso aquí en cuanto queden.', { evento: 'cambios_sitio', datos: { cambio_id: c.id } });
+    return noPude(c, e, { fallos, avisos, log: ap.log });
   }
 
   await actualizarContacto(e, plan.contacto);
   await guardar(c.id, { estado: 'aplicado', resultado: { avisos, log: ap.log, pendientes } });
   if (pendientes.length) await avisarEquipo('Cambios pendientes de página', `${e.brief?.negocio?.nombre || e.id} · ${s.url_publica}\nSe aplicó: ${plan.resumen_cliente}\nFalta (equipo): ${pendientes.join('; ')}`, e.id);
-  const extra = pendientes.length ? `\nLo de ${pendientes.join(', ')} lo hace alguien de nuestro equipo; te aviso aquí cuando quede.` : '';
+  const extra = pendientes.length ? `\nLo de ${pendientes.join(', ')} no pude hacerlo; ¿me lo explicas de otra forma?` : '';
   await avisar(e.id, `${plan.resumen_cliente}\nYa quedó ✅: ${s.url_publica}\nSi no ves el cambio, recarga la página.${extra}\n¿Hay algo más que quieras ajustar?`, { evento: 'cambios_sitio', datos: { cambio_id: c.id } });
 }
 
@@ -585,9 +591,8 @@ export async function cronCambios() {
           await q(`UPDATE cambios_sitio SET estado='pendiente', aplicar_en=now() + interval '30 seconds', intentos=intentos+1, resultado=$2, actualizado=now() WHERE id=$1`, [c.id, JSON.stringify({ error: String(err.message || err).slice(0, 300) })]).catch(() => {});
           continue;
         }
-        await guardar(c.id, { estado: 'fallo', resultado: { error: String(err.message || err).slice(0, 800) } }).catch(() => {});
         await avisarEquipo('Error al aplicar cambios de página', `Cambio ${c.id} (entrevista ${c.entrevista_id}): ${err.message}\nPedido:\n${c.pedidos.map((p) => `- ${p.texto}`).join('\n')}`, c.entrevista_id).catch(() => {});
-        await avisar(c.entrevista_id, 'Ya tengo tus cambios 🙌 Alguien de nuestro equipo los está aplicando; te aviso aquí en cuanto queden.', { evento: 'cambios_sitio' }).catch(() => {});
+        await noPude(c, null, { error: String(err.message || err).slice(0, 800) }).catch(() => {});
       }
     }
   } finally { corriendo = false; }
