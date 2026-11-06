@@ -347,7 +347,11 @@ export function textosAjenos(actual, destinos, fuenteCliente) {
     const viejo = d.startsWith('pagina:') ? actual.paginas.find((p) => p.slug === d.slice(7))?.contenido : actual.partes?.[d];
     const yaEstaba = new Set(nodosTexto(viejo));
     const viejoTodo = normTexto(quitarHtml(viejo));
-    const ajenos = nodosTexto(nuevo).filter((n) => !yaEstaba.has(n) && !viejoTodo.includes(n) && !contienePalabraEntera(cliente, n) && !/\{\{media:/.test(n));
+    const sinViñetas = (x) => x.replace(/(^|\s)[-•*]\s+/g, '$1').replace(/\s+/g, ' ').trim();
+    const nodos = nodosTexto(nuevo).filter((n) => !yaEstaba.has(n) && !viejoTodo.includes(n));
+    const juntados = nodos.filter((n) => (n.match(/(^|\s)[-•]\s+\S/g) || []).length >= 2);
+    if (juntados.length) errores.push(`En ${d} juntaste renglones con viñetas en un solo párrafo; pon cada renglón de la lista del cliente en su propio elemento (lista o párrafos): ${juntados.slice(0, 3).map((x) => JSON.stringify(x.slice(0, 100))).join(' · ')}`);
+    const ajenos = nodos.filter((n) => !contienePalabraEntera(cliente, n) && !contienePalabraEntera(cliente, sinViñetas(n)) && !/\{\{media:/.test(n));
     if (ajenos.length) errores.push(`En ${d} hay textos que no escribió el cliente ni estaban en la página (el texto del cliente va letra por letra, sin cambios): ${ajenos.slice(0, 8).map((x) => JSON.stringify(x.slice(0, 120))).join(' · ')}`);
   }
   return errores;
@@ -493,7 +497,7 @@ export async function aplicarCambio(c) {
 
   const historial = await mensajesDesdePagina(e, s);
   let plan, ed, errores = [];
-  for (let intento = 0; intento < 3; intento++) {
+  for (let intento = 0; intento < 4; intento++) {
     plan = await planear(e, actual, c.pedidos, fotos, errores, historial);
     if (plan.accion !== 'editar') break;
     ed = aplicarEdiciones(actual, plan.ediciones);
