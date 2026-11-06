@@ -24,3 +24,9 @@ test('redes por crear respeta las que eligió y las que ya tiene', () => {
   assert.deepEqual(redesPorCrear({ contacto: { redes: { instagram: 'a', facebook: 'b' } } }), ['tiktok', 'youtube', 'linkedin']);
   assert.ok(textoInicioRedes(['tiktok']).includes('alguien de nuestro equipo') && !/iaprop/i.test(textoInicioRedes(['tiktok'])));
 });
+
+test('textoEntrega con enlace mágico no pide correo', () => {
+  const t = textoEntrega({ dominio: 'luz.mx', urlAdmin: 'https://luz.mx/admin/llave/abcdefghijklmnopqrstuvwxyz', email: null, llave: true }).join('\n');
+  assert.match(t, /admin\/llave\//);
+  assert.doesNotMatch(t, /código de 6/);
+});

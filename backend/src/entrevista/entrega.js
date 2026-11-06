@@ -42,7 +42,12 @@ export async function accesoResponde(url) {
 
 /* ---------------- 1) Entrega del acceso ---------------- */
 
-export function textoEntrega({ dominio, urlAdmin, email }) {
+export function textoEntrega({ dominio, urlAdmin, email, llave = false }) {
+  if (llave) return [
+    `Tu página ya está en tu dirección 🎉\nhttps://${dominio}/`,
+    `Para administrarla tú mismo (precios, productos, servicios, fotos, horarios y promociones) entra con esta liga:\n${urlAdmin}\n\n`
+    + 'Es solo para ti: no la compartas. No necesitas contraseña; guárdala en tus favoritos. Lo que cambies se ve en tu página al momento.',
+  ];
   const gmail = /@(gmail|googlemail)\.com$/i.test(email || '');
   return [
     `Tu página ya está en tu dirección 🎉\nhttps://${dominio}/`,
@@ -62,14 +67,17 @@ export async function entregarAcceso(entrevistaId, destino, { forzar = false } =
   if (!e) return { entregado: false, motivo: 'entrevista no existe' };
   const adm = e.brief?.administracion || {};
   if (adm.estado === 'entregado' && !forzar) return { entregado: false, motivo: 'ya entregado' };
-  const email = adm.email || e.brief?.contacto?.email;
-  if (!email) return { entregado: false, motivo: 'sin correo del dueño' };
+  const email = adm.email || e.brief?.contacto?.email || null;
+  // Sitio en vivo: enlace mágico permanente (decidido 5-nov-2026); WordPress sigue con correo.
+  const sv = destino.panel === 'panel_propio' && destino.sitio_vivo_id ? (await q(`SELECT * FROM sitios_vivos WHERE id=$1`, [destino.sitio_vivo_id])).rows[0] : null;
+  const llave = sv?.llave ? `https://${destino.dominio}/admin/llave/${sv.llave}` : null;
+  if (!email && !llave) return { entregado: false, motivo: 'sin correo del dueño' };
   const urlAdmin = destino.panel === 'wp-admin' ? `https://${destino.dominio}/acceso/` : `https://${destino.dominio}/admin`;
   if (!(await accesoResponde(urlAdmin))) return { entregado: false, motivo: 'la pantalla de acceso aún no responde con HTTPS en el dominio' };
 
   await patchBrief(e.id, ['administracion'], { ...adm, email, panel: destino.panel, url: urlAdmin, estado: 'entregado', entregado: new Date().toISOString() });
   if (destino.sitio_vivo_id) await q(`UPDATE sitios_vivos SET acceso_entregado=now() WHERE id=$1`, [destino.sitio_vivo_id]).catch(() => {});
-  await avisar(e.id, textoEntrega({ dominio: destino.dominio, urlAdmin, email }), { evento: 'acceso_entregado', datos: { dominio: destino.dominio, panel: destino.panel } });
+  await avisar(e.id, textoEntrega({ dominio: destino.dominio, urlAdmin: llave || urlAdmin, email, llave: !!llave }), { evento: 'acceso_entregado', datos: { dominio: destino.dominio, panel: destino.panel } });
 
   // Redes: solo si dijo que sí quería ayuda y le sigue faltando alguna.
   const faltan = redesPorCrear(e.brief);

@@ -136,7 +136,8 @@ function fotosSec(){var cuerpo=el('div',{class:'cuerpo'});var grid=el('div',{cla
  return el('details',{class:'card',id:'s-fotos'},[el('summary',null,[el('span',{class:'sumtxt'},['Fotos y logo',el('small',{text:'Agrega, oculta o elige la de portada'})])]),cuerpo])}
 
 function cargar(){return api('GET','/contenido').then(function(r){C=r.contenido;FOTOS=r.fotos;$('#ver').href=r.sitio;$('#acceso').classList.add('oculto');$('#panel').classList.remove('oculto');pintar();history.replaceState(null,'',BASE+'/admin')})}
-api('GET','/yo').then(function(r){if(r.sesion)return cargar();$('#pista').textContent='Entra con el correo que diste al crear tu página ('+r.pista+').';mostrarAcceso()}).catch(function(){mostrarAcceso()});
+if(/error=llave/.test(location.search))aviso($('#m-acceso'),'Esa liga ya no es válida. Pídele a tu asistente la liga para administrar tu página.',false);
+api('GET','/yo').then(function(r){if(r.sesion)return cargar();$('#pista').textContent=r.pista?'Entra con el correo que diste al crear tu página ('+r.pista+').':'Entra con la liga para administrar tu página que te mandé por el chat.';mostrarAcceso()}).catch(function(){mostrarAcceso()});
 })();
 </script></body></html>`;
 }

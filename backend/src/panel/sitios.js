@@ -1,3 +1,4 @@
+import crypto from 'node:crypto';
 // Sitios en vivo (plataforma "app"): la página se arma en cada visita desde la base `web_builder`
 // con la propuesta que eligió el cliente (misma composición, tipografía y paleta) y el contenido que él edita en su panel.
 // El HTML se guarda en memoria por versión: editar sube la versión y la siguiente visita ya ve el cambio.
@@ -7,11 +8,13 @@ import { procesarMateriales } from '../generador/materiales.js';
 import { renderPropuestas } from '../generador/propuestas_html.js';
 import { parPorNombres } from '../generador/fuentes.js';
 import { REDES, normalizarRedes } from '../entrevista/redes.js';
+import { config } from '../config.js';
 
 const q = db.q;
 const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 
 export const SCHEMA_PANEL = `
+CREATE EXTENSION IF NOT EXISTS pgcrypto;
 CREATE TABLE IF NOT EXISTS sitios_vivos (
   id             serial PRIMARY KEY,
   entrevista_id  uuid NOT NULL UNIQUE REFERENCES entrevistas(id),
@@ -25,6 +28,9 @@ CREATE TABLE IF NOT EXISTS sitios_vivos (
   creado         timestamptz NOT NULL DEFAULT now(),
   actualizado    timestamptz NOT NULL DEFAULT now()
 );
+-- Enlace mágico permanente al panel (Ari lo manda por el chat; solo el dueño lo tiene).
+ALTER TABLE sitios_vivos ADD COLUMN IF NOT EXISTS llave text UNIQUE;
+UPDATE sitios_vivos SET llave = replace(replace(encode(gen_random_bytes(24),'base64'),'/','_'),'+','-') WHERE llave IS NULL;
 CREATE TABLE IF NOT EXISTS codigos_panel (
   id           serial PRIMARY KEY,
   sitio_id     int NOT NULL REFERENCES sitios_vivos(id) ON DELETE CASCADE,
@@ -195,6 +201,8 @@ export async function renderSitio(sv, { previa = false } = {}) {
 }
 
 /* ---------------- Alta ---------------- */
+/** Enlace mágico permanente al panel: en su dominio si ya lo tiene, si no en el host de la API. */
+export const enlacePanel = (sv) => (sv.dominio ? `https://${sv.dominio}/admin/llave/${sv.llave}` : `${config.publicUrl}/s/${sv.slug}/admin/llave/${sv.llave}`);
 const slugify = (s) => String(s || 'sitio').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 40) || 'sitio';
 
 export async function crearSitioVivo(entrevista, { dominio = null, slug = null } = {}) {
@@ -208,7 +216,8 @@ export async function crearSitioVivo(entrevista, { dominio = null, slug = null }
   if (email && !/^[^\s@]+@[^\s@]+\.[a-z]{2,}$/i.test(email)) throw Object.assign(new Error('El correo del administrador no es válido'), { status: 409 });
   let s = slugify(slug || b.negocio?.nombre || entrevista.id.slice(0, 8));
   for (let n = 2; await porSlug(s); n++) s = `${slugify(slug || b.negocio?.nombre)}-${n}`;
-  const r = await q(`INSERT INTO sitios_vivos (entrevista_id, slug, dominio, admin_email) VALUES ($1,$2,$3,$4) RETURNING *`, [entrevista.id, s, dominio, email]);
+  const llave = crypto.randomBytes(24).toString('base64url');
+  const r = await q(`INSERT INTO sitios_vivos (entrevista_id, slug, dominio, admin_email, llave) VALUES ($1,$2,$3,$4,$5) RETURNING *`, [entrevista.id, s, dominio, email, llave]);
   await db.evento(entrevista.id, 'sitio_vivo_creado', { sitio_id: r.rows[0].id, slug: s, dominio });
   return r.rows[0];
 }

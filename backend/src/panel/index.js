@@ -59,6 +59,15 @@ async function atenderPanel(c, sv, base, ruta) {
       if (!A.googleActivo()) return c.redirect(`${base}/admin`, 302);
       return c.redirect(await A.urlGoogle(sv), 302);
     }
+    // Enlace mágico permanente que Ari le manda al dueño por el chat.
+    const ml = ruta.match(/^\/admin\/llave\/([A-Za-z0-9_-]{20,64})$/);
+    if (ml && c.req.method === 'GET') {
+      await S.migrarPanel();
+      const fresco = await S.porId(sv.id);
+      if (!fresco?.llave || !igual(ml[1], fresco.llave)) return c.redirect(`${base}/admin?error=llave`, 302);
+      await A.emitirSesion(c, fresco, 'enlace', cookiePath);
+      return c.redirect(`${base}/admin`, 302);
+    }
     if (ruta === '/admin/sso' && c.req.method === 'GET') {
       if (!(await A.canjearPase(sv, c.req.query('pase')))) return c.redirect(`${base}/admin?error=google`, 302);
       await A.emitirSesion(c, sv, 'google', cookiePath);
@@ -71,8 +80,9 @@ async function atenderPanel(c, sv, base, ruta) {
 
     if (api === '/yo' && c.req.method === 'GET') {
       const s = await A.sesionDe(c, sv);
-      const [u, d] = sv.admin_email.split('@');
-      return json(c, { sesion: !!s, google: A.googleActivo(), negocio: await negocio(), pista: `${u.slice(0, 2)}${'•'.repeat(Math.max(1, u.length - 2))}@${d}`, email: s ? sv.admin_email : null });
+      const [u = '', d = ''] = String(sv.admin_email || '').split('@');
+      const pista = u && d ? `${u.slice(0, 2)}${'•'.repeat(Math.max(1, u.length - 2))}@${d}` : '';
+      return json(c, { sesion: !!s, google: A.googleActivo(), negocio: await negocio(), pista, email: s ? sv.admin_email : null });
     }
     if (api === '/codigo' && c.req.method === 'POST') {
       limitar(c, 8);
