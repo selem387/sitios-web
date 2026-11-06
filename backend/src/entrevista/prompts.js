@@ -6,7 +6,7 @@ export const TOTAL_BLOQUES = BLOQUES.length - 1; // B0 no cuenta en el avance qu
 
 export const PALABRA_INICIO = 'pagina';
 
-export const INSTRUCCIONES = `🌐 *¡Hola! Soy Ari, de IAprop.*
+export const INSTRUCCIONES = `🌐 *¡Hola! Soy tu asistente para la creación de tu sitio web.*
 Te voy a hacer unas preguntas sencillas, como una plática, y con eso armamos tu página web profesional. No necesitas saber nada de páginas.
 
 Así funciona:
