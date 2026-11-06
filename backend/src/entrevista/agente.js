@@ -35,6 +35,15 @@ export function enSerie(clave, fn) {
 }
 
 const normalizar = (t) => String(t || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[^a-z]/g, '');
+// "reiniciar" (o frases cortas como "quiero empezar de cero", "borra todo") borra el avance y empieza desde cero.
+const REINICIO = /\b(reinici\w*|empe[zc]\w* de (cero|nuevo)|comen[zc]\w* de (cero|nuevo)|inici\w* de (cero|nuevo)|borr\w* todo)\b/;
+function quiereReiniciar(texto) {
+  const t = String(texto || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[^a-z ]/g, ' ').replace(/\s+/g, ' ').trim();
+  if (!t) return false;
+  if (t.replace(/ /g, '') === 'reiniciar') return true;
+  return t.split(' ').length <= 6 && REINICIO.test(t) && !/\bno\b/.test(t);
+}
+export { quiereReiniciar };
 
 const tipoMedia = (t, mime = '') => {
   t = String(t || '').toLowerCase(); mime = String(mime).toLowerCase();
@@ -212,11 +221,12 @@ export async function procesarMensaje(b) {
   const texto = String(b.texto || '').trim().slice(0, 4000);
   const entrantes = (Array.isArray(b.media) ? b.media : []).filter((m) => /^https?:\/\//.test(m?.url || '')).slice(0, 10);
   const palabra = normalizar(texto);
-  const reiniciar = b.reiniciar === true || palabra === 'reiniciar';
-  const comando = palabra === PALABRA_INICIO || palabra === 'reiniciar';
+  const reiniciar = b.reiniciar === true || quiereReiniciar(texto);
+  const comando = palabra === PALABRA_INICIO || reiniciar;
 
   let e = await db.activa(usuario_id);
   if (reiniciar && e) { await db.guardar(e.id, { estado: 'cancelada' }); await db.evento(e.id, 'reiniciada'); e = null; }
+  const textoTurno = reiniciar ? '' : texto; // la palabra de reinicio no se le pasa a Ari como respuesta
   let nueva = false;
   if (!e) {
     const u = await db.ultima(usuario_id);
@@ -262,7 +272,7 @@ export async function procesarMensaje(b) {
   const assetsPrevios = await db.assetsDe(e.id);
   let n = assetsPrevios.length;
   const nuevosAssets = [];
-  if (texto) await db.insertarMensaje(e.id, { rol: 'cliente', tipo: 'texto', contenido: texto, bloque: e.bloque_actual });
+  if (textoTurno) await db.insertarMensaje(e.id, { rol: 'cliente', tipo: 'texto', contenido: textoTurno, bloque: e.bloque_actual });
   for (const m of entrantes) {
     const tipo = tipoMedia(m.tipo, m.mime);
     if (tipo === 'audio') {
@@ -340,12 +350,13 @@ export async function procesarMensaje(b) {
   }
 
   const mensajes = [...prefijo];
+  if (nueva && reiniciar) mensajes.push('Listo, borré todo el avance y empezamos de cero 🔄');
   if (nueva) mensajes.push(INSTRUCCIONES);
   const [mensajesRecientes, arquetipos] = await Promise.all([db.ultimosMensajes(e.id, 8), db.arquetipos()]);
   const assets = [...assetsPrevios, ...nuevosAssets];
   const bloqueAnterior = e.bloque_actual;
 
-  const t = await turnoAri(e, { mensajesRecientes, ultimoTexto: texto, regresaDePausa, arquetipos, assets, notaAri });
+  const t = await turnoAri(e, { mensajesRecientes, ultimoTexto: textoTurno, regresaDePausa, arquetipos, assets, notaAri });
   const brief = mergeProfundo(e.brief || {}, t.briefPatch);
   // El estado de las propuestas lo maneja solo propuestas.js; Ari no puede tocarlo (antes lo pisaba con "pendiente").
   if (brief.marca) { if (e.brief?.marca?.propuestas) brief.marca.propuestas = e.brief.marca.propuestas; else delete brief.marca.propuestas; }
