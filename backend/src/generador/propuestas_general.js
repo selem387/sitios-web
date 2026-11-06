@@ -229,7 +229,7 @@ function pagina(d) {
     return `<section class="sec resenas" id="resenas"><div class="wrap"><h2>${esc(T.resenas)}</h2>${fila}</div></section>`;
   };
   const secProceso = () => { const ps = brief.oferta?.proceso_pasos || []; return ps.length >= 3 ? `<section class="sec"><div class="wrap"><h2>${esc(t.proceso || 'Cómo funciona')}</h2><ol class="pasos">${ps.map((x) => `<li>${esc(x)}</li>`).join('')}</ol></div></section>` : ''; };
-  const secFaq = () => { const fq = (brief.faq || []).filter((x) => x.pregunta && x.respuesta); return fq.length ? `<section class="sec" id="faq"><div class="wrap estrecho"><h2>${esc(T.faq)}</h2>${fq.map((x, k) => `<details${k === 0 ? ' open' : ''}><summary>${esc(x.pregunta)}</summary><p>${esc(x.respuesta)}</p></details>`).join('')}</div></section>` : ''; };
+  const secFaq = () => { const fq = (brief.faq || []).filter((x) => x.pregunta && x.respuesta); return fq.length ? `<section class="sec" id="faq"><div class="wrap"><div class="faq-l"><h2>${esc(T.faq)}</h2>${fq.map((x, k) => `<details${k === 0 ? ' open' : ''}><summary>${esc(x.pregunta)}</summary><p>${esc(x.respuesta)}</p></details>`).join('')}</div></div></section>` : ''; };
   const secVideo = () => mat.videos.length ? `<section class="sec"><div class="wrap">${mat.videos.map((v) => { usadas.add(v.url); return `<video class="video" src="${esc(v.url)}" controls playsinline preload="metadata"></video>`; }).join('')}</div></section>` : '';
   const secContacto = () => {
     const c = brief.contacto || {};
@@ -263,7 +263,7 @@ function pagina(d) {
 *{box-sizing:border-box;margin:0;padding:0}html{scroll-behavior:smooth}body{background:var(--bg);color:var(--fg);font-family:var(--fc);font-size:16px;line-height:1.55;-webkit-font-smoothing:antialiased}
 img{max-width:100%;height:auto;display:block}a{color:inherit}
 h1,h2,h3{font-family:var(--ft);font-weight:400;line-height:1.06;letter-spacing:-.015em;text-wrap:balance}h1{font-size:clamp(36px,9vw,72px)}h2{font-size:clamp(28px,6.5vw,44px);margin-bottom:22px}h3{font-size:22px}
-.wrap{max-width:1140px;margin:0 auto;padding:0 20px}.estrecho{max-width:760px}.centro{text-align:center}
+.wrap{max-width:1140px;margin:0 auto;padding:0 20px}.estrecho{max-width:760px}.faq-l{max-width:820px}.centro{text-align:center}
 .barra{position:sticky;top:0;z-index:20;background:color-mix(in srgb,var(--bg) 90%,transparent);backdrop-filter:blur(8px);border-bottom:1px solid var(--bor)}
 .barra .in{display:flex;align-items:center;justify-content:space-between;height:68px}
 .logo{height:46px;width:auto;max-width:220px}.logo-placa{display:inline-flex;padding:6px 12px;border-radius:12px}.logo-grande-placa{display:inline-flex;padding:18px 28px;border-radius:22px;margin:0 auto}
