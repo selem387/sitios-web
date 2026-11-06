@@ -204,7 +204,8 @@ export async function crearSitioVivo(entrevista, { dominio = null, slug = null }
   const b = entrevista.brief || {};
   if (!disenoElegido(b)) throw Object.assign(new Error('El cliente aún no elige una propuesta'), { status: 409 });
   const email = String(b.administracion?.email || b.contacto?.email || '').trim().toLowerCase();
-  if (!/^[^\s@]+@[^\s@]+\.[a-z]{2,}$/i.test(email)) throw Object.assign(new Error('El brief no tiene correo del administrador (contacto.email)'), { status: 409 });
+  // El acceso al panel va por enlace mágico en el chat (decidido 5-nov-2026); el correo ya no es obligatorio.
+  if (email && !/^[^\s@]+@[^\s@]+\.[a-z]{2,}$/i.test(email)) throw Object.assign(new Error('El correo del administrador no es válido'), { status: 409 });
   let s = slugify(slug || b.negocio?.nombre || entrevista.id.slice(0, 8));
   for (let n = 2; await porSlug(s); n++) s = `${slugify(slug || b.negocio?.nombre)}-${n}`;
   const r = await q(`INSERT INTO sitios_vivos (entrevista_id, slug, dominio, admin_email) VALUES ($1,$2,$3,$4) RETURNING *`, [entrevista.id, s, dominio, email]);
