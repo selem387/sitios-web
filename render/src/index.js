@@ -127,7 +127,10 @@ app.post('/v1/captura', async (c) => {
     // selector: captura solo esa sección (para verificar un cambio de diseño). Las imágenes diferidas se fuerzan a cargar.
     if (b.selector) {
       const el = page.locator(String(b.selector)).first();
-      if (await el.count()) {
+      if (!(await el.count())) return null; // la sección no existe: no se manda la pantalla completa en su lugar
+      {
+        // Encabezado fijo y botón flotante no se cuelan en la captura de una sección.
+        await page.addStyleTag({ content: 'header,.barra{position:static!important}.wa{display:none!important}' });
         await page.evaluate(() => document.querySelectorAll('img[loading=lazy]').forEach((i) => { i.loading = 'eager'; }));
         await el.scrollIntoViewIfNeeded();
         await page.waitForTimeout(600);
@@ -136,6 +139,7 @@ app.post('/v1/captura', async (c) => {
     }
     return page.screenshot({ type: 'png', fullPage: Boolean(b.completa) });
   });
+  if (!buf) return c.json({ error: 'no existe', selector: b.selector }, 404);
   const f = await guardarPNG(buf, movil ? 'movil' : 'desktop');
   return c.json({ ...f, ms: Date.now() - t0 });
 });

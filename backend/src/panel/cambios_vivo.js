@@ -67,7 +67,7 @@ QUÉ PUEDES HACER
 - Si pide dejarlo como estaba antes del último cambio: accion=revertir.
 - Si no se entiende qué o dónde: accion=preguntar con UNA pregunta concreta.
 - Acomodo y diseño (poner cosas en una fila, usar todo el ancho, columnas, tamaños, espacios, separadores, alinear, cambiar cómo se ven tarjetas o secciones, letra más grande, etc.): escribe reglas en "css" usando las clases e ids reales de HTML ACTUAL (sección por id: #servicios, #resenas, #sobre, #trabajo, #faq, #contacto…). "css" es la hoja completa propia del sitio: conserva las reglas de CSS PROPIO ACTUAL que sigan vigentes. Usa las variables del tema (var(--p), var(--fg), var(--bor), var(--card), var(--soft)…) para no salirte de la paleta. Piensa en celular primero: lo de pantallas anchas va en @media (min-width:900px). Nunca deformes fotos (si cambias tamaño de imágenes usa object-fit:cover o height:auto) ni ocultes material del cliente que no pidió quitar. Pon en "verificar" los selectores de las secciones que cambias.
-- Estructura ("estructura", completa como debe quedar): ocultar secciones, reordenarlas, agregar secciones nuevas (extras, con su HTML interior usando las clases del tema), rehacer la portada, el encabezado o el pie (reemplazos) y cambiar el menú. Las secciones que el dueño edita en su panel (servicios, menu, faq, resenas, sobre, contacto, propiedades, trabajo, promocion) no se reescriben a mano: su contenido se cambia en "secciones" y su aspecto con CSS. En HTML nuevo usa solo imágenes de FOTOS (su URL) o que ya estén en la página, y solo textos que escribió el cliente o que ya están en la página; nada de scripts ni formularios. Para mapas o videos usa <iframe> de Google Maps o YouTube.
+- Estructura ("estructura", completa como debe quedar): para QUITAR una sección usa siempre estructura.ocultas (quita también su liga del menú; nunca con CSS). Ocultar secciones, reordenarlas, agregar secciones nuevas (extras, con su HTML interior usando las clases del tema), rehacer la portada, el encabezado o el pie (reemplazos) y cambiar el menú. Las secciones que el dueño edita en su panel (servicios, menu, faq, resenas, sobre, contacto, propiedades, trabajo, promocion) no se reescriben a mano: su contenido se cambia en "secciones" y su aspecto con CSS. En HTML nuevo usa solo imágenes de FOTOS (su URL) o que ya estén en la página, y solo textos que escribió el cliente o que ya están en la página; nada de scripts ni formularios. Para mapas o videos usa <iframe> de Google Maps o YouTube.
 - Cambiar todo el diseño por otra de sus propuestas: "propuesta" con la letra. Cambiar la letra: "fuentes" con familias de Google Fonts poco comunes y acordes a su estilo (nunca Arial, Roboto, Open Sans, Montserrat, Poppins, Lato ni Inter).
 - Elige la herramienta más simple que cumpla exactamente lo pedido: secciones (contenido) → CSS (aspecto) → estructura (agregar, quitar, reordenar, rehacer).
 - Si de verdad no hay forma (p. ej. cobrar en línea, una página aparte con su propia dirección): va en no_pude; si nada se puede, accion=no_se_puede.
@@ -79,7 +79,8 @@ async function guardar(id, cambios) {
   await q(`UPDATE cambios_sitio SET ${cols.map((k, i) => `${k}=$${i + 2}`).join(', ')}, actualizado=now() WHERE id=$1`, [id, ...vals]);
 }
 async function noPude(c, e, resultado) {
-  await guardar(c.id, { estado: 'preguntar', plan: { ...(c.plan || {}), pregunta: NO_PUDE }, resultado });
+  // Se conserva el plan que se intentó (para revisar después) y se agrega la pregunta.
+  await q(`UPDATE cambios_sitio SET estado='preguntar', plan = COALESCE(plan,'{}'::jsonb) || $2::jsonb, resultado=$3, actualizado=now() WHERE id=$1`, [c.id, JSON.stringify({ pregunta: NO_PUDE }), JSON.stringify(resultado)]);
   return avisar(e.id, NO_PUDE, { evento: 'cambios_sitio', datos: { cambio_id: c.id } });
 }
 
@@ -120,6 +121,7 @@ export function revisarCss(css) {
   const abre = (t.match(/{/g) || []).length, cierra = (t.match(/}/g) || []).length;
   if (abre !== cierra) e.push('El CSS tiene llaves sin cerrar');
   if (/(^|[\s,}])(body|html|main|\.wrap|section)\s*{[^}]*display\s*:\s*none/i.test(t)) e.push('No ocultes la página completa ni secciones enteras que el cliente no pidió quitar');
+  if (/(^|[\s,}])#[\w-]+\s*{[^}]*display\s*:\s*none/i.test(t)) e.push('Para quitar una sección usa estructura.ocultas (también quita su liga del menú), no CSS');
   return e;
 }
 
@@ -131,6 +133,7 @@ async function planear(e, act, pedidos, conv, errores) {
     `CONTENIDO ACTUAL (secciones):\n${JSON.stringify(act.contenido, null, 1)}`,
     `PALETA ACTUAL: ${JSON.stringify(act.paleta)}`,
     `CSS PROPIO ACTUAL (ajustes de diseño ya aplicados a este sitio):\n${act.css || '(ninguno)'}`,
+    `SECCIONES EN LA PÁGINA (ids, en orden): portada, ${[...(act.htmlCompleto || '').matchAll(/<section\b[^>]*\sid="([^"]+)"/g)].map((m) => m[1]).join(', ')}. Si el cliente menciona una sección que no está, dilo en no_pude (o pregunta).`,
     `ESTRUCTURA ACTUAL: ${JSON.stringify(act.estructura || {})}`,
     `PROPUESTAS (puede cambiar a otra): ${act.propuestas.map((o) => `${o.letra}${o.letra === act.propuesta ? ' (la actual)' : ''}: ${o.nombre} · letras ${o.tipografia?.titulos}/${o.tipografia?.cuerpo}`).join(' | ') || '(no hay)'}`,
     `LETRA ACTUAL: ${JSON.stringify(act.fuentes || {})}`,
@@ -218,7 +221,7 @@ async function capturas(sv, selectores) {
   const url = `${config.publicUrl}/s/${sv.slug}?v=${Date.now()}`;
   const out = [];
   for (const sel of selectores.slice(0, 3)) {
-    for (const ancho of [1366, 390]) { const u = await captura(url, sel, ancho); if (u) out.push({ sel, ancho, url: u }); }
+    for (const ancho of [1366, 390]) { const u = await captura(url, sel, ancho); out.push({ sel, ancho, url: u }); }
   }
   return out;
 }
@@ -234,13 +237,18 @@ const ESQUEMA_VISTA = {
 
 /** Compara capturas antes/después contra el pedido. Devuelve {ok, problemas}. Sin servicio de capturas, no bloquea. */
 async function revisarVista(pedidos, antes, despues) {
-  if (!despues.length) return { ok: true, problemas: [], sin_capturas: true };
-  const contenido = [{ type: 'text', text: `PEDIDO DEL CLIENTE:\n${pedidos.map((p) => `- ${p.texto}`).join('\n')}\n\nCompara ANTES y DESPUÉS de cada sección (computadora 1366 px y celular 390 px).` }];
+  if (!despues.some((d) => d.url)) return { ok: true, problemas: [], sin_capturas: true };
+  const contenido = [{ type: 'text', text: `PEDIDO DEL CLIENTE:\n${pedidos.map((p) => `- ${p.texto}`).join('\n')}\n\nCompara ANTES y DESPUÉS de cada sección (computadora 1366 px y celular 390 px). "No existe" significa que esa sección no está en la página (correcto si el cliente pidió quitarla).` }];
   for (const d of despues) {
     const a = antes.find((x) => x.sel === d.sel && x.ancho === d.ancho);
-    if (a) contenido.push({ type: 'text', text: `ANTES · ${d.sel} · ${d.ancho}px` }, { type: 'image', source: { type: 'url', url: a.url } });
-    contenido.push({ type: 'text', text: `DESPUÉS · ${d.sel} · ${d.ancho}px` }, { type: 'image', source: { type: 'url', url: d.url } });
+    contenido.push({ type: 'text', text: `ANTES · ${d.sel} · ${d.ancho}px${a?.url ? '' : ': no existe'}` });
+    if (a?.url) contenido.push({ type: 'image', source: { type: 'url', url: a.url } });
+    contenido.push({ type: 'text', text: `DESPUÉS · ${d.sel} · ${d.ancho}px${d.url ? '' : ': no existe'}` });
+    if (d.url) contenido.push({ type: 'image', source: { type: 'url', url: d.url } });
   }
+  // El menú se revisa siempre (secciones quitadas, agregadas o reordenadas).
+  const nav = (despues[0]?.menu || '').trim();
+  if (nav) contenido.push({ type: 'text', text: `MENÚ DESPUÉS: ${nav}` });
   try {
     const r = await pedirJSON({
       system: 'Revisas cambios de diseño en la página web de un cliente. Dices si el DESPUÉS cumple exactamente lo que pidió y si se ve profesional: sin texto encimado ni cortado, sin desbordes horizontales, sin fotos deformadas, sin huecos raros, legible en celular. Sé estricto con lo pedido.',
@@ -314,7 +322,9 @@ export async function aplicarCambioVivo(c, e, sv) {
 
     // 5) Ajustes de diseño: revisión visual contra lo pedido; si no cumple, se deshace y se vuelve a intentar.
     if (!revisar) { vista = null; break; }
-    vista = await revisarVista(c.pedidos, antes || [], await capturas(nuevo, selectores));
+    const despues = await capturas(nuevo, selectores);
+    try { const h = await renderSitio(await porId(nuevo.id), { previa: true }); const nav = (h.match(/<nav>([\s\S]*?)<\/nav>/) || [])[1] || ''; if (despues[0]) despues[0].menu = nav.replace(/<[^>]+>/g, ' · ').replace(/(\s·\s)+/g, ' · '); } catch { /* sin menú */ }
+    vista = await revisarVista(c.pedidos, antes || [], despues);
     if (vista.ok) break;
     await escribir(nuevo, e, respaldo);
     errores = [`La revisión visual con capturas encontró: ${vista.problemas.join('; ') || 'no cumple lo pedido'}. Corrige el CSS.`];
