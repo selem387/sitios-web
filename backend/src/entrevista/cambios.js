@@ -333,6 +333,8 @@ export function cifrasInventadas(actual, destinos, fuente) {
 // Ningún título (h1–h4) desaparece sin que el editor lo declare en textos_quitados.
 const titulos = (html) => new Set([...texto(html).matchAll(/<h[1-4][^>]*>([\s\S]*?)<\/h[1-4]>/g)].map((m) => normTit(m[1])).filter(Boolean));
 const normTit = (t) => quitarHtml(t).toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9$]+/g, ' ').trim();
+const palabras = (t) => new Set(t.split(' ').filter((w) => w.length >= 3 && !['paquete', 'sesion', 'para', 'con', 'los', 'las', 'del'].includes(w)));
+const parecido = (a, b) => { const A = palabras(a); const B = palabras(b); if (!A.size || !B.size) return 0; let n = 0; for (const w of A) if ([...B].some((x) => x === w || (w.length > 4 && (x.startsWith(w.slice(0, 4)))))) n++; return n / A.size; };
 export function titulosPerdidos(actual, destinos, quitados = []) {
   const q2 = (quitados || []).map(normTit);
   const errores = [];
@@ -343,6 +345,7 @@ export function titulosPerdidos(actual, destinos, quitados = []) {
     const textoNuevo = normTit(nuevo);
     for (const t of titulos(viejo)) {
       if (ahora.has(t) || textoNuevo.includes(t) || q2.some((x) => x && (x.includes(t) || t.includes(x)))) continue;
+      if ([...ahora].some((n) => parecido(t, n) >= 0.5)) continue; // renombrado (p. ej. "Smash Cake (Primer Año)" → "Smash Cake | Primer Añito")
       errores.push(`En ${d} desapareció el título "${t}". Si el cliente no pidió quitarlo, consérvalo (o su versión nueva); si se quita a propósito, ponlo en textos_quitados.`);
     }
     // Títulos repetidos que antes no lo estaban (p. ej. la misma categoría encima de cada tarjeta).
