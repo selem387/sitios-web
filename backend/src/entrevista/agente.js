@@ -3,6 +3,7 @@ import { coloresDePalabras } from '../generador/materiales.js';
 import { contextoColorParaAri } from '../generador/asesor_color.js';
 import { paresTipograficos } from '../generador/fuentes.js';
 import crypto from 'node:crypto';
+import { config } from '../config.js';
 import * as db from './db.js';
 import { pedirJSON, describirImagen, transcribirAudio, MODELO_ARI } from './claude.js';
 import { actualizarMemoria, tocaActualizar } from './memoria.js';
@@ -157,11 +158,13 @@ async function notificar(e, payload) {
 }
 
 async function decidirPlataforma(brief) {
+  // WordPress suspendido: siempre la opción dinámica, sin consultar al decisor.
+  if (!config.wordpressActivo) return { plataforma: 'app', razon: 'WordPress suspendido: todos los sitios se construyen como app (sitio en vivo + panel propio).', senales: [], modulos_dinamicos: [] };
   try {
     const r = await pedirJSON({ system: SISTEMA_PLATAFORMA, contenido: `BRIEF:\n${JSON.stringify(brief)}`, schema: ESQUEMA_PLATAFORMA, max_tokens: 600 });
     return r.data;
   } catch (err) {
-    return { plataforma: 'wordpress', razon: `Por defecto (no se pudo decidir: ${err.message})`, senales: [], modulos_dinamicos: [] };
+    return { plataforma: 'app', razon: `Por defecto (no se pudo decidir: ${err.message})`, senales: [], modulos_dinamicos: [] };
   }
 }
 

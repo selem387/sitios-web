@@ -353,7 +353,8 @@ export async function generarSitio(sitioId, entrevista, { slug } = {}) {
 export async function encolar(entrevista, { slug, forzarWordpress }) {
   const plat = entrevista.brief?.plataforma?.plataforma || entrevista.brief?.plataforma;
   // Plataforma "app": sitio en vivo desde la base, administrado por el dueño en su panel propio.
-  if (plat === 'app' && !forzarWordpress) {
+  // Con WordPress suspendido (config.wordpressActivo=false) todo cae aquí, aunque se pida forzar_wordpress.
+  if (!config.wordpressActivo || (plat === 'app' && !forzarWordpress)) {
     const sv = await crearSitioVivo(entrevista, { slug }).catch((x) => { throw new HttpError(x.status || 500, x.message); });
     return { sitio_vivo_id: sv.id, slug: sv.slug, estado: 'vivo', previa: `${config.publicUrl}/s/${sv.slug}` };
   }

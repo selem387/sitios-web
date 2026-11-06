@@ -31,6 +31,8 @@ export const config = {
   entrevistaMemoriaModel: env.ENTREVISTA_MEMORIA_MODEL || 'claude-haiku-5-5',
   transcribirUrl: env.TRANSCRIBIR_URL || '',
   transcribirKey: env.TRANSCRIBIR_KEY || '',
+  // WordPress suspendido (6-nov-2026): todo sitio nuevo va a la plataforma "app". WORDPRESS_ACTIVO=1 lo reactiva.
+  wordpressActivo: /^(1|true|si|sí)$/i.test(env.WORDPRESS_ACTIVO || ''),
   // Generador de sitios WordPress (módulo generador/).
   generadorModel: env.GENERADOR_MODEL || env.ANTHROPIC_MODEL || 'claude-sonnet-5-5',
   wpGenUrl: (env.WP_GEN_URL || '').replace(/\/$/, ''),          // sitio principal del Multisite (https://...)
