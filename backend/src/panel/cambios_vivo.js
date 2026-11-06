@@ -1,3 +1,4 @@
+// Editor de cambios del chatbot para sitios en vivo.
 // Cambios que pide el cliente por chat sobre su sitio en vivo (plataforma "app"): se aplican solos sobre el
 // contenido estructurado (sitios_vivos.contenido), sin aviso al equipo. Gemelo de entrevista/cambios.js (WordPress).
 //   1) Claude recibe el contenido actual por sección + el pedido + la conversación y devuelve secciones completas nuevas.
