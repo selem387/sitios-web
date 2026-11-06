@@ -15,8 +15,12 @@ import { patchFlujo, leerFlujo, borrarFlujo, cotizarParaCliente, crearCompra, li
 import { conectar, estadoConexion, conexionConfigurada } from '../dominio/conexion.js';
 import { stripeConfigurado } from '../dominio/stripe.js';
 
-const TLDS = () => (process.env.DOMINIO_TLDS || 'com,mx,com.mx').split(',').map((x) => x.trim()).filter(Boolean);
+// Extensiones para sugerencias: incluye las baratas en promoción; el tope en pesos decide cuáles se muestran.
+const TLDS = () => (process.env.DOMINIO_TLDS || 'com,mx,com.mx,xyz,online,site,store,shop,space,website,fun,lat,click,link,info,tech').split(',').map((x) => x.trim()).filter(Boolean);
 const MAX_USD = () => Number(process.env.DOMINIO_PRECIO_MAX_USD || 60);
+// Tope del total que paga el cliente (1er año, con tipo de cambio y comisión) para los dominios SUGERIDOS.
+// Los que el cliente pide por nombre no llevan este tope (solo MAX_USD).
+const MAX_MXN_SUGERIDO = () => Number(process.env.DOMINIO_SUGERIDO_MAX_MXN || 50);
 const MAX_OPCIONES = 5;
 const MAX_BUSQUEDAS = 6;
 
@@ -82,12 +86,14 @@ export async function buscarOpciones(consulta, brief) {
     else pedidoNoLibre.push(d);
   }
   const q = [String(consulta || '').replace(/[.,;:¿?¡!]/g, ' ').trim(), brief?.negocio?.nombre, brief?.negocio?.ciudad].filter(Boolean).join(' ').slice(0, 100);
-  const sug = await GD.sugerencias(q || 'negocio', { tlds: TLDS(), pageSize: 15 }).catch((e) => { console.error('sugerencias', e.message); return []; });
+  const sug = await GD.sugerencias(q || 'negocio', { tlds: TLDS(), pageSize: 40 }).catch((e) => { console.error('sugerencias', e.message); return []; });
   for (const s of sug) {
     if (libres.length >= MAX_OPCIONES * 2) break;
     if (vistos.has(s.dominio) || !s.precio?.monto) continue;
     if (s.inventario && s.inventario !== 'REGISTRY') continue;
     if (s.precio.moneda === 'USD' && s.precio.monto > MAX_USD()) continue;
+    const p = await precioCliente(s.precio.monto, s.precio.moneda || 'USD').catch(() => null);
+    if (!p || p.total_mxn >= MAX_MXN_SUGERIDO()) continue;
     vistos.add(s.dominio);
     libres.push({ dominio: s.dominio, costo: s.precio.monto, moneda: s.precio.moneda, exacto: false });
   }
@@ -155,7 +161,7 @@ async function pasoBuscar(e, brief, consulta) {
   }
   if (!r.opciones.length) {
     await patchFlujo(e.id, { estado: 'buscar', busquedas: (f.busquedas || 0) + 1 });
-    return [`No encontré direcciones libres con esa idea${r.pedidoNoLibre.length ? ` (${r.pedidoNoLibre.join(', ')} ya están ocupadas)` : ''}. Dame otra: puede ser el nombre con tu ciudad, con tu giro o una palabra corta. Por ejemplo: _${base(brief?.negocio?.nombre) || 'tunegocio'}${base(brief?.negocio?.ciudad) || 'merida'}.com_`];
+    return [`No encontré direcciones libres con esa idea${r.pedidoNoLibre.length ? ` (${r.pedidoNoLibre.join(', ')} ya están ocupadas)` : ''}. Dame otra: puede ser el nombre con tu ciudad, con tu giro o una palabra corta. Por ejemplo: _${base(brief?.negocio?.nombre) || 'tunegocio'}${base(brief?.negocio?.ciudad) || 'merida'}.online_`];
   }
   await patchFlujo(e.id, { estado: 'opciones', opciones: r.opciones, busquedas: (f.busquedas || 0) + 1 });
   return mensajeOpciones(r.opciones, r.pedidoNoLibre);
