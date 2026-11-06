@@ -21,6 +21,7 @@ import * as S from './sitios.js';
 import * as A from './sesion.js';
 import { paginaPanel } from './pagina.js';
 import { enviarCodigo } from '../correo_codigos.js';
+import { entregarAcceso } from '../entrevista/entrega.js';
 
 const q = db.q;
 const DIR_SUBIDAS = path.join(config.dataDir, 'chat'); // mismas rutas públicas que el chat: /chat/archivos/<nombre>
@@ -234,7 +235,11 @@ export function registerPanelRoutes(app, wrap) {
     if (dominio && !/^[a-z0-9-]+(\.[a-z0-9-]+)+$/.test(dominio)) throw new HttpError(400, 'dominio inválido');
     let sv = await S.crearSitioVivo(e, { dominio, slug: b.slug }).catch((x) => { throw new HttpError(x.status || 500, x.message); });
     if (dominio && sv.dominio !== dominio) sv = (await q(`UPDATE sitios_vivos SET dominio=$2, actualizado=now() WHERE id=$1 RETURNING *`, [sv.id, dominio])).rows[0];
-    if (dominio) await asignarDominio({ dominio, entrevista_id: e.id, modo: 'vivo', datos: { nombre: e.brief?.negocio?.nombre, sitio_vivo_id: sv.id } });
+    if (dominio) {
+      await asignarDominio({ dominio, entrevista_id: e.id, modo: 'vivo', datos: { nombre: e.brief?.negocio?.nombre, sitio_vivo_id: sv.id } });
+      // Si el dominio ya tiene HTTPS, el acceso se entrega de una vez; si no, lo hace el cron en cuanto responda.
+      entregarAcceso(e.id, { dominio, panel: 'panel_propio', sitio_vivo_id: sv.id }).catch((x) => console.error('entrega', x.message));
+    }
     return { sitio_vivo_id: sv.id, slug: sv.slug, previa: `${config.publicUrl}/s/${sv.slug}`, panel_previa: `${config.publicUrl}/s/${sv.slug}/admin`, dominio: sv.dominio, url: sv.dominio ? `https://${sv.dominio}/` : null, admin: sv.dominio ? `https://${sv.dominio}/admin` : null, admin_email: sv.admin_email };
   }));
 

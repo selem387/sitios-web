@@ -13,6 +13,7 @@ import { estudiarReferencias } from './referencias.js';
 import { propuestasPendientes, tocaPropuestas, atenderPropuestas, iniciarPropuestas } from './propuestas.js';
 import { verificacionPendiente, atenderVerificacion, enviarVerificacion, correoCambio, faltaCorreo } from './verificacion.js';
 import { normalizarRedes, redesFaltantes, listaNombres } from './redes.js';
+import { redesEnCurso, atenderRedes } from './entrega.js';
 import { dominioEnCurso, atenderDominio, tocaDominio, iniciarDominio, notaParaAri, quiereRetomar, retomarDominio, leerFlujo, borrarFlujo } from './dominio.js';
 import { limpiarDominio } from '../dominio/registrador.js';
 
@@ -64,7 +65,9 @@ function salida(e, respuestas, esperando) {
 async function respuestaPostCierre(u) {
   const s = (await db.q(`SELECT estado, url_publica FROM sitios WHERE entrevista_id=$1 ORDER BY id DESC LIMIT 1`, [u.id]).catch(() => ({ rows: [] }))).rows[0];
   let base;
-  if (s?.estado === 'listo' && s.url_publica) base = `Tu página ya está lista 🎉: ${s.url_publica}\nÁbrela desde tu celular y dime qué quieres ajustar; ya anoté tu comentario.`;
+  const adm = u.brief?.administracion;
+  if (adm?.estado === 'entregado' && adm.url) base = `Tu página ya está publicada. Para cambiar precios, productos, fotos u horarios entra a tu administrador: ${adm.url}\nSi necesitas algo más, ya anoté tu comentario y el equipo lo revisa.`;
+  else if (s?.estado === 'listo' && s.url_publica) base = `Tu página ya está lista 🎉: ${s.url_publica}\nÁbrela desde tu celular y dime qué quieres ajustar; ya anoté tu comentario.`;
   else if (s?.estado === 'requiere_revision') base = 'Tu página ya está armada y el equipo la está revisando antes de mostrártela. Te mando la liga en cuanto quede; ya anoté tu comentario.';
   else if (s?.estado === 'error') base = 'Hubo un problema al armar tu página y el equipo ya lo está revisando. Te aviso aquí en cuanto quede; ya anoté tu comentario.';
   else base = 'Sigo armando tu página; en cuanto quede te mando la liga aquí. Ya anoté tu comentario.';
@@ -160,6 +163,13 @@ export async function procesarMensaje(b) {
   let nueva = false;
   if (!e) {
     const u = await db.ultima(usuario_id);
+    // Ayuda con las redes después de entregar el acceso (hasta 30 días).
+    if (u && u.estado === 'completada' && !comando && redesEnCurso(u.brief) && texto) {
+      await db.insertarMensaje(u.id, { rol: 'cliente', contenido: texto });
+      const rs = (await atenderRedes(u, texto)).filter(Boolean);
+      for (const r of rs) await db.insertarMensaje(u.id, { rol: 'agente', contenido: r });
+      return salida(u, rs, 'texto');
+    }
     if (u && u.estado === 'completada' && !comando && Date.now() - new Date(u.actualizado).getTime() < 7 * 864e5) {
       // Entrevista ya cerrada hace poco: se registra lo que diga como comentario y se responde según el estado del sitio.
       await db.insertarMensaje(u.id, { rol: 'cliente', contenido: texto || '(media)' });

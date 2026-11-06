@@ -9,6 +9,7 @@ import { config } from '../config.js';
 import { HttpError } from '../util.js';
 import * as db from './db.js';
 import { procesarMensaje, enSerie, notificar } from './agente.js';
+import { cronEntregas, cronProgramados, entregarAcceso } from './entrega.js';
 import { actualizarMemoria, mensajeRecordatorio } from './memoria.js';
 import { TOTAL_BLOQUES } from './prompts.js';
 import { MODELO_ARI, MODELO_MEMORIA } from './claude.js';
@@ -92,6 +93,19 @@ export function registerEntrevistaRoutes(app, wrap) {
     return { ok: true, pasos: (await actualizarGuia(p))?.pasos || null };
   }));
 
+  // Entrega manual del acceso (normalmente la hace el cron cuando la página ya responde en su dominio). {dominio, panel?, forzar?}
+  app.post('/entrevista/v1/sesiones/:id/entregar-acceso', wrap(async (c) => {
+    auth(c);
+    const e = await db.obtener(c.req.param('id'));
+    if (!e) throw new HttpError(404, 'no existe');
+    const b = await c.req.json().catch(() => ({}));
+    const dominio = String(b.dominio || '').toLowerCase().replace(/^https?:\/\//, '').replace(/\/.*$/, '');
+    if (!/^[a-z0-9-]+(\.[a-z0-9-]+)+$/.test(dominio)) throw new HttpError(400, 'dominio inválido');
+    const sv = (await db.q(`SELECT id FROM sitios_vivos WHERE entrevista_id=$1`, [e.id]).catch(() => ({ rows: [] }))).rows[0];
+    const panel = b.panel || (sv ? 'panel_propio' : 'wp-admin');
+    return entregarAcceso(e.id, { dominio, panel, sitio_vivo_id: sv?.id }, { forzar: b.forzar === true });
+  }));
+
   app.get('/entrevista/v1/usuarios/ultima', wrap(async (c) => {
     auth(c);
     const e = await db.ultima(String(c.req.query('usuario_id') || ''));
@@ -132,8 +146,13 @@ export async function initEntrevista() {
   await db.migrar();
   setInterval(() => cron().catch((err) => console.error(err)), 3600e3).unref();
   // Dirección de la página: registros pagados, conexiones y dominios propios en espera del cambio del cliente.
-  const cronDominios = async () => { await cronCompras().catch((err) => console.error('cron compras', err)); await cronDominiosPropios().catch((err) => console.error('cron dominios propios', err)); };
+  const cronDominios = async () => {
+    await cronCompras().catch((err) => console.error('cron compras', err));
+    await cronDominiosPropios().catch((err) => console.error('cron dominios propios', err));
+    await cronEntregas().catch((err) => console.error('cron entregas', err)); // acceso del dueño cuando su página ya está en su dominio
+  };
   setInterval(cronDominios, 10 * 60e3).unref();
+  setInterval(() => cronProgramados().catch((err) => console.error('cron programados', err)), 60e3).unref();
   // Guías de proveedores: se revisa la ayuda oficial una vez por semana.
   setInterval(() => { for (const p of Object.keys(GUIAS)) actualizarGuia(p).catch(() => {}); }, 7 * 864e5).unref();
 }
