@@ -243,6 +243,21 @@ export function registerPanelRoutes(app, wrap) {
     return { sitio_vivo_id: sv.id, slug: sv.slug, previa: `${config.publicUrl}/s/${sv.slug}`, panel_previa: `${config.publicUrl}/s/${sv.slug}/admin`, dominio: sv.dominio, url: sv.dominio ? `https://${sv.dominio}/` : null, admin: sv.dominio ? `https://${sv.dominio}/admin` : null, admin_email: sv.admin_email };
   }));
 
+  // Rehacer como sitio en vivo una entrevista hecha en WordPress: {enviar?, reinterpretar?} (reinterpreta todo el historial).
+  app.post('/entrevista/v1/sesiones/:id/rehacer-app', wrap(async (c) => {
+    auth(c);
+    const b = await c.req.json().catch(() => ({}));
+    const { rehacerComoApp } = await import('./rehacer.js');
+    return rehacerComoApp(c.req.param('id'), { enviar: b.enviar === true, reinterpretar: b.reinterpretar !== false }).catch((x) => { throw new HttpError(x.status || 500, x.message); });
+  }));
+  // Elegir la propuesta por fuera del chat (p. ej. pilotos sin cliente) y crear el sitio en vivo: {elegido:"A", colores_de?}.
+  app.post('/entrevista/v1/sesiones/:id/rehacer-app/elegir', wrap(async (c) => {
+    auth(c);
+    const b = await c.req.json().catch(() => ({}));
+    const { elegirYCrear } = await import('./rehacer.js');
+    return elegirYCrear(c.req.param('id'), { elegido: String(b.elegido || '').toUpperCase(), colores_de: b.colores_de || null }).catch((x) => { throw new HttpError(x.status || 500, x.message); });
+  }));
+
   app.get('/entrevista/v1/sitios-vivos/:id', wrap(async (c) => {
     auth(c);
     await S.migrarPanel();

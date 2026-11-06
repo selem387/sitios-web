@@ -69,7 +69,7 @@ export function ajustesDeComentario(texto, brief) {
 }
 const VAGO = /^(no s[eé]|nada|ninguna|no me gust[oó]|no|igual|lo que sea)\W*$/i;
 
-async function mostrar(e, brief, mat, { ronda = 0 } = {}) {
+export async function mostrar(e, brief, mat, { ronda = 0 } = {}) {
   const textos = await textosPropuestas(brief, mat);
   const r = await crearPropuestasHTML(brief, mat, textos, { ronda });
   const prev = brief.marca?.propuestas || {};

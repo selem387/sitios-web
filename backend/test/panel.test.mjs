@@ -7,7 +7,7 @@ const prop = { elegido: 'B', colores_de: null, ronda: 1, textos: { variantes: [{
 const e = { brief: { negocio: { nombre: 'Luz', giro_texto: 'Fotografía', ciudad: 'Mérida' }, oferta: { items: [{ nombre: 'Retrato', precio_o_rango: '$1' }] }, contacto: { email: 'a@b.com', direccion: { calle: 'C 60', ciudad: 'Mérida' }, redes: { instagram: '@luz' } }, marca: { propuestas: prop } } };
 
 test('limpiarSeccion valida y recorta', () => {
-  assert.deepEqual(limpiarSeccion('oferta', { items: [{ nombre: ' X ', precio_o_rango: '$2' }, { nombre: '' }] }).items, [{ nombre: 'X', descripcion_corta: '', precio_o_rango: '$2', destacado: false }]);
+  assert.deepEqual(limpiarSeccion('oferta', { items: [{ nombre: ' X ', precio_o_rango: '$2' }, { nombre: '' }] }).items, [{ grupo: '', nombre: 'X', descripcion_corta: '', precio_o_rango: '$2', destacado: false }]);
   assert.throws(() => limpiarSeccion('contacto', { email: 'malo' }), /correo/);
   assert.throws(() => limpiarSeccion('contacto', { google_maps_url: 'javascript:alert(1)' }), /https/);
   assert.equal(limpiarSeccion('contacto', { whatsapp: '999 123-4567' }).whatsapp, '9991234567');

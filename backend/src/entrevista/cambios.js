@@ -49,6 +49,17 @@ UPDATE cambios_sitio SET estado='pendiente', aplicar_en=now(), intentos=2
 let migrado = false;
 async function migrar() { if (!migrado) { await q(SCHEMA_CAMBIOS); migrado = true; } }
 
+/** Sitio en vivo (plataforma "app") de la entrevista, si existe y está activo. */
+export async function sitioVivoDe(entrevistaId) {
+  const r = await q(`SELECT * FROM sitios_vivos WHERE entrevista_id=$1 AND estado='activo'`, [entrevistaId]).catch(() => ({ rows: [] }));
+  return r.rows[0] || null;
+}
+
+/** ¿Tiene una página que Ari puede editar sola? Primero el sitio en vivo; si no, WordPress. */
+export async function paginaEditable(entrevistaId) {
+  return (await sitioVivoDe(entrevistaId)) || (await sitioEditable(entrevistaId));
+}
+
 /** Sitio WordPress publicado que se puede editar (el más reciente en estado listo). */
 export async function sitioEditable(entrevistaId) {
   const r = await q(`SELECT id, blog_id_wp, url_publica, publicado FROM sitios WHERE entrevista_id=$1 AND estado='listo' AND blog_id_wp IS NOT NULL ORDER BY id DESC LIMIT 1`, [entrevistaId]);
@@ -508,6 +519,9 @@ async function revertirUltimo(c, e, s) {
 
 export async function aplicarCambio(c) {
   const e = await db.obtener(c.entrevista_id);
+  // Sitio en vivo (plataforma "app"): se edita su contenido estructurado.
+  const sv = await sitioVivoDe(c.entrevista_id);
+  if (e && sv) { const { aplicarCambioVivo } = await import('../panel/cambios_vivo.js'); return aplicarCambioVivo(c, e, sv); }
   const s = await sitioEditable(c.entrevista_id);
   if (!e || !s) {
     await guardar(c.id, { estado: 'equipo', resultado: { motivo: 'sin sitio WordPress editable' } });

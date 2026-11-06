@@ -72,7 +72,8 @@ export function limpiarSeccion(seccion, d = {}) {
     case 'portada': return { titular: txt(d.titular, 90), subtitulo: txt(d.subtitulo, 200), cta: txt(d.cta, 30) };
     case 'oferta': return {
       mostrar_precios: d.mostrar_precios !== false,
-      items: lista(d.items).map((x) => ({ nombre: txt(x.nombre, 90), descripcion_corta: txt(x.descripcion_corta, 220), precio_o_rango: txt(x.precio_o_rango, 60), destacado: !!x.destacado })).filter((x) => x.nombre),
+      // La descripción conserva renglones y viñetas tal cual (el cliente las escribe así); grupo = categoría opcional.
+      items: lista(d.items).map((x) => ({ grupo: txt(x.grupo, 90), nombre: txt(x.nombre, 120), descripcion_corta: largo(x.descripcion_corta, 1500), precio_o_rango: txt(x.precio_o_rango, 60), destacado: !!x.destacado })).filter((x) => x.nombre),
     };
     case 'menu': return {
       secciones: lista(d.secciones, 30).map((s) => ({ seccion: txt(s.seccion, 60), items: lista(s.items, 80).map((i) => ({ nombre: txt(i.nombre, 90), precio: txt(i.precio, 40), descripcion: txt(i.descripcion, 200) })).filter((i) => i.nombre) })).filter((s) => s.seccion && s.items.length),
@@ -106,7 +107,7 @@ export function contenidoActual(entrevista, sv, mat = null) {
   const c = b.contacto || {};
   return {
     portada: k.portada || { titular: v.titular || '', subtitulo: v.subtitulo || '', cta: v.cta || '' },
-    oferta: k.oferta || { mostrar_precios: b.oferta?.mostrar_precios !== false, items: (b.oferta?.items || []).map((x) => ({ nombre: x.nombre || '', descripcion_corta: x.descripcion_corta || x.descripcion || '', precio_o_rango: x.precio_o_rango || x.precio || '', destacado: !!x.destacado })) },
+    oferta: k.oferta || { mostrar_precios: b.oferta?.mostrar_precios !== false, items: (b.oferta?.items || []).map((x) => ({ grupo: x.grupo || '', nombre: x.nombre || '', descripcion_corta: x.descripcion_corta || x.descripcion || '', precio_o_rango: x.precio_o_rango || x.precio || '', destacado: !!x.destacado })) },
     menu: k.menu || { secciones: (mat?.menu_texto || []).map((s) => ({ seccion: s.seccion || '', items: (s.items || []).map((x) => ({ nombre: x.nombre || '', precio: x.precio || '', descripcion: x.descripcion || '' })) })) },
     promocion: k.promocion || { texto: b.oferta?.promocion_actual || '' },
     contacto: k.contacto || { whatsapp: c.whatsapp || '', telefono: c.telefono || '', email: c.email || '', direccion: direccionTexto(c.direccion), google_maps_url: c.google_maps_url || '', horarios: typeof c.horarios === 'string' ? c.horarios : '', mensaje_whatsapp_inicial: c.mensaje_whatsapp_inicial || '' },
@@ -176,8 +177,10 @@ export async function renderSitio(sv, { previa = false } = {}) {
   if (cache.has(clave)) return cache.get(clave);
   const e = await db.obtener(sv.entrevista_id);
   if (!e) throw new Error('entrevista no encontrada');
-  const fijo = disenoElegido(e.brief);
-  if (!fijo) throw new Error('el cliente aún no elige propuesta');
+  const fijo0 = disenoElegido(e.brief);
+  if (!fijo0) throw new Error('el cliente aún no elige propuesta');
+  // Colores que el cliente cambió después (cambios automáticos): se encima a la paleta de su propuesta.
+  const fijo = sv.contenido?.diseno?.paleta ? { ...fijo0, paleta: { ...fijo0.paleta, ...sv.contenido.diseno.paleta } } : fijo0;
   const { brief, textos } = aplicarContenido(e, sv);
   const mat = await procesarMateriales(e.id, brief, { aceptarLoQueHay: true });
   if (sv.contenido?.menu?.secciones) mat.menu_texto = sv.contenido.menu.secciones;

@@ -93,6 +93,15 @@ export function agruparOferta(items = []) {
     const nombre = String(it.nombre || '').trim();
     if (!nombre) continue;
     let g = nombre, op = '';
+    // Categoría explícita (la que escribió el cliente, p. ej. "🎂 Smash Cake | Primer Añito"): el nombre queda como opción.
+    if (it.grupo && String(it.grupo).trim()) {
+      g = String(it.grupo).trim(); op = nombre;
+      const k = g.toLowerCase();
+      const grupo = grupos.get(k) || { nombre: g, opciones: [] };
+      grupo.opciones.push({ nombre: op, precio: it.precio_o_rango || it.precio || '', detalle: it.descripcion_corta || it.descripcion || '', destacado: !!it.destacado });
+      grupos.set(k, grupo);
+      continue;
+    }
     const sinPar = nombre.replace(/\([^)]*\)/g, (x) => x.replace(/[-–]/g, '\u0000'));
     const m = (sinPar.match(/^(.*?)\s+[-–]\s+(.+)$/) || sinPar.match(/^(.*?)\s+(Paquete\s*#?\s*\d+.*)$/i))?.map((x) => x?.replace(/\u0000/g, '-'));
     if (m && m[1].length > 2) { g = m[1].trim(); op = m[2].trim(); }
@@ -102,6 +111,21 @@ export function agruparOferta(items = []) {
     grupos.set(k, grupo);
   }
   return [...grupos.values()];
+}
+
+/** Descripción de un paquete tal cual la escribió el cliente: cada renglón con "- " o "• " va en su propio <li>; los demás, párrafos. */
+export function detalleHTML(texto) {
+  const lineas = String(texto || '').replace(/\r/g, '').split('\n').map((x) => x.trim()).filter(Boolean);
+  if (!lineas.length) return '';
+  let html = '', lista = [];
+  const cerrar = () => { if (lista.length) { html += `<ul class="inc">${lista.map((x) => `<li>${esc(x)}</li>`).join('')}</ul>`; lista = []; } };
+  for (const l of lineas) {
+    const m = l.match(/^[-•*]\s+(.+)$/);
+    if (m) lista.push(m[1]);
+    else { cerrar(); html += `<span>${esc(l)}</span>`; }
+  }
+  cerrar();
+  return html;
 }
 
 export function redes(c = {}) {
@@ -156,7 +180,7 @@ function pagina(d) {
   const mostrarPrecios = brief.oferta?.mostrar_precios !== false || brief.oferta?.mostrar_paquetes;
   const secServicios = () => {
     if (!grupos.length && !mat.catalogos.length && !mat.documentos.length) return '';
-    const cards = grupos.map((g) => `<article class="paq"><h3>${esc(g.nombre)}</h3><ul>${g.opciones.map((o) => `<li><div>${o.nombre ? `<b>${esc(o.nombre)}</b>` : ''}${o.detalle ? `<span>${esc(o.detalle)}</span>` : ''}</div>${mostrarPrecios && o.precio ? `<em>${esc(o.precio)}</em>` : ''}</li>`).join('')}</ul></article>`).join('');
+    const cards = grupos.map((g) => `<article class="paq"><h3>${esc(g.nombre)}</h3><ul>${g.opciones.map((o) => `<li><div>${o.nombre ? `<b>${esc(o.nombre)}</b>` : ''}${o.detalle ? detalleHTML(o.detalle) : ''}</div>${mostrarPrecios && o.precio ? `<em>${esc(o.precio)}</em>` : ''}</li>`).join('')}</ul></article>`).join('');
     const cat = mat.catalogos.map((x) => `<a class="catimg" href="${esc(x.url)}" target="_blank" rel="noopener">${img(x)}</a>`).join('');
     const docs = mat.documentos.map((x) => `<a class="doc" href="${esc(x.url)}" target="_blank" rel="noopener">Ver ${esc(/pdf/i.test(x.url) ? 'catálogo (PDF)' : x.alt || 'documento')}</a>`).join('');
     for (const x of mat.documentos) usadas.add(x.url);
@@ -242,7 +266,7 @@ h1,h2,h3{font-family:var(--ft);font-weight:400;line-height:1.06;letter-spacing:-
 /* paquetes */
 .paqs{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:16px}
 .paq{background:var(--card);border:1px solid var(--bor);border-radius:20px;padding:22px}.paq h3{margin-bottom:10px}.paq ul{list-style:none}.paq li{display:flex;justify-content:space-between;gap:14px;padding:11px 0;border-top:1px dashed var(--bor)}.paq li:first-child{border-top:0}
-.paq li b{display:block;font-size:15px}.paq li span{display:block;color:var(--soft);font-size:14px}.paq li em{font-style:normal;font-weight:800;color:var(--p);white-space:nowrap}
+.paq li b{display:block;font-size:15px}.paq li span{display:block;color:var(--soft);font-size:14px}.paq li em{font-style:normal;font-weight:800;color:var(--p);white-space:nowrap}.paq li span+span{margin-top:6px}.paq ul.inc{list-style:disc;padding-left:18px;margin-top:6px;color:var(--soft);font-size:14px}.paq ul.inc li{display:list-item;border:0;padding:2px 0}
 body.l-carta .paq{background:none;border:0;border-top:2px solid var(--fg);border-radius:0;padding:18px 0}body.l-dostonos .paq{border-top:6px solid var(--p)}
 .cats{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:12px;margin-top:18px}.catimg img{width:100%;height:auto;border-radius:14px;border:1px solid var(--bor)}
 .doc{display:inline-block;margin-top:18px;font-weight:700;text-underline-offset:5px}

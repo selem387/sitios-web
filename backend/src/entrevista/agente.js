@@ -17,7 +17,8 @@ import { normalizarRedes, redesFaltantes, listaNombres } from './redes.js';
 import { redesEnCurso, atenderRedes } from './entrega.js';
 import { dominioEnCurso, atenderDominio, notaParaAri, quiereRetomar, retomarDominio, leerFlujo, borrarFlujo } from './dominio.js';
 import { limpiarDominio } from '../dominio/registrador.js';
-import { sitioEditable, estadoCambios, registrarPedido, clasificarMensaje } from './cambios.js';
+import { paginaEditable, estadoCambios, registrarPedido, clasificarMensaje } from './cambios.js';
+import { alElegir } from '../panel/rehacer.js';
 import { avisarEquipo } from './avisos.js';
 import { dominioRespondido, quiereDominio, PREGUNTA_DOMINIO, mensajePago, pagoPendiente, atenderPostCierre } from './pago_pagina.js';
 
@@ -87,8 +88,8 @@ async function respuestaPostCierre(u, texto = '', media = []) {
   const previos = await db.ultimosMensajes(u.id, 6).catch(() => []);
   const ultimoAgente = [...previos].reverse().find((m) => m.rol === 'agente')?.contenido || '';
   const adm = u.brief?.administracion;
-  // Página publicada en WordPress: los cambios que pide se aplican solos (cambios.js).
-  if (await sitioEditable(u.id)) {
+  // Página publicada (sitio en vivo o WordPress): los cambios que pide se aplican solos (cambios.js / cambios_vivo.js).
+  if (await paginaEditable(u.id)) {
     const est = await estadoCambios(u.id);
     let tipo;
     if (media.length) tipo = 'cambio';
@@ -109,10 +110,7 @@ async function respuestaPostCierre(u, texto = '', media = []) {
   let base;
   if (adm?.estado === 'entregado' && adm.url) base = `Tu página ya está publicada. Para cambiar precios, productos, fotos u horarios entra a tu administrador: ${adm.url}\nSi necesitas algo más, ya anoté tu comentario y el equipo lo revisa.`;
   else if (s?.estado === 'listo' && s.url_publica) {
-    // Sitio en vivo (no WordPress): el comentario queda para el equipo.
-    if (pideCambiosSinDetalle(texto)) return '¡Claro! 🙌 Dime qué quieres cambiar de tu página: textos, fotos, colores, secciones, precios, datos de contacto… Puedes escribirlo, mandarme un audio o fotos.';
-    await avisarEquipo('Cambio pedido en sitio en vivo', `${u.brief?.negocio?.nombre || u.id}: ${texto || '(fotos)'}`, u.id).catch(() => {});
-    base = 'Anotado ✅ Lo paso para ajustar tu página y te aviso aquí en cuanto quede.';
+    base = 'Tu página ya está lista 🎉: ' + s.url_publica + '\nDime qué quieres ajustar y lo cambio aquí mismo.';
   }
   else if (s?.estado === 'requiere_revision') base = 'Tu página ya está armada y el equipo la está revisando antes de mostrártela. Te mando la liga en cuanto quede; ya anoté tu comentario.';
   else if (s?.estado === 'error') base = 'Hubo un problema al armar tu página y el equipo ya lo está revisando. Te aviso aquí en cuanto quede; ya anoté tu comentario.';
@@ -233,6 +231,17 @@ export async function procesarMensaje(b) {
   let nueva = false;
   if (!e) {
     const u = await db.ultima(usuario_id);
+    // Propuestas mandadas después del cierre (sitio rehecho como app): su respuesta elige el diseño y se arma la página.
+    if (u && u.estado === 'completada' && !comando && propuestasPendientes(u.brief) && (texto || entrantes.length)) {
+      if (texto) await db.insertarMensaje(u.id, { rol: 'cliente', contenido: texto });
+      const md = entrantes.length ? await registrarMediaPostCierre(u, entrantes) : { claves: [] };
+      const r = await atenderPropuestas(u, u.brief || {}, { texto, huboMedia: md.claves.length > 0 });
+      if (r.brief !== u.brief) { await db.guardar(u.id, { brief: r.brief }); u.brief = r.brief; }
+      const rs = [...(r.responder?.textos || [])];
+      if (r.brief?.marca?.propuestas?.estado === 'elegida') rs.push(...await alElegir(u.id).catch((err) => { console.error('alElegir', err); return ['Dame un momento, estoy terminando tu página; te mando la liga aquí en cuanto quede 🙏']; }));
+      for (const t of rs) await db.insertarMensaje(u.id, { rol: 'agente', contenido: t });
+      return salida(u, rs, 'texto');
+    }
     // Ayuda con las redes después de entregar el acceso (hasta 30 días).
     if (u && u.estado === 'completada' && !comando && redesEnCurso(u.brief) && texto) {
       await db.insertarMensaje(u.id, { rol: 'cliente', contenido: texto });
@@ -249,7 +258,7 @@ export async function procesarMensaje(b) {
         return salida(u, rs, 'texto');
       }
     }
-    if (u && u.estado === 'completada' && !comando && (Date.now() - new Date(u.actualizado).getTime() < 7 * 864e5 || await sitioEditable(u.id))) {
+    if (u && u.estado === 'completada' && !comando && (Date.now() - new Date(u.actualizado).getTime() < 7 * 864e5 || await paginaEditable(u.id))) {
       // Entrevista ya cerrada (o con página publicada): los cambios que pida se aplican a su página; si no, se responde según el estado del sitio.
       if (texto) await db.insertarMensaje(u.id, { rol: 'cliente', contenido: texto });
       const md = entrantes.length ? await registrarMediaPostCierre(u, entrantes) : { claves: [], textoExtra: '' };
