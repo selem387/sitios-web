@@ -174,7 +174,8 @@ CÓMO EDITAR
 - Letra: cambia fontFamilies en "estilos" y opciones.fuentes_url (Google Fonts css2). Usa tipografías poco comunes y acordes al estilo; nunca Arial, Roboto, Open Sans, Montserrat, Poppins, Lato ni Inter.
 - Textos: escribe en el tono del sitio, español de México, sin faltas. Si corrige un dato (teléfono, correo, horario, dirección, precio), cámbialo en TODOS los lugares donde aparece (incluye enlaces tel:, wa.me, mailto:) y repórtalo en "contacto".
 - Teléfono/WhatsApp: el botón flotante usa opciones.whatsapp (solo dígitos con lada, 52 + 10 dígitos).
-- No inventes datos que el cliente no dio. Si no se entiende qué quiere o dónde, accion=preguntar con UNA pregunta concreta (p. ej. "¿Cuál foto quieres cambiar, la de la portada o la de 'Sobre mí'?").
+- No inventes datos que el cliente no dio: nunca cambies precios, horas, cantidades de fotos ni otras cifras que el cliente no escribió. Si pide aplicar "las correcciones que mandó" y no las encuentras en la conversación, accion=preguntar.
+- No "mejores" textos que el cliente no pidió cambiar. Si no se entiende qué quiere o dónde, accion=preguntar con UNA pregunta concreta (p. ej. "¿Cuál foto quieres cambiar, la de la portada o la de 'Sobre mí'?").
 - Si pide dejarlo como estaba antes, accion=revertir.
 - Lo que no se puede hacer editando (cambiar todo el diseño por otra propuesta, una sección nueva muy compleja, algo que requiere material que no mandó) va a pendientes_equipo; si nada se puede hacer, accion=equipo.
 - resumen_cliente: lo que cambiaste, simple y cálido, sin tecnicismos ni mencionar WordPress, bloques o código.`;
@@ -198,11 +199,15 @@ async function fotosDisponibles(e, actual, clavesNuevas) {
 }
 
 /** Lo que el cliente escribió desde que vio su página (o desde el último cambio aplicado): da contexto y rescata pedidos previos. */
+const soloCliente = new Map(); // entrevista → lo que escribió el cliente (fuente de cifras permitidas)
 async function mensajesDesdePagina(e, s) {
-  const desde = s?.publicado ? new Date(s.publicado) : new Date(Date.now() - 14 * 864e5);
+  // Desde la primera vez que se publicó su página (aunque luego se haya regenerado).
+  const pub = (await q(`SELECT min(publicado) AS t FROM sitios WHERE entrevista_id=$1`, [e.id])).rows[0]?.t || s?.publicado;
+  const desde = pub ? new Date(pub) : new Date(Date.now() - 14 * 864e5);
   const r = await q(`SELECT rol, contenido, transcripcion FROM mensajes WHERE entrevista_id=$1 AND creado > $2 AND rol IN ('cliente','agente') ORDER BY id DESC LIMIT 40`, [e.id, desde]);
   const aplicados = (await q(`SELECT plan->>'resumen_cliente' AS r FROM cambios_sitio WHERE entrevista_id=$1 AND estado='aplicado' AND plan->>'accion'='editar' ORDER BY id`, [e.id])).rows.map((x) => x.r).filter(Boolean);
-  const conv = r.rows.reverse().map((m) => `${m.rol === 'cliente' ? 'Cliente' : 'Ari'}: ${(m.transcripcion || m.contenido || '').slice(0, 3000)}`).join('\n');
+  const conv = r.rows.reverse().map((m) => `${m.rol === 'cliente' ? 'Cliente' : 'Ari'}: ${(m.transcripcion || m.contenido || '').slice(0, 12000)}`).join('\n');
+  soloCliente.set(e.id, r.rows.filter((m) => m.rol === 'cliente').map((m) => m.transcripcion || m.contenido || '').join('\n'));
   return `${conv}${aplicados.length ? `\n\nCAMBIOS YA APLICADOS Y VIGENTES (ya están en el contenido actual; no los repitas):\n- ${aplicados.join('\n- ')}` : ''}`;
 }
 
@@ -308,6 +313,21 @@ function buscarTolerante(txt, frag) {
   if (!patron) return { veces: 0, re: null };
   const re = new RegExp(patron, 'g');
   return { veces: (txt.match(re) || []).length, re };
+}
+
+// Ninguna cifra nueva en la página que el cliente no haya escrito.
+const cifras = (t) => new Set((quitarHtml(t).match(/\d+(?:[.,]\d+)*/g) || []).map((n) => n.replace(/,(?=\d{3}\b)/g, '')));
+export function cifrasInventadas(actual, destinos, fuente) {
+  const permitidas = cifras(fuente);
+  const errores = [];
+  for (const [d, nuevo] of Object.entries(destinos)) {
+    if (!DESTINOS_HTML(d)) continue;
+    const viejo = d.startsWith('pagina:') ? actual.paginas.find((p) => p.slug === d.slice(7))?.contenido : actual.partes?.[d];
+    const antes = cifras(viejo);
+    const nuevas = [...cifras(nuevo)].filter((n) => !antes.has(n) && !permitidas.has(n) && !/\{\{/.test(n));
+    if (nuevas.length) errores.push(`En ${d} aparecen cifras que el cliente no escribió: ${nuevas.slice(0, 12).join(', ')}. No cambies ni agregues precios, horas o cantidades que no estén en sus mensajes.`);
+  }
+  return errores;
 }
 
 // Ningún título (h1–h4) desaparece sin que el editor lo declare en textos_quitados.
@@ -436,6 +456,7 @@ export async function aplicarCambio(c) {
     for (const k of usadas) if (!fotos.some((f) => f.clave === k)) errores.push(`La foto "${k}" no está en FOTOS DISPONIBLES`);
     for (const [d, v] of Object.entries(ed.destinos)) if (d === 'estilos' && /\{\{media:/.test(JSON.stringify(v))) errores.push('No pongas fotos en "estilos"');
     errores.push(...titulosPerdidos(actual, ed.destinos, plan.textos_quitados));
+    errores.push(...cifrasInventadas(actual, ed.destinos, `${c.pedidos.map((p) => p.texto).join('\n')}\n${soloCliente.get(e.id) || ''}\n${JSON.stringify(e.brief?.contacto || {})}`));
     if (!errores.length) break;
   }
   await guardar(c.id, { plan });
