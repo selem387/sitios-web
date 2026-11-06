@@ -67,7 +67,7 @@ export function mergeProfundo(base, patch) {
 function salida(e, respuestas, esperando) {
   const idx = Math.max(0, BLOQUES.indexOf(e.bloque_actual));
   return {
-    sesion_id: e.id, usuario_id: e.usuario_id, estado: e.estado,
+    sesion_id: e.id, usuario_id: e.usuario_id, estado: e.estado, nombre: e.nombre || e.brief?.cliente?.nombre || null,
     bloque: e.bloque_actual, paso: idx, total_pasos: TOTAL_BLOQUES,
     esperando, respuestas, metadata: e.metadata || {},
   };

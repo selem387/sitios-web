@@ -53,12 +53,13 @@ button:disabled{opacity:.5;cursor:default}
 #puerta button{border-radius:10px}
 .err{color:var(--peligro);font-size:14px;min-height:1em}
 svg{width:22px;height:22px}
+#cliente{font-weight:600;color:var(--tinta)}#cliente:not(:empty)::after{content:' · ';font-weight:400;color:var(--suave)}
 </style>
 </head>
 <body>
 <header>
   <div class="avatar" aria-hidden="true">A</div>
-  <div><h1>${T}</h1><p id="estado">Tu página web en una conversación</p></div>
+  <div><h1>${T}</h1><p><span id="cliente"></span><span id="estado">Tu página web en una conversación</span></p></div>
   <button class="sec" id="nueva" type="button">Nueva conversación</button>
 </header>
 <main id="chat" aria-live="polite"></main>
@@ -89,7 +90,9 @@ let codigo = mem.get('ari_codigo') || '';
 let usuario = mem.get('ari_usuario') || nuevoUsuario();
 let pendientes = [], ocupado = false, sondeo = null;
 
-function nuevoUsuario(){ const u = 'web-' + crypto.randomUUID(); mem.set('ari_usuario', u); mem.del('ari_historial'); return u; }
+function nuevoUsuario(){ const u = 'web-' + crypto.randomUUID(); mem.set('ari_usuario', u); mem.del('ari_historial'); ponerNombre(''); return u; }
+// Nombre del cliente arriba del chat en cuanto lo da (se guarda para recargas).
+function ponerNombre(n){ n = String(n || '').trim().slice(0, 40); if (n) mem.set('ari_nombre', n); else mem.del('ari_nombre'); const el = document.getElementById('cliente'); if (el) el.textContent = n; }
 function esc(s){ return String(s).replace(/[&<>"]/g, (c) => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])); }
 function formato(s){ return esc(s).replace(/\\*([^*\\n]+)\\*/g,'<b>$1</b>').replace(/(^|\\s)_([^_\\n]+)_/g,'$1<i>$2</i>').replace(/(https?:\\/\\/[^\\s<]+)/g,'<a href="$1" target="_blank" rel="noopener">$1</a>'); }
 function historial(){ try { return JSON.parse(mem.get('ari_historial') || '[]'); } catch { return []; } }
@@ -126,6 +129,7 @@ async function enviar(texto, media = [], opciones = {}, oculto = false) {
     for (const r of d.respuestas || []) agregar({ de:'ari', texto: r });
     for (const m of d.media || []) agregar({ de:'ari', texto: m.caption || '', media: [m] });
     iniciarAvisos();
+    if ('nombre' in d) ponerNombre(d.nombre);
     if (d.total_pasos) $('#estado').textContent = 'Paso ' + Math.min(d.paso, d.total_pasos) + ' de ' + d.total_pasos;
     if (d.estado === 'completada') { $('#estado').textContent = 'Entrevista terminada'; if (d.generando) agregar({ tipo:'sis', texto:'Estoy armando tu página. Tarda unos minutos; aquí te aviso.' }); iniciarSondeo(); }
   } catch (e) { ind.remove(); if (e.message !== 'codigo') agregar({ tipo:'sis', texto:'No se pudo enviar: ' + e.message }); }
@@ -200,6 +204,7 @@ function arrancar(){
   if (h.length) iniciarAvisos();
   t.focus();
 }
+ponerNombre(mem.get('ari_nombre'));
 if (!codigo) $('#puerta').hidden = false; else arrancar();
 </script>
 </body>
