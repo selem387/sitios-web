@@ -384,6 +384,7 @@ export function titulosPerdidos(actual, destinos, quitados = []) {
     for (const t of titulos(viejo)) {
       if (ahora.has(t) || textoNuevo.includes(t) || q2.some((x) => x && (x.includes(t) || t.includes(x)))) continue;
       if ([...ahora].some((n) => parecido(t, n) >= 0.5)) continue; // renombrado (p. ej. "Smash Cake (Primer Año)" → "Smash Cake | Primer Añito")
+      if (parecido(t, textoNuevo) >= 0.75) continue; // sigue en la página aunque ya no sea título (p. ej. "Paquete Boda Civil + Recepción" → "Boda Civil + Recepción — $3,300 MXN")
       errores.push(`En ${d} desapareció el título "${t}". Si el cliente no pidió quitarlo, consérvalo (o su versión nueva); si se quita a propósito, ponlo en textos_quitados.`);
     }
     // Títulos repetidos que antes no lo estaban (p. ej. la misma categoría encima de cada tarjeta).
