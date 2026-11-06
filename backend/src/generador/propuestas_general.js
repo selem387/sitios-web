@@ -113,6 +113,13 @@ export function agruparOferta(items = []) {
   return [...grupos.values()];
 }
 
+/** Giro en una línea legible: su primera frase (antes de ":" ";" o "("), recortada en palabra completa. */
+export function giroCorto(giro, max = 48) {
+  let t = String(giro || '').split(/[:;(]/)[0].trim();
+  if (t.length > max) { t = t.slice(0, max); t = t.slice(0, Math.max(t.lastIndexOf(','), t.lastIndexOf(' '))).replace(/[,\s]+$/, ''); }
+  return t;
+}
+
 /** Texto largo del cliente: un <p> por párrafo (renglón en blanco), saltos simples respetados y **negritas** del chat como <strong>. */
 export function parrafosHTML(texto, clase = '') {
   const ps = String(texto || '').replace(/\r/g, '').split(/\n\s*\n/).map((x) => x.trim()).filter(Boolean);
@@ -166,8 +173,8 @@ function pagina(d) {
 
   /* --- Héroes --- */
   const heros = {
-    portada: () => `<section class="hero h-portada">${heroFoto ? img(heroFoto, { cls: 'fondo', eager: true }) : ''}<div class="velo"></div><div class="wrap in"><p class="kicker">${esc(neg.ciudad ? `${neg.giro_texto || ''} · ${neg.ciudad}` : neg.giro_texto || '')}</p><h1>${esc(t.titular)}</h1><p class="sub">${esc(t.subtitulo)}</p>${cta()}</div></section>`,
-    editorial: () => `<section class="hero h-edit wrap"><div class="txt"><p class="kicker">${esc(neg.giro_texto || '')}</p><h1>${esc(t.titular)}</h1><p class="sub">${esc(t.subtitulo)}</p>${cta()}<ul class="info">${info}</ul></div>${heroFoto ? `<figure class="arco">${img(heroFoto, { eager: true })}</figure>` : ''}</section>`,
+    portada: () => `<section class="hero h-portada">${heroFoto ? img(heroFoto, { cls: 'fondo', eager: true }) : ''}<div class="velo"></div><div class="wrap in"><p class="kicker">${esc(neg.ciudad ? `${giroCorto(neg.giro_texto) || ''} · ${neg.ciudad}` : giroCorto(neg.giro_texto) || '')}</p><h1>${esc(t.titular)}</h1><p class="sub">${esc(t.subtitulo)}</p>${cta()}</div></section>`,
+    editorial: () => `<section class="hero h-edit wrap"><div class="txt"><p class="kicker">${esc(giroCorto(neg.giro_texto) || '')}</p><h1>${esc(t.titular)}</h1><p class="sub">${esc(t.subtitulo)}</p>${cta()}<ul class="info">${info}</ul></div>${heroFoto ? `<figure class="arco">${img(heroFoto, { eager: true })}</figure>` : ''}</section>`,
     mosaico: () => { const m = fotosT.slice(0, 5); return `<section class="hero h-mos wrap"><h1>${esc(t.titular)}</h1><p class="sub">${esc(t.subtitulo)}</p>${cta()}<div class="mos m${m.length}">${m.map((x, k) => img(x, { eager: k < 2 })).join('')}</div></section>`; },
     logo: () => `<section class="hero h-logo wrap">${mat.logo ? logoHTML(mat.logo, p.bg, p.fg, { clase: 'logo-grande', alt: d.nombre }) : `<p class="nombre-grande">${esc(d.nombre)}</p>`}<h1>${esc(t.titular)}</h1><p class="sub">${esc(t.subtitulo)}</p>${cta()}${heroFoto ? `<figure class="ovalo">${img(heroFoto, { eager: true })}</figure>` : ''}</section>`,
     dostonos: () => `<section class="hero h-dos"><div class="wrap in"><div class="txt"><h1>${esc(t.titular)}</h1><p class="sub">${esc(t.subtitulo)}</p>${cta('inv')}</div>${heroFoto ? `<figure class="marco">${img(heroFoto, { eager: true })}</figure>` : ''}</div></section>`,

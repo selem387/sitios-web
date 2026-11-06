@@ -38,3 +38,12 @@ test('la idea para redes usa solo datos de la ficha', () => {
   assert.match(i, /3 recámaras/);
   assert.match(i, /no inventes/);
 });
+
+test('un precio con "$1" no rompe la página (bug de marcadores de reemplazo)', () => {
+  const T = { ...P, slug: 't', datos: { ...P.datos, titulo: 'Terreno', precio: 1200000 } };
+  const h = conPropiedades(HTML, [T]);
+  assert.match(h, /\$1,200,000 MXN/);
+  assert.equal((h.match(/class="hero/g) || []).length, 1);
+  const f = paginaPropiedad(HTML, T, { wa: '52999' });
+  assert.match(f, /\$1,200,000 MXN/);
+});

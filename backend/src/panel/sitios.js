@@ -6,6 +6,7 @@ import * as db from '../entrevista/db.js';
 import { mergeProfundo } from '../entrevista/agente.js';
 import { procesarMateriales } from '../generador/materiales.js';
 import { renderPropuestas } from '../generador/propuestas_html.js';
+import { giroCorto } from '../generador/propuestas_general.js';
 import { parPorNombres } from '../generador/fuentes.js';
 import { REDES, normalizarRedes } from '../entrevista/redes.js';
 import { config } from '../config.js';
@@ -167,7 +168,8 @@ export function disenoElegido(brief) {
 // Convierte la propuesta en sitio: indexable, sin etiqueta "Propuesta X" y con título real.
 export function comoSitio(html, brief, { letra, dominio } = {}) {
   const n = brief.negocio || {};
-  const titulo = [n.nombre, n.giro_texto && n.ciudad ? `${n.giro_texto} en ${n.ciudad}` : n.giro_texto].filter(Boolean).join(' · ');
+  const giro = giroCorto(n.giro_texto);
+  const titulo = [n.nombre, giro && n.ciudad ? `${giro} en ${n.ciudad}` : giro].filter(Boolean).join(' · ');
   return html
     .replace('<meta name="robots" content="noindex">', dominio ? `<link rel="canonical" href="https://${esc(dominio)}/">` : '<meta name="robots" content="noindex">')
     .replace(/<title>[^<]*<\/title>/, `<title>${esc(titulo || n.nombre || '')}</title>`)

@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { agruparOferta, detalleHTML } from '../src/generador/propuestas_general.js';
 import { limpiarSeccion } from '../src/panel/sitios.js';
 import { renglonesAjenos, textosInventados, briefReinterpretado, separarPrecio } from '../src/panel/reinterpretar.js';
-import { parrafosHTML } from '../src/generador/propuestas_general.js';
+import { parrafosHTML, giroCorto } from '../src/generador/propuestas_general.js';
 
 const CLIENTE = `quiero que ajustes los paquetes, los quiero asi;
 ## 🎂 Smash Cake | Primer Añito
@@ -56,4 +56,10 @@ test('el precio no se repite en el nombre', () => {
 
 test('historia en párrafos con negritas del chat', () => {
   assert.equal(parrafosHTML('Hola\n\nCon **12 años**', 'historia'), '<p class="historia">Hola</p><p class="historia">Con <strong>12 años</strong></p>');
+});
+
+test('el giro largo se resume en la portada', () => {
+  assert.equal(giroCorto('Consultoría inmobiliaria y de inversión: venta y renta de casas en privadas'), 'Consultoría inmobiliaria y de inversión');
+  assert.equal(giroCorto('Fotógrafa'), 'Fotógrafa');
+  assert.ok(giroCorto('Venta y renta de casas en privadas residenciales, departamentos frente a la playa y terrenos').length <= 48);
 });

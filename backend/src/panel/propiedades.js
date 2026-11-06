@@ -226,12 +226,13 @@ ${d.inversion ? `<div class="caja desc" style="margin-top:18px"><h2>Potencial de
   const titulo = `${d.titulo} · ${precioTexto(d)}${negocio ? ` · ${negocio}` : ''}`;
   const desc = `${OPERACIONES[d.operacion]} · ${TIPOS[d.tipo]}${lugarTexto(d) ? ` en ${lugarTexto(d)}` : ''}. ${datosClave(d).join(', ')}.`.slice(0, 300);
   const ld = `<script type="application/ld+json">${JSON.stringify(jsonLdPropiedad(p, url, negocio)).replace(/</g, '\\u003c')}</script>`;
-  let out = html.replace(/<main>[\s\S]*<\/main>/, main)
-    .replace(/<title>[^<]*<\/title>/, `<title>${esc(titulo)}</title>`)
-    .replace(/<meta name="description" content="[^"]*">/, `<meta name="description" content="${esc(desc)}">`)
-    .replace('</head>', `<meta property="og:title" content="${esc(d.titulo)}"><meta property="og:description" content="${esc(desc)}">${p.imagenes?.[0] ? `<meta property="og:image" content="${esc(p.imagenes[0])}">` : ''}<meta property="og:type" content="website">${url ? `<link rel="canonical" href="${esc(url)}">` : ''}${ld}</head>`);
+  let out = html.replace(/<main>[\s\S]*<\/main>/, () => main)
+    .replace(/<title>[^<]*<\/title>/, () => `<title>${esc(titulo)}</title>`)
+    .replace(/<meta name="description" content="[^"]*">/, () => `<meta name="description" content="${esc(desc)}">`)
+    
+    .replace('</head>', () => `<meta property="og:title" content="${esc(d.titulo)}"><meta property="og:description" content="${esc(desc)}">${p.imagenes?.[0] ? `<meta property="og:image" content="${esc(p.imagenes[0])}">` : ''}<meta property="og:type" content="website">${url ? `<link rel="canonical" href="${esc(url)}">` : ''}${ld}</head>`);
   // El botón flotante de WhatsApp lleva el mensaje de esta propiedad.
-  if (waUrl) out = out.replace(/<a class="wa" href="[^"]*"/, `<a class="wa" href="${esc(waUrl)}"`);
+  if (waUrl) out = out.replace(/<a class="wa" href="[^"]*"/, () => `<a class="wa" href="${esc(waUrl)}"`);
   // Enlaces del menú (anclas de la página de inicio) apuntan a la portada.
   out = out.replace(/(<nav>[\s\S]*?<\/nav>)/, (nav) => nav.replace(/href="#/g, `href="${base}/#`));
   return out;
@@ -241,7 +242,8 @@ ${d.inversion ? `<div class="caja desc" style="margin-top:18px"><h2>Potencial de
 export function conPropiedades(html, props, { base = '' } = {}) {
   const sec = seccionPropiedades(props, { base });
   if (!sec) return html;
-  let out = html.replace(/(<section class="hero[\s\S]*?<\/section>)/, `$1${sec}`);
-  if (out === html) out = html.replace('<main>', `<main>${sec}`);
-  return out.replace(/(<nav>)/, `$1<a href="#propiedades">Propiedades</a>`);
+  // Reemplazos con función: el HTML insertado lleva precios con "$" que no deben leerse como marcadores.
+  let out = html.replace(/(<section class="hero[\s\S]*?<\/section>)/, (m) => m + sec);
+  if (out === html) out = html.replace('<main>', () => `<main>${sec}`);
+  return out.replace('<nav>', () => '<nav><a href="#propiedades">Propiedades</a>');
 }
