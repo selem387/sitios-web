@@ -16,6 +16,7 @@ import { registerAdminRoutes } from './admin.js';
 import { registerEntrevistaRoutes, initEntrevista } from './entrevista/index.js';
 import { registerGeneradorRoutes } from './generador/index.js';
 import { registerChatRoutes } from './chat/index.js';
+import { repararGuardados } from './entrevista/avisos.js';
 import { registerPanelRoutes } from './panel/index.js';
 import { middlewareDominios } from './generador/dominios.js';
 import { invokeFunction } from './functions.js';
@@ -202,6 +203,7 @@ async function main() {
   await initControl();
   await migrateAllTenants();
   await initEntrevista();
+  await repararGuardados().catch((e) => console.error('repararGuardados', e.message));
   const server = serve({ fetch: fetchWithPrefix, port: config.port, hostname: '0.0.0.0' }, (info) => {
     console.log(`sitios-web backend escuchando en :${info.port}`);
   });

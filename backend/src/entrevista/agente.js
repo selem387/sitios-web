@@ -85,7 +85,7 @@ const ALGO_CONCRETO = /\b(foto\w*|imagen\w*|color\w*|texto\w*|titulo\w*|frase\w*
 export const pideCambiosSinDetalle = (texto) => { const t = SIN_ACENTOS(texto); return !!t && t.split(' ').length <= 14 && PIDE_CAMBIOS.test(t) && !ALGO_CONCRETO.test(t); };
 
 async function respuestaPostCierre(u, texto = '', media = []) {
-  const s = (await db.q(`SELECT estado, url_publica FROM sitios WHERE entrevista_id=$1 ORDER BY id DESC LIMIT 1`, [u.id]).catch(() => ({ rows: [] }))).rows[0];
+  const s = (await db.q(`SELECT estado, url_publica FROM sitios WHERE entrevista_id=$1 AND estado<>'reemplazado' ORDER BY id DESC LIMIT 1`, [u.id]).catch(() => ({ rows: [] }))).rows[0];
   const previos = await db.ultimosMensajes(u.id, 6).catch(() => []);
   const ultimoAgente = [...previos].reverse().find((m) => m.rol === 'agente')?.contenido || '';
   const adm = u.brief?.administracion;
@@ -108,15 +108,25 @@ async function respuestaPostCierre(u, texto = '', media = []) {
     if (!r.nuevo) return 'Anotado ✅ También lo incluyo.';
     return 'Anotado ✅ En un par de minutos lo aplico a tu página y te mando la liga aquí. Si quieres cambiar algo más, mándamelo ahora y lo incluyo.';
   }
-  let base;
-  if (adm?.estado === 'entregado' && adm.url) base = `Tu página ya está publicada. Para cambiar precios, productos, fotos u horarios entra a tu administrador: ${adm.url}\nSi necesitas algo más, ya anoté tu comentario y el equipo lo revisa.`;
-  else if (s?.estado === 'listo' && s.url_publica) {
-    base = 'Tu página ya está lista 🎉: ' + s.url_publica + '\nDime qué quieres ajustar y lo cambio aquí mismo.';
+  // Falta algo indispensable (fotos, servicios, logo…): no se le hace esperar, se reabre la entrevista y se le pide.
+  if (!(s?.estado === 'listo' && s.url_publica)) {
+    const f = faltantes(u.brief || {}, await db.assetsDe(u.id));
+    if (f.length) {
+      await db.guardar(u.id, { estado: 'en_curso', bloque_actual: f[0].bloque });
+      await db.evento(u.id, 'entrevista_reabierta', { desde: f[0].bloque, motivo: 'faltan requisitos', faltan: f.map((x) => x.id) });
+      return `Para terminar tu página me faltan algunos datos. Empecemos con este:\n\n${f[0].pedir}`;
+    }
   }
-  else if (s?.estado === 'requiere_revision') base = 'Tu página ya está armada y el equipo la está revisando antes de mostrártela. Te mando la liga en cuanto quede; ya anoté tu comentario.';
-  else if (s?.estado === 'error') base = 'Hubo un problema al armar tu página y el equipo ya lo está revisando. Te aviso aquí en cuanto quede; ya anoté tu comentario.';
-  else base = 'Sigo armando tu página; en cuanto quede te mando la liga aquí. Ya anoté tu comentario.';
-  if (ultimoAgente.startsWith(base)) return 'Anotado 👍';
+  const t = SIN_ACENTOS(texto);
+  const esPedido = !!t && (PIDE_CAMBIOS.test(t) || ALGO_CONCRETO.test(t)) && !/\?\s*$/.test(String(texto).trim());
+  const anotado = esPedido ? ' Ya guardé lo que me pediste para aplicarlo.' : '';
+  let base;
+  if (adm?.estado === 'entregado' && adm.url) base = `Tu página ya está publicada. Para cambiar precios, productos, fotos u horarios entra a tu administrador: ${adm.url}`;
+  else if (s?.estado === 'listo' && s.url_publica) base = 'Tu página ya está lista 🎉: ' + s.url_publica + '\nDime qué quieres ajustar y lo cambio aquí mismo.';
+  else if (s?.estado === 'requiere_revision' || s?.estado === 'error') base = 'Todavía no: estoy dando los últimos ajustes a tu página para que quede bien. En cuanto quede te mando la liga aquí.';
+  else base = 'Todavía no: sigo armando tu página. En cuanto quede te mando la liga aquí.';
+  base += anotado;
+  if (ultimoAgente.startsWith(base)) return esPedido ? 'Anotado 👍' : 'Sigue en proceso; en cuanto quede te escribo aquí 🙏';
   return base;
 }
 

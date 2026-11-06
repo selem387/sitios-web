@@ -17,6 +17,7 @@ import { encolar } from '../generador/index.js';
 import { paginaChat } from './pagina.js';
 import { DIR_PROPUESTAS } from '../generador/propuestas_html.js';
 import { pendientesChat } from '../entrevista/avisos.js';
+import { urlSitio } from '../panel/cambios_vivo.js';
 
 const DIR = path.join(config.dataDir, 'chat');
 const CODIGO = process.env.CHAT_CODIGO || '';
@@ -42,12 +43,18 @@ function auth(c) {
   if (dado.length !== real.length || !crypto.timingSafeEqual(dado, real)) throw new HttpError(401, 'Código de acceso incorrecto');
 }
 
+// Estado de la página de su última entrevista, tal como lo ve el cliente:
+//   entrevista (reabierta o en curso: no hay nada que esperar) · armando · listo · requiere_revision · error
 async function sitioDe(usuarioId) {
-  const r = await db.q(
-    `SELECT s.id, s.estado, s.url_publica, s.reporte->'auditoria'->>'captura' AS captura, s.reporte->>'error' AS error, e.id AS sesion_id
-     FROM entrevistas e LEFT JOIN sitios s ON s.entrevista_id = e.id
-     WHERE e.usuario_id = $1 ORDER BY e.creado DESC, s.id DESC LIMIT 1`, [usuarioId]);
-  return r.rows[0] || null;
+  const e = (await db.q(`SELECT id, estado FROM entrevistas WHERE usuario_id=$1 ORDER BY creado DESC LIMIT 1`, [usuarioId])).rows[0];
+  if (!e) return null;
+  if (e.estado !== 'completada') return { sesion_id: e.id, estado: 'entrevista' };
+  const sv = (await db.q(`SELECT * FROM sitios_vivos WHERE entrevista_id=$1 AND estado='activo'`, [e.id]).catch(() => ({ rows: [] }))).rows[0];
+  if (sv) return { id: `v${sv.id}`, estado: 'listo', url_publica: urlSitio(sv), captura: null, sesion_id: e.id };
+  const s = (await db.q(
+    `SELECT id, estado, url_publica, reporte->'auditoria'->>'captura' AS captura FROM sitios
+     WHERE entrevista_id=$1 AND estado<>'reemplazado' ORDER BY id DESC LIMIT 1`, [e.id]).catch(() => ({ rows: [] }))).rows[0];
+  return s ? { ...s, sesion_id: e.id } : { id: 'pendiente', estado: 'armando', sesion_id: e.id };
 }
 
 export function registerChatRoutes(app, wrap) {

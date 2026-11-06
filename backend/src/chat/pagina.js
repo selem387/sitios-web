@@ -97,7 +97,9 @@ function esc(s){ return String(s).replace(/[&<>"]/g, (c) => ({'&':'&amp;','<':'&
 function formato(s){ return esc(s).replace(/\\*([^*\\n]+)\\*/g,'<b>$1</b>').replace(/(^|\\s)_([^_\\n]+)_/g,'$1<i>$2</i>').replace(/(https?:\\/\\/[^\\s<]+)/g,'<a href="$1" target="_blank" rel="noopener">$1</a>'); }
 function historial(){ try { return JSON.parse(mem.get('ari_historial') || '[]'); } catch { return []; } }
 function guardar(item){ const h = historial(); h.push(item); mem.set('ari_historial', JSON.stringify(h.slice(-200))); }
+function reparar(x){ if (typeof x !== 'string' || !/[ÃÂ]|ð/.test(x)) return x; try { const b = []; for (const ch of x) { const c = ch.codePointAt(0); if (c > 255) return x; b.push(c); } const r = new TextDecoder('utf-8', { fatal:true }).decode(new Uint8Array(b)); return (r.match(/[ÃÂð]/g) || []).length < (x.match(/[ÃÂð]/g) || []).length ? r : x; } catch { return x; } }
 function pintar(item){
+  if (item.texto) item.texto = reparar(item.texto);
   const d = document.createElement('div');
   if (item.tipo === 'sis') { d.className = 'sis'; d.textContent = item.texto; }
   else if (item.tipo === 'sitio') { d.className = 'sitio'; d.innerHTML = '<b>Tu página está lista para revisar</b>' + (item.captura ? '<img src="'+esc(item.captura)+'" alt="Vista previa de tu página en celular">' : '') + '<a href="'+esc(item.url)+'" target="_blank" rel="noopener">'+esc(item.url)+'</a>'; }
@@ -107,7 +109,7 @@ function pintar(item){
   }
   chat.appendChild(d); chat.scrollTop = chat.scrollHeight;
 }
-function agregar(item){ guardar(item); pintar(item); }
+function agregar(item){ const h = historial(), u = h[h.length-1]; if (item.tipo === 'sis' && u && u.tipo === 'sis' && u.texto === item.texto) return; guardar(item); pintar(item); }
 
 async function api(ruta, op = {}) {
   const r = await fetch(ruta, { ...op, headers: { ...(op.body && !(op.body instanceof FormData) ? {'content-type':'application/json'} : {}), 'x-chat-codigo': codigo, ...(op.headers||{}) } });
@@ -151,8 +153,7 @@ function iniciarSondeo(){
     try {
       const s = await api('/chat/v1/sitio?usuario_id=' + encodeURIComponent(usuario));
       if (s.estado === 'listo') { clearInterval(sondeo); sondeo=null; mem.set('ari_sitio_'+usuario,'1'); agregar({ tipo:'sitio', url: s.url_publica, captura: s.captura }); }
-      if (s.estado === 'requiere_revision') { clearInterval(sondeo); sondeo=null; mem.set('ari_sitio_'+usuario,'1'); agregar({ tipo:'sis', texto:'Tu página ya está armada y la está revisando el equipo de ${M} antes de mostrártela. Te aviso en cuanto quede.' }); }
-      if (s.estado === 'error') { clearInterval(sondeo); sondeo=null; agregar({ tipo:'sis', texto:'Hubo un problema al armar la página; el equipo de ${M} ya lo está revisando.' }); }
+      if (s.estado === 'entrevista') { clearInterval(sondeo); sondeo=null; }
     } catch {}
   }, 15000);
 }

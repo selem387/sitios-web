@@ -1,4 +1,5 @@
 // Acceso a la base `web_builder`: entrevistas, mensajes, assets, memoria y eventos.
+import { repararTexto } from '../texto.js';
 import { ensureDatabase, poolFor } from '../db.js';
 import { config } from '../config.js';
 import { SCHEMA } from './schema.js';
@@ -56,6 +57,7 @@ export async function guardar(id, cambios) {
 
 // ---- mensajes ----
 export async function insertarMensaje(entrevistaId, { rol, tipo = 'texto', contenido, transcripcion, bloque }) {
+  contenido = repararTexto(contenido); transcripcion = repararTexto(transcripcion);
   const r = await q(
     `INSERT INTO mensajes (entrevista_id, rol, tipo, contenido, transcripcion, bloque) VALUES ($1,$2,$3,$4,$5,$6) RETURNING id`,
     [entrevistaId, rol, tipo, contenido || null, transcripcion || null, bloque || null],

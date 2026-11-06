@@ -3,11 +3,12 @@
 // y, si la entrevista tiene callback_url (WhatsApp), se envían como evento "aviso".
 import * as db from './db.js';
 import { sendMail } from '../mail.js';
+import { repararTexto } from '../texto.js';
 
 export async function avisar(entrevistaId, textos, { evento = 'aviso', datos = {} } = {}) {
   const e = await db.obtener(entrevistaId);
   if (!e) return;
-  const lista = (Array.isArray(textos) ? textos : [textos]).filter(Boolean);
+  const lista = (Array.isArray(textos) ? textos : [textos]).filter(Boolean).map(repararTexto);
   for (const t of lista) {
     await db.insertarMensaje(e.id, { rol: 'agente', contenido: t, bloque: e.bloque_actual });
     await db.q('INSERT INTO avisos (entrevista_id, usuario_id, texto, evento) VALUES ($1,$2,$3,$4)', [e.id, e.usuario_id, t, evento]);
@@ -30,7 +31,20 @@ export async function pendientesChat(usuarioId) {
   const r = await db.q(`UPDATE avisos SET entregado=now() WHERE id IN (
       SELECT id FROM avisos WHERE usuario_id=$1 AND entregado IS NULL ORDER BY id LIMIT 20)
     RETURNING id, texto, evento, creado`, [usuarioId]);
-  return r.rows.sort((a, b) => a.id - b.id);
+  return r.rows.sort((a, b) => a.id - b.id).map((x) => ({ ...x, texto: repararTexto(x.texto) }));
+}
+
+/** Arregla mensajes y avisos guardados con doble codificación (idempotente; corre al arrancar). */
+export async function repararGuardados() {
+  let n = 0;
+  for (const [tabla, col] of [['mensajes', 'contenido'], ['mensajes', 'transcripcion'], ['avisos', 'texto']]) {
+    const r = await db.q(`SELECT id, ${col} AS t FROM ${tabla} WHERE ${col} ~ '[ÃÂ]|ð'`).catch(() => ({ rows: [] }));
+    for (const x of r.rows) {
+      const t = repararTexto(x.t);
+      if (t !== x.t) { await db.q(`UPDATE ${tabla} SET ${col}=$1 WHERE id=$2`, [t, x.id]); n++; }
+    }
+  }
+  if (n) console.log(`[texto] ${n} mensajes con acentos rotos reparados`);
 }
 
 /** Aviso interno para el equipo (traspasos, compras que requieren revisión). */
