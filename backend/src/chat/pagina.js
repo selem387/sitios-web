@@ -1,12 +1,18 @@
 // Página del chat web de prueba. Un solo archivo, sin dependencias externas salvo una fuente de Google.
-export function paginaChat() {
+// opciones por dominio (tabla dominios_cliente, columna datos): {titulo, marca, descripcion}.
+const escHtml = (x) => String(x ?? '').replace(/[&<>"']/g, (ch) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[ch]));
+export function paginaChat({ titulo = 'Ari · IAprop', marca = 'IAprop', descripcion = 'Tu página web profesional en una conversación: contesta unas preguntas y Ari la arma por ti.', url = '' } = {}) {
+  const T = escHtml(titulo), M = escHtml(marca), D = escHtml(descripcion);
   return `<!doctype html>
 <html lang="es">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="robots" content="noindex">
-<title>Ari · IAprop</title>
+<title>${T}</title>
+<meta name="description" content="${D}">
+<meta property="og:type" content="website"><meta property="og:title" content="${T}"><meta property="og:description" content="${D}"><meta property="og:site_name" content="${M}">${url ? `<meta property="og:url" content="${escHtml(url)}">` : ''}
+<meta name="twitter:card" content="summary"><meta name="twitter:title" content="${T}"><meta name="twitter:description" content="${D}">
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Figtree:wght@400;500;600;700&display=swap" rel="stylesheet">
 <style>
@@ -52,7 +58,7 @@ svg{width:22px;height:22px}
 <body>
 <header>
   <div class="avatar" aria-hidden="true">A</div>
-  <div><h1>Ari · IAprop</h1><p id="estado">Tu página web en una conversación</p></div>
+  <div><h1>${T}</h1><p id="estado">Tu página web en una conversación</p></div>
   <button class="sec" id="nueva" type="button">Nueva conversación</button>
 </header>
 <main id="chat" aria-live="polite"></main>
@@ -69,7 +75,7 @@ svg{width:22px;height:22px}
 <div id="puerta" hidden>
   <form id="fp">
     <h2>Chat de prueba</h2>
-    <p>Escribe el código de acceso que te dio IAprop.</p>
+    <p>Escribe el código de acceso que te dio ${M}.</p>
     <input id="codigo" type="password" autocomplete="off" aria-label="Código de acceso">
     <div class="err" id="perr"></div>
     <button class="prim">Entrar</button>
@@ -141,8 +147,8 @@ function iniciarSondeo(){
     try {
       const s = await api('/chat/v1/sitio?usuario_id=' + encodeURIComponent(usuario));
       if (s.estado === 'listo') { clearInterval(sondeo); sondeo=null; mem.set('ari_sitio_'+usuario,'1'); agregar({ tipo:'sitio', url: s.url_publica, captura: s.captura }); }
-      if (s.estado === 'requiere_revision') { clearInterval(sondeo); sondeo=null; mem.set('ari_sitio_'+usuario,'1'); agregar({ tipo:'sis', texto:'Tu página ya está armada y la está revisando el equipo de IAprop antes de mostrártela. Te aviso en cuanto quede.' }); }
-      if (s.estado === 'error') { clearInterval(sondeo); sondeo=null; agregar({ tipo:'sis', texto:'Hubo un problema al armar la página; el equipo de IAprop ya lo está revisando.' }); }
+      if (s.estado === 'requiere_revision') { clearInterval(sondeo); sondeo=null; mem.set('ari_sitio_'+usuario,'1'); agregar({ tipo:'sis', texto:'Tu página ya está armada y la está revisando el equipo de ${M} antes de mostrártela. Te aviso en cuanto quede.' }); }
+      if (s.estado === 'error') { clearInterval(sondeo); sondeo=null; agregar({ tipo:'sis', texto:'Hubo un problema al armar la página; el equipo de ${M} ya lo está revisando.' }); }
     } catch {}
   }, 15000);
 }
@@ -181,7 +187,7 @@ $('#mic').onclick = async () => {
   } catch { agregar({ tipo:'sis', texto:'No hay permiso para usar el micrófono.' }); }
 };
 $('#nueva').onclick = () => { if (!confirmarNueva()) return; usuario = nuevoUsuario(); chat.innerHTML=''; $('#estado').textContent='Tu página web en una conversación'; enviar('pagina', [], {}, true); };
-function confirmarNueva(){ return historial().length === 0 || window.confirm('¿Empezar una conversación nueva? La actual queda guardada para IAprop.'); }
+function confirmarNueva(){ return historial().length === 0 || window.confirm('¿Empezar una conversación nueva? La actual queda guardada para ${M}.'); }
 $('#fp').addEventListener('submit', async (e) => {
   e.preventDefault(); codigo = $('#codigo').value.trim(); $('#perr').textContent='';
   try { await api('/chat/v1/sitio?usuario_id=' + encodeURIComponent(usuario)); mem.set('ari_codigo', codigo); $('#puerta').hidden = true; arrancar(); }

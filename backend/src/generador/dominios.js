@@ -73,7 +73,7 @@ export function middlewareDominios() {
     // Dominio del chat de Ari (p. ej. weber.lemoss.co): la raíz es el chat; /chat/v1, /chat/archivos y /p/ siguen normales.
     if (modos.has(reg.modo)) return modos.get(reg.modo)(c, reg, next, host);
     if (reg.modo === 'chat') {
-      if (c.req.path === '/' || c.req.path === '/chat') return c.html(paginaChat(), 200, { 'cache-control': 'no-cache' });
+      if (c.req.path === '/' || c.req.path === '/chat') return c.html(paginaChat({ ...(reg.datos?.titulo ? { titulo: reg.datos.titulo } : {}), ...(reg.datos?.marca ? { marca: reg.datos.marca } : {}), ...(reg.datos?.descripcion ? { descripcion: reg.datos.descripcion } : {}), url: `https://${host}/` }), 200, { 'cache-control': 'no-cache' });
       return next();
     }
     const ruta = c.req.path.replace(/\/+$/, '') || '/';
