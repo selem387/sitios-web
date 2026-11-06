@@ -11,6 +11,7 @@ import { corregirPaleta, auditarPaleta, cssTipografia } from './tipo_color.js';
 import { coloresParaPropuesta, avisosDeGiro } from './paletas_giro.js';
 import { evaluarColoresCliente, asignarFuentes } from './asesor_color.js';
 import { coloresDePalabras, logoTenido } from './materiales.js';
+import { CSS_MOVIMIENTO, JS_MOVIMIENTO } from './movimiento.js';
 import { waUrl, formatoTel } from './bloques.js';
 import { paginasGenerales, logoHTML, redes } from './propuestas_general.js';
 import { completarMaterial } from './validar_material.js';
@@ -153,6 +154,7 @@ footer{margin-top:48px;padding:24px 20px 90px;border-top:1px solid var(--bor);fo
 @media (max-width:760px){.barra nav{display:none}.h-prot{grid-template-columns:1.25fr 1fr}.h-prot .vis1 img{max-height:260px}}
 @media (min-width:900px){.slide{flex-basis:31%}.carr{margin:4px 0 30px}.pista{padding:4px 0 12px;scroll-padding:0}.h-menu{grid-template-columns:1.1fr 1fr;align-items:end}.h-menu .vasos img{height:240px}.h-menu .vasos img.c{height:320px}.hero{padding-top:56px}.h-fresco .caja{grid-template-columns:1.1fr 1fr;align-items:end}.h-dos{grid-template-columns:1.1fr 1fr;align-items:end;margin:0;border-radius:32px;padding:40px}.h-dos .vasos img{height:320px}.h-dos .vasos img+img{height:250px}.trio img{height:200px}.trio img.c{height:260px}.circulo{height:380px}.circulo::before{width:340px;height:340px}.circulo img{height:350px}.vis{grid-template-columns:repeat(3,1fr)}}
 @media (prefers-reduced-motion:reduce){html{scroll-behavior:auto}}
+${CSS_MOVIMIENTO}
 </style></head>
 <body class="${d.layout}">
 <header class="barra"><div class="in">${logo}<nav><a href="#destacados">${esc(d.textos.destacados || 'Lo más pedido')}</a><a href="#menu">Menú</a><a href="#contacto">Contacto</a></nav></div></header>
@@ -166,7 +168,7 @@ function idx(){var x=p.scrollLeft,m=0,best=1e9;s.forEach(function(el,i){var dd=M
 function ir(i){i=Math.max(0,Math.min(s.length-1,i));p.scrollTo({left:s[i].offsetLeft-p.offsetLeft-20,behavior:matchMedia('(prefers-reduced-motion: reduce)').matches?'auto':'smooth'})}
 function upd(){var i=idx();d.forEach(function(el,k){el.setAttribute('aria-current',k===i?'true':'false')});a.disabled=i===0;b.disabled=p.scrollLeft+p.clientWidth>=p.scrollWidth-4}
 a.onclick=function(){ir(idx()-1)};b.onclick=function(){ir(idx()+1)};d.forEach(function(el,k){el.onclick=function(){ir(k)}});p.addEventListener('scroll',function(){clearTimeout(p._t);p._t=setTimeout(upd,60)},{passive:true});upd()});
-</script>
+</script>${JS_MOVIMIENTO}
 </body></html>`;
 }
 
@@ -269,12 +271,13 @@ export async function textosPropuestas(brief, mat) {
   const enfoques = menu ? 'producto, antojo, rapidez/pickup, ubicación, variedad del menú, experiencia'
     : 'el resultado que se lleva el cliente, la especialidad más fuerte, la experiencia/años, la zona, la variedad de servicios o paquetes, el trato personal';
   const prompt = `Escribe los textos de 6 propuestas de página de inicio para este negocio mexicano (giro: ${brief.negocio?.giro_texto || brief.negocio?.arquetipo || ''}). Español de México, trato "${brief?.marca?.tono_textos === 'usted' ? 'usted' : 'tú'}", ${brief.negocio?.tamano === 'solo_tu' ? 'en primera persona del singular (es una sola persona), ' : ''}sin emojis, sin frases genéricas de IA, sin inventar datos (nada de años, clientes, premios ni promociones que no estén abajo). Cada titular con un enfoque distinto (${enfoques}).
+Además, "diapositivas": los textos que van encima de las fotos 2 a 5 del slider de la portada (la foto 1 usa el titular de cada propuesta). En este orden y solo si el brief trae el dato real: diferenciador (oferta.diferenciador: lo que lo distingue de la competencia o su ventaja injusta), oferta (servicio o producto estrella, o la promoción vigente), prueba (cifra, años, certificación o reseña real del brief), vision (su historia o visión). Si un dato no está en el brief, omite esa diapositiva; nunca inventes. Cada una: una sola idea, beneficio antes que característica, titular de 3 a 8 palabras.
 Brief: ${JSON.stringify({ negocio: brief.negocio, oferta: brief.oferta, cliente_ideal: brief.cliente_ideal, confianza: { historia_corta: brief.confianza?.historia_corta, cifras: brief.confianza?.cifras }, marca: { personalidad: brief.marca?.personalidad, evitar: brief.marca?.evitar, comentarios_del_cliente: brief.marca?.referencias_que_gusta }, zona: brief.zona, contacto: { ciudad: brief.contacto?.direccion?.ciudad, horarios: brief.contacto?.horarios } })}
 ${menu ? `Menú real (resumen): ${JSON.stringify((mat.menu_texto || []).map((s) => ({ seccion: s.seccion, items: (s.items || []).slice(0, 6).map((i) => `${i.nombre} ${i.precio || ''}`) })))}` : ''}
-Responde SOLO JSON: {"variantes":[{"titular":"≤ 55 caracteres","subtitulo":"≤ 120 caracteres","cta":"≤ 22 caracteres, abre WhatsApp"} ×6],"info":["3 datos cortos y reales (≤ 30 caracteres) p. ej. modalidad, zona, entrega"],"destacados":"título ≤ 22","categorias":"título ≤ 22","visita":"título ≤ 22"${menu ? '' : ',"secciones":{"trabajo":"≤ 22","servicios":"≤ 22","sobre":"≤ 22","resenas":"≤ 30","faq":"≤ 24","contacto":"≤ 22","galeria":"≤ 22"},"sobre":"la historia real del brief, pulida, ≤ 380 caracteres, sin agregar datos"'}}`;
+Responde SOLO JSON: {"variantes":[{"titular":"≤ 55 caracteres","subtitulo":"≤ 120 caracteres","cta":"≤ 22 caracteres, abre WhatsApp"} ×6],"info":["3 datos cortos y reales (≤ 30 caracteres) p. ej. modalidad, zona, entrega"],"diapositivas":[{"tipo":"diferenciador|oferta|prueba|vision","titular":"3 a 8 palabras, ≤ 50 caracteres","apoyo":"≤ 90 caracteres o vacío","cta":"≤ 22 caracteres o vacío"}],"destacados":"título ≤ 22","categorias":"título ≤ 22","visita":"título ≤ 22"${menu ? '' : ',"secciones":{"trabajo":"≤ 22","servicios":"≤ 22","sobre":"≤ 22","resenas":"≤ 30","faq":"≤ 24","contacto":"≤ 22","galeria":"≤ 22"},"sobre":"la historia real del brief, pulida, ≤ 380 caracteres, sin agregar datos"'}}`;
   const res = await fetch(`${config.anthropicBaseUrl}/v1/messages`, {
     method: 'POST', headers: { 'x-api-key': config.anthropicApiKey, 'anthropic-version': '2023-06-01', 'content-type': 'application/json' },
-    body: JSON.stringify({ model: config.generadorModel || config.anthropicModel, max_tokens: 3200, messages: [{ role: 'user', content: prompt }] }),
+    body: JSON.stringify({ model: config.generadorModel || config.anthropicModel, max_tokens: 3800, messages: [{ role: 'user', content: prompt }] }),
     signal: AbortSignal.timeout(120000),
   });
   const j = await res.json();
@@ -283,6 +286,7 @@ Responde SOLO JSON: {"variantes":[{"titular":"≤ 55 caracteres","subtitulo":"�
   const d = JSON.parse(t.slice(t.indexOf('{'), t.lastIndexOf('}') + 1));
   const limpio = (s) => String(s || '').replace(/\p{Extended_Pictographic}/gu, '').replace(/\s*→\s*/g, ' ').trim();
   d.variantes = (d.variantes || []).map((v) => ({ titular: limpio(v.titular), subtitulo: limpio(v.subtitulo), cta: limpio(v.cta) }));
+  d.diapositivas = (Array.isArray(d.diapositivas) ? d.diapositivas : []).map((x) => ({ tipo: limpio(x?.tipo), titular: limpio(x?.titular), apoyo: limpio(x?.apoyo), cta: limpio(x?.cta) })).filter((x) => x.titular && x.titular.length <= 60).slice(0, 4);
   if (d.sobre) d.sobre = limpio(d.sobre);
   return d;
 }

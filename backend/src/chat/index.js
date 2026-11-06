@@ -16,6 +16,7 @@ import { procesarMensaje, enSerie } from '../entrevista/agente.js';
 import { encolar } from '../generador/index.js';
 import { paginaChat } from './pagina.js';
 import { DIR_PROPUESTAS } from '../generador/propuestas_html.js';
+import { servirClip } from '../generador/clips.js';
 import { pendientesChat } from '../entrevista/avisos.js';
 import { urlSitio } from '../panel/cambios_vivo.js';
 
@@ -67,6 +68,9 @@ export function registerChatRoutes(app, wrap) {
     try { return c.html(await fs.readFile(path.join(DIR_PROPUESTAS, token, `${letra}.html`), 'utf8'), 200, { 'cache-control': 'no-store', 'x-robots-tag': 'noindex' }); }
     catch { return c.text('Propuesta no encontrada', 404); }
   });
+
+  // Clips del slider de portada y variaciones IA (generador/clips.js).
+  app.get('/clips/:nombre', (c) => servirClip(c));
 
   app.get('/chat/archivos/:nombre', async (c) => {
     const nombre = c.req.param('nombre');

@@ -7,6 +7,7 @@ import { coloresParaPropuesta } from './paletas_giro.js';
 import { mezclar, contraste } from '../entrevista/tema.js';
 import { esPastel, coloresDePalabras } from './materiales.js';
 import { waUrl, formatoTel } from './bloques.js';
+import { sliderHTML, diapositivasDe, CSS_MOVIMIENTO, JS_MOVIMIENTO } from './movimiento.js';
 
 const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const lum = (h) => { const n = parseInt(h.slice(1), 16); const c = [(n >> 16) & 255, (n >> 8) & 255, n & 255].map((v) => v / 255).map((v) => (v <= 0.03928 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4)); return 0.2126 * c[0] + 0.7152 * c[1] + 0.0722 * c[2]; };
@@ -152,7 +153,7 @@ export function redes(c = {}) {
 function pagina(d) {
   const { pal: p, f, t, mat, brief } = d;
   const usadas = new Set();
-  const img = (x, { cls = '', eager = false, sizes = '' } = {}) => { usadas.add(x.url); return `<img${cls ? ` class="${cls}"` : ''} src="${esc(x.url)}" alt="${esc(x.alt || '')}" loading="${eager ? 'eager' : 'lazy'}"${x.ancho ? ` width="${x.ancho}" height="${x.alto}"` : ''}${sizes}>`; };
+  const img = (x, { cls = '', eager = false, sizes = '', extra = '' } = {}) => { usadas.add(x.url); return `<img${cls ? ` class="${cls}"` : ''} src="${esc(x.url)}" alt="${esc(x.alt || '')}" loading="${eager ? 'eager' : 'lazy'}"${x.ancho ? ` width="${x.ancho}" height="${x.alto}"` : ''}${sizes}${extra}>`; };
   const wa = d.wa ? ` href="${esc(d.wa)}" target="_blank" rel="noopener"` : ' href="#contacto"';
   const logoBarra = logoHTML(mat.logo, p.bg, p.fg, { alt: d.nombre });
   const neg = brief.negocio || {}, conf = brief.confianza || {}, fund = conf.fundador || {};
@@ -171,14 +172,22 @@ function pagina(d) {
   const cta = (cls = '') => `<a class="btn ${cls}"${wa}>${esc(t.cta)}</a>`;
   const info = (t.info || []).map((x) => `<li>${esc(x)}</li>`).join('');
 
+  // Slider de portada (aprobado 6-nov-2026): foto principal + hasta 4 fotos más, cada una con su texto encima.
+  // Solo fotos buenas del cliente (o variaciones IA de su foto si dijo que no tiene más); nunca se repiten en el resto del sitio.
+  const diapos = diapositivasDe({ diapositivas: t.diapositivas }, brief);
+  const poolSl = [heroFoto, ...fotosT.filter((x) => buenaFoto(x) && x.url !== heroFoto?.url)].filter(Boolean);
+  const slider = (o) => sliderHTML({ fotos: poolSl, diapos, img, cta: t.cta, href: wa, nombre: d.nombre, ...o }).html;
+  const textoPortada = `<p class="kicker">${esc(neg.ciudad ? `${giroCorto(neg.giro_texto) || ''} · ${neg.ciudad}` : giroCorto(neg.giro_texto) || '')}</p><h1>${esc(t.titular)}</h1><p class="sub">${esc(t.subtitulo)}</p>${cta()}`;
+
   /* --- Héroes --- */
   const heros = {
-    portada: () => `<section class="hero h-portada">${heroFoto ? img(heroFoto, { cls: 'fondo', eager: true }) : ''}<div class="velo"></div><div class="wrap in"><p class="kicker">${esc(neg.ciudad ? `${giroCorto(neg.giro_texto) || ''} · ${neg.ciudad}` : giroCorto(neg.giro_texto) || '')}</p><h1>${esc(t.titular)}</h1><p class="sub">${esc(t.subtitulo)}</p>${cta()}</div></section>`,
-    editorial: () => `<section class="hero h-edit wrap"><div class="txt"><p class="kicker">${esc(giroCorto(neg.giro_texto) || '')}</p><h1>${esc(t.titular)}</h1><p class="sub">${esc(t.subtitulo)}</p>${cta()}<ul class="info">${info}</ul></div>${heroFoto ? `<figure class="arco">${img(heroFoto, { eager: true })}</figure>` : ''}</section>`,
-    mosaico: () => { const m = fotosT.slice(0, 5); return `<section class="hero h-mos wrap"><h1>${esc(t.titular)}</h1><p class="sub">${esc(t.subtitulo)}</p>${cta()}<div class="mos m${m.length}">${m.map((x, k) => img(x, { eager: k < 2 })).join('')}</div></section>`; },
-    logo: () => `<section class="hero h-logo wrap">${mat.logo ? logoHTML(mat.logo, p.bg, p.fg, { clase: 'logo-grande', alt: d.nombre }) : `<p class="nombre-grande">${esc(d.nombre)}</p>`}<h1>${esc(t.titular)}</h1><p class="sub">${esc(t.subtitulo)}</p>${cta()}${heroFoto ? `<figure class="ovalo">${img(heroFoto, { eager: true })}</figure>` : ''}</section>`,
-    dostonos: () => `<section class="hero h-dos"><div class="wrap in"><div class="txt"><h1>${esc(t.titular)}</h1><p class="sub">${esc(t.subtitulo)}</p>${cta('inv')}</div>${heroFoto ? `<figure class="marco">${img(heroFoto, { eager: true })}</figure>` : ''}</div></section>`,
-    carta: () => `<section class="hero h-carta wrap"><p class="kicker">${esc(d.nombre)}</p><h1>${esc(t.titular)}</h1><p class="sub">${esc(t.subtitulo)}</p>${cta()}</section>${fotosT.length ? `<div class="tira" aria-label="Fotos">${fotosT.slice(0, 8).map((x, k) => img(x, { eager: k < 2 })).join('')}</div>` : ''}`,
+    portada: () => (heroFoto ? slider({ tag: 'section', clase: 'hero h-portada', envolver: true, primera: textoPortada })
+      : `<section class="hero h-portada"><div class="velo"></div><div class="wrap in">${textoPortada}</div></section>`),
+    editorial: () => `<section class="hero h-edit wrap"><div class="txt"><p class="kicker">${esc(giroCorto(neg.giro_texto) || '')}</p><h1>${esc(t.titular)}</h1><p class="sub">${esc(t.subtitulo)}</p>${cta()}<ul class="info">${info}</ul></div>${heroFoto ? slider({ tag: 'figure', clase: 'arco sl-marco' }) : ''}</section>`,
+    mosaico: () => { const s = poolSl.length ? slider({ tag: 'div', clase: 'mos-sl sl-marco' }) : ''; const m = fotosT.filter((x) => !usadas.has(x.url)).slice(0, s ? 4 : 5); return `<section class="hero h-mos wrap"><h1>${esc(t.titular)}</h1><p class="sub">${esc(t.subtitulo)}</p>${cta()}<div class="mos m${m.length + (s ? 1 : 0)}${s && m.length < 2 ? ' solo' : ''}">${s}${m.map((x, k) => img(x, { eager: k < 1 })).join('')}</div></section>`; },
+    logo: () => `<section class="hero h-logo wrap">${mat.logo ? logoHTML(mat.logo, p.bg, p.fg, { clase: 'logo-grande', alt: d.nombre }) : `<p class="nombre-grande">${esc(d.nombre)}</p>`}<h1>${esc(t.titular)}</h1><p class="sub">${esc(t.subtitulo)}</p>${cta()}${heroFoto ? slider({ tag: 'figure', clase: 'ovalo sl-marco' }) : ''}</section>`,
+    dostonos: () => `<section class="hero h-dos"><div class="wrap in"><div class="txt"><h1>${esc(t.titular)}</h1><p class="sub">${esc(t.subtitulo)}</p>${cta('inv')}</div>${heroFoto ? slider({ tag: 'figure', clase: 'marco sl-marco' }) : ''}</div></section>`,
+    carta: () => { const s = poolSl.length ? `<div class="wrap">${slider({ tag: 'figure', clase: 'sl-carta sl-marco' })}</div>` : ''; const resto = fotosT.filter((x) => !usadas.has(x.url)).slice(0, 8); return `<section class="hero h-carta wrap"><p class="kicker">${esc(d.nombre)}</p><h1>${esc(t.titular)}</h1><p class="sub">${esc(t.subtitulo)}</p>${cta()}</section>${s}${resto.length ? `<div class="tira" aria-label="Fotos">${resto.map((x) => img(x)).join('')}</div>` : ''}`; },
   };
   const promo = brief.oferta?.promocion_actual ? `<section class="promo" id="promocion"><div class="wrap"><p><b>Promoción</b> ${esc(brief.oferta.promocion_actual)}</p></div></section>` : '';
   const hero = heros[d.layout]() + promo;
@@ -278,7 +287,7 @@ h1,h2,h3{font-family:var(--ft);font-weight:400;line-height:1.06;letter-spacing:-
 .h-portada{position:relative;min-height:88vh;display:flex;align-items:flex-end;color:#fff;overflow:hidden}.h-portada .fondo{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
 .h-portada .velo{position:absolute;inset:0;background:linear-gradient(180deg,rgba(0,0,0,.05) 30%,rgba(0,0,0,.62))}.h-portada .in{position:relative;padding-bottom:56px;width:100%}.h-portada .sub,.h-portada .kicker{color:rgba(255,255,255,.88)}
 .h-edit{display:grid;gap:28px;padding-top:36px}.arco{border-radius:999px 999px 24px 24px;overflow:hidden;aspect-ratio:4/5;max-height:620px}.arco img{width:100%;height:100%;object-fit:cover}
-.h-mos{padding-top:40px;text-align:left}.mos{display:grid;gap:8px;margin-top:34px;grid-template-columns:repeat(2,1fr)}.mos img{width:100%;height:100%;object-fit:cover;border-radius:14px;aspect-ratio:1}.mos img:first-child{grid-column:span 2;aspect-ratio:16/10}
+.h-mos{padding-top:40px;text-align:left}.mos{display:grid;gap:8px;margin-top:34px;grid-template-columns:repeat(2,1fr)}.mos>img{width:100%;height:100%;object-fit:cover;border-radius:14px;aspect-ratio:1}.mos>:first-child{grid-column:span 2;aspect-ratio:16/10}.mos-sl{border-radius:14px}.mos.solo{grid-template-columns:1fr!important}.mos.solo>.mos-sl{grid-column:1/-1!important;grid-row:auto!important;aspect-ratio:4/5!important}.mos.solo>img{aspect-ratio:16/10}
 .h-logo{text-align:center;padding-top:40px;padding-bottom:10px}.h-logo .sub{margin:16px auto 0}.logo-grande{height:auto;width:min(84%,460px);margin:0 auto 26px;display:block}
 .nombre-grande{font-family:var(--ft);font-size:44px;margin-bottom:20px}.ovalo{width:min(78%,380px);margin:38px auto 0;border-radius:50%;overflow:hidden;aspect-ratio:3/4;border:8px solid var(--mut)}.ovalo img{width:100%;height:100%;object-fit:cover}
 .h-dos{background:var(--banda);color:#fff;padding:42px 0 0;border-radius:0 0 36px 36px}.h-dos .in{display:grid;gap:26px}.h-dos .sub{color:rgba(255,255,255,.86)}.marco{border-radius:24px 24px 0 0;overflow:hidden;aspect-ratio:4/5;max-height:560px;border:10px solid rgba(255,255,255,.14);border-bottom:0}.marco img{width:100%;height:100%;object-fit:cover}
@@ -319,15 +328,16 @@ footer{margin-top:64px;padding:26px 20px 92px;border-top:1px solid var(--bor);fo
 .etq{position:fixed;left:16px;bottom:16px;z-index:30;background:#111;color:#fff;font:700 14px/1 var(--fc);padding:9px 12px;border-radius:999px}
 a:focus-visible,summary:focus-visible{outline:3px solid var(--p);outline-offset:3px}
 @media (max-width:760px){.barra nav{display:none}}
-@media (min-width:900px){.h-portada .velo{background:linear-gradient(90deg,rgba(0,0,0,.6),rgba(0,0,0,.15) 70%)}.h-edit{grid-template-columns:1.1fr .9fr;align-items:center;padding-top:64px}.h-dos .in{grid-template-columns:1.1fr .9fr;align-items:end}.mos{grid-template-columns:repeat(4,1fr)}.mos img:first-child{grid-column:span 2;grid-row:span 2;aspect-ratio:auto}
+@media (min-width:900px){.h-portada .velo{background:linear-gradient(90deg,rgba(0,0,0,.6),rgba(0,0,0,.15) 70%)}.h-edit{grid-template-columns:1.1fr .9fr;align-items:center;padding-top:64px}.h-dos .in{grid-template-columns:1.1fr .9fr;align-items:end}.mos{grid-template-columns:repeat(4,1fr)}.mos>:first-child{grid-column:span 2;grid-row:span 2;aspect-ratio:auto}.mos-sl{min-height:380px}.mos.solo>.mos-sl{aspect-ratio:16/8!important;min-height:0}.h-portada .sl-d.con-txt::after{background:linear-gradient(90deg,rgba(0,0,0,.66),rgba(0,0,0,.18) 72%)}
 .s-in{grid-template-columns:.8fr 1.2fr}.galeria{columns:3 220px}.g-editorial{columns:4 220px}.contacto .datos{grid-template-columns:repeat(3,1fr)}.tira img{height:460px}}
 @media (prefers-reduced-motion:reduce){html{scroll-behavior:auto}}
+${CSS_MOVIMIENTO}
 </style></head>
 <body class="l-${d.layout}">
 <header class="barra"><div class="wrap in">${logoBarra}<nav>${navs.map(([id, n]) => `<a href="#${id}">${esc(n)}</a>`).join('')}</nav></div></header>
 <main>${hero}${cuerpo}${galeria}</main>
 <footer>© ${new Date().getFullYear()} ${esc(d.nombre)} · Propuesta ${d.letra}: ${esc(NOMBRES_GENERAL[d.layout])}</footer>
-<span class="etq">Propuesta ${d.letra}</span>
+<span class="etq">Propuesta ${d.letra}</span>${JS_MOVIMIENTO}
 <a class="wa"${wa} aria-label="Escríbeme por WhatsApp"><svg viewBox="0 0 32 32" aria-hidden="true"><path d="M16 3a13 13 0 0 0-11.2 19.6L3 29l6.6-1.7A13 13 0 1 0 16 3Zm0 23.7c-2 0-4-.6-5.7-1.6l-.4-.2-3.9 1 1-3.8-.3-.4A10.7 10.7 0 1 1 16 26.7Zm5.9-8c-.3-.2-1.9-1-2.2-1-.3-.1-.5-.2-.7.1l-1 1.3c-.2.2-.4.2-.7.1a8.8 8.8 0 0 1-4.4-3.8c-.3-.6.3-.5.9-1.7.1-.2 0-.4 0-.6l-1-2.4c-.3-.6-.5-.5-.7-.5h-.6c-.2 0-.6.1-.9.4-.3.3-1.2 1.1-1.2 2.8s1.2 3.2 1.4 3.5c.2.2 2.4 3.6 5.7 5 2.1.9 3 1 4 .8.7-.1 1.9-.8 2.2-1.5.3-.8.3-1.4.2-1.5l-.6-.3Z"/></svg></a>
 </body></html>`;
   return html;
@@ -350,7 +360,7 @@ export function paginasGenerales({ brief, mat, textos, pares, urlFuentes, ronda 
     const d = {
       i: i + ronda * 3, letra, layout, nombre: brief.negocio?.nombre || '', brief, mat, titulos,
       pal: fijo?.paleta || { ...corregirPaleta(paletaGeneral(layout, cps[i].colores, pastel, i + ronda * 2)).paleta, familia: cps[i].familia, origen: cps[i].origen }, f: par, fuentesUrl: urlFuentes([par]),
-      t: { titular: v.titular, subtitulo: v.subtitulo, cta: v.cta || 'Escríbeme por WhatsApp', info: (textos.info || []).slice(0, 3), sobre: textos.sobre, proceso: textos.proceso },
+      t: { titular: v.titular, subtitulo: v.subtitulo, cta: v.cta || 'Escríbeme por WhatsApp', info: (textos.info || []).slice(0, 3), sobre: textos.sobre, proceso: textos.proceso, diapositivas: textos.diapositivas },
       wa: waUrl(c.whatsapp, c.mensaje_whatsapp_inicial), tel: c.whatsapp ? formatoTel(c.whatsapp) : null,
     };
     return { letra, layout, nombre: NOMBRES_GENERAL[layout], html: pagina(d), fuentes: par, paleta: d.pal };

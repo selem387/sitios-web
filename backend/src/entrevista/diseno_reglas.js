@@ -79,12 +79,35 @@ export const REGLAS = {
     ],
   },
 
+  // Slider de portada y movimiento (aprobado 6-nov-2026, doc claude/slider-portada.md; código en generador/movimiento.js y clips.js).
+  slider_portada: {
+    descripcion: 'Toda propuesta y sitio lleva slider en la portada por omisión, con avance automático y texto encima de cada foto.',
+    reglas: [
+      'Foto 1: fija, carga primero (eager + fetchpriority=high), solo acercamiento CSS, nunca video; el avance automático arranca después del evento load',
+      'Foto 2: clip de Higgsfield de 4 s (12 créditos); fotos 3 en adelante alternan clip FFmpeg (paneo de cámara) y clip Higgsfield; sin créditos, el de Higgsfield se hace con FFmpeg',
+      'Los clips se bajan después del evento load y nunca con conexión lenta (2g/3g) ni ahorro de datos; mientras tanto se ve la foto con movimiento CSS',
+      '3 a 5 diapositivas; una idea y un botón por diapositiva; titular de 3 a 8 palabras (≤ 50 caracteres), apoyo ≤ 90',
+      'Orden del texto: promesa (H1, objetivo de B2) → diferenciador o ventaja injusta → oferta o producto estrella → prueba (cifra, años, reseña) → visión; solo datos reales del brief, si falta el dato se omite la diapositiva',
+      'Texto en HTML encima de la foto con degradado oscuro (contraste ≥ 4.5:1); controles con contraste ≥ 3:1 y 44 px',
+      'Botón de pausa visible (WCAG 2.2.2), pausa con mouse y foco, flechas, teclado y deslizar; prefers-reduced-motion: no avanza solo ni se mueve',
+      'Ninguna foto del slider se repite en el resto del sitio',
+    ],
+  },
+  movimiento_sitio: {
+    descripcion: 'Vida sutil en todo el sitio sin afectar la velocidad (Lighthouse móvil ≥ 90).',
+    reglas: [
+      'Todas las fotos llevan un movimiento de cámara CSS muy lento (escala ≤ 1.035 en 24 s), solo mientras están en pantalla',
+      'Secciones aparecen con un leve desvanecido al bajar; botones y tarjetas reaccionan suavemente al cursor',
+      'Solo transform y opacity; nada que mueva el layout; todo apagado con prefers-reduced-motion',
+    ],
+  },
+
   // Fotos: lo real convierte más que lo generado (consenso de las guías 2026 para negocios locales).
   politica_fotos: {
     descripcion: 'Qué imágenes van en el sitio y qué puede generar la IA.',
     reglas: [
       'Hero: SIEMPRE foto real del cliente si existe una utilizable (assets con usar=true y calidad != mala); la IA nunca sustituye el local, los productos, al dueño ni al equipo',
-      'IA (Higgsfield) solo para fondos abstractos, texturas, iconografía y composiciones sin personas ni lugares reconocibles; nunca personas, nunca "el local"',
+      'IA (Higgsfield) solo para fondos abstractos, texturas, iconografía y composiciones sin personas ni lugares reconocibles; nunca personas, nunca "el local". Excepción (6-nov-2026): si el cliente tiene menos de 3 fotos buenas y dice que no tiene más (fotos.no_tiene_mas), se generan hasta 2 variaciones muy parecidas a SU foto principal solo para completar el slider de portada',
       'Si no hay foto real para el hero: hero tipográfico o de color pleno con la paleta, no stock ni IA de personas',
       'Pedir en B6 una foto vertical (9:16) del local o del dueño para el hero móvil; si solo hay horizontales, encuadrar con object-position al sujeto',
       'Fotos reales se sirven en WebP/AVIF con srcset; la del hero sin lazy load y con dimensiones declaradas (evitar CLS)',

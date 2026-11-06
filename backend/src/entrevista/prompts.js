@@ -134,8 +134,9 @@ B6.2 "¿Tienes video corto del negocio? También sirve."
 B6.3 (solo si ya mandó al menos una foto buena) "Una más: ¿me mandas una foto vertical, como las de historias de Instagram, de tu local o de ti? Es la que se ve en la primera pantalla desde el celular." → fotos.vertical_hero_asset_id
 B6.4 "Lo que falte lo podemos complementar con imágenes creadas con inteligencia artificial, pero solo fondos y detalles: las fotos de tu negocio, tus productos y tu equipo siempre son las reales, porque son las que generan confianza. ¿Te parece bien?" → fotos.permiso_generar_ia
 B6.5 "¿Tienes menú, catálogo o folleto en PDF? Mándalo."
+B6.7 (solo si mandó al menos una foto buena pero menos de 3, y solo una vez) "En la primera pantalla de tu página van a pasar varias fotos, una tras otra, cada una con un mensaje. ¿Tienes 2 o 3 fotos más de tu negocio? Si no tienes, no pasa nada: hacemos imágenes muy parecidas a la tuya." → si manda fotos, sigue normal; si dice que no tiene, fotos.no_tiene_mas=true. No lo vuelvas a preguntar.
 B6.6 Si dice que no tiene fotos: "No te preocupes. Dime de qué te gustaría que fueran las fotos (por ejemplo: tu local, tus platillos, gente usando tu servicio) y te busco ejemplos o las creo." → fotos.sin_fotos=true, fotos.temas=[lo que diga]. No cierres B6 sin fotos recibidas o sin fotos.temas.
-Regla: nunca prometas que la IA "creará" fotos del local, del producto o de personas. Si no hay foto real del local, la primera pantalla será tipográfica o de color; díselo en una frase si pregunta.
+Regla: nunca prometas que la IA "creará" fotos del local, del producto o de personas desde cero. La única excepción es B6.7: si tiene pocas fotos y dice que no tiene más, se hacen imágenes muy parecidas a SU foto, solo para completar las fotos que pasan en la primera pantalla. Si no hay ninguna foto real, la primera pantalla será tipográfica o de color; díselo en una frase si pregunta.
 Con las fotos recibidas (lista ASSETS), llena fotos.lista_faltantes solo con fondos/texturas/iconografía que haga falta para el giro.`,
   B7: `B7 · Confianza. confianza.historia_corta confianza.fundador{nombre,rol,credenciales[]} confianza.equipo[] confianza.certificaciones[] confianza.premios[] confianza.cifras[] ★confianza.testimonios[]{nombre,texto,fuente} o confianza.link_resenas confianza.garantias.
 B7.1 "¿Cómo empezó el negocio? Dos o tres líneas, lo que le contarías a un cliente."
@@ -194,7 +195,7 @@ export const BRIEF_VACIO = {
   faq: [],
   objeciones: [],
   marca: { tiene_logo: null, colores: [], personalidad: [], estilo: null, efectos: 'sobrio', efectos_aceptacion_riesgo: false, densidad: null, referencias_sitios: [], referencias_que_gusta: null, evitar: null, tono_textos: 'tu' },
-  fotos: { lista_faltantes: [], permiso_generar_ia: true, vertical_hero_asset_id: null, sin_fotos: false, temas: [] },
+  fotos: { lista_faltantes: [], permiso_generar_ia: true, vertical_hero_asset_id: null, sin_fotos: false, temas: [], no_tiene_mas: false },
   no_tiene: [], // ids de requisitos (requisitos.js) que el cliente dijo que no tiene
   contacto: { whatsapp: null, telefono: null, email: null, email_verificado: false, email_verificacion: null, direccion: {}, google_maps_url: null, horarios: null, redes: {}, redes_faltantes: [], google_business: null, mensaje_whatsapp_inicial: null },
   redes_crear: { interesa: null, redes: [] },

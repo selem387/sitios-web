@@ -240,7 +240,27 @@ export const esPastel = (brief) => (brief?.marca?.colores || []).some((c) => /pa
  * Procesa todos los materiales de una entrevista.
  * @returns {{logo, hero, fotos[], menus[], menu_texto[], colores[], faltan[], avisos[]}}
  */
-export async function procesarMateriales(entrevistaId, brief = {}, { aceptarLoQueHay = false } = {}) {
+export async function procesarMateriales(entrevistaId, brief = {}, opts = {}) {
+  const res = await procesarMaterialesBase(entrevistaId, brief, opts);
+  return conVariacionesIA(res, brief);
+}
+
+/**
+ * Slider de portada (6-nov-2026): si el cliente tiene menos de 3 fotos buenas, Ari le pide más una vez (B6.7).
+ * Si dice que no tiene (fotos.no_tiene_mas), se agregan variaciones IA muy parecidas a su foto principal
+ * (generador/clips.js), solo para completar el slider. Quedan marcadas ia:true y en caché; si no se puede, no pasa nada.
+ */
+async function conVariacionesIA(res, brief) {
+  if (brief.fotos?.no_tiene_mas !== true || brief.fotos?.permiso_generar_ia === false || !res.hero) return res;
+  const buenas = [...res.trabajos, ...res.local].filter((x) => !x.captura && x.calidad !== 'regular');
+  const faltan = Math.min(2, 3 - buenas.length);
+  if (faltan < 1) return res;
+  const { variacionesFoto } = await import('./clips.js');
+  const vars = await variacionesFoto(res.hero, faltan).catch(() => []);
+  return vars.length ? { ...res, trabajos: [...res.trabajos, ...vars] } : res;
+}
+
+async function procesarMaterialesBase(entrevistaId, brief = {}, { aceptarLoQueHay = false } = {}) {
   const todos = (await db.assetsDe(entrevistaId)).filter((a) => a.usar);
   const esImagen = (a) => /\.(jpe?g|png|webp|heic)(\?|$)/i.test(a.url) || /^image\//.test(a.mime || '');
   const assets = todos.filter(esImagen);
