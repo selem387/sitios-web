@@ -30,3 +30,8 @@ test('rehacer el pie', () => {
   const o = aplicarEstructura(H, { reemplazos: { pie: '<p>© Blanca</p>' } });
   assert.match(o, /<footer><p>© Blanca<\/p><\/footer>/);
 });
+
+test('secciones que no existen se reportan', () => {
+  const r = validarEstructura({ orden: ['faq2', 'servicios'], ocultas: ['nada'] }, { html: H });
+  assert.ok(r.errores.some((e) => /faq2/.test(e)) && r.errores.some((e) => /nada/.test(e)));
+});

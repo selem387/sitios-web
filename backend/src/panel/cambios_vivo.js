@@ -66,6 +66,7 @@ QUÉ PUEDES HACER
 - Fotos: portada_foto, fotos_quitar, fotos_poner, usando SOLO claves de FOTOS. Las fotos que manda el cliente se usan; ninguna se repite ni se deforma (el diseño ya lo cuida).
 - Si pide dejarlo como estaba antes del último cambio: accion=revertir.
 - Si no se entiende qué o dónde: accion=preguntar con UNA pregunta concreta.
+- Cómo está armado el HTML del tema: cada sección es <section class="sec …" id="ID"><div class="wrap">…</div></section>; su título es un <h2> DENTRO de la sección. Selector correcto del título: "#ID h2" (nunca "h2#ID"). Tarjetas: .paq, .prop, blockquote, figure; rejillas: .paqs, .rejilla, .quotes, .galeria. Sube la especificidad con el id de la sección (#ID …) para ganarle a los estilos del tema.
 - Acomodo y diseño (poner cosas en una fila, usar todo el ancho, columnas, tamaños, espacios, separadores, alinear, cambiar cómo se ven tarjetas o secciones, letra más grande, etc.): escribe reglas en "css" usando las clases e ids reales de HTML ACTUAL (sección por id: #servicios, #resenas, #sobre, #trabajo, #faq, #contacto…). "css" es la hoja completa propia del sitio: conserva las reglas de CSS PROPIO ACTUAL que sigan vigentes. Usa las variables del tema (var(--p), var(--fg), var(--bor), var(--card), var(--soft)…) para no salirte de la paleta. Piensa en celular primero: lo de pantallas anchas va en @media (min-width:900px). Nunca deformes fotos (si cambias tamaño de imágenes usa object-fit:cover o height:auto) ni ocultes material del cliente que no pidió quitar. Pon en "verificar" los selectores de las secciones que cambias.
 - Estructura ("estructura", completa como debe quedar): para QUITAR una sección usa siempre estructura.ocultas (quita también su liga del menú; nunca con CSS). Ocultar secciones, reordenarlas, agregar secciones nuevas (extras, con su HTML interior usando las clases del tema), rehacer la portada, el encabezado o el pie (reemplazos) y cambiar el menú. Las secciones que el dueño edita en su panel (servicios, menu, faq, resenas, sobre, contacto, propiedades, trabajo, promocion) no se reescriben a mano: su contenido se cambia en "secciones" y su aspecto con CSS. En HTML nuevo usa solo imágenes de FOTOS (su URL) o que ya estén en la página, y solo textos que escribió el cliente o que ya están en la página; nada de scripts ni formularios. Para mapas o videos usa <iframe> de Google Maps o YouTube.
 - Cambiar todo el diseño por otra de sus propuestas: "propuesta" con la letra. Cambiar la letra: "fuentes" con familias de Google Fonts poco comunes y acordes a su estilo (nunca Arial, Roboto, Open Sans, Montserrat, Poppins, Lato ni Inter).
@@ -236,7 +237,7 @@ const ESQUEMA_VISTA = {
 };
 
 /** Compara capturas antes/después contra el pedido. Devuelve {ok, problemas}. Sin servicio de capturas, no bloquea. */
-async function revisarVista(pedidos, antes, despues) {
+async function revisarVista(pedidos, antes, despues, noPudo = []) {
   if (!despues.some((d) => d.url)) return { ok: true, problemas: [], sin_capturas: true };
   const contenido = [{ type: 'text', text: `PEDIDO DEL CLIENTE:\n${pedidos.map((p) => `- ${p.texto}`).join('\n')}\n\nCompara ANTES y DESPUÉS de cada sección (computadora 1366 px y celular 390 px). "No existe" significa que esa sección no está en la página (correcto si el cliente pidió quitarla).` }];
   for (const d of despues) {
@@ -246,6 +247,7 @@ async function revisarVista(pedidos, antes, despues) {
     contenido.push({ type: 'text', text: `DESPUÉS · ${d.sel} · ${d.ancho}px${d.url ? '' : ': no existe'}` });
     if (d.url) contenido.push({ type: 'image', source: { type: 'url', url: d.url } });
   }
+  if (noPudo.length) contenido.push({ type: 'text', text: `PARTES QUE NO SE PUEDEN HACER (se le avisará al cliente; no las cuentes como falla): ${noPudo.join('; ')}` });
   // El menú se revisa siempre (secciones quitadas, agregadas o reordenadas).
   const nav = (despues[0]?.menu || '').trim();
   if (nav) contenido.push({ type: 'text', text: `MENÚ DESPUÉS: ${nav}` });
@@ -324,10 +326,10 @@ export async function aplicarCambioVivo(c, e, sv) {
     if (!revisar) { vista = null; break; }
     const despues = await capturas(nuevo, selectores);
     try { const h = await renderSitio(await porId(nuevo.id), { previa: true }); const nav = (h.match(/<nav>([\s\S]*?)<\/nav>/) || [])[1] || ''; if (despues[0]) despues[0].menu = nav.replace(/<[^>]+>/g, ' · ').replace(/(\s·\s)+/g, ' · '); } catch { /* sin menú */ }
-    vista = await revisarVista(c.pedidos, antes || [], despues);
+    vista = await revisarVista(c.pedidos, antes || [], despues, (plan.no_pude || []).filter(Boolean));
     if (vista.ok) break;
     await escribir(nuevo, e, respaldo);
-    errores = [`La revisión visual con capturas encontró: ${vista.problemas.join('; ') || 'no cumple lo pedido'}. Corrige el CSS.`];
+    errores = [`La revisión visual con capturas encontró: ${vista.problemas.join('; ') || 'no cumple lo pedido'}. Corrige el plan (CSS, estructura o secciones). Lo que de verdad no se puede va en no_pude.`];
     nuevo = null;
   }
   if (!nuevo) return noPude(c, e, { errores, vista });

@@ -34,8 +34,15 @@ export function validarEstructura(e = {}, { html = '', imagenes = [] } = {}) {
   const ids = new Set([...html.matchAll(/<section\b[^>]*\sid="([^"]+)"/g)].map((m) => m[1]).concat(['portada']));
   const lista = (v) => (Array.isArray(v) ? v.map(String) : []);
   const out = { ocultas: [], orden: [], extras: [], reemplazos: {}, menu: null };
-  for (const id of lista(e.ocultas)) { if (id === 'portada') errores.push('No se puede ocultar la portada'); else out.ocultas.push(id); }
-  out.orden = lista(e.orden).filter((id) => id !== 'portada');
+  const extrasIds = new Set((Array.isArray(e.extras) ? e.extras : []).map((x, i) => `extra-${String(x?.id || i + 1).toLowerCase().replace(/[^a-z0-9-]/g, '-').replace(/^extra-/, '').slice(0, 30)}`));
+  const existe = (id) => ids.has(id) || extrasIds.has(id);
+  for (const id of lista(e.ocultas)) {
+    if (id === 'portada') errores.push('No se puede ocultar la portada');
+    else if (!existe(id)) errores.push(`La sección "${id}" no existe en la página: no la uses y ponla en no_pude`);
+    else out.ocultas.push(id);
+  }
+  for (const id of lista(e.orden)) if (id !== 'portada' && !existe(id)) errores.push(`La sección "${id}" no existe en la página: no la uses en orden y ponla en no_pude`);
+  out.orden = lista(e.orden).filter((id) => id !== 'portada' && existe(id));
   for (const [i, x] of (Array.isArray(e.extras) ? e.extras : []).entries()) {
     const id = `extra-${String(x?.id || i + 1).toLowerCase().replace(/[^a-z0-9-]/g, '-').replace(/^extra-/, '').slice(0, 30)}`;
     if (!x?.html) { errores.push(`La sección nueva ${id} no tiene contenido`); continue; }
