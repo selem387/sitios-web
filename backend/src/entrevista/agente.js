@@ -62,20 +62,32 @@ function salida(e, respuestas, esperando) {
 }
 
 // Respuesta a mensajes que llegan después de cerrar la entrevista: según el estado real del sitio, sin repetir el mismo texto.
-async function respuestaPostCierre(u) {
+// Con el sitio listo, el cliente siempre puede pedir cambios desde el primer mensaje (no se ofrece empezar otra página).
+const SIN_ACENTOS = (t) => String(t || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9\s]/g, ' ').replace(/\s+/g, ' ').trim();
+const PIDE_CAMBIOS = /\b(correcc\w*|correg\w*|cambi\w*|modific\w*|ajust\w*|arregl\w*|edit\w*|actualiz\w*|mejor\w*)\b/;
+const ALGO_CONCRETO = /\b(foto\w*|imagen\w*|color\w*|texto\w*|titulo\w*|frase\w*|precio\w*|telefono\w*|numero\w*|horario\w*|seccion\w*|logo\w*|letra\w*|fuente\w*|boton\w*|direccion\w*|correo\w*|whatsapp|menu\w*|servicio\w*|producto\w*|paquete\w*|nombre\w*|redes|instagram|facebook|tiktok|fondo\w*|testimonio\w*|pregunta\w*|mapa|ubicacion|que diga|en vez de|por favor pon|quita\w*|agrega\w*|pon\w*)\b/;
+// "quiero hacer unas correcciones" (sin decir cuáles) → se le pregunta qué quiere cambiar.
+export const pideCambiosSinDetalle = (texto) => { const t = SIN_ACENTOS(texto); return !!t && t.split(' ').length <= 14 && PIDE_CAMBIOS.test(t) && !ALGO_CONCRETO.test(t); };
+
+async function respuestaPostCierre(u, texto = '') {
   const s = (await db.q(`SELECT estado, url_publica FROM sitios WHERE entrevista_id=$1 ORDER BY id DESC LIMIT 1`, [u.id]).catch(() => ({ rows: [] }))).rows[0];
-  let base;
+  const previos = await db.ultimosMensajes(u.id, 6).catch(() => []);
+  const ultimoAgente = [...previos].reverse().find((m) => m.rol === 'agente')?.contenido || '';
   const adm = u.brief?.administracion;
+  let base;
   if (adm?.estado === 'entregado' && adm.url) base = `Tu página ya está publicada. Para cambiar precios, productos, fotos u horarios entra a tu administrador: ${adm.url}\nSi necesitas algo más, ya anoté tu comentario y el equipo lo revisa.`;
-  else if (s?.estado === 'listo' && s.url_publica) base = `Tu página ya está lista 🎉: ${s.url_publica}\nÁbrela desde tu celular y dime qué quieres ajustar; ya anoté tu comentario.`;
+  else if (s?.estado === 'listo' && s.url_publica) {
+    if (pideCambiosSinDetalle(texto)) return '¡Claro! 🙌 Dime qué quieres cambiar de tu página: textos, fotos, colores, secciones, precios, datos de contacto… Puedes escribirlo, mandarme un audio o fotos. Si son varias cosas, mándamelas todas y las reviso juntas.';
+    const t = SIN_ACENTOS(texto);
+    if (t && !PIDE_CAMBIOS.test(t) && !ALGO_CONCRETO.test(t)) return '¡Qué gusto! 🙌 Si quieres cambiar algo de tu página, dime qué y lo ajustamos.';
+    const PEDIDO = 'Anotado ✅ Lo paso para ajustar tu página y te aviso aquí en cuanto quede.';
+    return ultimoAgente.startsWith(PEDIDO) || ultimoAgente.startsWith('Anotado ✅') ? 'Anotado ✅ ¿Algo más que quieras cambiar?' : `${PEDIDO}\n¿Hay algo más que quieras cambiar?`;
+  }
   else if (s?.estado === 'requiere_revision') base = 'Tu página ya está armada y el equipo la está revisando antes de mostrártela. Te mando la liga en cuanto quede; ya anoté tu comentario.';
   else if (s?.estado === 'error') base = 'Hubo un problema al armar tu página y el equipo ya lo está revisando. Te aviso aquí en cuanto quede; ya anoté tu comentario.';
   else base = 'Sigo armando tu página; en cuanto quede te mando la liga aquí. Ya anoté tu comentario.';
-  const previos = await db.ultimosMensajes(u.id, 6).catch(() => []);
-  const ultimoAgente = [...previos].reverse().find((m) => m.rol === 'agente')?.contenido || '';
   if (ultimoAgente.startsWith(base)) return 'Anotado 👍';
-  const pista = previos.some((m) => m.rol === 'agente' && m.contenido?.includes(`*${PALABRA_INICIO}*`)) ? '' : `\nSi quieres empezar otra página, escribe *${PALABRA_INICIO}*.`;
-  return base + pista;
+  return base;
 }
 
 async function notificar(e, payload) {
@@ -174,7 +186,7 @@ export async function procesarMensaje(b) {
       // Entrevista ya cerrada hace poco: se registra lo que diga como comentario y se responde según el estado del sitio.
       await db.insertarMensaje(u.id, { rol: 'cliente', contenido: texto || '(media)' });
       await db.evento(u.id, 'comentario_post_cierre', { texto: texto.slice(0, 300) });
-      const r = await respuestaPostCierre(u);
+      const r = await respuestaPostCierre(u, texto);
       await db.insertarMensaje(u.id, { rol: 'agente', contenido: r });
       return salida(u, [r], 'nada');
     }
