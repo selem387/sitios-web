@@ -20,6 +20,7 @@ import * as wp from './wp.js';
 import { sitioDePropuesta } from './sitio_propuesta.js';
 import { NOMBRES_GENERAL } from './propuestas_general.js';
 import { crearSitioVivo } from '../panel/sitios.js';
+import { avisar } from '../entrevista/avisos.js';
 
 const q = db.q;
 const igual = (a, b) => { const x = Buffer.from(String(a || '')); const y = Buffer.from(String(b || '')); return y.length > 0 && x.length === y.length && crypto.timingSafeEqual(x, y); };
@@ -355,8 +356,12 @@ export async function encolar(entrevista, { slug, forzarWordpress }) {
   // Plataforma "app": sitio en vivo desde la base, administrado por el dueño en su panel propio.
   // Con WordPress suspendido (config.wordpressActivo=false) todo cae aquí, aunque se pida forzar_wordpress.
   if (!config.wordpressActivo || (plat === 'app' && !forzarWordpress)) {
+    const habia = (await q(`SELECT 1 FROM sitios_vivos WHERE entrevista_id=$1`, [entrevista.id]).catch(() => ({ rows: [] }))).rows.length > 0;
     const sv = await crearSitioVivo(entrevista, { slug }).catch((x) => { throw new HttpError(x.status || 500, x.message); });
-    return { sitio_vivo_id: sv.id, slug: sv.slug, estado: 'vivo', previa: `${config.publicUrl}/s/${sv.slug}` };
+    const previa = `${config.publicUrl}/s/${sv.slug}`;
+    // Sitio nuevo: Ari le manda la liga por su chat (WhatsApp o web), como prometió al cerrar.
+    if (!habia) await avisar(entrevista.id, [`Tu página ya quedó 🎉: ${previa}`, 'Ábrela desde tu celular y dime qué quieres ajustar; los cambios los aplico aquí mismo.'], { evento: 'sitio_vivo_listo', datos: { sitio_vivo_id: sv.id } }).catch((err) => console.error('aviso sitio vivo', err.message));
+    return { sitio_vivo_id: sv.id, slug: sv.slug, estado: 'vivo', previa };
   }
   const s = slugify(slug || entrevista.brief?.negocio?.nombre || entrevista.id.slice(0, 8));
   const r = await q(`INSERT INTO sitios (entrevista_id, estado) VALUES ($1,'generando') RETURNING id`, [entrevista.id]);

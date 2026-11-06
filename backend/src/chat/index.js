@@ -94,12 +94,12 @@ export function registerChatRoutes(app, wrap) {
     if (!usuarioValido(b.usuario_id)) throw new HttpError(400, 'usuario_id inválido');
     const media = (Array.isArray(b.media) ? b.media : []).filter((m) => String(m?.url || '').startsWith(`${config.publicUrl}/chat/archivos/`)).slice(0, 5);
     const res = await enSerie(b.usuario_id, () => procesarMensaje({ usuario_id: b.usuario_id, texto: b.texto, media, canal: 'web', reiniciar: b.reiniciar === true }));
-    // Cierre de la entrevista: lanzar el generador una sola vez (en web de prueba se fuerza WordPress).
+    // Cierre de la entrevista: lanzar el generador una sola vez (los sitios WordPress retirados no cuentan).
     if (res.estado === 'completada') {
-      const ya = await db.q(`SELECT 1 FROM sitios WHERE entrevista_id=$1 LIMIT 1`, [res.sesion_id]);
+      const ya = await db.q(`SELECT 1 FROM sitios WHERE entrevista_id=$1 AND estado<>'reemplazado' UNION ALL SELECT 1 FROM sitios_vivos WHERE entrevista_id=$1 LIMIT 1`, [res.sesion_id]).catch(() => ({ rows: [] }));
       if (!ya.rows.length) {
         const e = await db.obtener(res.sesion_id);
-        await encolar(e, { forzarWordpress: true }).catch((err) => console.error('chat generar', err));
+        await encolar(e, {}).catch((err) => console.error('chat generar', err));
         res.generando = true;
       }
     }
