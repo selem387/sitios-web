@@ -145,6 +145,7 @@ const CSS = `
 .prop{display:flex;flex-direction:column;background:var(--card);border:1px solid var(--bor);border-radius:18px;overflow:hidden;text-decoration:none;color:var(--fg);transition:transform .15s,box-shadow .15s}
 .prop:hover{transform:translateY(-2px);box-shadow:0 10px 26px rgba(0,0,0,.08)}.prop:focus-visible{outline:3px solid var(--p);outline-offset:3px}
 .prop .foto{position:relative;aspect-ratio:4/3;background:var(--mut,var(--bor));overflow:hidden}.prop .foto img{width:100%;height:100%;object-fit:cover;display:block}
+.prop .sin-foto{position:absolute;inset:0;display:grid;place-items:center;font-family:var(--ft);font-size:26px;color:var(--soft);background:linear-gradient(135deg,var(--tin,var(--mut,var(--bor))),var(--card))}
 .prop .chips{position:absolute;left:12px;top:12px;display:flex;gap:6px;flex-wrap:wrap}.chip{font-size:12px;font-weight:800;letter-spacing:.02em;background:var(--card);color:var(--fg);border-radius:999px;padding:4px 10px}.chip.p{background:var(--p);color:var(--on)}
 .prop .info{padding:16px 18px 18px;display:grid;gap:6px}.prop .precio{font-weight:800;font-size:20px;color:var(--p)}.prop h3{font-size:18px;line-height:1.25;margin:0}
 .prop .lugar{color:var(--soft);font-size:14px}.prop .datos{display:flex;flex-wrap:wrap;gap:4px 12px;color:var(--soft);font-size:13px;margin-top:4px}
@@ -165,7 +166,7 @@ function tarjeta(p, base) {
   const img = p.imagenes?.[0];
   const chips = [`<span class="chip p">${esc(OPERACIONES[d.operacion])}</span>`, d.estado === 'reservado' ? '<span class="chip">Apartada</span>' : '', d.destacada ? '<span class="chip">Destacada</span>' : ''].join('');
   return `<a class="prop" href="${esc(base)}/propiedad/${esc(p.slug)}" data-op="${esc(d.operacion)}">
-<div class="foto">${img ? `<img src="${esc(img)}" alt="${esc(d.titulo)}" loading="lazy">` : ''}<div class="chips">${chips}</div></div>
+<div class="foto">${img ? `<img src="${esc(img)}" alt="${esc(d.titulo)}" loading="lazy">` : `<span class="sin-foto">${esc(TIPOS[d.tipo])}</span>`}<div class="chips">${chips}</div></div>
 <div class="info"><span class="precio">${esc(precioTexto(d))}</span><h3>${esc(d.titulo)}</h3>${lugarTexto(d) ? `<span class="lugar">${esc(TIPOS[d.tipo])} · ${esc(lugarTexto(d))}</span>` : `<span class="lugar">${esc(TIPOS[d.tipo])}</span>`}
 <span class="datos">${datosClave(d).slice(0, 4).map((x) => `<span>${esc(x)}</span>`).join('')}</span></div></a>`;
 }
