@@ -39,7 +39,7 @@ async function migrar() { if (!migrado) { await q(SCHEMA_CAMBIOS); migrado = tru
 
 /** Sitio WordPress publicado que se puede editar (el más reciente en estado listo). */
 export async function sitioEditable(entrevistaId) {
-  const r = await q(`SELECT id, blog_id_wp, url_publica FROM sitios WHERE entrevista_id=$1 AND estado='listo' AND blog_id_wp IS NOT NULL ORDER BY id DESC LIMIT 1`, [entrevistaId]);
+  const r = await q(`SELECT id, blog_id_wp, url_publica, publicado FROM sitios WHERE entrevista_id=$1 AND estado='listo' AND blog_id_wp IS NOT NULL ORDER BY id DESC LIMIT 1`, [entrevistaId]);
   return r.rows[0] || null;
 }
 
@@ -90,7 +90,8 @@ const SISTEMA_CLASE = `Eres Ari. El cliente ya tiene su página web lista y te e
 - "cambio": pide o describe algo concreto que quiere cambiar, quitar, agregar o corregir en su página (textos, fotos, colores, datos, secciones, letra, botones…), contesta una pregunta tuya sobre un cambio, o pide dejar algo como estaba.
 - "sin_detalle": dice que quiere hacer cambios/correcciones pero todavía no dice cuáles.
 - "otro": cualquier otra cosa (gracias, le gustó, saludos, dudas generales). En "respuesta" contesta breve y cálido; si viene al caso, recuérdale que puede pedirte cambios. Nunca ofrezcas empezar otra página ni menciones palabras clave.
-Si hay un cambio en curso o una pregunta tuya abierta, un mensaje corto como "la de arriba", "sí, esa", "en azul" es "cambio".`;
+Si hay un cambio en curso o una pregunta tuya abierta, un mensaje corto como "la de arriba", "sí, esa", "en azul" es "cambio".
+Si pregunta por la página con sus correcciones o cuándo quedan los cambios que ya mandó antes, es "cambio" (se aplican los que mandó).`;
 
 export async function clasificarMensaje(entrevistaId, texto, { abierto = false } = {}) {
   const previos = await db.ultimosMensajes(entrevistaId, 6).catch(() => []);
@@ -183,13 +184,22 @@ async function fotosDisponibles(e, actual, clavesNuevas) {
   return lista;
 }
 
-async function planear(e, actual, pedidos, fotos, errores = []) {
+/** Lo que el cliente escribió desde que vio su página (o desde el último cambio aplicado): da contexto y rescata pedidos previos. */
+async function mensajesDesdePagina(e, s) {
+  const ult = (await q(`SELECT max(actualizado) AS t FROM cambios_sitio WHERE entrevista_id=$1 AND estado IN ('aplicado','revertido')`, [e.id])).rows[0]?.t;
+  const desde = [s?.publicado, ult].filter(Boolean).map((t) => new Date(t)).sort((a, b) => b - a)[0] || new Date(Date.now() - 7 * 864e5);
+  const r = await q(`SELECT rol, contenido, transcripcion FROM mensajes WHERE entrevista_id=$1 AND creado > $2 AND rol IN ('cliente','agente') ORDER BY id DESC LIMIT 40`, [e.id, desde]);
+  return r.rows.reverse().map((m) => `${m.rol === 'cliente' ? 'Cliente' : 'Ari'}: ${(m.transcripcion || m.contenido || '').slice(0, 3000)}`).join('\n');
+}
+
+async function planear(e, actual, pedidos, fotos, errores = [], historial = '') {
   const brief = e.brief || {};
   const pedidoTxt = pedidos.map((p, i) => `${i + 1}. ${p.texto || '(sin texto)'}${p.media?.length ? ` [mandó foto(s): ${p.media.join(', ')}]` : ''}`).join('\n');
   const fotosTxt = fotos.map((f) => `- ${f.clave}${f.cliente ? ` (cliente: ${f.cliente})` : ''} · ${f.en_sitio ? `YA EN LA PÁGINA (id ${f.id_sitio}, url ${f.url_sitio})` : 'no está en la página'}${f.recien_mandada ? ' · RECIÉN MANDADA con este pedido' : ''} · ${f.descripcion}`).join('\n');
   const partes = [
     `NEGOCIO: ${brief.negocio?.nombre || ''} · contacto actual: ${JSON.stringify(brief.contacto || {})}`,
     `PEDIDO DEL CLIENTE (en orden):\n${pedidoTxt}`,
+    ...(historial ? [`CONVERSACIÓN DESDE QUE VIO SU PÁGINA (incluye cambios que pidió antes y aún no se aplican; aplícalos también si son claros):\n${historial}`] : []),
     `FOTOS DISPONIBLES:\n${fotosTxt || '(ninguna)'}`,
     `OPCIONES ACTUALES: ${JSON.stringify(actual.opciones || {})}`,
     `MENÚ ACTUAL: ${JSON.stringify(navALista(actual.menu))}`,
@@ -319,9 +329,10 @@ export async function aplicarCambio(c) {
   const clavesNuevas = new Set(c.pedidos.flatMap((p) => p.media || []));
   const fotos = await fotosDisponibles(e, actual, clavesNuevas);
 
+  const historial = await mensajesDesdePagina(e, s);
   let plan, ed, errores = [];
   for (let intento = 0; intento < 3; intento++) {
-    plan = await planear(e, actual, c.pedidos, fotos, errores);
+    plan = await planear(e, actual, c.pedidos, fotos, errores, historial);
     if (plan.accion !== 'editar') break;
     ed = aplicarEdiciones(actual, plan.ediciones);
     errores = [...ed.errores];
@@ -428,7 +439,7 @@ export async function simular(entrevistaId, pedidos) {
   if (!e || !s) throw new Error('sin sitio WordPress editable');
   const actual = await wp.contenido(s.blog_id_wp);
   const fotos = await fotosDisponibles(e, actual, new Set(pedidos.flatMap((p) => p.media || [])));
-  const plan = await planear(e, actual, pedidos, fotos);
+  const plan = await planear(e, actual, pedidos, fotos, [], await mensajesDesdePagina(e, s));
   const ed = plan.accion === 'editar' ? aplicarEdiciones(actual, plan.ediciones) : { destinos: {}, errores: [] };
   return { url: s.url_publica, plan, errores: ed.errores, destinos: Object.keys(ed.destinos), fotos: fotos.length };
 }
