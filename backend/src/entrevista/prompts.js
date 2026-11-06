@@ -51,6 +51,12 @@ REGLAS
 - Si el cliente manda foto o audio, confírmalo en una frase y sigue. Si una foto es de mala calidad, avísalo una vez y pide otra.
 - Si el cliente se desvía, responde en una línea y regresa a la pregunta pendiente.
 
+REVISIÓN ANTES DE CADA PREGUNTA (obligatoria)
+- Antes de escribir tu pregunta revisa "REVISIÓN DE REQUISITOS": si falta algo de un bloque anterior, tu pregunta es para pedir ESO (lo primero de la lista), aunque ya se haya preguntado antes; no avances a otra cosa.
+- Una pregunta hecha no es una pregunta contestada: si el cliente no respondió, respondió otra cosa o prometió mandarlo "luego", vuelve a pedirlo antes de seguir.
+- Nunca cierres un bloque ni pongas "listo ✅" si "FALTA EN ESTE BLOQUE" no está vacío, salvo que el cliente diga claramente que no lo tiene: en ese caso agrega el id a brief_patch.no_tiene (lista con todos los ids que no tiene).
+- Fotos: sin al menos una foto real recibida no se sale de B6, salvo que el cliente diga que no tiene; entonces guarda fotos.sin_fotos=true y pregúntale de qué quiere las fotos → fotos.temas[]. Logo: si dijo que sí tiene pero no ha llegado, pídelo antes de seguir.
+
 MEMORIA
 - Antes de preguntar, revisa MEMORIA.preguntas_hechas y MEMORIA.hechos: si el dato ya existe, confírmalo en una frase y avanza; no lo vuelvas a pedir.
 - Nunca propongas algo que esté en MEMORIA.rechazado.
@@ -128,6 +134,7 @@ B6.2 "¿Tienes video corto del negocio? También sirve."
 B6.3 (solo si ya mandó al menos una foto buena) "Una más: ¿me mandas una foto vertical, como las de historias de Instagram, de tu local o de ti? Es la que se ve en la primera pantalla desde el celular." → fotos.vertical_hero_asset_id
 B6.4 "Lo que falte lo podemos complementar con imágenes creadas con inteligencia artificial, pero solo fondos y detalles: las fotos de tu negocio, tus productos y tu equipo siempre son las reales, porque son las que generan confianza. ¿Te parece bien?" → fotos.permiso_generar_ia
 B6.5 "¿Tienes menú, catálogo o folleto en PDF? Mándalo."
+B6.6 Si dice que no tiene fotos: "No te preocupes. Dime de qué te gustaría que fueran las fotos (por ejemplo: tu local, tus platillos, gente usando tu servicio) y te busco ejemplos o las creo." → fotos.sin_fotos=true, fotos.temas=[lo que diga]. No cierres B6 sin fotos recibidas o sin fotos.temas.
 Regla: nunca prometas que la IA "creará" fotos del local, del producto o de personas. Si no hay foto real del local, la primera pantalla será tipográfica o de color; díselo en una frase si pregunta.
 Con las fotos recibidas (lista ASSETS), llena fotos.lista_faltantes solo con fondos/texturas/iconografía que haga falta para el giro.`,
   B7: `B7 · Confianza. confianza.historia_corta confianza.fundador{nombre,rol,credenciales[]} confianza.equipo[] confianza.certificaciones[] confianza.premios[] confianza.cifras[] ★confianza.testimonios[]{nombre,texto,fuente} o confianza.link_resenas confianza.garantias.
@@ -187,7 +194,8 @@ export const BRIEF_VACIO = {
   faq: [],
   objeciones: [],
   marca: { tiene_logo: null, colores: [], personalidad: [], estilo: null, efectos: 'sobrio', efectos_aceptacion_riesgo: false, densidad: null, referencias_sitios: [], referencias_que_gusta: null, evitar: null, tono_textos: 'tu' },
-  fotos: { lista_faltantes: [], permiso_generar_ia: true, vertical_hero_asset_id: null },
+  fotos: { lista_faltantes: [], permiso_generar_ia: true, vertical_hero_asset_id: null, sin_fotos: false, temas: [] },
+  no_tiene: [], // ids de requisitos (requisitos.js) que el cliente dijo que no tiene
   contacto: { whatsapp: null, telefono: null, email: null, email_verificado: false, email_verificacion: null, direccion: {}, google_maps_url: null, horarios: null, redes: {}, redes_faltantes: [], google_business: null, mensaje_whatsapp_inicial: null },
   redes_crear: { interesa: null, redes: [] },
   administracion: null, // al cerrar: {email, metodo:'codigo_correo'+google si gmail, panel:'wp-admin'|'panel_propio', estado:'pendiente_entrega'}

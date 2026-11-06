@@ -20,6 +20,7 @@ import { limpiarDominio } from '../dominio/registrador.js';
 import { paginaEditable, estadoCambios, registrarPedido, clasificarMensaje } from './cambios.js';
 import { alElegir } from '../panel/rehacer.js';
 import { avisarEquipo } from './avisos.js';
+import { notaRequisitos, primerBloqueIncompleto, faltantes, unirNoTiene } from './requisitos.js';
 import { dominioRespondido, quiereDominio, PREGUNTA_DOMINIO, mensajePago, pagoPendiente, atenderPostCierre } from './pago_pagina.js';
 
 // Tope de seguridad (fotos y audios cuentan como mensajes). Una entrevista real ronda 60–130.
@@ -196,6 +197,7 @@ async function turnoAri(e, { mensajesRecientes, ultimoTexto, regresaDePausa, arq
     const faltan = redesFaltantes(brief);
     partes.push(`REDES QUE FALTAN: ${faltan.length ? listaNombres(faltan) : '(ninguna; no hagas la pregunta B12.2)'}`);
   }
+  partes.push(notaRequisitos(brief, assets, bloque));
   const notaDominio = notaParaAri(brief);
   if (notaDominio) partes.push(notaDominio);
   if (notaAri) partes.push(`NOTA DEL SISTEMA: ${notaAri}`);
@@ -368,8 +370,29 @@ export async function procesarMensaje(b) {
   const assets = [...assetsPrevios, ...nuevosAssets];
   const bloqueAnterior = e.bloque_actual;
 
-  const t = await turnoAri(e, { mensajesRecientes, ultimoTexto: textoTurno, regresaDePausa, arquetipos, assets, notaAri });
-  const brief = mergeProfundo(e.brief || {}, t.briefPatch);
+  let t = await turnoAri(e, { mensajesRecientes, ultimoTexto: textoTurno, regresaDePausa, arquetipos, assets, notaAri });
+  let brief = mergeProfundo(e.brief || {}, t.briefPatch);
+  brief.no_tiene = unirNoTiene(e.brief?.no_tiene, t.briefPatch?.no_tiene);
+  // Revisión antes de cada pregunta: no se avanza (ni se cierra) con algo pendiente de un bloque anterior.
+  // Si Ari intentó avanzar, se repite su turno parado en el bloque incompleto; si aun así no lo pide, se pide con el texto fijo.
+  {
+    const destino = t.completado ? 'B12' : t.bloque;
+    const incompleto = primerBloqueIncompleto(brief, assets, destino);
+    if (incompleto) {
+      const pend = faltantes(brief, assets, { desde: incompleto, hasta: incompleto });
+      await db.evento(e.id, 'requisito_pendiente', { destino, bloque: incompleto, faltan: pend.map((f) => f.id) });
+      const nota = `NO PUEDES AVANZAR. Antes de seguir falta del bloque ${incompleto}: ${pend.map((f) => f.id).join(', ')}. Tu reply debe pedir SOLO "${pend[0].pedir}" (con tus palabras, cálido, sin regañar), sin resumen de bloque ni "listo ✅". bloque_actual=${incompleto}, completado=false.`;
+      const eForzado = { ...e, bloque_actual: incompleto, brief };
+      const t2 = await turnoAri(eForzado, { mensajesRecientes, ultimoTexto: textoTurno, regresaDePausa, arquetipos, assets, notaAri: [notaAri, nota].filter(Boolean).join('\n') }).catch(() => null);
+      const brief2 = t2 ? mergeProfundo(brief, t2.briefPatch) : brief;
+      if (t2) brief2.no_tiene = unirNoTiene(brief.no_tiene, t2.briefPatch?.no_tiene);
+      const sigue = primerBloqueIncompleto(brief2, assets, BLOQUES[BLOQUES.indexOf(incompleto) + 1] || 'B12');
+      const reply = t2 && !/listo\s*✅/i.test(t2.reply) ? t2.reply : pend[0].pedir;
+      brief = brief2;
+      // Si con este mismo mensaje ya quedó completo, se respeta la respuesta de Ari; si no, se queda pidiendo lo que falta.
+      t = { ...(t2 || t), reply: sigue ? reply : (t2?.reply || reply), bloque: sigue || t2?.bloque || incompleto, completado: false, assetsPatch: [...t.assetsPatch, ...(t2?.assetsPatch || [])] };
+    }
+  }
   // El estado de las propuestas lo maneja solo propuestas.js; Ari no puede tocarlo (antes lo pisaba con "pendiente").
   if (brief.marca) { if (e.brief?.marca?.propuestas) brief.marca.propuestas = e.brief.marca.propuestas; else delete brief.marca.propuestas; }
   if (brief.marca && e.brief?.marca?.vistazo) brief.marca.vistazo = e.brief.marca.vistazo; else if (brief.marca) delete brief.marca.vistazo;

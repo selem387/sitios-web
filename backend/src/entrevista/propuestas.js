@@ -12,8 +12,9 @@ const NO_TENGO = /no (las |los )?tengo|no tengo (m[aá]s|otras|mejores)|son (tod
 const hash = (s) => [...String(s)].reduce((h, c) => (h * 31 + c.charCodeAt(0)) >>> 0, 7);
 
 export const propuestasPendientes = (brief) => ['pendiente_material', 'mostradas', 'rechazadas'].includes(brief?.marca?.propuestas?.estado);
+// Se disparan al cruzar B6 hacia adelante, aunque Ari se haya saltado B6 (antes, saltar de B5 a B7 nunca mandaba propuestas).
 export const tocaPropuestas = (brief, bloqueAnterior, bloqueNuevo) =>
-  !brief?.marca?.propuestas && BLOQUES_ORDEN.indexOf(bloqueAnterior) >= BLOQUES_ORDEN.indexOf('B6') && bloqueNuevo !== 'B6' && bloqueAnterior !== bloqueNuevo;
+  !brief?.marca?.propuestas && BLOQUES_ORDEN.indexOf(bloqueNuevo) > BLOQUES_ORDEN.indexOf('B6') && bloqueAnterior !== bloqueNuevo;
 const BLOQUES_ORDEN = ['B0', 'B1', 'B2', 'B3', 'B4', 'B5', 'B6', 'B7', 'B8', 'B9', 'B10', 'B11', 'B12'];
 
 function mensajeFaltan(mat) {
