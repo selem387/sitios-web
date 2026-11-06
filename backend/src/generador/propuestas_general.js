@@ -194,11 +194,18 @@ function pagina(d) {
   const mostrarPrecios = brief.oferta?.mostrar_precios !== false || brief.oferta?.mostrar_paquetes;
   const secServicios = () => {
     if (!grupos.length && !mat.catalogos.length && !mat.documentos.length) return '';
-    const cards = grupos.map((g) => `<article class="paq"><h3>${esc(g.nombre)}</h3><ul>${g.opciones.map((o) => `<li><div>${o.nombre ? `<b>${esc(o.nombre)}</b>` : ''}${o.detalle ? detalleHTML(o.detalle) : ''}</div>${mostrarPrecios && o.precio ? `<em>${esc(o.precio)}</em>` : ''}</li>`).join('')}</ul></article>`).join('');
+    // Servicios con varios paquetes (y cantidades distintas): título con línea divisoria por servicio
+    // y debajo una rejilla con un cuadro por paquete. Si cada servicio es uno solo, un cuadro por servicio.
+    const conPaquetes = grupos.some((g) => g.opciones.length > 1);
+    const hN = conPaquetes ? 'h4' : 'h3'; // dentro de un servicio con título, cada paquete es un nivel abajo
+    const cuadro = (o, titulo = null) => `<article class="paq"><div class="paq-cab">${titulo || o.nombre ? `<${hN}>${esc(titulo || o.nombre)}</${hN}>` : ''}${mostrarPrecios && o.precio ? `<em>${esc(o.precio)}</em>` : ''}</div>${titulo && o.nombre ? `<b class="paq-op">${esc(o.nombre)}</b>` : ''}${o.detalle ? `<div class="paq-det">${detalleHTML(o.detalle)}</div>` : ''}</article>`;
+    const cards = conPaquetes
+      ? grupos.map((g) => `<div class="paq-grupo"><h3 class="grupo-t">${esc(g.nombre)}</h3><div class="paqs">${g.opciones.map((o) => cuadro(o)).join('')}</div></div>`).join('')
+      : grupos.map((g) => (g.opciones.length === 1 ? cuadro(g.opciones[0], g.nombre) : '')).join('');
     const cat = mat.catalogos.map((x) => `<a class="catimg" href="${esc(x.url)}" target="_blank" rel="noopener">${img(x)}</a>`).join('');
     const docs = mat.documentos.map((x) => `<a class="doc" href="${esc(x.url)}" target="_blank" rel="noopener">Ver ${esc(/pdf/i.test(x.url) ? 'catálogo (PDF)' : x.alt || 'documento')}</a>`).join('');
     for (const x of mat.documentos) usadas.add(x.url);
-    return `<section class="sec" id="servicios"><div class="wrap"><h2>${esc(T.servicios)}</h2>${cards ? `<div class="paqs">${cards}</div>` : ''}${cat ? `<div class="cats">${cat}</div>` : ''}${docs}<div class="centro">${cta()}</div></div></section>`;
+    return `<section class="sec" id="servicios"><div class="wrap"><h2>${esc(T.servicios)}</h2>${cards ? (conPaquetes ? cards : `<div class="paqs">${cards}</div>`) : ''}${cat ? `<div class="cats">${cat}</div>` : ''}${docs}<div class="centro">${cta()}</div></div></section>`;
   };
   const secSobre = () => {
     const otra = mat.equipo.find((x) => x.tipo === 'foto_fundador' && !usadas.has(x.url));
@@ -280,7 +287,11 @@ h1,h2,h3{font-family:var(--ft);font-weight:400;line-height:1.06;letter-spacing:-
 /* paquetes */
 .paqs{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:16px}
 .paq{background:var(--card);border:1px solid var(--bor);border-radius:20px;padding:22px}.paq h3{margin-bottom:10px}.paq ul{list-style:none}.paq li{display:flex;justify-content:space-between;gap:14px;padding:11px 0;border-top:1px dashed var(--bor)}.paq li:first-child{border-top:0}
-.paq li b{display:block;font-size:15px}.paq li span{display:block;color:var(--soft);font-size:14px}.paq li em{font-style:normal;font-weight:800;color:var(--p);white-space:nowrap}.paq li span+span{margin-top:6px}p.historia+p.historia{margin-top:14px}.paq ul.inc{list-style:disc;padding-left:18px;margin-top:6px;color:var(--soft);font-size:14px}.paq ul.inc li{display:list-item;border:0;padding:2px 0}
+.paq li b{display:block;font-size:15px}.paq li span{display:block;color:var(--soft);font-size:14px}.paq li em{font-style:normal;font-weight:800;color:var(--p);white-space:nowrap}.paq li span+span{margin-top:6px}
+.paq-grupo+.paq-grupo{margin-top:40px}.grupo-t{display:flex;align-items:center;gap:16px;margin:0 0 18px;font-size:clamp(20px,2.6vw,26px)}.grupo-t::after{content:"";flex:1;height:1px;background:var(--bor)}
+.paq-cab{display:flex;justify-content:space-between;align-items:baseline;gap:14px}.paq-cab h3,.paq-cab h4{margin:0;font-size:18px;line-height:1.25}.paq-cab em{font-style:normal;font-weight:800;color:var(--p);white-space:nowrap}
+.paq-op{display:block;font-size:15px;margin-top:6px}.paq-det{margin-top:10px}.paq-det span{display:block;color:var(--soft);font-size:14px}.paq-det span+span{margin-top:6px}
+.paq-det ul.inc{list-style:disc;padding-left:18px;margin-top:8px;color:var(--soft);font-size:14px}.paq-det ul.inc li{padding:2px 0}p.historia+p.historia{margin-top:14px}.paq ul.inc{list-style:disc;padding-left:18px;margin-top:6px;color:var(--soft);font-size:14px}.paq ul.inc li{display:list-item;border:0;padding:2px 0}
 body.l-carta .paq{background:none;border:0;border-top:2px solid var(--fg);border-radius:0;padding:18px 0}body.l-dostonos .paq{border-top:6px solid var(--p)}
 .cats{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:12px;margin-top:18px}.catimg img{width:100%;height:auto;border-radius:14px;border:1px solid var(--bor)}
 .doc{display:inline-block;margin-top:18px;font-weight:700;text-underline-offset:5px}

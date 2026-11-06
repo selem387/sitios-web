@@ -63,3 +63,9 @@ test('el giro largo se resume en la portada', () => {
   assert.equal(giroCorto('Fotógrafa'), 'Fotógrafa');
   assert.ok(giroCorto('Venta y renta de casas en privadas residenciales, departamentos frente a la playa y terrenos').length <= 48);
 });
+
+test('servicios con varios paquetes: título con línea por servicio y un cuadro por paquete', async () => {
+  const { agruparOferta } = await import('../src/generador/propuestas_general.js');
+  const g = agruparOferta([{ grupo: 'A', nombre: 'P1', precio_o_rango: '$1' }, { grupo: 'A', nombre: 'P2', precio_o_rango: '$2' }, { grupo: 'B', nombre: 'P3', precio_o_rango: '$3' }]);
+  assert.deepEqual(g.map((x) => x.opciones.length), [2, 1]);
+});
