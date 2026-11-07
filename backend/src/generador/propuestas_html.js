@@ -11,7 +11,7 @@ import { corregirPaleta, auditarPaleta, cssTipografia } from './tipo_color.js';
 import { coloresParaPropuesta, avisosDeGiro } from './paletas_giro.js';
 import { evaluarColoresCliente, asignarFuentes } from './asesor_color.js';
 import { coloresDePalabras, logoTenido } from './materiales.js';
-import { CSS_MOVIMIENTO, JS_MOVIMIENTO, sliderHTML, diapositivasDe } from './movimiento.js';
+import { CSS_MOVIMIENTO, JS_MOVIMIENTO, sliderHTML, diapositivasDe, efectosDe } from './movimiento.js';
 import { waUrl, formatoTel } from './bloques.js';
 import { paginasGenerales, logoHTML, redes } from './propuestas_general.js';
 import { completarMaterial } from './validar_material.js';
@@ -112,7 +112,7 @@ function pagina(d) {
     mascota: [secCats, secDest, secMenu, vis], dostonos: [secCats, secDest, secMenu, vis], lista: [secMenu, secDest, vis],
   }[d.layout];
 
-  return `<!doctype html><html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><meta name="robots" content="noindex">
+  return `<!doctype html><html lang="es" class="${efectosDe(d.letra)}"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><meta name="robots" content="noindex">
 <title>${esc(d.nombre)} · Propuesta ${d.letra}</title>
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link href="${esc(d.fuentesUrl)}" rel="stylesheet">
 <style>

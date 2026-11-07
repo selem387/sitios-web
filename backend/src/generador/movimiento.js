@@ -10,6 +10,29 @@ import { urlClip, tipoClip, encolarClips } from './clips.js';
 const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const corto = (s, max) => { const t = String(s || '').replace(/\s+/g, ' ').trim(); return t && t.length <= max ? t : ''; };
 export const MAX_DIAPOSITIVAS = 5;
+
+/*
+ * Efectos en tendencia para imágenes y video (investigación nov-2026, doc claude/tendencias-efectos.md; se repasa cada mes).
+ * Cada propuesta lleva una combinación distinta para dar variedad; el sitio final conserva la de la propuesta elegida.
+ *  fx-zoom      transición del slider con acercamiento suave (transiciones fluidas tipo "match cut")
+ *  fx-cortina   transición del slider como cortina lateral (revelado con máscara)
+ *  fx-mascara   las fotos se revelan con una máscara de abajo hacia arriba al entrar en pantalla
+ *  fx-foco      las fotos aparecen con un leve acercamiento y desvanecido
+ *  fx-paralaje  profundidad: la foto se desplaza dentro de su marco al hacer scroll (CSS scroll-driven, solo escritorio)
+ *  fx-grano     textura de grano de película muy sutil sobre el slider (tendencia de texturas táctiles)
+ *  fx-color     fotos un poco apagadas que toman color al pasar el cursor (solo con mouse)
+ *  fx-texto     el texto de cada foto del slider entra en secuencia (tipografía cinética)
+ * Todos usan transform, opacity o clip-path; prefers-reduced-motion los apaga.
+ */
+const PRESETS_FX = [
+  'fx-zoom fx-grano fx-mascara',
+  'fx-cortina fx-foco fx-color',
+  'fx-zoom fx-paralaje fx-texto',
+  'fx-cortina fx-mascara fx-texto',
+  'fx-zoom fx-grano fx-paralaje fx-color',
+  'fx-cortina fx-foco fx-texto',
+];
+export const efectosDe = (letra) => PRESETS_FX[Math.max(0, 'ABCDEF'.indexOf(String(letra || 'A').toUpperCase())) % PRESETS_FX.length];
 const ORDEN_TIPOS = ['diferenciador', 'oferta', 'prueba', 'vision'];
 
 /**
@@ -114,6 +137,22 @@ export const CSS_MOVIMIENTO = `
 .rv{opacity:0;transform:translate3d(0,16px,0);transition:opacity .8s ease,transform .9s cubic-bezier(.2,.7,.2,1)}.rv.en{opacity:1;transform:none}
 @media (hover:hover){.btn{transition:transform .25s ease,box-shadow .25s ease}.btn:hover{transform:translateY(-2px);box-shadow:0 8px 22px rgba(0,0,0,.16)}
 .paq,blockquote,.wa{transition:transform .35s ease,box-shadow .35s ease}.paq:hover,blockquote:hover{transform:translateY(-3px);box-shadow:0 10px 26px rgba(0,0,0,.08)}.wa:hover{transform:scale(1.05)}}
+/* efectos en tendencia por propuesta (efectosDe) */
+.fx-zoom .sl-d{transform:scale(1.06);transition:opacity 1.1s ease,transform 1.8s cubic-bezier(.2,.7,.2,1),visibility 0s linear 1.1s}
+.fx-zoom .sl-d.activa{transform:none;transition:opacity 1.1s ease,transform 1.8s cubic-bezier(.2,.7,.2,1),visibility 0s}
+.fx-cortina .sl-d{opacity:1;clip-path:inset(0 100% 0 0);transition:clip-path 0s linear 1.2s,visibility 0s linear 1.2s}
+.fx-cortina .sl-d.activa{clip-path:inset(0 0 0 0);transition:clip-path 1.2s cubic-bezier(.77,0,.18,1),visibility 0s}
+.fx-mascara .rvf{clip-path:inset(0 0 100% 0);transition:clip-path 1.2s cubic-bezier(.77,0,.18,1)}.fx-mascara .rvf.en{clip-path:inset(0 0 0 0)}
+.fx-foco .rvf{opacity:0;transform:scale(.96);transition:opacity 1s ease,transform 1.2s cubic-bezier(.2,.7,.2,1)}.fx-foco .rvf.en{opacity:1;transform:none}
+@supports (animation-timeline:view()){@media (min-width:900px) and (prefers-reduced-motion:no-preference){.fx-paralaje main img.mv{animation:mvp linear both;animation-timeline:view();animation-range:cover}}}
+@keyframes mvp{from{transform:scale(1.12) translate3d(0,-4%,0)}to{transform:scale(1.12) translate3d(0,4%,0)}}
+.fx-grano .sl::before{content:"";position:absolute;inset:-50%;z-index:2;pointer-events:none;opacity:.08;mix-blend-mode:overlay;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='g'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23g)'/%3E%3C/svg%3E");animation:grano 1.2s steps(5) infinite}
+@keyframes grano{0%{transform:translate3d(0,0,0)}20%{transform:translate3d(-3%,2%,0)}40%{transform:translate3d(2%,-3%,0)}60%{transform:translate3d(-2%,-1%,0)}80%{transform:translate3d(3%,3%,0)}100%{transform:translate3d(0,0,0)}}
+@media (hover:hover){.fx-color main figure:not(.sl) img{filter:saturate(.72);transition:filter .6s ease}.fx-color main figure:not(.sl):hover img{filter:none}}
+@keyframes subir{from{opacity:0;transform:translate3d(0,18px,0)}to{opacity:1;transform:none}}
+.fx-texto .sl-d.activa:not(:first-child) .sl-cap .sl-t,.fx-texto .sl-d.activa:not(:first-child) .sl-cap .sl-a,.fx-texto .sl-d.activa:not(:first-child) .sl-cap .sl-btn{animation:subir .9s cubic-bezier(.2,.7,.2,1) both}
+.fx-texto .sl-d.activa .sl-a{animation-delay:.12s!important}.fx-texto .sl-d.activa .sl-btn{animation-delay:.24s!important}
+@media (prefers-reduced-motion:reduce){.fx-zoom .sl-d,.fx-cortina .sl-d{transform:none!important;clip-path:none!important;transition:none!important}.fx-mascara .rvf,.fx-foco .rvf{clip-path:none!important;opacity:1!important;transform:none!important}.fx-grano .sl::before,.fx-texto .sl-cap *{animation:none!important}}
 @media (prefers-reduced-motion:reduce){.km,.mv{animation:none!important}.rv{opacity:1!important;transform:none!important;transition:none!important}.sl-d,.sl-d>video{transition:none}.btn,.paq,blockquote,.wa{transition:none!important;transform:none!important}}
 `;
 
@@ -154,9 +193,10 @@ alCargar(()=>{sl.classList.add('vivo');setTimeout(()=>clip(ds[1]),1200);if(!para
 });
 if(R)return;
 const vis=io(es=>es.forEach(e=>e.target.classList.toggle('en',e.isIntersecting)),{rootMargin:'60px'});
+const ap=io((es,o)=>es.forEach(e=>{if(e.isIntersecting){e.target.classList.add('en');o.unobserve(e.target)}}),{rootMargin:'0px 0px -8% 0px'});
 document.querySelectorAll('main img').forEach(im=>{const p=im.parentElement;
 if(!vis||im.closest('.sl,.cap,.catimg,.carr,.circulo')||/logo/.test(im.className)||p.querySelectorAll('img').length!==1)return;
-const r=getComputedStyle(im).borderRadius;p.style.overflow='hidden';if(r&&r!=='0px')p.style.borderRadius=r;im.classList.add('mv');vis.observe(im)});
-const ap=io((es,o)=>es.forEach(e=>{if(e.isIntersecting){e.target.classList.add('en');o.unobserve(e.target)}}),{rootMargin:'0px 0px -8% 0px'});
+const r=getComputedStyle(im).borderRadius;p.style.overflow='hidden';if(r&&r!=='0px')p.style.borderRadius=r;im.classList.add('mv');vis.observe(im);
+if(ap&&/fx-(mascara|foco)/.test(document.documentElement.className)&&p.getBoundingClientRect().top>innerHeight*.85){p.classList.add('rvf');ap.observe(p)}});
 if(ap)document.querySelectorAll('main>section:not(.hero):not(.promo),main>div:not(.tira):not(.wrap)').forEach(el=>{if(el.getBoundingClientRect().top>innerHeight){el.classList.add('rv');ap.observe(el)}});
 })();</script>`;
