@@ -192,7 +192,15 @@ export const CSS_MOVIMIENTO = `
 @keyframes mv{from{transform:scale(1)}to{transform:scale(1.08) translate3d(0,-1.5%,0)}}
 .mv{animation:mv 11s ease-in-out infinite alternate;animation-play-state:paused}.mv.en{animation-play-state:running}
 /* aparición suave al hacer scroll y reacción leve al cursor */
-.rv{opacity:0;transform:translate3d(0,16px,0);transition:opacity .8s ease,transform .9s cubic-bezier(.2,.7,.2,1)}.rv.en{opacity:1;transform:none}
+/* 7-nov-2026: escalonado y cascada — dentro de cada sección, título, frase, botón y tarjetas entran uno tras otro (0.12 s).
+   Se usa la propiedad translate (no transform) para no chocar con la elevación al pasar el cursor. */
+.rv .ri{opacity:0;translate:0 18px;transition:opacity .7s ease calc(var(--i,0)*.12s),translate .8s cubic-bezier(.2,.7,.2,1) calc(var(--i,0)*.12s)}
+.rv.en .ri{opacity:1;translate:none}
+/* revelado por líneas en títulos h2: cada línea sube desde abajo detrás de una máscara */
+.ln{display:inline-block;overflow:hidden;vertical-align:top;padding-bottom:.14em;margin-bottom:-.14em}
+.ln>span{display:inline-block;transform:translate3d(0,110%,0);transition:transform .9s cubic-bezier(.2,.7,.2,1) calc(var(--l,0)*.12s)}
+.rv.en .ln>span{transform:none}
+.cifras li,.cifra{font-variant-numeric:tabular-nums}
 @media (hover:hover){.btn{transition:transform .25s ease,box-shadow .25s ease}.btn:hover{transform:translateY(-2px);box-shadow:0 8px 22px rgba(0,0,0,.16)}
 .paq,blockquote,.wa{transition:transform .35s ease,box-shadow .35s ease}.paq:hover,blockquote:hover{transform:translateY(-3px);box-shadow:0 10px 26px rgba(0,0,0,.08)}.wa:hover{transform:scale(1.05)}}
 /* efectos en tendencia por propuesta (efectosDe) */
@@ -212,7 +220,7 @@ export const CSS_MOVIMIENTO = `
 .fx-texto .sl-d.activa:not(:first-child) .sl-cap .sl-t,.fx-texto .sl-d.activa:not(:first-child) .sl-cap .sl-a,.fx-texto .sl-d.activa:not(:first-child) .sl-cap .sl-btn{animation:subir .9s cubic-bezier(.2,.7,.2,1) both}
 .fx-texto .sl-d.activa .sl-a{animation-delay:.12s!important}.fx-texto .sl-d.activa .sl-btn{animation-delay:.24s!important}
 @media (prefers-reduced-motion:reduce){.fx-zoom .sl-d,.fx-cortina .sl-d{transform:none!important;clip-path:none!important;transition:none!important}.fx-mascara .rvf,.fx-foco .rvf{clip-path:none!important;opacity:1!important;transform:none!important}.fx-grano .sl::before,.fx-texto .sl-cap *{animation:none!important}}
-@media (prefers-reduced-motion:reduce){.km,.mv{animation:none!important}.rv{opacity:1!important;transform:none!important;transition:none!important}.sl-d,.sl-d>video{transition:none}.btn,.paq,blockquote,.wa{transition:none!important;transform:none!important}}
+@media (prefers-reduced-motion:reduce){.km,.mv{animation:none!important}.rv .ri{opacity:1!important;translate:none!important;transition:none!important}.ln>span{transform:none!important;transition:none!important}.sl-d,.sl-d>video{transition:none}.btn,.paq,blockquote,.wa{transition:none!important;transform:none!important}}
 `;
 
 // JS en línea (≈2.5 KB). Corre al final del body; no bloquea el pintado de la primera foto.
@@ -257,10 +265,24 @@ alCargar(()=>{sl.classList.add('vivo');setTimeout(()=>clip(ds[1]),1200);if(!para
 });
 if(R)return;
 const vis=io(es=>es.forEach(e=>e.target.classList.toggle('en',e.isIntersecting)),{rootMargin:'60px'});
-const ap=io((es,o)=>es.forEach(e=>{if(e.isIntersecting){e.target.classList.add('en');o.unobserve(e.target)}}),{rootMargin:'0px 0px -8% 0px'});
+/* contadores: la cifra sube de 0 a su valor y al final queda exactamente el texto del cliente */
+const cuenta=li=>{const tn=[...li.childNodes].find(n=>n.nodeType===3&&/\\d/.test(n.nodeValue));if(!tn)return;const orig=tn.nodeValue,m=orig.match(/\\d[\\d,.]*/);
+const fin=parseFloat(m[0].replace(/,/g,''));if(!(fin>1)||fin>1e6||(/^(19|20)\\d\\d$/.test(m[0])))return;
+li.style.minWidth=li.offsetWidth+'px';const ini=performance.now(),d=1400,fmt=n=>Math.round(n).toLocaleString('es-MX');
+const paso=t=>{const p=Math.min(1,(t-ini)/d),e=1-Math.pow(1-p,3);tn.nodeValue=orig.replace(m[0],fmt(fin*e));if(p<1)requestAnimationFrame(paso);else{tn.nodeValue=orig;li.style.minWidth=''}};
+tn.nodeValue=orig.replace(m[0],'0');requestAnimationFrame(paso)};
+const ap=io((es,o)=>es.forEach(e=>{if(e.isIntersecting){e.target.classList.add('en');o.unobserve(e.target);e.target.querySelectorAll('.cifras li,.cifra').forEach(cuenta)}}),{rootMargin:'0px 0px -8% 0px'});
+/* títulos h2 de texto simple: se parten en palabras y se agrupan por línea (--l) */
+const lineas=(h,base)=>{if(h.children.length||!h.textContent.trim())return false;const ws=h.textContent.trim().split(/\\s+/);h.textContent='';
+ws.forEach((w,k)=>{const a=document.createElement('span'),b=document.createElement('span');a.className='ln';b.textContent=w;a.appendChild(b);h.appendChild(a);if(k<ws.length-1)h.appendChild(document.createTextNode(' '))});
+let top=null,l=base-1;h.querySelectorAll('.ln').forEach(a=>{if(a.offsetTop!==top){top=a.offsetTop;l++}a.firstChild.style.setProperty('--l',l)});return l-base+1};
 document.querySelectorAll('main img').forEach(im=>{const p=im.parentElement;
 if(!vis||im.closest('.sl,.cap,.catimg,.carr,.circulo')||/logo/.test(im.className)||p.querySelectorAll('img').length!==1)return;
 const r=getComputedStyle(im).borderRadius;p.style.overflow='hidden';if(r&&r!=='0px')p.style.borderRadius=r;im.classList.add('mv');vis.observe(im);
 if(ap&&/fx-(mascara|foco)/.test(document.documentElement.className)&&p.getBoundingClientRect().top>innerHeight*.85){p.classList.add('rvf');ap.observe(p)}});
-if(ap)document.querySelectorAll('main>section:not(.hero):not(.promo),main>div:not(.tira):not(.wrap)').forEach(el=>{if(el.getBoundingClientRect().top>innerHeight){el.classList.add('rv');ap.observe(el)}});
+if(ap)document.querySelectorAll('main>section:not(.hero):not(.promo),main>div:not(.tira):not(.wrap)').forEach(el=>{if(el.getBoundingClientRect().top<=innerHeight)return;
+el.classList.add('rv');let i=0;
+el.querySelectorAll('h2,h3,p,.btn,.paq,blockquote,details,figure,.cifras li,li.serv,.tarjeta,.card,.item').forEach(x=>{if(x.closest('.ri,.sl,.ln')||x.parentElement.closest('.ri'))return;
+if(x.tagName==='H2'){const n=lineas(x,Math.min(i,10));if(n){i+=n;return}}x.classList.add('ri');x.style.setProperty('--i',Math.min(i,10));i++});
+ap.observe(el)});
 })();</script>`;
