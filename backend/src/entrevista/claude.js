@@ -4,6 +4,22 @@ import { config } from '../config.js';
 export const MODELO_ARI = config.entrevistaModel;
 export const MODELO_MEMORIA = config.entrevistaMemoriaModel;
 
+/** JSON.parse que corrige el error típico del modelo: una llave o corchete de cierre de más (cierra el objeto antes de tiempo). */
+export function parsearReparando(t) {
+  let txt = String(t || '');
+  for (let i = 0; i < 6; i++) {
+    try { return JSON.parse(txt); } catch (err) {
+      const pos = Number((String(err.message).match(/position (\d+)/) || [])[1]);
+      if (!Number.isFinite(pos)) return null;
+      // Quita el último } o ] antes de la posición del error (el cierre sobrante) y reintenta.
+      const j = Math.max(txt.lastIndexOf('}', pos - 1), txt.lastIndexOf(']', pos - 1));
+      if (j < 0) return null;
+      txt = txt.slice(0, j) + txt.slice(j + 1);
+    }
+  }
+  return null;
+}
+
 export async function pedirJSON({ system, contenido, schema, model = MODELO_ARI, max_tokens = 2000, timeoutMs = 120000 }) {
   const apiKey = config.anthropicApiKey;
   if (!apiKey) throw new Error('Falta ANTHROPIC_API_KEY');
@@ -39,7 +55,7 @@ export async function pedirJSON({ system, contenido, schema, model = MODELO_ARI,
     const crudo = typeof data._texto === 'string' ? data._texto : (llaves.length === 1 && typeof data[llaves[0]] === 'string' ? data[llaves[0]] : null);
     if (crudo && /^\s*[{[]/.test(crudo)) {
       const m = crudo.match(/\{[\s\S]*\}/);
-      if (m) { try { const d = JSON.parse(m[0]); if (d && typeof d === 'object') data = d; } catch { /* sigue */ } }
+      if (m) { const d = parsearReparando(m[0]); if (d && typeof d === 'object') data = d; }
     }
   }
   if (!data) throw new Error('Claude no devolvió JSON');
