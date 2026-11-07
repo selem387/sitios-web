@@ -58,7 +58,10 @@ async function trabajar() {
       const c = cola.shift();
       const destino = path.join(DIR_CLIPS, c.nombre);
       try {
-        if (await existe(destino)) continue;
+        // Un clip "hf" que salió con FFmpeg por falta de créditos se vuelve a intentar con Higgsfield cada 6 h.
+        const respaldo = await fs.stat(`${destino}.ff`).catch(() => null);
+        const reintentar = c.tipo === 'hf' && respaldo && HF_CRED && Date.now() > sinCreditosHasta && Date.now() - respaldo.mtimeMs > 6 * 36e5;
+        if ((await existe(destino)) && !reintentar) continue;
         // Un error reciente: no reintentar en 24 h (evita gastar créditos en bucle).
         const err = await fs.stat(`${destino}.err`).catch(() => null);
         if (err && Date.now() - err.mtimeMs < 864e5) continue;
@@ -83,6 +86,7 @@ async function generar(c, destino) {
       const url = await higgsfieldVideo(c);
       await bajarYComprimir(url, tmp);
       await fs.rename(tmp, destino);
+      await fs.rm(`${destino}.ff`, { force: true });
       return;
     } catch (e) {
       // Sin créditos (402/403 o mensaje de saldo): 6 h sin intentar Higgsfield; el clip se hace con FFmpeg.
@@ -90,8 +94,10 @@ async function generar(c, destino) {
       console.warn('[clips] Higgsfield no disponible, uso FFmpeg:', e.message);
     }
   }
+  if (await existe(destino)) { await fs.writeFile(`${destino}.ff`, 'respaldo FFmpeg'); return; }
   await clipFfmpeg(c, tmp);
   await fs.rename(tmp, destino);
+  if (c.tipo === 'hf') await fs.writeFile(`${destino}.ff`, 'respaldo FFmpeg');
 }
 
 /* ---------------- FFmpeg ---------------- */

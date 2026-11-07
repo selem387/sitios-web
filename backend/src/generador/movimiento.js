@@ -85,7 +85,7 @@ export const CSS_MOVIMIENTO = `
 .sl[data-sl]:not(.vivo) .sl-d:not(.activa){display:none}
 .sl-d>img,.sl-d>video{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;max-width:none}
 .sl-d>video{opacity:0;transition:opacity .9s ease}.sl-d>video.listo{opacity:1}
-.sl-d.con-txt::after{content:"";position:absolute;inset:0;z-index:1;pointer-events:none;background:linear-gradient(180deg,rgba(0,0,0,0) 30%,rgba(0,0,0,.68))}
+.sl-d.con-txt::after{content:"";position:absolute;inset:0;z-index:1;pointer-events:none;background:linear-gradient(180deg,rgba(0,0,0,0) 22%,rgba(0,0,0,.42) 52%,rgba(0,0,0,.78))}
 .sl-cap{position:absolute;left:0;right:0;bottom:0;z-index:2;padding:22px 20px 76px;color:#fff}
 .sl-t{font-family:var(--ft);font-size:clamp(26px,6vw,50px);line-height:1.06;letter-spacing:-.015em;max-width:18ch;text-wrap:balance;text-shadow:0 1px 18px rgba(0,0,0,.35)}
 .sl-a{color:rgba(255,255,255,.92);margin-top:10px;max-width:42ch;font-size:clamp(15px,3.8vw,19px);text-shadow:0 1px 12px rgba(0,0,0,.4)}
