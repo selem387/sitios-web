@@ -12,8 +12,12 @@ import { config } from '../config.js';
 
 export const DIR_CLIPS = path.join(config.dataDir, 'clips');
 const HF_BASE = 'https://api.higgsfield.ai';
-const HF_ID = process.env.HF_API_KEY_ID || '';
-const HF_SECRET = process.env.HF_API_KEY_SECRET || '';
+// Credencial "id:secreto". La consola de Higgsfield entrega el secreto ya con el id pegado ("uuid:hex");
+// en ese caso HF_API_KEY_ID puede traer solo el nombre de la llave y se ignora.
+const HF_SECRET_RAW = process.env.HF_API_KEY_SECRET || '';
+const HF_CRED = process.env.HF_API_KEY || (HF_SECRET_RAW.includes(':') ? HF_SECRET_RAW : (process.env.HF_API_KEY_ID && HF_SECRET_RAW ? `${process.env.HF_API_KEY_ID}:${HF_SECRET_RAW}` : ''));
+const HF_ID = HF_CRED ? 'ok' : '';
+const HF_SECRET = HF_CRED ? 'ok' : '';
 // Modelo image-to-video. Seedance 2.5 (12 créditos a 480p, 4 s). Para Kling 4.0 Flash, poner aquí su ruta de la API.
 const HF_MODELO_VIDEO = process.env.HF_MODELO_VIDEO || 'bytedance/seedance-2.5/reference-to-video';
 const HF_MODELO_EDICION = process.env.HF_MODELO_EDICION || 'alibaba/qwen-image-3/edit';
@@ -145,7 +149,7 @@ async function bajarYComprimir(url, tmp) {
 async function hf(ruta, body) {
   const r = await fetch(`${HF_BASE}/${ruta}`, {
     method: 'POST',
-    headers: { authorization: `Key ${HF_ID}:${HF_SECRET}`, 'content-type': 'application/json', 'idempotency-key': crypto.randomUUID() },
+    headers: { authorization: `Key ${HF_CRED}`, 'content-type': 'application/json', 'idempotency-key': crypto.randomUUID() },
     body: JSON.stringify(body),
     signal: AbortSignal.timeout(60000),
   });
@@ -164,7 +168,7 @@ async function esperar(j, limiteMs = 10 * 60000) {
   while (!['completed', 'failed', 'nsfw', 'canceled'].includes(estado.status)) {
     if (Date.now() > fin) throw new Error('Higgsfield: tiempo agotado');
     await new Promise((ok) => setTimeout(ok, 5000));
-    const r = await fetch(estado.status_url || `${HF_BASE}/requests/${estado.request_id}/status`, { headers: { authorization: `Key ${HF_ID}:${HF_SECRET}` }, signal: AbortSignal.timeout(30000) });
+    const r = await fetch(estado.status_url || `${HF_BASE}/requests/${estado.request_id}/status`, { headers: { authorization: `Key ${HF_CRED}` }, signal: AbortSignal.timeout(30000) });
     estado = await r.json();
   }
   if (estado.status !== 'completed') throw new Error(`Higgsfield: ${estado.status}`);
