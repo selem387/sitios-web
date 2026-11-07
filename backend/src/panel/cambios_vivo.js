@@ -60,6 +60,7 @@ REGLA NÚMERO UNO: EL TEXTO DEL CLIENTE NO SE TOCA
 - Paquetes/servicios (sección "oferta"): cada elemento {grupo, nombre, descripcion_corta, precio_o_rango, destacado}. Un "## Título" del chat es la categoría (grupo, sin "## "). "*Paquete #1 — $1,200 MXN*" → nombre "Paquete #1", precio "$1,200 MXN". La descripción y sus viñetas van en descripcion_corta, un renglón cada una, conservando el "- " de las viñetas.
 - Si manda una lista nueva completa, reemplaza la anterior con TODOS sus elementos en su orden. Si agrega o corrige uno, conserva los demás tal cual.
 - Si una frase no viene del cliente, se queda como ya estaba. No redactes textos nuevos ni inventes precios, horarios, teléfonos o cifras.
+- Cuando el cliente pide cambiar, quitar o reemplazar palabras de SU texto (p. ej. "donde dice X deja solo Y", "quita Z"), hazlo exactamente: esa es su instrucción y SÍ se puede. Busca el texto en CONTENIDO ACTUAL (títulos de categoría de paquetes = oferta.items[].grupo; nombres = .nombre) y cámbialo en TODOS los elementos donde aparezca, sin tocar nada más.
 
 QUÉ PUEDES HACER
 - Cambiar cualquier sección (devuélvela completa con el mismo formato que tiene en CONTENIDO ACTUAL).
@@ -277,6 +278,7 @@ export async function aplicarCambioVivo(c, e, sv) {
     // 1) Plan válido (hasta 3 intentos por ronda).
     for (let i = 0; i < 3; i++) {
       plan = await planear(e, act, c.pedidos, conv, errores);
+      if (plan.accion === 'no_se_puede' && i < 2) { errores = ['Dijiste no_se_puede, pero cambiar, quitar o agregar textos, datos, colores, fotos, acomodo o secciones SÍ se puede: busca dónde está ese texto en CONTENIDO ACTUAL (p. ej. oferta.items[].grupo o .nombre) y edítalo con accion=editar. Solo usa no_se_puede si de verdad nada de lo pedido es posible.']; v = undefined; continue; }
       if (plan.accion !== 'editar') break;
       v = validar(plan, act, fuentes);
       errores = v.errores;
@@ -288,6 +290,7 @@ export async function aplicarCambioVivo(c, e, sv) {
       return avisar(e.id, plan.pregunta || '¿Me dices un poco más de lo que quieres cambiar?', { evento: 'cambios_sitio', datos: { cambio_id: c.id } });
     }
     if (plan.accion === 'revertir') return revertir(c, e, sv);
+    if (plan.accion !== 'editar' || !v) return noPude(c, e, { errores, no_pude: plan.no_pude || [] });
     const cssNuevo = typeof plan.css === 'string' && plan.css.trim() !== (act.css || '').trim() ? plan.css.trim() : null;
     const estNueva = v.estructura && JSON.stringify(v.estructura) !== JSON.stringify(act.estructura || null) ? v.estructura : null;
     const propNueva = plan.propuesta && plan.propuesta !== act.propuesta ? plan.propuesta : null;

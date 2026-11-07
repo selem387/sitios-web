@@ -1,3 +1,5 @@
+// Un error suelto en segundo plano no debe tumbar el servidor (cada caída = 502 para todos).
+process.on('unhandledRejection', (err) => console.error('unhandledRejection', err));
 // Servidor principal: API compatible con Base44 (/api/apps/...), páginas de acceso,
 // archivos, funciones Deno, tiempo real y API de administración.
 import { Hono } from 'hono';

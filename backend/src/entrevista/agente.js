@@ -33,7 +33,7 @@ const colas = new Map();
 export function enSerie(clave, fn) {
   const previa = colas.get(clave) || Promise.resolve();
   const sig = previa.catch(() => {}).then(fn);
-  colas.set(clave, sig.finally(() => { if (colas.get(clave) === sig) colas.delete(clave); }));
+  colas.set(clave, sig.catch(() => {}).finally(() => { if (colas.get(clave) === sig) colas.delete(clave); }));
   return sig;
 }
 
@@ -177,12 +177,44 @@ async function decidirPlataforma(brief) {
   }
 }
 
+
+// Palabras con contenido de la pregunta final de un mensaje (sin saludos ni relleno).
+const VACIAS = new Set('el la los las un una unos unas de del a al y o u que qué en con por para tu tus su sus mi me te se lo le les es son estas estás esta está como cómo cual cuál cuales cuáles donde dónde cuando cuándo ya si sí no ustedes usted tú yo nos más muy hay ser estar tienes tiene tienen eres desde estan están ejemplo dime cuéntame cuentame'.split(' '));
+function palabrasPregunta(texto) {
+  const qs = String(texto || '').match(/¿[^?]*\?/g);
+  const base = qs ? qs[qs.length - 1] : '';
+  return new Set(base.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-zñ ]/g, ' ').split(/\s+/).filter((w) => w.length > 2 && !VACIAS.has(w)));
+}
+/** Si la pregunta del reply ya se hizo (y se contestó) en esta entrevista, devuelve {pregunta, respuesta}. */
+async function preguntaRepetida(entrevistaId, reply) {
+  const nueva = palabrasPregunta(reply);
+  if (nueva.size < 2) return null;
+  const msgs = await db.ultimosMensajes(entrevistaId, 120);
+  for (let i = 0; i < msgs.length - 1; i++) {
+    const m = msgs[i];
+    if (m.rol !== 'agente' || m.tipo === 'imagen') continue;
+    const sig = msgs.slice(i + 1).find((x) => x.rol === 'cliente');
+    if (!sig) continue;
+    const vieja = palabrasPregunta(m.contenido);
+    if (vieja.size < 2) continue;
+    const comunes = [...nueva].filter((w) => vieja.has(w)).length;
+    const menor = Math.min(nueva.size, vieja.size);
+    if (comunes / menor >= (menor >= 3 ? 0.6 : 0.7)) {
+      const q = String(m.contenido).match(/¿[^?]*\?/g);
+      return { pregunta: q ? q[q.length - 1] : m.contenido, respuesta: sig.transcripcion || sig.contenido || '' };
+    }
+  }
+  return null;
+}
+
 async function turnoAri(e, { mensajesRecientes, ultimoTexto, regresaDePausa, arquetipos, assets, notaAri = null }) {
   const bloque = BLOQUES.includes(e.bloque_actual) ? e.bloque_actual : 'B0';
   const mem = e.memoria && Object.keys(e.memoria).length ? JSON.stringify(e.memoria, null, 1) : 'vacía';
   const brief = mergeProfundo(BRIEF_VACIO, e.brief || {});
   const historial = mensajesRecientes.map((m) => `${m.rol === 'cliente' ? 'Cliente' : 'Ari'}: ${m.transcripcion ? `[audio] ${m.transcripcion}` : m.contenido || ''}`).join('\n');
+  const hoy = new Date().toLocaleDateString('es-MX', { timeZone: 'America/Mexico_City', day: 'numeric', month: 'long', year: 'numeric' });
   const partes = [
+    `HOY ES: ${hoy} (si el cliente dice "este año", es ${new Date().getFullYear()})`,
     `MEMORIA:\n${mem}`,
     `BLOQUE ACTUAL: ${bloque}\nGUÍA DEL BLOQUE:\n${GUIA_BLOQUES[bloque]}`,
   ];
@@ -376,7 +408,7 @@ export async function procesarMensaje(b) {
   const mensajes = [...prefijo];
   if (nueva && reiniciar) mensajes.push('Listo, borré todo el avance y empezamos de cero 🔄');
   if (nueva) mensajes.push(INSTRUCCIONES);
-  const [mensajesRecientes, arquetipos] = await Promise.all([db.ultimosMensajes(e.id, 8), db.arquetipos()]);
+  const [mensajesRecientes, arquetipos] = await Promise.all([db.ultimosMensajes(e.id, 24), db.arquetipos()]);
   const assets = [...assetsPrevios, ...nuevosAssets];
   const bloqueAnterior = e.bloque_actual;
 
@@ -401,6 +433,21 @@ export async function procesarMensaje(b) {
       brief = brief2;
       // Si con este mismo mensaje ya quedó completo, se respeta la respuesta de Ari; si no, se queda pidiendo lo que falta.
       t = { ...(t2 || t), reply: sigue ? reply : (t2?.reply || reply), bloque: sigue || t2?.bloque || incompleto, completado: false, assetsPatch: [...t.assetsPatch, ...(t2?.assetsPatch || [])] };
+    }
+  }
+  // No repetir preguntas: si la pregunta de Ari ya se hizo antes y el cliente la contestó, se rehace el turno una vez.
+  {
+    const rep = await preguntaRepetida(e.id, t.reply);
+    if (rep) {
+      await db.evento(e.id, 'pregunta_repetida', { reply: t.reply.slice(0, 200), antes: rep.pregunta.slice(0, 200) });
+      const nota = `NO REPITAS: ya preguntaste "${rep.pregunta}" y el cliente contestó "${rep.respuesta.slice(0, 300)}". Eso ya está en BRIEF. Pregunta lo SIGUIENTE que falte; si del bloque ${t.bloque} ya tienes todo, ciérralo y pasa al siguiente bloque.`;
+      const eAct = { ...e, bloque_actual: t.bloque, brief };
+      const t3 = await turnoAri(eAct, { mensajesRecientes, ultimoTexto: textoTurno, regresaDePausa, arquetipos, assets, notaAri: [notaAri, nota].filter(Boolean).join('\n') }).catch(() => null);
+      if (t3 && !(await preguntaRepetida(e.id, t3.reply))) {
+        const b3 = mergeProfundo(brief, t3.briefPatch);
+        b3.no_tiene = unirNoTiene(brief.no_tiene, t3.briefPatch?.no_tiene);
+        if (!primerBloqueIncompleto(b3, assets, t3.completado ? 'B12' : t3.bloque)) { brief = b3; t = { ...t3, assetsPatch: [...t.assetsPatch, ...t3.assetsPatch] }; }
+      }
     }
   }
   // El estado de las propuestas lo maneja solo propuestas.js; Ari no puede tocarlo (antes lo pisaba con "pendiente").
@@ -499,9 +546,9 @@ export async function procesarMensaje(b) {
   if (!marca.efectos) marca.efectos = 'sobrio';
   // Estudio de ligas de referencia (web → render /v1/estudiar; Figma → REST). No bloquea el cierre si falla.
   marca.referencias_estudio = await estudiarReferencias(brief).catch(() => []);
-  const faltantes = redesFaltantes(brief);
-  const contacto = { ...(brief.contacto || {}), redes_faltantes: faltantes };
-  const redesCrear = { interesa: brief.redes_crear?.interesa ?? null, redes: (brief.redes_crear?.redes?.length ? brief.redes_crear.redes : faltantes).filter((r) => faltantes.includes(r)) };
+  const redesQueFaltan = redesFaltantes(brief);
+  const contacto = { ...(brief.contacto || {}), redes_faltantes: redesQueFaltan };
+  const redesCrear = { interesa: brief.redes_crear?.interesa ?? null, redes: (brief.redes_crear?.redes?.length ? brief.redes_crear.redes : redesQueFaltan).filter((r) => redesQueFaltan.includes(r)) };
   // Acceso del dueño (único administrador): se entrega cuando el sitio queda en su dominio con HTTPS (paso "listo" de dominios).
   const email = contacto.email || null;
   const administracion = {
