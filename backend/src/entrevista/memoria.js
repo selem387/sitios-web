@@ -3,6 +3,7 @@
 import * as db from './db.js';
 import { pedirJSON, MODELO_MEMORIA } from './claude.js';
 import { SISTEMA_MEMORIA, ESQUEMA_MEMORIA, GUIA_BLOQUES } from './prompts.js';
+import { faltantes } from './requisitos.js';
 
 const CAMPOS_LISTA = ['hechos', 'decisiones', 'rechazado', 'preguntas_hechas', 'pendientes', 'preferencias_cliente', 'bloques_cerrados'];
 const TOPE_CHARS = 6000; // ~1,500 tokens
@@ -83,12 +84,14 @@ export async function tocaActualizar(e, bloqueAnterior) {
   return n >= 10 ? 'ventana' : null;
 }
 
-// Texto de recordatorio tras una pausa, armado desde la memoria.
-export function mensajeRecordatorio(e, totalBloques) {
-  const mem = e.memoria || {};
-  const cerrados = (mem.bloques_cerrados || []).filter((b) => b !== 'B0').length;
-  const pend = (mem.pendientes || []).slice(0, 2);
-  const avance = cerrados ? `Ya tenemos ${cerrados} de ${totalBloques} pasos listos.` : 'Apenas íbamos empezando.';
-  const falta = pend.length ? ` Solo falta: ${pend.join(' y ')}.` : '';
-  return `¡Hola! Soy Ari 👋 ${avance}${falta} ¿Seguimos? Contéstame cualquier cosa y retomamos donde nos quedamos.`;
+// Texto de recordatorio tras una pausa: saluda por nombre y retoma con la siguiente pregunta real
+// (calculada con los requisitos del brief, nunca con claves internas ni con la lista de pendientes de la memoria).
+export function mensajeRecordatorio(e) {
+  const brief = e.brief || {};
+  const nombre = String(brief.cliente?.nombre || '').trim();
+  const hola = nombre ? `¡Hola, ${nombre}! 👋` : '¡Hola! 👋';
+  // Fotos y logo dependen de archivos que aquí no se revisan: los pide Ari en su turno.
+  const sig = faltantes(brief, []).find((f) => !['fotos', 'logo'].includes(f.id));
+  if (sig) return `${hola} Soy Ari. Nos quedamos a medias con tu página; seguimos donde íbamos.\n${sig.pedir}`;
+  return `${hola} Soy Ari. Nos quedamos a medias con tu página. ¿Seguimos? Contéstame y retomamos donde íbamos.`;
 }

@@ -142,7 +142,7 @@ async function cron() {
         const actual = await db.obtener(e.id);
         // Un recordatorio por cada 24 h de silencio, no más de 2.
         if (inactivo < (e.recordatorios_enviados + 1) * 24 * 3600e3) continue;
-        const texto = mensajeRecordatorio(actual, TOTAL_BLOQUES);
+        const texto = mensajeRecordatorio(actual);
         await db.guardar(e.id, { recordatorios_enviados: e.recordatorios_enviados + 1 });
         await db.insertarMensaje(e.id, { rol: 'agente', contenido: texto, bloque: e.bloque_actual });
         await notificar(e, { evento: 'recordatorio', sesion_id: e.id, usuario_id: e.usuario_id, canal: e.canal, mensajes: [texto], metadata: e.metadata });
