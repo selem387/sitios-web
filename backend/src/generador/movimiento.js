@@ -129,18 +129,21 @@ export const CSS_MOVIMIENTO = `
 .sl-carta{aspect-ratio:4/5;border-radius:8px;margin-bottom:12px}
 @media (min-width:900px){.sl-carta{aspect-ratio:16/8}.sl-cap{padding-bottom:84px}}
 /* movimiento de cámara: acercamientos distintos por foto */
-/* Ken Burns (6-nov-2026): cada foto se mueve durante 6 s y cambia cada 5 s (decisión de Sebastián) */
-@keyframes km0{from{transform:scale(1)}to{transform:scale(1.11) translate3d(-2%,-1.4%,0)}}
-@keyframes km1{from{transform:scale(1.11) translate3d(2%,.7%,0)}to{transform:scale(1.01)}}
-@keyframes km2{from{transform:scale(1.01) translate3d(-1.7%,1.4%,0)}to{transform:scale(1.1) translate3d(1.7%,-1%,0)}}
-@keyframes km3{from{transform:scale(1.1) translate3d(0,-1.7%,0)}to{transform:scale(1) translate3d(0,1%,0)}}
-.km{animation:km0 6s ease-out infinite alternate;animation-play-state:paused;transform-origin:50% 50%}
+/* Ken Burns (6-nov-2026, mejores prácticas Baymard/Smashing/43frames): la foto cambia cada 6 s y hace UN solo
+   movimiento de 6.5 s (de ida, sin regresar), acercamiento 100 % → 112 % con paneo leve, aceleración y frenado suaves.
+   Un movimiento distinto por foto. Con una sola foto (sin slider) el movimiento va y viene. */
+@keyframes km0{from{transform:scale(1)}to{transform:scale(1.12) translate3d(-2%,-1.4%,0)}}
+@keyframes km1{from{transform:scale(1.12) translate3d(2%,.8%,0)}to{transform:scale(1.01)}}
+@keyframes km2{from{transform:scale(1.01) translate3d(-1.8%,1.4%,0)}to{transform:scale(1.12) translate3d(1.8%,-1%,0)}}
+@keyframes km3{from{transform:scale(1.11) translate3d(0,-1.8%,0)}to{transform:scale(1) translate3d(0,1%,0)}}
+.km{animation:km0 6.5s cubic-bezier(.45,0,.55,1) both;animation-play-state:paused;transform-origin:50% 50%}
+.sl:not([data-sl]) .km{animation-duration:9s;animation-iteration-count:infinite;animation-direction:alternate}
 /* foto entera: si la proporción no cabe en el marco, se muestra completa sobre un fondo difuminado de la misma foto */
 /* fondo en canvas diminuto (no cuenta para LCP ni pesa) */
 .sl-d>canvas.sl-fondo{position:absolute;inset:0;width:100%;height:100%;filter:blur(18px) brightness(.7);transform:scale(1.2)}
 .sl-d.entera>img.sl-img{object-fit:contain}
 .sl-d.entera .km{animation-name:kme}
-@keyframes kme{from{transform:scale(1)}to{transform:scale(1.04)}}
+@keyframes kme{from{transform:scale(1)}to{transform:scale(1.05)}}
 .km-1{animation-name:km1}.km-2{animation-name:km2}.km-3{animation-name:km3}
 .sl-d.activa .km,.sl:not([data-sl]) .km{animation-play-state:running}.sl.pausado .km{animation-play-state:paused}
 /* todo el sitio: fotos con movimiento muy lento mientras están en pantalla */
@@ -198,7 +201,7 @@ const ir=k=>{sl.classList.add('vivo');const a=ds[i];a.classList.remove('activa')
 i=(k+ds.length)%ds.length;const d=ds[i];d.inert=false;d.removeAttribute('aria-hidden');
 const im=d.querySelector('.km');if(im){im.style.animation='none';void im.offsetWidth;im.style.animation=''}
 d.classList.add('activa');pos.textContent=(i+1)+' / '+ds.length;vids();clip(ds[(i+1)%ds.length])};
-const prog=()=>{clearTimeout(t);if(!parado())t=setTimeout(()=>{ir(i+1);prog()},5000)};
+const prog=()=>{clearTimeout(t);if(!parado())t=setTimeout(()=>{ir(i+1);prog()},6000)};
 const estado=()=>{sl.classList.toggle('pausado',parado());bp.setAttribute('aria-pressed',String(usuario));bp.setAttribute('aria-label',usuario?'Reproducir fotos':'Pausar fotos');pos.setAttribute('aria-live',parado()?'polite':'off');vids();prog()};
 bp.addEventListener('click',()=>{usuario=!usuario;estado()});
 sl.querySelector('.sl-prev').addEventListener('click',()=>{ir(i-1);prog()});
@@ -208,7 +211,7 @@ sl.addEventListener('keydown',e=>{if(e.key==='ArrowRight'){ir(i+1);prog()}else i
 let x0=null;sl.addEventListener('touchstart',e=>{x0=e.touches[0].clientX},{passive:true});
 sl.addEventListener('touchend',e=>{if(x0===null)return;const dx=e.changedTouches[0].clientX-x0;x0=null;if(Math.abs(dx)>40){ir(i+(dx<0?1:-1));prog()}},{passive:true});
 sl.classList.toggle('pausado',parado());if(R){bp.setAttribute('aria-pressed','true');bp.setAttribute('aria-label','Reproducir fotos')}
-alCargar(()=>{sl.classList.add('vivo');setTimeout(()=>clip(ds[1]),1200);if(!parado())t=setTimeout(()=>{ir(1);prog()},5000)});
+alCargar(()=>{sl.classList.add('vivo');setTimeout(()=>clip(ds[1]),1200);if(!parado())t=setTimeout(()=>{ir(1);prog()},6000)});
 });
 if(R)return;
 const vis=io(es=>es.forEach(e=>e.target.classList.toggle('en',e.isIntersecting)),{rootMargin:'60px'});
