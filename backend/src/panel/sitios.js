@@ -76,7 +76,7 @@ const lista = (v, max = 60) => (Array.isArray(v) ? v.slice(0, max) : []);
 /** Valida y limpia lo que manda el panel para una sección. Lanza Error con mensaje para el usuario. */
 export function limpiarSeccion(seccion, d = {}) {
   switch (seccion) {
-    case 'portada': return { titular: txt(d.titular, 90), subtitulo: txt(d.subtitulo, 200), cta: txt(d.cta, 30) };
+    case 'portada': return { titular: txt(d.titular, 160), subtitulo: largo(d.subtitulo, 600), cta: txt(d.cta, 30) };
     case 'oferta': return {
       mostrar_precios: d.mostrar_precios !== false,
       // La descripción conserva renglones y viñetas tal cual (el cliente las escribe así); grupo = categoría opcional.
