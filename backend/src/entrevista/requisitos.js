@@ -35,13 +35,16 @@ export const REQUISITOS = [
 ];
 
 const idx = (bl) => BLOQUES.indexOf(bl);
+// Atajo a las propuestas: ids en brief.diferir[] se saltan hasta que el cliente elige diseño;
+// después vuelven a contar y la revisión de requisitos hace que Ari los pida.
+const diferido = (brief, id) => Array.isArray(brief?.diferir) && brief.diferir.includes(id) && brief?.marca?.propuestas?.estado !== 'elegida';
 const textoPedir = (r, brief) => (typeof r.pedir === 'function' ? r.pedir(brief) : r.pedir);
 
 /** Requisitos sin cumplir de los bloques en [desde, hasta] (inclusive). */
 export function faltantes(brief = {}, assets = [], { hasta = 'B12', desde = 'B0' } = {}) {
   return REQUISITOS
     .filter((r) => idx(r.bloque) >= idx(desde) && idx(r.bloque) <= idx(hasta))
-    .filter((r) => !r.cumple(brief, assets) && !(r.puedeNoTener && noTiene(brief, r.id)))
+    .filter((r) => !r.cumple(brief, assets) && !(r.puedeNoTener && noTiene(brief, r.id)) && !diferido(brief, r.id))
     .map((r) => ({ id: r.id, bloque: r.bloque, pedir: textoPedir(r, brief), puedeNoTener: !!r.puedeNoTener }));
 }
 
