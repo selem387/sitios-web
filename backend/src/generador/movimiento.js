@@ -129,12 +129,12 @@ export const CSS_MOVIMIENTO = `
 .sl-carta{aspect-ratio:4/5;border-radius:8px;margin-bottom:12px}
 @media (min-width:900px){.sl-carta{aspect-ratio:16/8}.sl-cap{padding-bottom:84px}}
 /* movimiento de cámara: acercamientos distintos por foto */
-/* Ken Burns notorio (6-nov-2026): acercamiento y paneo visibles en los ~7 s que dura cada foto */
+/* Ken Burns (6-nov-2026): cada foto se mueve y se queda el triple que antes: 24 s de movimiento, cambia cada 19.5 s */
 @keyframes km0{from{transform:scale(1)}to{transform:scale(1.16) translate3d(-3%,-2%,0)}}
 @keyframes km1{from{transform:scale(1.16) translate3d(3%,1%,0)}to{transform:scale(1.02)}}
 @keyframes km2{from{transform:scale(1.02) translate3d(-2.5%,2%,0)}to{transform:scale(1.15) translate3d(2.5%,-1.5%,0)}}
 @keyframes km3{from{transform:scale(1.15) translate3d(0,-2.5%,0)}to{transform:scale(1.01) translate3d(0,1.5%,0)}}
-.km{animation:km0 8s ease-out infinite alternate;animation-play-state:paused;transform-origin:50% 50%}
+.km{animation:km0 24s ease-out infinite alternate;animation-play-state:paused;transform-origin:50% 50%}
 /* foto entera: si la proporción no cabe en el marco, se muestra completa sobre un fondo difuminado de la misma foto */
 /* fondo en canvas diminuto (no cuenta para LCP ni pesa) */
 .sl-d>canvas.sl-fondo{position:absolute;inset:0;width:100%;height:100%;filter:blur(18px) brightness(.7);transform:scale(1.2)}
@@ -198,7 +198,7 @@ const ir=k=>{sl.classList.add('vivo');const a=ds[i];a.classList.remove('activa')
 i=(k+ds.length)%ds.length;const d=ds[i];d.inert=false;d.removeAttribute('aria-hidden');
 const im=d.querySelector('.km');if(im){im.style.animation='none';void im.offsetWidth;im.style.animation=''}
 d.classList.add('activa');pos.textContent=(i+1)+' / '+ds.length;vids();clip(ds[(i+1)%ds.length])};
-const prog=()=>{clearTimeout(t);if(!parado())t=setTimeout(()=>{ir(i+1);prog()},6500)};
+const prog=()=>{clearTimeout(t);if(!parado())t=setTimeout(()=>{ir(i+1);prog()},19500)};
 const estado=()=>{sl.classList.toggle('pausado',parado());bp.setAttribute('aria-pressed',String(usuario));bp.setAttribute('aria-label',usuario?'Reproducir fotos':'Pausar fotos');pos.setAttribute('aria-live',parado()?'polite':'off');vids();prog()};
 bp.addEventListener('click',()=>{usuario=!usuario;estado()});
 sl.querySelector('.sl-prev').addEventListener('click',()=>{ir(i-1);prog()});
@@ -208,7 +208,7 @@ sl.addEventListener('keydown',e=>{if(e.key==='ArrowRight'){ir(i+1);prog()}else i
 let x0=null;sl.addEventListener('touchstart',e=>{x0=e.touches[0].clientX},{passive:true});
 sl.addEventListener('touchend',e=>{if(x0===null)return;const dx=e.changedTouches[0].clientX-x0;x0=null;if(Math.abs(dx)>40){ir(i+(dx<0?1:-1));prog()}},{passive:true});
 sl.classList.toggle('pausado',parado());if(R){bp.setAttribute('aria-pressed','true');bp.setAttribute('aria-label','Reproducir fotos')}
-alCargar(()=>{sl.classList.add('vivo');setTimeout(()=>clip(ds[1]),1200);if(!parado())t=setTimeout(()=>{ir(1);prog()},4500)});
+alCargar(()=>{sl.classList.add('vivo');setTimeout(()=>clip(ds[1]),1200);if(!parado())t=setTimeout(()=>{ir(1);prog()},13500)});
 });
 if(R)return;
 const vis=io(es=>es.forEach(e=>e.target.classList.toggle('en',e.isIntersecting)),{rootMargin:'60px'});
