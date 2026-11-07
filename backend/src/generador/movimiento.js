@@ -47,7 +47,7 @@ const ORDEN_TIPOS = ['diferenciador', 'oferta', 'prueba', 'vision'];
  */
 export function diapositivasDe(textos = {}, brief = {}) {
   const deIA = (Array.isArray(textos.diapositivas) ? textos.diapositivas : [])
-    .map((x) => ({ tipo: String(x?.tipo || ''), titular: corto(x?.titular, 60), apoyo: corto(x?.apoyo, 110), cta: corto(x?.cta, 24) }))
+    .map((x) => ({ tipo: String(x?.tipo || ''), titular: corto(x?.titular, 60), apoyo: corto(x?.apoyo, 110), cta: corto(x?.cta, 24), foto_url: x?.foto_url || null }))
     .filter((x) => x.titular);
   if (deIA.length) return deIA.slice(0, MAX_DIAPOSITIVAS - 1);
   const of = brief.oferta || {}, conf = brief.confianza || {}, neg = brief.negocio || {};
@@ -64,6 +64,48 @@ export function diapositivasDe(textos = {}, brief = {}) {
   else if (Number(neg.anios) > 0) out.push({ tipo: 'prueba', titular: `${Number(neg.anios)} años de experiencia`, apoyo: '' });
   else if (tes) out.push({ tipo: 'prueba', titular: `“${tes.texto.trim()}”`, apoyo: tes.nombre ? `— ${tes.nombre}` : '' });
   return out.sort((a, b) => ORDEN_TIPOS.indexOf(a.tipo) - ORDEN_TIPOS.indexOf(b.tipo)).slice(0, MAX_DIAPOSITIVAS - 1);
+}
+
+// ---------- Foto correcta para cada texto (6-nov-2026) ----------
+// Caso Blanca Banderas: foto de maternidad con el texto de "Smash Cake". Cada texto de producto u oferta lleva la foto
+// de ESE producto (la IA de textos elige la foto por su descripción: foto_url); los textos generales (años, visión,
+// diferenciador) usan fotos que queden libres. Si un texto de producto no tiene foto que le corresponda, se omite.
+const sinAcentos = (t) => String(t || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+const VACIAS = new Set('para como desde sesion sesiones fotos fotografia fotografo fotografa paquete paquetes incluye incluido incluida tu tus con sin por una unos unas este esta todo toda mas muy tiene hace años anos experiencia historia historias'.split(' '));
+const SINONIMOS = [['smash', 'pastel', 'cake', 'cumpleanos', 'anito'], ['newborn', 'recien', 'nacido', 'bebe'], ['maternidad', 'embarazada', 'embarazo', 'panza'],
+  ['boda', 'bodas', 'novia', 'novios', 'nupcial'], ['xv', 'quince', 'quinceanera'], ['familia', 'familiar', 'familias'], ['pareja', 'parejas', 'novios'], ['bautizo', 'bautizos']];
+const raiz = (w) => { const g = SINONIMOS.find((l) => l.includes(w)); return g ? g[0] : w.replace(/(es|s)$/, ''); };
+const palabras = (t) => new Set(sinAcentos(t).split(/[^a-z0-9]+/).filter((w) => w.length >= 4 || w === 'xv').filter((w) => !VACIAS.has(w)).map(raiz));
+const coincide = (texto, foto) => { const a = palabras(texto), b = palabras(foto?.alt); let n = 0; for (const w of a) if (b.has(w)) n++; return n; };
+
+/**
+ * Ordena las fotos del slider para que cada texto tenga su foto.
+ * @param {object} o  hero: foto 1 por omisión; fotoTitular: url que eligió la IA para el titular; pool: fotos disponibles; diapos: textos 2-5
+ * @returns {{fotos: Array, diapos: Array}} alineados: diapos[k-1] va con fotos[k]
+ */
+export function emparejarFotos({ hero, fotoTitular = null, pool = [], diapos = [] }) {
+  const vistas = new Set();
+  const todas = [hero, ...pool].filter((x) => x?.url && !vistas.has(x.url) && vistas.add(x.url));
+  if (!todas.length) return { fotos: [], diapos: [] };
+  const primera = (fotoTitular && todas.find((x) => x.url === fotoTitular)) || todas[0];
+  const usadas = new Set([primera.url]);
+  const libre = (x) => x && !usadas.has(x.url);
+  const pedidas = new Set(diapos.map((d) => d.foto_url).filter(Boolean));
+  const fotos = [primera], out = [];
+  for (const d of diapos) {
+    let f = d.foto_url ? todas.find((x) => x.url === d.foto_url && libre(x)) : null;
+    const texto = `${d.titular} ${d.apoyo || ''}`;
+    if (!f && !d.foto_url) {
+      const mejor = todas.filter(libre).map((x) => [x, coincide(texto, x)]).sort((a, b) => b[1] - a[1])[0];
+      if (mejor && mejor[1] > 0) f = mejor[0];
+    }
+    if (!f && d.tipo === 'oferta') continue; // producto sin su foto: mejor omitir que mostrar otro producto
+    // texto general: una foto libre que no esté reservada para otro texto y que no muestre un producto mencionado en otra diapositiva
+    if (!f) f = todas.find((x) => libre(x) && !pedidas.has(x.url) && !diapos.some((o) => o !== d && o.tipo === 'oferta' && coincide(`${o.titular} ${o.apoyo || ''}`, x) > 0));
+    if (!f) continue;
+    usadas.add(f.url); fotos.push(f); out.push(d);
+  }
+  return { fotos, diapos: out };
 }
 
 /**

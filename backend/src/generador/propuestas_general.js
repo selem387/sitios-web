@@ -7,7 +7,7 @@ import { coloresParaPropuesta } from './paletas_giro.js';
 import { mezclar, contraste } from '../entrevista/tema.js';
 import { esPastel, coloresDePalabras } from './materiales.js';
 import { waUrl, formatoTel } from './bloques.js';
-import { sliderHTML, diapositivasDe, CSS_MOVIMIENTO, JS_MOVIMIENTO, efectosDe } from './movimiento.js';
+import { sliderHTML, diapositivasDe, emparejarFotos, CSS_MOVIMIENTO, JS_MOVIMIENTO, efectosDe } from './movimiento.js';
 
 const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const lum = (h) => { const n = parseInt(h.slice(1), 16); const c = [(n >> 16) & 255, (n >> 8) & 255, n & 255].map((v) => v / 255).map((v) => (v <= 0.03928 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4)); return 0.2126 * c[0] + 0.7152 * c[1] + 0.0722 * c[2]; };
@@ -167,15 +167,18 @@ function pagina(d) {
   const fotosT = [...rot(trabajos, d.i * 2), ...capturasT];
   // La foto que el cliente eligió para la portada va en las propuestas A y D; las demás abren con su trabajo.
   // En el sitio en vivo, si el dueño eligió la foto de portada desde su panel, esa abre la página en cualquier diseño.
-  const heroFoto = (d.layout === 'portada' || d.layout === 'logo' || (brief.fotos?.portada_manual && mat.hero)) ? (mat.hero || fotosT[0]) : (fotosT[0] || mat.hero || mat.fundador);
+  const heroBase = (d.layout === 'portada' || d.layout === 'logo' || (brief.fotos?.portada_manual && mat.hero)) ? (mat.hero || fotosT[0]) : (fotosT[0] || mat.hero || mat.fundador);
+  // Si el titular habla de un producto, abre con la foto de ese producto (la eligió la IA de textos por su descripción).
+  const fotoTit = !brief.fotos?.portada_manual && t.foto_url ? [mat.hero, ...trabajos].find((x) => x?.url === t.foto_url) : null;
+  const heroFoto = fotoTit || heroBase;
 
   const cta = (cls = '') => `<a class="btn ${cls}"${wa}>${esc(t.cta)}</a>`;
   const info = (t.info || []).map((x) => `<li>${esc(x)}</li>`).join('');
 
   // Slider de portada (aprobado 6-nov-2026): foto principal + hasta 4 fotos más, cada una con su texto encima.
   // Solo fotos buenas del cliente (o variaciones IA de su foto si dijo que no tiene más); nunca se repiten en el resto del sitio.
-  const diapos = diapositivasDe({ diapositivas: t.diapositivas }, brief);
-  const poolSl = [heroFoto, ...fotosT.filter((x) => buenaFoto(x) && x.url !== heroFoto?.url)].filter(Boolean);
+  const emp = emparejarFotos({ hero: heroFoto, pool: fotosT.filter(buenaFoto), diapos: diapositivasDe({ diapositivas: t.diapositivas }, brief) });
+  const poolSl = emp.fotos, diapos = emp.diapos;
   const slider = (o) => sliderHTML({ fotos: poolSl, diapos, img, cta: t.cta, href: wa, nombre: d.nombre, ...o }).html;
   const textoPortada = `<p class="kicker">${esc(neg.ciudad ? `${giroCorto(neg.giro_texto) || ''} · ${neg.ciudad}` : giroCorto(neg.giro_texto) || '')}</p><h1>${esc(t.titular)}</h1><p class="sub">${esc(t.subtitulo)}</p>${cta()}`;
 
@@ -360,7 +363,7 @@ export function paginasGenerales({ brief, mat, textos, pares, urlFuentes, ronda 
     const d = {
       i: i + ronda * 3, letra, layout, nombre: brief.negocio?.nombre || '', brief, mat, titulos,
       pal: fijo?.paleta || { ...corregirPaleta(paletaGeneral(layout, cps[i].colores, pastel, i + ronda * 2)).paleta, familia: cps[i].familia, origen: cps[i].origen }, f: par, fuentesUrl: urlFuentes([par]),
-      t: { titular: v.titular, subtitulo: v.subtitulo, cta: v.cta || 'Escríbeme por WhatsApp', info: (textos.info || []).slice(0, 3), sobre: textos.sobre, proceso: textos.proceso, diapositivas: textos.diapositivas },
+      t: { titular: v.titular, subtitulo: v.subtitulo, foto_url: v.foto_url || null, cta: v.cta || 'Escríbeme por WhatsApp', info: (textos.info || []).slice(0, 3), sobre: textos.sobre, proceso: textos.proceso, diapositivas: textos.diapositivas },
       wa: waUrl(c.whatsapp, c.mensaje_whatsapp_inicial), tel: c.whatsapp ? formatoTel(c.whatsapp) : null,
     };
     return { letra, layout, nombre: NOMBRES_GENERAL[layout], html: pagina(d), fuentes: par, paleta: d.pal };
