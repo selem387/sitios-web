@@ -71,7 +71,7 @@ QUÉ PUEDES HACER
 - Cómo está armado el HTML del tema: cada sección es <section class="sec …" id="ID"><div class="wrap">…</div></section>; su título es un <h2> DENTRO de la sección. Selector correcto del título: "#ID h2" (nunca "h2#ID"). Tarjetas: .paq, .prop, blockquote, figure; rejillas: .paqs, .rejilla, .quotes, .galeria. Sube la especificidad con el id de la sección (#ID …) para ganarle a los estilos del tema.
 - Acomodo y diseño (poner cosas en una fila, usar todo el ancho, columnas, tamaños, espacios, separadores, alinear, cambiar cómo se ven tarjetas o secciones, letra más grande, etc.): escribe reglas en "css" usando las clases e ids reales de HTML ACTUAL (sección por id: #servicios, #resenas, #sobre, #trabajo, #faq, #contacto…). "css" es la hoja completa propia del sitio: conserva las reglas de CSS PROPIO ACTUAL que sigan vigentes. Usa las variables del tema (var(--p), var(--fg), var(--bor), var(--card), var(--soft)…) para no salirte de la paleta. Piensa en celular primero: lo de pantallas anchas va en @media (min-width:900px). Nunca deformes fotos (si cambias tamaño de imágenes usa object-fit:cover o height:auto) ni ocultes material del cliente que no pidió quitar. Pon en "verificar" los selectores de las secciones que cambias.
 - Estructura ("estructura", completa como debe quedar): para QUITAR una sección usa siempre estructura.ocultas (quita también su liga del menú; nunca con CSS). Ocultar secciones, reordenarlas, agregar secciones nuevas (extras, con su HTML interior usando las clases del tema), rehacer la portada, el encabezado o el pie (reemplazos) y cambiar el menú. Las secciones que el dueño edita en su panel (servicios, menu, faq, resenas, sobre, contacto, propiedades, trabajo, promocion) no se reescriben a mano: su contenido se cambia en "secciones" y su aspecto con CSS. En HTML nuevo usa solo imágenes de FOTOS (su URL) o que ya estén en la página, y solo textos que escribió el cliente o que ya están en la página; nada de scripts ni formularios. Para mapas o videos usa <iframe> de Google Maps o YouTube.
-- Cambiar todo el diseño por otra de sus propuestas: "propuesta" con la letra. Cambiar la letra: "fuentes" con familias de Google Fonts poco comunes y acordes a su estilo (nunca Arial, Roboto, Open Sans, Montserrat, Poppins, Lato ni Inter).
+- Cambiar todo el diseño por otra de sus propuestas: "propuesta" con la letra. Si elige una opción (por letra, por nombre o mandando un enlace que termina en /A … /F), es esto: pon solo "propuesta" y NO intentes imitarla con CSS ni preguntes; si el enlace es de otra prueba, usa su letra final. Cambiar la letra: "fuentes" con familias de Google Fonts poco comunes y acordes a su estilo (nunca Arial, Roboto, Open Sans, Montserrat, Poppins, Lato ni Inter).
 - Elige la herramienta más simple que cumpla exactamente lo pedido: secciones (contenido) → CSS (aspecto) → estructura (agregar, quitar, reordenar, rehacer).
 - Si de verdad no hay forma (p. ej. cobrar en línea, una página aparte con su propia dirección, una sección que no existe): esa parte va en no_pude.
 - SIEMPRE haz todo lo que sí se pueda del pedido (accion=editar) y deja en no_pude solo lo que no. accion=no_se_puede únicamente si NADA de lo pedido es posible.
@@ -114,7 +114,7 @@ async function estadoActual(e, sv) {
   html = html.replace(/<script[\s\S]*?<\/script>/g, '').replace(/<svg[\s\S]*?<\/svg>/g, '<svg/>').replace(/<style id="ajustes">[\s\S]*?<\/style>/, '').slice(0, 90000);
   const dz = sv.contenido?.diseno || {};
   const prop = e.brief?.marca?.propuestas || {};
-  const propuestas = (prop.opciones || []).map((o) => ({ letra: o.letra || o.etiqueta, nombre: o.nombre, tipografia: o.tipografia }));
+  const propuestas = (prop.opciones || []).map((o) => ({ letra: o.letra || o.etiqueta, nombre: o.nombre, tipografia: o.tipografia, url: o.url }));
   const propuesta = dz.propuesta || prop.elegido;
   const fuentes = dz.fuentes || propuestas.find((o) => o.letra === propuesta)?.tipografia || null;
   return { contenido, paleta, fotos, referencias, css: dz.css || '', estructura: dz.estructura || null, propuestas, propuesta, fuentes, html, htmlCompleto: htmlCompleto || html };
@@ -144,7 +144,7 @@ async function planear(e, act, pedidos, conv, errores) {
     `CSS PROPIO ACTUAL (ajustes de diseño ya aplicados a este sitio):\n${act.css || '(ninguno)'}`,
     `SECCIONES EN LA PÁGINA (ids, en orden): portada, ${[...(act.htmlCompleto || '').matchAll(/<section\b[^>]*\sid="([^"]+)"/g)].map((m) => m[1]).join(', ')}. Si el cliente menciona una sección que no está, dilo en no_pude (o pregunta).`,
     `ESTRUCTURA ACTUAL: ${JSON.stringify(act.estructura || {})}`,
-    `PROPUESTAS (puede cambiar a otra): ${act.propuestas.map((o) => `${o.letra}${o.letra === act.propuesta ? ' (la actual)' : ''}: ${o.nombre} · letras ${o.tipografia?.titulos}/${o.tipografia?.cuerpo}`).join(' | ') || '(no hay)'}`,
+    `PROPUESTAS (puede cambiar a otra): ${act.propuestas.map((o) => `${o.letra}${o.letra === act.propuesta ? ' (la actual)' : ''}: ${o.nombre} · letras ${o.tipografia?.titulos}/${o.tipografia?.cuerpo}${o.url ? ` · ${o.url}` : ''}`).join(' | ') || '(no hay)'}`,
     `LETRA ACTUAL: ${JSON.stringify(act.fuentes || {})}`,
     `HTML ACTUAL DE LA PÁGINA (estructura y estilos del tema; los textos pueden venir recortados):\n${act.html || '(no disponible)'}`,
     `FOTOS (clave · tipo · en la página · descripción):\n${act.fotos.map((a) => `${a.clave} · ${a.tipo} · ${a.usar ? 'sí' : 'no'} · ${(a.descripcion_ia || a.nota || '').slice(0, 120)}`).join('\n') || '(ninguna)'}`,
@@ -276,7 +276,7 @@ async function revisarVista(pedidos, antes, despues, noPudo = []) {
   if (nav) contenido.push({ type: 'text', text: `MENÚ DESPUÉS: ${nav}` });
   try {
     const r = await pedirJSON({
-      system: 'Revisas cambios de diseño en la página web de un cliente. Dices si el DESPUÉS cumple exactamente lo que pidió y si se ve profesional: sin texto encimado ni cortado, sin desbordes horizontales, sin fotos deformadas, sin huecos raros, legible en celular. Sé estricto con lo pedido.',
+      system: 'Revisas cambios de diseño en la página web de un cliente. Dices si el DESPUÉS cumple exactamente lo que pidió y si se ve profesional: sin texto encimado ni cortado, sin desbordes horizontales, sin fotos deformadas, sin huecos raros, legible en celular. Sé estricto con lo pedido. Solo cuentan como falla los problemas NUEVOS: si un problema ya se veía igual en el ANTES, no lo pongas (no lo causó este cambio).',
       contenido, schema: ESQUEMA_VISTA, model: config.anthropicModel, max_tokens: 800, timeoutMs: 180000,
     });
     return { ok: !!r.data.ok, problemas: r.data.problemas || [] };

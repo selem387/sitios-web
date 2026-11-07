@@ -15,7 +15,7 @@ import { avisar, avisarEquipo } from './avisos.js';
 import { config } from '../config.js';
 
 const q = db.q;
-export const ESPERA_S = 75;
+export const ESPERA_S = 8; // casi inmediato: solo junta mensajes que llegan seguidos
 // Si un cambio no se puede aplicar, Ari se lo dice al cliente y le pide explicarlo de otra forma (no hay equipo que lo retome).
 const NO_PUDE = 'No pude aplicar ese cambio a tu página 😔 ¿Me lo explicas de otra forma? Por ejemplo, dime en qué parte de la página está y cómo quieres que quede.';
 
@@ -104,13 +104,14 @@ export async function registrarPedido(entrevistaId, { texto = '', media = [] }) 
 const ESQUEMA_CLASE = {
   type: 'object',
   properties: {
-    tipo: { type: 'string', enum: ['cambio', 'sin_detalle', 'otro'] },
+    tipo: { type: 'string', enum: ['cambio', 'ver_opciones', 'sin_detalle', 'otro'] },
     respuesta: { type: 'string', description: 'Solo si tipo=otro: respuesta breve y cálida de Ari (1–2 frases).' },
   },
   required: ['tipo'],
 };
 const SISTEMA_CLASE = `Eres Ari. El cliente ya tiene su página web lista y te escribe. Clasifica su ÚLTIMO mensaje:
 - "cambio": pide o describe algo concreto que quiere cambiar, quitar, agregar o corregir en su página (textos, fotos, colores, datos, secciones, letra, botones…), contesta una pregunta tuya sobre un cambio, o pide dejar algo como estaba.
+- "ver_opciones": quiere VER otra vez las opciones/versiones/propuestas de diseño para elegir otra ("dame las demás opciones", "quiero ver de nuevo las versiones", "quiero otro diseño", "enséñame los diseños"). Si ya dice cuál quiere (una letra, un nombre de opción o un enlace /p/…/A-F), es "cambio".
 - "sin_detalle": dice que quiere hacer cambios/correcciones pero todavía no dice cuáles.
 - "otro": cualquier otra cosa (gracias, le gustó, saludos, dudas generales). En "respuesta" contesta breve y cálido; si viene al caso, recuérdale que puede pedirte cambios. Nunca ofrezcas empezar otra página ni menciones palabras clave.
 Si hay un cambio en curso o una pregunta tuya abierta, un mensaje corto como "la de arriba", "sí, esa", "en azul" es "cambio".

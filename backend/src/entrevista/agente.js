@@ -99,14 +99,26 @@ async function respuestaPostCierre(u, texto = '', media = []) {
       tipo = cl?.tipo || (pideCambiosSinDetalle(texto) ? 'sin_detalle' : 'cambio');
       if (tipo === 'otro') return cl?.respuesta || '¡Con gusto! 🙌 Si quieres cambiar algo de tu página, dime qué y lo ajusto.';
     }
+    if (tipo === 'ver_opciones') {
+      const prop = u.brief?.marca?.propuestas || {};
+      const opc = (prop.opciones || []).filter((o) => o.url);
+      if (opc.length) {
+        const sv = (await db.q(`SELECT contenido FROM sitios_vivos WHERE entrevista_id=$1 ORDER BY id DESC LIMIT 1`, [u.id]).catch(() => ({ rows: [] }))).rows[0];
+        const actual = sv?.contenido?.diseno?.propuesta || prop.elegido;
+        const lista = opc.map((o) => `*${o.letra || o.etiqueta}. ${o.nombre}*${(o.letra || o.etiqueta) === actual ? ' (la que tienes ahora)' : ''}\n${o.url}`).join('\n\n');
+        await db.evento(u.id, 'opciones_reenviadas', { actual });
+        return `¡Claro! 😊 Estas son tus opciones de diseño:\n\n${lista}\n\nAbre las que quieras y dime cuál te gusta (la letra). Tus textos, fotos y los cambios que ya hicimos se quedan; solo cambia el diseño.`;
+      }
+      tipo = 'cambio';
+    }
     if (tipo === 'sin_detalle') {
       const panel = adm?.estado === 'entregado' && adm.url ? `\n(También puedes cambiar precios, fotos u horarios tú mismo en tu administrador: ${adm.url})` : '';
       return `¡Claro! 🙌 Dime qué quieres cambiar de tu página: textos, fotos, colores, letra, secciones, precios, datos de contacto… Puedes escribirlo, mandarme un audio o fotos. Si son varias cosas, mándamelas todas y las aplico juntas.${panel}`;
     }
     const r = await registrarPedido(u.id, { texto, media });
-    if (r.enCurso) return 'Anotado ✅ En cuanto termine el cambio anterior aplico este y te aviso aquí.';
-    if (!r.nuevo) return 'Anotado ✅ También lo incluyo.';
-    return 'Anotado ✅ En un par de minutos lo aplico a tu página y te mando la liga aquí. Si quieres cambiar algo más, mándamelo ahora y lo incluyo.';
+    if (r.enCurso) return 'Estoy terminando el cambio anterior 👍 enseguida hago este y te aviso aquí.';
+    if (!r.nuevo) return 'Lo sumo al cambio que estoy haciendo 👍';
+    return 'Ya lo estoy haciendo 👍 En 1 o 2 minutos te mando aquí la liga para que lo veas.';
   }
   // Falta algo indispensable (fotos, servicios, logo…): no se le hace esperar, se reabre la entrevista y se le pide.
   if (!(s?.estado === 'listo' && s.url_publica)) {
