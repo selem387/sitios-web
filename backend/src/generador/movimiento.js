@@ -129,18 +129,18 @@ export const CSS_MOVIMIENTO = `
 .sl-carta{aspect-ratio:4/5;border-radius:8px;margin-bottom:12px}
 @media (min-width:900px){.sl-carta{aspect-ratio:16/8}.sl-cap{padding-bottom:84px}}
 /* movimiento de cámara: acercamientos distintos por foto */
-/* Ken Burns (6-nov-2026): cada foto se mueve y se queda el triple que antes: 24 s de movimiento, cambia cada 19.5 s */
-@keyframes km0{from{transform:scale(1)}to{transform:scale(1.16) translate3d(-3%,-2%,0)}}
-@keyframes km1{from{transform:scale(1.16) translate3d(3%,1%,0)}to{transform:scale(1.02)}}
-@keyframes km2{from{transform:scale(1.02) translate3d(-2.5%,2%,0)}to{transform:scale(1.15) translate3d(2.5%,-1.5%,0)}}
-@keyframes km3{from{transform:scale(1.15) translate3d(0,-2.5%,0)}to{transform:scale(1.01) translate3d(0,1.5%,0)}}
+/* Ken Burns (6-nov-2026): cada foto se mueve y se queda el triple que antes: 24 s de movimiento, cambia cada 19.5 s; recorrido ~1/3 menor para que sea un poco más lento */
+@keyframes km0{from{transform:scale(1)}to{transform:scale(1.11) translate3d(-2%,-1.4%,0)}}
+@keyframes km1{from{transform:scale(1.11) translate3d(2%,.7%,0)}to{transform:scale(1.01)}}
+@keyframes km2{from{transform:scale(1.01) translate3d(-1.7%,1.4%,0)}to{transform:scale(1.1) translate3d(1.7%,-1%,0)}}
+@keyframes km3{from{transform:scale(1.1) translate3d(0,-1.7%,0)}to{transform:scale(1) translate3d(0,1%,0)}}
 .km{animation:km0 24s ease-out infinite alternate;animation-play-state:paused;transform-origin:50% 50%}
 /* foto entera: si la proporción no cabe en el marco, se muestra completa sobre un fondo difuminado de la misma foto */
 /* fondo en canvas diminuto (no cuenta para LCP ni pesa) */
 .sl-d>canvas.sl-fondo{position:absolute;inset:0;width:100%;height:100%;filter:blur(18px) brightness(.7);transform:scale(1.2)}
 .sl-d.entera>img.sl-img{object-fit:contain}
 .sl-d.entera .km{animation-name:kme}
-@keyframes kme{from{transform:scale(1)}to{transform:scale(1.06)}}
+@keyframes kme{from{transform:scale(1)}to{transform:scale(1.04)}}
 .km-1{animation-name:km1}.km-2{animation-name:km2}.km-3{animation-name:km3}
 .sl-d.activa .km,.sl:not([data-sl]) .km{animation-play-state:running}.sl.pausado .km{animation-play-state:paused}
 /* todo el sitio: fotos con movimiento muy lento mientras están en pantalla */
