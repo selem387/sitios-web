@@ -89,7 +89,7 @@ REGLAS
 
 export async function reinterpretarHistorial(e, { intentos = 3 } = {}) {
   const h = await historialCompleto(e.id);
-  const assets = (await db.assetsDe(e.id)).filter((a) => a.url);
+  const assets = (await db.assetsDe(e.id)).filter((a) => a.url && a.tipo !== 'referencia');
   const brief = e.brief || {};
   const actual = { oferta: brief.oferta || {}, contacto: brief.contacto || {}, faq: brief.faq || [], confianza: brief.confianza || {} };
   const fuentes = `${h.cliente}\n${JSON.stringify(actual)}`.replace(/\\n/g, '\n');

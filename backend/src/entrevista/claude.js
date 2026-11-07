@@ -90,6 +90,46 @@ export async function describirImagen(url) {
   }
 }
 
+// Interpreta una imagen que llega cuando el cliente YA tiene su página (pedidos de cambio).
+// Usa señales: la etapa (página generada), el texto del mismo mensaje, la conversación reciente y lo que se ve.
+// uso: foto (material para poner en la página) · captura_pagina (pantallazo de SU página: señala qué cambiar)
+//      · referencia_diseno (otra página o diseño que le gusta) · texto_nuevo (imagen con un texto que quiere en su página)
+export async function interpretarImagenCambio(url, { texto = '', mismoMensaje = false, historial = '', urlPagina = '' } = {}) {
+  try {
+    const r = await pedirJSON({
+      model: MODELO_ARI,
+      max_tokens: 1500,
+      system: `El cliente ya tiene su página web generada y está pidiendo cambios por chat. Te manda una imagen. Decide para qué la manda usando TODAS las señales:
+- Etapa: la página ya existe, así que una captura de pantalla de una página web (barra del navegador, menú, botones, textos de la página, marcas o flechas encima) casi siempre es para SEÑALAR un cambio, no para publicarla.
+- Texto del mismo mensaje: si dice "cambia esto", "aquí", "donde dice", "lo que encerré", "así no", "quiero que se vea como esta", es captura o referencia. Si dice "pon esta foto", "agrega esta", "usa esta en…", "cambia la foto por esta", es foto.
+- Lo que se ve: una fotografía real (personas, lugar, producto) sin interfaz es foto; un pantallazo es captura_pagina si es su página (su nombre/logo/textos) o referencia_diseno si es otra; una nota, mensaje o documento con un texto que quiere en su página es texto_nuevo.
+- Si de verdad no se puede saber, uso = duda.
+Transcribe TODO el texto visible de la imagen, letra por letra (sin corregir), en el orden en que se lee.`,
+      contenido: [
+        { type: 'image', source: { type: 'url', url } },
+        { type: 'text', text: `${urlPagina ? `PÁGINA DEL CLIENTE: ${urlPagina}\n` : ''}TEXTO QUE VINO ${mismoMensaje ? 'EN EL MISMO MENSAJE' : 'CERCA DE LA IMAGEN'}: ${texto || '(ninguno)'}\nCONVERSACIÓN RECIENTE:\n${historial || '(nada)'}` },
+      ],
+      schema: {
+        type: 'object',
+        properties: {
+          uso: { type: 'string', enum: ['foto', 'captura_pagina', 'referencia_diseno', 'texto_nuevo', 'duda'] },
+          razon: { type: 'string', description: 'Qué señales usaste, en una frase.' },
+          descripcion: { type: 'string', description: 'Qué se ve, en una frase.' },
+          transcripcion: { type: 'string', description: 'Todo el texto visible, tal cual.' },
+          senala: { type: 'string', description: 'Si es captura o referencia: qué parte marca o muestra (sección, texto encerrado, flechas, tachones) y qué parece pedir. Vacío si es foto.' },
+          tipo: { type: 'string', enum: ['logo', 'foto_local', 'foto_producto', 'foto_equipo', 'foto_fundador', 'foto_otro'], description: 'Solo si uso=foto.' },
+          calidad: { type: 'string', enum: ['buena', 'regular', 'mala'] },
+        },
+        required: ['uso', 'descripcion'],
+      },
+    });
+    return r.data;
+  } catch (err) {
+    console.error('interpretarImagenCambio', err.message);
+    return null;
+  }
+}
+
 // Transcribe audio: Whisper (OpenAI) si hay llave; si no, un servicio externo compatible con
 // POST {url} → {texto, duracion} (por ejemplo el `render` de creador_video).
 export async function transcribirAudio(url) {

@@ -106,7 +106,9 @@ async function estadoActual(e, sv) {
   const contenido = contenidoActual(e, sv, mat);
   delete contenido.es_menu;
   const paleta = { ...(disenoElegido(e.brief)?.paleta || {}), ...(sv.contenido?.diseno?.paleta || {}) };
-  const fotos = (await db.assetsDe(e.id)).filter((a) => a.url && (/^foto_|logo|imagen/.test(a.tipo) || /^image\//.test(a.mime || '')));
+  const todos = await db.assetsDe(e.id);
+  const fotos = todos.filter((a) => a.url && a.tipo !== 'referencia' && (/^foto_|logo|imagen/.test(a.tipo) || /^image\//.test(a.mime || '')));
+  const referencias = todos.filter((a) => a.url && a.tipo === 'referencia');
   let html = '', htmlCompleto = '';
   try { html = await renderSitio(sv, { previa: true }); htmlCompleto = html; } catch { /* sin html */ }
   html = html.replace(/<script[\s\S]*?<\/script>/g, '').replace(/<svg[\s\S]*?<\/svg>/g, '<svg/>').replace(/<style id="ajustes">[\s\S]*?<\/style>/, '').slice(0, 90000);
@@ -115,7 +117,7 @@ async function estadoActual(e, sv) {
   const propuestas = (prop.opciones || []).map((o) => ({ letra: o.letra || o.etiqueta, nombre: o.nombre, tipografia: o.tipografia }));
   const propuesta = dz.propuesta || prop.elegido;
   const fuentes = dz.fuentes || propuestas.find((o) => o.letra === propuesta)?.tipografia || null;
-  return { contenido, paleta, fotos, css: dz.css || '', estructura: dz.estructura || null, propuestas, propuesta, fuentes, html, htmlCompleto: htmlCompleto || html };
+  return { contenido, paleta, fotos, referencias, css: dz.css || '', estructura: dz.estructura || null, propuestas, propuesta, fuentes, html, htmlCompleto: htmlCompleto || html };
 }
 
 /** CSS propio: sin importar nada externo ni scripts, tamaño acotado. Devuelve errores. */
@@ -148,7 +150,22 @@ async function planear(e, act, pedidos, conv, errores) {
     `FOTOS (clave · tipo · en la página · descripción):\n${act.fotos.map((a) => `${a.clave} · ${a.tipo} · ${a.usar ? 'sí' : 'no'} · ${(a.descripcion_ia || a.nota || '').slice(0, 120)}`).join('\n') || '(ninguna)'}`,
   ];
   if (errores.length) partes.push(`TU INTENTO ANTERIOR FALLÓ, corrige esto:\n- ${errores.join('\n- ')}`);
-  const r = await pedirJSON({ system: SISTEMA, contenido: partes.join('\n\n'), schema: esquema(), model: config.anthropicModel, max_tokens: 16000, timeoutMs: 420000 });
+  // Imágenes de referencia de este pedido (capturas de su página, diseños, textos): el editor las VE.
+  const delPedido = new Set(pedidos.flatMap((p) => p.media || []));
+  const refs = (act.referencias || []).filter((a) => delPedido.has(a.clave)).slice(0, 4);
+  const contenido = [{ type: 'text', text: partes.join('\n\n') }];
+  if (refs.length) {
+    contenido.push({ type: 'text', text: `IMÁGENES DE REFERENCIA QUE MANDÓ CON SU PEDIDO (no son fotos para publicar; nunca las pongas en la página):
+- "captura_pagina": pantallazo de SU página. Su texto es el texto ACTUAL de la página: úsalo para ubicar qué sección o frase quiere cambiar (lo marcado, encerrado, tachado o con flechas). No lo copies como texto nuevo.
+- "referencia_diseno": otra página o diseño que le gusta: imita acomodo, estilo o colores con CSS/estructura, sin copiar sus textos ni fotos.
+- "texto_nuevo": un texto que quiere en su página: va letra por letra tal cual se lee.
+- "duda": si con el mensaje no queda claro para qué la mandó, usa accion=preguntar.` });
+    for (const a of refs) {
+      contenido.push({ type: 'text', text: `${a.clave}: ${a.descripcion_ia || ''}` });
+      contenido.push({ type: 'image', source: { type: 'url', url: a.url } });
+    }
+  }
+  const r = await pedirJSON({ system: SISTEMA, contenido, schema: esquema(), model: config.anthropicModel, max_tokens: 16000, timeoutMs: 420000 });
   return r.data;
 }
 

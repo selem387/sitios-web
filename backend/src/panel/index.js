@@ -47,7 +47,7 @@ const err = (c, e) => { const s = e.status || (e instanceof HttpError ? e.status
 async function fotosDe(e, sv) {
   const portada = sv.contenido?.fotos?.portada_asset_id || e.brief?.fotos?.vertical_hero_asset_id || null;
   return (await db.assetsDe(e.id))
-    .filter((a) => /^image\//.test(a.mime || '') || /\.(jpe?g|png|webp|heic)(\?|$)/i.test(a.url))
+    .filter((a) => a.tipo !== 'referencia' && (/^image\//.test(a.mime || '') || /\.(jpe?g|png|webp|heic)(\?|$)/i.test(a.url)))
     .map((a) => ({ id: a.id, url: a.analisis?.contenido?.url || a.url, tipo: a.analisis?.tipo || a.tipo, usar: a.usar, portada: String(portada) === String(a.id) || portada === a.clave, descripcion: a.descripcion_ia || '' }));
 }
 

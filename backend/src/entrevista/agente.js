@@ -5,7 +5,7 @@ import { paresTipograficos } from '../generador/fuentes.js';
 import crypto from 'node:crypto';
 import { config } from '../config.js';
 import * as db from './db.js';
-import { pedirJSON, describirImagen, transcribirAudio, MODELO_ARI } from './claude.js';
+import { pedirJSON, describirImagen, interpretarImagenCambio, transcribirAudio, MODELO_ARI } from './claude.js';
 import { actualizarMemoria, tocaActualizar } from './memoria.js';
 import { BLOQUES, TOTAL_BLOQUES, PALABRA_INICIO, INSTRUCCIONES, SISTEMA_ARI, GUIA_BLOQUES, BRIEF_VACIO, ESQUEMA_SALIDA_ARI, SISTEMA_PLATAFORMA, ESQUEMA_PLATAFORMA } from './prompts.js';
 import { isObject } from '../util.js';
@@ -131,27 +131,47 @@ async function respuestaPostCierre(u, texto = '', media = []) {
 }
 
 // Fotos y audios que manda después de cerrar la entrevista: se guardan como assets (para usarlos en los cambios).
-async function registrarMediaPostCierre(u, entrantes) {
+const USOS_REFERENCIA = { captura_pagina: 'captura de tu página', referencia_diseno: 'diseño de referencia', texto_nuevo: 'texto para tu página', duda: 'imagen (¿foto para la página o referencia?)' };
+async function registrarMediaPostCierre(u, entrantes, texto = '') {
   let n = (await db.assetsDe(u.id)).length;
   const claves = [];
-  const audios = [];
+  const extras = [];
+  const editable = await paginaEditable(u.id).catch(() => false);
+  const previos = await db.ultimosMensajes(u.id, 8).catch(() => []);
+  const historial = previos.map((m) => `${m.rol === 'cliente' ? 'Cliente' : 'Ari'}: ${(m.transcripcion || m.contenido || '').slice(0, 300)}`).join('\n');
+  const sv = editable ? (await db.q(`SELECT slug, dominio FROM sitios_vivos WHERE entrevista_id=$1 ORDER BY id DESC LIMIT 1`, [u.id]).catch(() => ({ rows: [] }))).rows[0] : null;
+  const urlPagina = sv ? (sv.dominio ? `https://${sv.dominio}/` : `${config.publicUrl}/s/${sv.slug}`) : '';
   for (const m of entrantes) {
     const tipo = tipoMedia(m.tipo, m.mime);
     if (tipo === 'audio') {
       const t = await transcribirAudio(m.url);
       await db.insertarMensaje(u.id, { rol: 'cliente', tipo: 'audio', contenido: t?.texto ? null : '[audio sin transcripción]', transcripcion: t?.texto || null });
-      if (t?.texto) audios.push(t.texto);
+      if (t?.texto) extras.push(t.texto);
       continue;
     }
     if (tipo !== 'imagen') { await db.insertarMensaje(u.id, { rol: 'cliente', tipo, contenido: `[${tipo}] ${m.url}${m.caption ? ` ${m.caption}` : ''}` }); continue; }
     const clave = `a${++n}`;
-    const desc = await describirImagen(m.url);
-    const msgId = await db.insertarMensaje(u.id, { rol: 'cliente', tipo, contenido: `[imagen ${clave}${m.caption ? `: ${m.caption}` : ''}${desc ? ` — ${desc.descripcion}` : ''}]` });
-    await db.insertarAsset(u.id, { mensaje_id: msgId, clave, tipo: desc?.tipo || 'foto_otro', url: m.url, mime: m.mime, nota: m.caption, descripcion_ia: desc?.descripcion, calidad: desc?.calidad, usar: true });
+    const textoJunto = [texto, m.caption].filter(Boolean).join('\n');
+    // Con página ya generada: se interpreta para qué la manda (foto o referencia). Antes: descripción normal.
+    const it = editable ? await interpretarImagenCambio(m.url, { texto: textoJunto, mismoMensaje: !!textoJunto, historial, urlPagina }) : null;
+    const desc = it ? null : await describirImagen(m.url);
+    const esFoto = !it || it.uso === 'foto';
+    const etiqueta = esFoto ? 'imagen' : USOS_REFERENCIA[it.uso];
+    const detalle = it ? [it.descripcion, it.senala ? `Señala: ${it.senala}` : '', it.transcripcion ? `Texto en la imagen: «${it.transcripcion}»` : ''].filter(Boolean).join(' · ') : desc?.descripcion || '';
+    const msgId = await db.insertarMensaje(u.id, { rol: 'cliente', tipo, contenido: `[${etiqueta} ${clave}${m.caption ? `: ${m.caption}` : ''}${detalle ? ` — ${detalle}` : ''}]` });
+    // Las referencias (capturas, diseños, textos, dudas) nunca se publican: tipo "referencia", usar=false.
+    await db.insertarAsset(u.id, {
+      mensaje_id: msgId, clave, url: m.url, mime: m.mime, nota: m.caption,
+      tipo: esFoto ? (it?.tipo || desc?.tipo || 'foto_otro') : 'referencia',
+      descripcion_ia: it ? [`[${it.uso}]`, it.descripcion, it.senala, it.transcripcion ? `Texto: ${it.transcripcion}` : ''].filter(Boolean).join(' ').slice(0, 2000) : desc?.descripcion,
+      calidad: it?.calidad || desc?.calidad, usar: esFoto,
+    });
+    await db.evento(u.id, 'imagen_interpretada', { clave, uso: it?.uso || 'foto', razon: it?.razon || null });
     claves.push(clave);
-    if (m.caption) audios.push(m.caption);
+    if (m.caption) extras.push(m.caption);
+    if (!esFoto) extras.push(`[${etiqueta} ${clave}] ${detalle}`);
   }
-  return { claves, textoExtra: audios.join('\n') };
+  return { claves, textoExtra: extras.join('\n') };
 }
 
 async function notificar(e, payload) {
@@ -305,7 +325,7 @@ export async function procesarMensaje(b) {
     if (u && u.estado === 'completada' && !comando && (Date.now() - new Date(u.actualizado).getTime() < 7 * 864e5 || await paginaEditable(u.id))) {
       // Entrevista ya cerrada (o con página publicada): los cambios que pida se aplican a su página; si no, se responde según el estado del sitio.
       if (texto) await db.insertarMensaje(u.id, { rol: 'cliente', contenido: texto });
-      const md = entrantes.length ? await registrarMediaPostCierre(u, entrantes) : { claves: [], textoExtra: '' };
+      const md = entrantes.length ? await registrarMediaPostCierre(u, entrantes, texto) : { claves: [], textoExtra: '' };
       const textoTodo = [texto, md.textoExtra].filter(Boolean).join('\n');
       await db.evento(u.id, 'comentario_post_cierre', { texto: textoTodo.slice(0, 300), media: md.claves });
       const r = await respuestaPostCierre(u, textoTodo, md.claves);
