@@ -7,6 +7,10 @@
 // - Solo se animan transform y opacity (sin costo de layout; Lighthouse móvil ≥ 90).
 import { urlClip, tipoClip, encolarClips } from './clips.js';
 
+// Clips de FFmpeg y Higgsfield en el slider: SUSPENDIDOS (6-nov-2026, Sebastián: las fotos "saltan").
+// Todas las fotos usan solo movimiento CSS. Para reactivarlos: variable CLIPS_SLIDER=1 en el servicio api.
+const CLIPS_SLIDER = process.env.CLIPS_SLIDER === '1';
+
 const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const corto = (s, max) => { const t = String(s || '').replace(/\s+/g, ' ').trim(); return t && t.length <= max ? t : ''; };
 export const MAX_DIAPOSITIVAS = 5;
@@ -24,13 +28,15 @@ export const MAX_DIAPOSITIVAS = 5;
  *  fx-texto     el texto de cada foto del slider entra en secuencia (tipografía cinética)
  * Todos usan transform, opacity o clip-path; prefers-reduced-motion los apaga.
  */
+// 6-nov-2026 (Sebastián): solo los efectos más aceptados — fundido con acercamiento entre fotos, Ken Burns notorio,
+// aparición suave al bajar y acercamiento al pasar el cursor. Se retiraron cortina, grano y color (siguen en el CSS por si se reactivan).
 const PRESETS_FX = [
-  'fx-zoom fx-grano fx-mascara',
-  'fx-cortina fx-foco fx-color',
-  'fx-zoom fx-paralaje fx-texto',
-  'fx-cortina fx-mascara fx-texto',
-  'fx-zoom fx-grano fx-paralaje fx-color',
-  'fx-cortina fx-foco fx-texto',
+  'fx-zoom fx-foco fx-hover',
+  'fx-zoom fx-mascara fx-hover',
+  'fx-zoom fx-paralaje fx-texto fx-hover',
+  'fx-zoom fx-foco fx-texto fx-hover',
+  'fx-zoom fx-paralaje fx-hover',
+  'fx-zoom fx-mascara fx-texto fx-hover',
 ];
 export const efectosDe = (letra) => PRESETS_FX[Math.max(0, 'ABCDEF'.indexOf(String(letra || 'A').toUpperCase())) % PRESETS_FX.length];
 const ORDEN_TIPOS = ['diferenciador', 'oferta', 'prueba', 'vision'];
@@ -80,7 +86,7 @@ export function sliderHTML({ fotos = [], diapos = [], img, primera = '', cta = '
   const clips = [];
   const caja = (html) => (envolver ? `<div class="wrap">${html}</div>` : html);
   const slides = lista.map((f, k) => {
-    const tipo = n > 1 ? tipoClip(k) : null;
+    const tipo = CLIPS_SLIDER && n > 1 ? tipoClip(k) : null;
     if (tipo) clips.push({ url: f.url, tipo, ancho: f.ancho, alto: f.alto, k });
     const extra = `${k === 0 ? ' fetchpriority="high"' : ''}${tipo ? ` data-clip="${esc(urlClip(f.url, tipo))}"` : ''}`;
     const foto = img(f, { cls: `sl-img km km-${k % 4}`, eager: k === 0, extra });
@@ -123,16 +129,22 @@ export const CSS_MOVIMIENTO = `
 .sl-carta{aspect-ratio:4/5;border-radius:8px;margin-bottom:12px}
 @media (min-width:900px){.sl-carta{aspect-ratio:16/8}.sl-cap{padding-bottom:84px}}
 /* movimiento de cámara: acercamientos distintos por foto */
-@keyframes km0{from{transform:scale(1.02)}to{transform:scale(1.1) translate3d(-1.6%,-1%,0)}}
-@keyframes km1{from{transform:scale(1.1) translate3d(1.6%,0,0)}to{transform:scale(1.02)}}
-@keyframes km2{from{transform:scale(1.03) translate3d(-1%,1%,0)}to{transform:scale(1.09) translate3d(1.4%,-1%,0)}}
-@keyframes km3{from{transform:scale(1.09) translate3d(0,-1.2%,0)}to{transform:scale(1.02) translate3d(0,.6%,0)}}
-.km{animation:km0 16s ease-in-out infinite alternate;animation-play-state:paused;transform-origin:50% 50%}
+/* Ken Burns notorio (6-nov-2026): acercamiento y paneo visibles en los ~7 s que dura cada foto */
+@keyframes km0{from{transform:scale(1)}to{transform:scale(1.16) translate3d(-3%,-2%,0)}}
+@keyframes km1{from{transform:scale(1.16) translate3d(3%,1%,0)}to{transform:scale(1.02)}}
+@keyframes km2{from{transform:scale(1.02) translate3d(-2.5%,2%,0)}to{transform:scale(1.15) translate3d(2.5%,-1.5%,0)}}
+@keyframes km3{from{transform:scale(1.15) translate3d(0,-2.5%,0)}to{transform:scale(1.01) translate3d(0,1.5%,0)}}
+.km{animation:km0 8s ease-out infinite alternate;animation-play-state:paused;transform-origin:50% 50%}
+/* foto entera: si la proporción no cabe en el marco, se muestra completa sobre un fondo difuminado de la misma foto */
+.sl-d>img.sl-fondo{filter:blur(28px) brightness(.72);transform:scale(1.15)}
+.sl-d.entera>img.sl-img{object-fit:contain}
+.sl-d.entera .km{animation-name:kme}
+@keyframes kme{from{transform:scale(1)}to{transform:scale(1.06)}}
 .km-1{animation-name:km1}.km-2{animation-name:km2}.km-3{animation-name:km3}
 .sl-d.activa .km,.sl:not([data-sl]) .km{animation-play-state:running}.sl.pausado .km{animation-play-state:paused}
 /* todo el sitio: fotos con movimiento muy lento mientras están en pantalla */
-@keyframes mv{from{transform:scale(1)}to{transform:scale(1.035) translate3d(0,-.6%,0)}}
-.mv{animation:mv 24s ease-in-out infinite alternate;animation-play-state:paused}.mv.en{animation-play-state:running}
+@keyframes mv{from{transform:scale(1)}to{transform:scale(1.08) translate3d(0,-1.5%,0)}}
+.mv{animation:mv 11s ease-in-out infinite alternate;animation-play-state:paused}.mv.en{animation-play-state:running}
 /* aparición suave al hacer scroll y reacción leve al cursor */
 .rv{opacity:0;transform:translate3d(0,16px,0);transition:opacity .8s ease,transform .9s cubic-bezier(.2,.7,.2,1)}.rv.en{opacity:1;transform:none}
 @media (hover:hover){.btn{transition:transform .25s ease,box-shadow .25s ease}.btn:hover{transform:translateY(-2px);box-shadow:0 8px 22px rgba(0,0,0,.16)}
@@ -149,6 +161,7 @@ export const CSS_MOVIMIENTO = `
 .fx-grano .sl::before{content:"";position:absolute;inset:-50%;z-index:2;pointer-events:none;opacity:.08;mix-blend-mode:overlay;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='g'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23g)'/%3E%3C/svg%3E");animation:grano 1.2s steps(5) infinite}
 @keyframes grano{0%{transform:translate3d(0,0,0)}20%{transform:translate3d(-3%,2%,0)}40%{transform:translate3d(2%,-3%,0)}60%{transform:translate3d(-2%,-1%,0)}80%{transform:translate3d(3%,3%,0)}100%{transform:translate3d(0,0,0)}}
 @media (hover:hover){.fx-color main figure:not(.sl) img{filter:saturate(.72);transition:filter .6s ease}.fx-color main figure:not(.sl):hover img{filter:none}}
+@media (hover:hover){.fx-hover main img.mv{transition:scale .6s cubic-bezier(.2,.7,.2,1)}.fx-hover main :is(figure,div):hover>img.mv{scale:1.06}}
 @keyframes subir{from{opacity:0;transform:translate3d(0,18px,0)}to{opacity:1;transform:none}}
 .fx-texto .sl-d.activa:not(:first-child) .sl-cap .sl-t,.fx-texto .sl-d.activa:not(:first-child) .sl-cap .sl-a,.fx-texto .sl-d.activa:not(:first-child) .sl-cap .sl-btn{animation:subir .9s cubic-bezier(.2,.7,.2,1) both}
 .fx-texto .sl-d.activa .sl-a{animation-delay:.12s!important}.fx-texto .sl-d.activa .sl-btn{animation-delay:.24s!important}
@@ -164,9 +177,15 @@ const io=(cb,o)=>'IntersectionObserver' in window?new IntersectionObserver(cb,o)
 let cargada=document.readyState==='complete';const listos=[];
 addEventListener('load',()=>{cargada=true;listos.forEach(f=>f())},{once:true});
 const alCargar=f=>cargada?f():listos.push(f);
+document.querySelectorAll('.sl').forEach(sl=>{const ds=[...sl.querySelectorAll('.sl-d')];
+const enteras=()=>ds.forEach(d=>{const im=d.querySelector('img.sl-img'),w=+im.getAttribute('width'),h=+im.getAttribute('height');if(!w||!h||!sl.clientWidth)return;
+const r=(w/h)/(sl.clientWidth/sl.clientHeight),ent=r>1.25||r<.8;d.classList.toggle('entera',ent);
+if(ent&&!d.querySelector('.sl-fondo')){const f=im.cloneNode();f.className='sl-fondo';f.alt='';f.removeAttribute('fetchpriority');f.setAttribute('aria-hidden','true');im.before(f)}});
+enteras();addEventListener('resize',enteras,{passive:true})});
 document.querySelectorAll('[data-sl]').forEach(sl=>{
 const ds=[...sl.querySelectorAll('.sl-d')];if(ds.length<2)return;
 const pos=sl.querySelector('.sl-pos'),bp=sl.querySelector('.sl-pausa');
+
 let i=0,t=null,usuario=R,encima=false;
 const clip=d=>{const im=d&&d.querySelector('img[data-clip]');if(!im||im.dataset.c||R||lenta())return;im.dataset.c=1;
 const v=document.createElement('video');v.muted=v.defaultMuted=true;v.playsInline=true;v.loop=true;v.preload='auto';v.setAttribute('playsinline','');v.setAttribute('aria-hidden','true');
@@ -183,8 +202,7 @@ const estado=()=>{sl.classList.toggle('pausado',parado());bp.setAttribute('aria-
 bp.addEventListener('click',()=>{usuario=!usuario;estado()});
 sl.querySelector('.sl-prev').addEventListener('click',()=>{ir(i-1);prog()});
 sl.querySelector('.sl-sig').addEventListener('click',()=>{ir(i+1);prog()});
-sl.addEventListener('mouseenter',()=>{encima=true;estado()});sl.addEventListener('mouseleave',()=>{encima=false;estado()});
-sl.addEventListener('focusin',()=>{encima=true;estado()});sl.addEventListener('focusout',e=>{if(!sl.contains(e.relatedTarget)){encima=false;estado()}});
+sl.addEventListener('focusin',e=>{if(e.target.matches(':focus-visible')){encima=true;estado()}});sl.addEventListener('focusout',e=>{if(!sl.contains(e.relatedTarget)){encima=false;estado()}});
 sl.addEventListener('keydown',e=>{if(e.key==='ArrowRight'){ir(i+1);prog()}else if(e.key==='ArrowLeft'){ir(i-1);prog()}});
 let x0=null;sl.addEventListener('touchstart',e=>{x0=e.touches[0].clientX},{passive:true});
 sl.addEventListener('touchend',e=>{if(x0===null)return;const dx=e.changedTouches[0].clientX-x0;x0=null;if(Math.abs(dx)>40){ir(i+(dx<0?1:-1));prog()}},{passive:true});
