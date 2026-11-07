@@ -11,7 +11,7 @@ import { corregirPaleta, auditarPaleta, cssTipografia } from './tipo_color.js';
 import { coloresParaPropuesta, avisosDeGiro } from './paletas_giro.js';
 import { evaluarColoresCliente, asignarFuentes } from './asesor_color.js';
 import { coloresDePalabras, logoTenido } from './materiales.js';
-import { CSS_MOVIMIENTO, JS_MOVIMIENTO } from './movimiento.js';
+import { CSS_MOVIMIENTO, JS_MOVIMIENTO, sliderHTML, diapositivasDe } from './movimiento.js';
 import { waUrl, formatoTel } from './bloques.js';
 import { paginasGenerales, logoHTML, redes } from './propuestas_general.js';
 import { completarMaterial } from './validar_material.js';
@@ -96,6 +96,13 @@ function pagina(d) {
     dostonos: `<section class="hero h-dos"><div class="txt"><h1>${esc(d.textos.titular)}</h1><p class="sub">${esc(d.textos.subtitulo)}</p><a class="btn inv"${wa}>${esc(d.textos.cta)}</a></div><div class="vasos">${heroImgs.slice(0, 2).map((u) => `<img src="${esc(u)}" alt="">`).join('')}</div></section>`,
     lista: `<section class="hero h-lista"><div class="circulo"><img src="${esc(heroImgs[0])}" alt=""></div><h1>${esc(d.textos.titular)}</h1><p class="sub">${esc(d.textos.subtitulo)}</p><a class="btn ancho"${wa}>${esc(d.textos.cta)}</a></section>`,
   };
+  // Slider de portada (6-nov-2026): con 2 o más fotos reales del local/negocio reemplaza la portada de productos recortados
+  // en las 6 propuestas. Los recortes siguen en "Lo más pedido". Texto encima de cada foto; la foto 1 lleva el H1.
+  const imgS = (x, { cls = '', eager = false, extra = '' } = {}) => `<img class="${cls}" src="${esc(x.url)}" alt="${esc(x.alt || '')}" loading="${eager ? 'eager' : 'lazy'}"${x.ancho ? ` width="${x.ancho}" height="${x.alto}"` : ''}${extra}>`;
+  const heroSl = d.fotosSl.length >= 2 && d.diapos.length ? sliderHTML({
+    fotos: d.fotosSl, diapos: d.diapos, img: imgS, cta: d.textos.cta, href: wa, tag: 'section', clase: 'hero h-sl', nombre: d.nombre,
+    primera: `<h1>${esc(d.textos.titular)}</h1><p class="sub">${esc(d.textos.subtitulo)}</p><div class="ctas"><a class="btn"${wa}>${esc(d.textos.cta)}</a><a class="lnk" href="#menu">Ver menú</a></div>`,
+  }).html : '';
   const secDest = `<section class="sec" id="destacados"><h2>${esc(d.textos.destacados || 'Lo más pedido')}</h2><div class="prods">${tarjetas}</div></section>`;
   const secCats = cats ? `<section class="sec"><h2>${esc(d.textos.categorias || 'Elige tu antojo')}</h2><div class="cats">${cats}</div></section>` : '';
   // Imágenes del menú del cliente: carrusel navegable justo debajo del título "Menú" (en todas las propuestas).
@@ -155,10 +162,12 @@ footer{margin-top:48px;padding:24px 20px 90px;border-top:1px solid var(--bor);fo
 @media (min-width:900px){.slide{flex-basis:31%}.carr{margin:4px 0 30px}.pista{padding:4px 0 12px;scroll-padding:0}.h-menu{grid-template-columns:1.1fr 1fr;align-items:end}.h-menu .vasos img{height:240px}.h-menu .vasos img.c{height:320px}.hero{padding-top:56px}.h-fresco .caja{grid-template-columns:1.1fr 1fr;align-items:end}.h-dos{grid-template-columns:1.1fr 1fr;align-items:end;margin:0;border-radius:32px;padding:40px}.h-dos .vasos img{height:320px}.h-dos .vasos img+img{height:250px}.trio img{height:200px}.trio img.c{height:260px}.circulo{height:380px}.circulo::before{width:340px;height:340px}.circulo img{height:350px}.vis{grid-template-columns:repeat(3,1fr)}}
 @media (prefers-reduced-motion:reduce){html{scroll-behavior:auto}}
 ${CSS_MOVIMIENTO}
+.hero.h-sl{padding:0;margin-top:12px;min-height:80vh;min-height:80svh;border-radius:18px;color:#fff}.h-sl h1{color:#fff;max-width:16ch;text-shadow:0 1px 18px rgba(0,0,0,.35)}.h-sl .sub{color:rgba(255,255,255,.92);max-width:44ch}.h-sl .lnk{color:#fff;margin:20px 0 0;white-space:nowrap}.h-sl .ctas{display:flex;flex-wrap:wrap;align-items:center;column-gap:18px}.h-sl .sl-t{font-weight:700}.h-sl .sl-cap{padding-left:24px;padding-right:24px}
+@media (min-width:900px){.hero.h-sl{margin-top:20px;min-height:78vh;border-radius:24px}.h-sl .sl-cap{padding:40px 48px 88px}.h-sl .sl-d.con-txt::after{background:linear-gradient(90deg,rgba(0,0,0,.64),rgba(0,0,0,.14) 72%)}}
 </style></head>
 <body class="${d.layout}">
 <header class="barra"><div class="in">${logo}<nav><a href="#destacados">${esc(d.textos.destacados || 'Lo más pedido')}</a><a href="#menu">Menú</a><a href="#contacto">Contacto</a></nav></div></header>
-<main class="wrap">${heros[d.layout]}${d.promo ? `<section class="promo" id="promocion"><p><b>Promoción</b> ${esc(d.promo)}</p></section>` : ''}${orden.join('')}</main>
+<main class="wrap">${heroSl || heros[d.layout]}${d.promo ? `<section class="promo" id="promocion"><p><b>Promoción</b> ${esc(d.promo)}</p></section>` : ''}${orden.join('')}</main>
 <footer>© ${new Date().getFullYear()} ${esc(d.nombre)} · Propuesta ${d.letra}: ${esc(NOMBRES[d.layout])}</footer>
 <span class="etq">Propuesta ${d.letra}</span>
 <a class="wa"${wa} aria-label="Escríbenos por WhatsApp"><svg viewBox="0 0 32 32" aria-hidden="true"><path d="M16 3a13 13 0 0 0-11.2 19.6L3 29l6.6-1.7A13 13 0 1 0 16 3Zm0 23.7c-2 0-4-.6-5.7-1.6l-.4-.2-3.9 1 1-3.8-.3-.4A10.7 10.7 0 1 1 16 26.7Zm5.9-8c-.3-.2-1.9-1-2.2-1-.3-.1-.5-.2-.7.1l-1 1.3c-.2.2-.4.2-.7.1a8.8 8.8 0 0 1-4.4-3.8c-.3-.6.3-.5.9-1.7.1-.2 0-.4 0-.6l-1-2.4c-.3-.6-.5-.5-.7-.5h-.6c-.2 0-.6.1-.9.4-.3.3-1.2 1.1-1.2 2.8s1.2 3.2 1.4 3.5c.2.2 2.4 3.6 5.7 5 2.1.9 3 1 4 .8.7-.1 1.9-.8 2.2-1.5.3-.8.3-1.4.2-1.5l-.6-.3Z"/></svg></a>
@@ -237,6 +246,11 @@ export async function renderPropuestas(brief, mat, textos, { ronda = 0, fijo = n
   const c = brief.contacto || {};
   const dir = c.direccion && typeof c.direccion === 'object' ? [c.direccion.calle, c.direccion.colonia, c.direccion.ciudad].filter(Boolean).join(', ') : c.direccion;
   const cats = categorias(mat.menu_texto);
+  // Fotos reales para el slider (no recortes de producto): local, trabajos, equipo y fotos con fondo.
+  const vistas = new Set();
+  const reales = [mat.hero, ...(mat.local || []), ...(mat.trabajos || []), ...(mat.fotos || []).filter((x) => !x.sin_fondo && x.tipo !== 'foto_producto')]
+    .filter((x) => x?.url && !x.captura && x.calidad !== 'regular' && !vistas.has(x.url) && vistas.add(x.url));
+  const diapos = diapositivasDe({ diapositivas: textos.diapositivas }, brief);
   const out = [];
   for (const [i, layout] of LAYOUTS.entries()) {
     const letra = 'ABCDEF'[i];
@@ -250,6 +264,7 @@ export async function renderPropuestas(brief, mat, textos, { ronda = 0, fijo = n
       letra, layout, nombre: brief.negocio?.nombre || '', logo: mat.logo?.url || null, logoObj: mat.logo || null,
       pal: fijo?.paleta || corregirPaleta(paleta(layout, b)).paleta, f: fijo?.fuentes || pares[i % pares.length], fuentesUrl: urlFuentes([fijo?.fuentes || pares[i % pares.length]]),
       textos: { titular: v.titular, subtitulo: v.subtitulo, cta: v.cta || 'Pide por WhatsApp', destacados: textos.destacados, categorias: textos.categorias, visita: textos.visita },
+      fotosSl: reales.length ? reales.slice(i % reales.length).concat(reales.slice(0, i % reales.length)) : [], diapos,
       heroImgs: [rot(0), rot(1), rot(2)], productos: prods.slice(i % 2 ? 3 : 0).concat(prods.slice(0, i % 2 ? 3 : 0)),
       categorias: cats, menus: mat.menus.map((m) => m.url), info: (textos.info || []).slice(0, 3),
       wa: waUrl(c.whatsapp, c.mensaje_whatsapp_inicial), tel: c.whatsapp ? formatoTel(c.whatsapp) : null, direccion: dir, horarios: typeof c.horarios === 'string' ? c.horarios : null,

@@ -91,6 +91,7 @@ export const REGLAS = {
       'Texto en HTML encima de la foto con degradado oscuro (contraste ≥ 4.5:1); controles con contraste ≥ 3:1 y 44 px',
       'Botón de pausa visible (WCAG 2.2.2), pausa con mouse y foco, flechas, teclado y deslizar; prefers-reduced-motion: no avanza solo ni se mueve',
       'Ninguna foto del slider se repite en el resto del sitio',
+      'Cafeterías y restaurantes: con 2 o más fotos reales (local, trabajos, fotos con fondo) el slider reemplaza la portada de productos recortados en las 6 propuestas; los recortes siguen en "Lo más pedido"',
     ],
   },
   movimiento_sitio: {
