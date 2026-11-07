@@ -33,6 +33,15 @@ export async function pedirJSON({ system, contenido, schema, model = MODELO_ARI,
     const m = texto.match(/\{[\s\S]*\}/);
     if (m) { try { data = JSON.parse(m[0]); } catch { /* sigue */ } }
   }
+  // A veces la respuesta llega envuelta como texto ({ _texto: "{...}" } desde el gateway, o un solo campo string con el JSON): se desenvuelve.
+  if (data && typeof data === 'object' && !Array.isArray(data)) {
+    const llaves = Object.keys(data);
+    const crudo = typeof data._texto === 'string' ? data._texto : (llaves.length === 1 && typeof data[llaves[0]] === 'string' ? data[llaves[0]] : null);
+    if (crudo && /^\s*[{[]/.test(crudo)) {
+      const m = crudo.match(/\{[\s\S]*\}/);
+      if (m) { try { const d = JSON.parse(m[0]); if (d && typeof d === 'object') data = d; } catch { /* sigue */ } }
+    }
+  }
   if (!data) throw new Error('Claude no devolvió JSON');
   return { data, usage: json.usage || {}, model, duracion_ms: Date.now() - t0 };
 }
