@@ -156,7 +156,7 @@ async function planear(e, act, pedidos, conv, errores) {
 function validar(plan, act, fuentes) {
   const errores = [];
   const secciones = {};
-  for (const [k, v] of Object.entries(plan.secciones || {})) {
+  for (let [k, v] of Object.entries(plan.secciones || {})) {
     if (!SECCIONES.includes(k)) { errores.push(`Sección desconocida "${k}"`); continue; }
     if (k === 'oferta' && Array.isArray(v?.items)) v = { ...v, items: v.items.map(separarPrecio) };
     try { secciones[k] = limpiarSeccion(k, v); } catch (err) { errores.push(`${k}: ${err.message}`); }
