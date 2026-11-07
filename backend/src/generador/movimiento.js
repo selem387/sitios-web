@@ -147,6 +147,24 @@ export function sliderHTML({ fotos = [], diapos = [], img, primera = '', cta = '
   return { html: `<${tag} class="${clase} sl"${reg}>${slides}${ctrl}</${tag}>`, n, usadas: lista.map((f) => f.url) };
 }
 
+/**
+ * Fotos del cliente en el tamaño justo (7-nov-2026, Lighthouse móvil ≥ 90): a cada <img> de /chat/archivos/ se le agrega
+ * srcset con versiones de 480, 800, 1200 y 1600 px en WebP (las genera y guarda /chat/archivos/:nombre?w=).
+ * El celular baja ~800-1200 px en vez del original. Se aplica al HTML final, después de validar el material.
+ */
+export function conSrcset(html) {
+  return String(html).replace(/<img\b([^>]*?)\ssrc="([^"]+\/chat\/archivos\/[\w-]+\.(?:jpe?g|png|webp))"([^>]*)>/g, (m, a, src, b) => {
+    // si ya trae un srcset nuestro (p. ej. el editor cambió la foto de un bloque), se rehace con la foto actual
+    const limpia = (t) => t.replace(/\ssrcset="[^"]*\/chat\/archivos\/[^"]*"/g, '').replace(/\ssizes="(?:100vw|\(min-width: 900px\) 50vw, 100vw)"/g, '');
+    a = limpia(a); b = limpia(b);
+    const attrs = a + b;
+    if (/\ssrcset=/.test(attrs) || /class="[^"]*\blogo/.test(attrs)) return `<img${a} src="${src}"${b}>`;
+    const set = [480, 800, 1200, 1600].map((w) => `${src}?w=${w} ${w}w`).join(', ');
+    const sizes = /\ssizes=/.test(attrs) ? '' : ` sizes="${/\bsl-img\b/.test(attrs) ? '100vw' : '(min-width: 900px) 50vw, 100vw'}"`;
+    return `<img${a} src="${src}" srcset="${set}"${sizes}${b}>`;
+  });
+}
+
 export const CSS_MOVIMIENTO = `
 /* slider de portada (generador/movimiento.js) */
 .sl{position:relative;overflow:hidden;isolation:isolate}
@@ -264,6 +282,9 @@ sl.classList.toggle('pausado',parado());if(R){bp.setAttribute('aria-pressed','tr
 alCargar(()=>{sl.classList.add('vivo');setTimeout(()=>clip(ds[1]),1200);if(!parado())t=setTimeout(()=>{ir(1);prog()},6000)});
 });
 if(R)return;
+/* lo que no se ve al abrir (revelados, líneas de títulos, contadores, movimiento de fotos) se prepara cuando la página ya cargó y el navegador está libre: no retrasa la portada */
+const ocioso=f=>'requestIdleCallback' in window?requestIdleCallback(f,{timeout:1000}):setTimeout(f,200);
+alCargar(()=>ocioso(()=>{
 const vis=io(es=>es.forEach(e=>e.target.classList.toggle('en',e.isIntersecting)),{rootMargin:'60px'});
 /* contadores: la cifra sube de 0 a su valor y al final queda exactamente el texto del cliente */
 const cuenta=li=>{const tn=[...li.childNodes].find(n=>n.nodeType===3&&/\\d/.test(n.nodeValue));if(!tn)return;const orig=tn.nodeValue,m=orig.match(/\\d[\\d,.]*/);
@@ -285,4 +306,5 @@ el.classList.add('rv');let i=0;
 el.querySelectorAll('h2,h3,p,.btn,.paq,blockquote,details,figure,.cifras li,li.serv,.tarjeta,.card,.item').forEach(x=>{if(x.closest('.ri,.sl,.ln')||x.parentElement.closest('.ri'))return;
 if(x.tagName==='H2'){const n=lineas(x,Math.min(i,10));if(n){i+=n;return}}x.classList.add('ri');x.style.setProperty('--i',Math.min(i,10));i++});
 ap.observe(el)});
+}));
 })();</script>`;

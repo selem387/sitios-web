@@ -11,7 +11,7 @@ import { corregirPaleta, auditarPaleta, cssTipografia } from './tipo_color.js';
 import { coloresParaPropuesta, avisosDeGiro } from './paletas_giro.js';
 import { evaluarColoresCliente, asignarFuentes } from './asesor_color.js';
 import { coloresDePalabras, logoTenido } from './materiales.js';
-import { CSS_MOVIMIENTO, JS_MOVIMIENTO, sliderHTML, diapositivasDe, emparejarFotos, efectosDe } from './movimiento.js';
+import { CSS_MOVIMIENTO, JS_MOVIMIENTO, sliderHTML, diapositivasDe, emparejarFotos, efectosDe, conSrcset } from './movimiento.js';
 import { waUrl, formatoTel } from './bloques.js';
 import { paginasGenerales, logoHTML, redes } from './propuestas_general.js';
 import { completarMaterial } from './validar_material.js';
@@ -115,7 +115,7 @@ function pagina(d) {
 
   return `<!doctype html><html lang="es" class="${efectosDe(d.letra)}"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><meta name="robots" content="noindex">
 <title>${esc(d.nombre)} · Propuesta ${d.letra}</title>
-<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link href="${esc(d.fuentesUrl)}" rel="stylesheet">
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><!-- Tipografías sin bloquear la portada (7-nov-2026): la página se pinta con la letra de respaldo y cambia a la de Google en cuanto llega (display=swap). Lighthouse móvil ≥ 90. --><link rel="preload" as="style" href="${esc(d.fuentesUrl)}" onload="this.onload=null;this.rel='stylesheet'"><noscript><link href="${esc(d.fuentesUrl)}" rel="stylesheet"></noscript>
 <style>
 :root{--bg:${p.bg};--fg:${p.fg};--p:${p.primary};--on:${p.onPrimary};--acc:${p.accent};--mut:${p.muted};--card:${p.card};--soft:${p.soft};--bor:${p.border};--ft:'${f.titulos}',serif;--fc:'${f.cuerpo}',sans-serif}
 *{box-sizing:border-box;margin:0;padding:0}html{scroll-behavior:smooth}body{background:var(--bg);color:var(--fg);font-family:var(--fc);font-size:16px;line-height:1.5;-webkit-font-smoothing:antialiased}
@@ -236,7 +236,7 @@ export async function renderPropuestas(brief, mat, textos, { ronda = 0, fijo = n
       faltanTodas.push(...faltan);
       if (faltan.length && !fijo) throw new Error(`Propuesta ${pg.letra} sin material del cliente: ${faltan.map((f) => f.clave).join(', ')}`);
       if (repetidas.length && !fijo) throw new Error(`Propuesta ${pg.letra} con fotos repetidas: ${repetidas.map((f) => f.url.split('/').pop()).join(', ')}`);
-      out.push({ letra: pg.letra, layout: pg.layout, nombre: pg.nombre, html, fuentes: pg.fuentes, paleta: pg.paleta });
+      out.push({ letra: pg.letra, layout: pg.layout, nombre: pg.nombre, html: conSrcset(html), fuentes: pg.fuentes, paleta: pg.paleta });
     }
     return { paginas: out, faltan: faltanTodas, avisos_color: avisosDeGiro({ arquetipo: brief.negocio?.arquetipo, subtipo: brief.negocio?.subtipo_resuelto || brief.negocio?.subtipo, colores: coloresCliente }), asesor };
   }
@@ -276,7 +276,7 @@ export async function renderPropuestas(brief, mat, textos, { ronda = 0, fijo = n
     const { html, faltan } = completarMaterial(conReglaTipo(pagina(d), d.f, fijo?.fuentes?.estilo || estilo), mat, { titulo: 'Más de nosotros' });
     faltanTodas.push(...faltan);
     if (faltan.length && !fijo) throw new Error(`Propuesta ${letra} sin material del cliente: ${faltan.map((f) => f.clave).join(', ')}`);
-    out.push({ letra, layout, nombre: NOMBRES[layout], html, fuentes: d.f, paleta: fijo?.paleta || { ...d.pal, familia: cp.familia, origen: cp.origen } });
+    out.push({ letra, layout, nombre: NOMBRES[layout], html: conSrcset(html), fuentes: d.f, paleta: fijo?.paleta || { ...d.pal, familia: cp.familia, origen: cp.origen } });
   }
   return { paginas: out, faltan: faltanTodas, avisos_color: avisosDeGiro({ arquetipo: brief.negocio?.arquetipo, subtipo: brief.negocio?.subtipo_resuelto || brief.negocio?.subtipo, colores }), asesor };
 }

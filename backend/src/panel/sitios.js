@@ -210,6 +210,7 @@ export async function renderSitio(sv, { previa = false } = {}) {
   }
   // Estructura y ajustes de diseño propios de este sitio (los escribe el editor de cambios a pedido del cliente).
   if (dz.estructura) { const { aplicarEstructura } = await import('./estructura.js'); html = aplicarEstructura(html, dz.estructura); }
+  { const { conSrcset } = await import('../generador/movimiento.js'); html = conSrcset(html); } // tamaños de foto coherentes tras ediciones
   const css = dz.css;
   if (css) html = html.replace('</head>', () => `<style id="ajustes">${String(css).replace(/<\/style/gi, '')}</style></head>`);
   for (const k of cache.keys()) if (k.startsWith(`${sv.id}:`) && !k.startsWith(`${sv.id}:${sv.version}:`)) cache.delete(k);
