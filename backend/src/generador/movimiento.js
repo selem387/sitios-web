@@ -136,7 +136,8 @@ export const CSS_MOVIMIENTO = `
 @keyframes km3{from{transform:scale(1.15) translate3d(0,-2.5%,0)}to{transform:scale(1.01) translate3d(0,1.5%,0)}}
 .km{animation:km0 8s ease-out infinite alternate;animation-play-state:paused;transform-origin:50% 50%}
 /* foto entera: si la proporción no cabe en el marco, se muestra completa sobre un fondo difuminado de la misma foto */
-.sl-d>img.sl-fondo{filter:blur(28px) brightness(.72);transform:scale(1.15)}
+/* fondo en canvas diminuto (no cuenta para LCP ni pesa) */
+.sl-d>canvas.sl-fondo{position:absolute;inset:0;width:100%;height:100%;filter:blur(18px) brightness(.7);transform:scale(1.2)}
 .sl-d.entera>img.sl-img{object-fit:contain}
 .sl-d.entera .km{animation-name:kme}
 @keyframes kme{from{transform:scale(1)}to{transform:scale(1.06)}}
@@ -180,7 +181,7 @@ const alCargar=f=>cargada?f():listos.push(f);
 document.querySelectorAll('.sl').forEach(sl=>{const ds=[...sl.querySelectorAll('.sl-d')];
 const enteras=()=>ds.forEach(d=>{const im=d.querySelector('img.sl-img'),w=+im.getAttribute('width'),h=+im.getAttribute('height');if(!w||!h||!sl.clientWidth)return;
 const r=(w/h)/(sl.clientWidth/sl.clientHeight),ent=r>1.25||r<.8;d.classList.toggle('entera',ent);
-if(ent&&!d.querySelector('.sl-fondo')){const f=im.cloneNode();f.className='sl-fondo';f.alt='';f.removeAttribute('fetchpriority');f.setAttribute('aria-hidden','true');im.before(f)}});
+if(ent&&!d.querySelector('.sl-fondo')){const c=document.createElement('canvas');c.className='sl-fondo';c.width=24;c.height=Math.max(8,Math.round(24*h/w));c.setAttribute('aria-hidden','true');im.before(c);const pinta=()=>{try{c.getContext('2d').drawImage(im,0,0,c.width,c.height)}catch(e){}};im.complete&&im.naturalWidth?pinta():im.addEventListener('load',pinta,{once:true})}});
 enteras();addEventListener('resize',enteras,{passive:true})});
 document.querySelectorAll('[data-sl]').forEach(sl=>{
 const ds=[...sl.querySelectorAll('.sl-d')];if(ds.length<2)return;
