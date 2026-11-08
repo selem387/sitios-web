@@ -334,7 +334,7 @@ export async function aplicarCambioVivo(c, e, sv) {
       usar: Object.fromEntries(Object.keys(usar).map((cl) => [cl, act.fotos.find((a) => a.clave === cl)?.usar !== false])),
     };
     await guardar(c.id, { respaldo: { vivo: respaldo } });
-    const diseno = tocaDiseno ? { ...(k.diseno || {}), ...(Object.keys(v.paleta).length ? { paleta: { ...(k.diseno?.paleta || {}), ...v.paleta } } : {}), ...(cssNuevo !== null ? { css: cssNuevo } : {}), ...(estNueva ? { estructura: estNueva } : {}), ...(propNueva ? { propuesta: propNueva } : {}), ...(fuentesNuevas ? { fuentes: fuentesNuevas } : {}) } : undefined;
+    const diseno = tocaDiseno ? { ...(propNueva ? {} : (k.diseno || {})), ...(Object.keys(v.paleta).length ? { paleta: { ...(k.diseno?.paleta || {}), ...v.paleta } } : {}), ...(cssNuevo !== null ? { css: cssNuevo } : {}), ...(estNueva ? { estructura: estNueva } : {}), ...(propNueva ? { propuesta: propNueva } : {}), ...(fuentesNuevas ? { fuentes: fuentesNuevas } : {}) } : undefined;
     nuevo = await escribir(sv, e, { secciones: v.secciones, diseno, fotos: plan.portada_foto ? { ...(k.fotos || {}), portada_asset_id: plan.portada_foto } : undefined, usar });
 
     // 4) La página se arma con lo nuevo.

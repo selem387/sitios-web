@@ -111,7 +111,7 @@ const ESQUEMA_CLASE = {
 };
 const SISTEMA_CLASE = `Eres Ari. El cliente ya tiene su página web lista y te escribe. Clasifica su ÚLTIMO mensaje:
 - "cambio": pide o describe algo concreto que quiere cambiar, quitar, agregar o corregir en su página (textos, fotos, colores, datos, secciones, letra, botones…), contesta una pregunta tuya sobre un cambio, o pide dejar algo como estaba.
-- "ver_opciones": quiere VER otra vez las opciones/versiones/propuestas de diseño para elegir otra ("dame las demás opciones", "quiero ver de nuevo las versiones", "quiero otro diseño", "enséñame los diseños"). Si ya dice cuál quiere (una letra, un nombre de opción o un enlace /p/…/A-F), es "cambio".
+- "ver_opciones": quiere cambiar el DISEÑO COMPLETO de su página (no un detalle) o volver a ver sus opciones para elegir otra: "dame las demás opciones", "quiero ver de nuevo las versiones", "quiero otro diseño", "cambia el diseño de mi página", "me sigue mostrando el primero que elegí", "quiero que se vea como esta página <liga de otro sitio>", "quiero una página con ese estilo…". Si ya dice cuál de SUS opciones quiere (una letra A–F, el nombre de una opción o un enlace a sus propuestas /p/…/A-F), es "cambio".
 - "sin_detalle": dice que quiere hacer cambios/correcciones pero todavía no dice cuáles.
 - "otro": cualquier otra cosa (gracias, le gustó, saludos, dudas generales). En "respuesta" contesta breve y cálido; si viene al caso, recuérdale que puede pedirte cambios. Nunca ofrezcas empezar otra página ni menciones palabras clave.
 Si hay un cambio en curso o una pregunta tuya abierta, un mensaje corto como "la de arriba", "sí, esa", "en azul" es "cambio".
