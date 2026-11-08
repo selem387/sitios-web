@@ -30,7 +30,7 @@ export const PRESETS = {
     nombres: ['Retrato a pantalla completa', 'Nocturna', 'Editorial delicada', 'Galería serena', 'Mosaico de sesiones', 'Carta minimal'],
     pares: [['Instrument Serif', 'Instrument Sans'], ['Bodoni Moda', 'Albert Sans'], ['Newsreader', 'Golos Text'], ['Spectral', 'Hanken Grotesk'], ['Instrument Serif', 'Instrument Sans'], ['Bodoni Moda', 'Hanken Grotesk']],
     paletas: [PAL.marfil, PAL.noche, PAL.arena, PAL.blanco, PAL.rubor, PAL.piedra],
-    cursiva: true, delgada: true, radio: 0, peso: 300, aire: 'aireada', heroAlto: true,
+    cursiva: true, resalte: 'cursiva', delgada: true, radio: 0, peso: 300, aire: 'aireada', heroAlto: true,
     css: `body.ref .barra nav a{font-family:var(--fc);font-size:11px;letter-spacing:.2em;text-transform:uppercase;font-weight:400}
 body.ref .kicker{font-size:11px;letter-spacing:.26em;text-transform:uppercase;font-weight:400}
 body.ref .sub{font-weight:300;max-width:46ch}
@@ -55,8 +55,8 @@ body.ref footer{letter-spacing:.14em;text-transform:uppercase;font-size:11px}`,
     cursiva: false, delgada: false, radio: 8, peso: 600, aire: 'media', heroAlto: false,
     css: `body.ref h1,body.ref h2{letter-spacing:-.025em}
 body.ref .barra nav a{font-size:14px;font-weight:500}
-body.ref .kicker{font-size:12px;letter-spacing:.08em;text-transform:uppercase;font-weight:600;color:var(--primary)}
-body.ref .btn{font-weight:600;padding:14px 24px;background:var(--primary);color:var(--onPrimary);border:0}
+body.ref .kicker{font-size:12px;letter-spacing:.08em;text-transform:uppercase;font-weight:600;color:var(--p)}
+body.ref .btn{font-weight:600;padding:14px 24px;background:var(--p);color:var(--on);border:0}
 body.ref .galeria img,body.ref .mos img{border-radius:12px}`,
   },
   colorido: {
@@ -75,10 +75,15 @@ body.ref .galeria img,body.ref .mos img{border-radius:12px}`,
     cursiva: false, delgada: false, radio: 999, peso: 700, aire: 'media', heroAlto: false,
     css: `body.ref h1,body.ref h2{letter-spacing:-.02em}
 body.ref .barra nav a{font-size:15px;font-weight:600}
-body.ref .kicker{font-size:13px;font-weight:700;color:var(--primary)}
-body.ref .btn{font-weight:700;padding:15px 28px;background:var(--primary);color:var(--onPrimary);border:0;box-shadow:0 6px 0 rgba(0,0,0,.12)}
+body.ref .kicker{font-size:13px;font-weight:700;color:var(--p)}
+body.ref .btn{font-weight:700;padding:15px 28px;background:var(--p);color:var(--on);border:0;box-shadow:0 6px 0 rgba(0,0,0,.12)}
 body.ref .galeria img,body.ref .mos img{border-radius:20px}
-body.ref .paq{border-radius:20px}`,
+body.ref .paq{border-radius:20px}
+body.ref .kicker{display:inline-block;background:var(--p);color:var(--on)!important;padding:6px 14px;border-radius:999px;text-shadow:none}
+body.ref main>section.sec:nth-of-type(even){background:var(--soft)}
+body.ref h1 mark,body.ref h2 mark{background:linear-gradient(transparent 58%,color-mix(in srgb,var(--p) 38%,transparent) 58%);color:inherit;padding:0 .08em}
+body.ref .h-portada h1 mark{background:linear-gradient(transparent 62%,color-mix(in srgb,var(--p) 75%,transparent) 62%)}`,
+    resalte: 'marca',
   },
   calido_rustico: {
     descripcion: 'restaurantes, cafés de especialidad, panaderías, artesanía, hospedaje: serif cálida, tonos tierra, texturas suaves, cercanía',
@@ -95,8 +100,8 @@ body.ref .paq{border-radius:20px}`,
     ],
     cursiva: false, delgada: false, radio: 6, peso: 400, aire: 'media', heroAlto: true,
     css: `body.ref .barra nav a{font-size:14px;font-weight:500;letter-spacing:.02em}
-body.ref .kicker{font-size:12px;letter-spacing:.14em;text-transform:uppercase;font-weight:600;color:var(--primary)}
-body.ref .btn{font-weight:600;padding:14px 26px;background:var(--primary);color:var(--onPrimary);border:0}
+body.ref .kicker{font-size:12px;letter-spacing:.14em;text-transform:uppercase;font-weight:600;color:var(--p)}
+body.ref .btn{font-weight:600;padding:14px 26px;background:var(--p);color:var(--on);border:0}
 body.ref .galeria img,body.ref .mos img{border-radius:6px}`,
   },
   lujo_oscuro: {
@@ -112,11 +117,11 @@ body.ref .galeria img,body.ref .mos img{border-radius:6px}`,
       P('#1A1717', '#F4EEE8', '#E0C9A6', '#1A1717', '#BDB3AB', '#221E1E', '#282323', '#3A3333'),
       P('#F5F1EA', '#141210', '#8C6D3F', '#FFFFFF', '#5F5850', '#FFFFFF', '#ECE6DC', '#DED6C9'),
     ],
-    cursiva: true, delgada: false, radio: 0, peso: 400, aire: 'aireada', heroAlto: true, mayus: false,
+    cursiva: true, resalte: 'cursiva', delgada: false, radio: 0, peso: 400, aire: 'aireada', heroAlto: true, mayus: false,
     css: `body.ref .barra nav a{font-size:11px;letter-spacing:.24em;text-transform:uppercase;font-weight:400}
-body.ref .kicker{font-size:11px;letter-spacing:.3em;text-transform:uppercase;color:var(--primary)}
-body.ref .btn{letter-spacing:.2em;text-transform:uppercase;font-size:12px;font-weight:500;padding:15px 30px;background:transparent;border:1px solid var(--primary);color:var(--primary)}
-body.ref .btn:hover{background:var(--primary);color:var(--onPrimary)}
+body.ref .kicker{font-size:11px;letter-spacing:.3em;text-transform:uppercase;color:var(--p)}
+body.ref .btn{letter-spacing:.2em;text-transform:uppercase;font-size:12px;font-weight:500;padding:15px 30px;background:transparent;border:1px solid var(--p);color:var(--p)}
+body.ref .btn:hover{background:var(--p);color:var(--on)}
 body.ref footer{letter-spacing:.16em;text-transform:uppercase;font-size:11px}`,
   },
 };
@@ -206,12 +211,12 @@ ${b.css}`;
 }
 
 /** Cursiva en la segunda mitad del titular (solo estilo: el texto del cliente no cambia). */
-function cursivaTitular(html) {
+function resaltarTitular(html, tag = 'em') {
   return html.replace(/<h1>([^<]{12,})<\/h1>/, (m, txt) => {
     const w = txt.split(' ');
     if (w.length < 4) return m;
     const k = Math.ceil(w.length * 0.55);
-    return `<h1>${w.slice(0, k).join(' ')} <em>${w.slice(k).join(' ')}</em></h1>`;
+    return `<h1>${w.slice(0, k).join(' ')} <${tag}>${w.slice(k).join(' ')}</${tag}></h1>`;
   });
 }
 
@@ -229,7 +234,7 @@ export function aplicarRef(html, par, d = { tipo: 'editorial_suave' }) {
     ? (ital ? `ital,wght@${[...pesos.map((w) => `0,${w}`), ...pesos.map((w) => `1,${w}`)].join(';')}` : `wght@${pesos.join(';')}`)
     : (ital ? 'ital@0;1' : null);
   const link = eje ? `<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=${nombre}:${eje}&display=swap">` : '';
-  const conCursiva = b.cursiva && ITALICA.has(par.titulos) ? cursivaTitular(html) : html;
+  const conCursiva = b.resalte === 'cursiva' && ITALICA.has(par.titulos) ? resaltarTitular(html, 'em') : b.resalte === 'marca' ? resaltarTitular(html, 'mark') : html;
   return conCursiva
     .replace('</head>', () => `${link}<style id="ref">${cssDe(d)}</style></head>`)
     .replace(/<body class="([^"]*)">/, (m, c) => `<body class="${c} ref ref-${d.tipo}">`);
