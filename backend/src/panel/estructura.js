@@ -1,3 +1,4 @@
+import sanitizeHtml from 'sanitize-html';
 // Cambios de estructura que pide el cliente por chat sobre su sitio en vivo, aplicados al HTML ya armado:
 // ocultar o reordenar secciones, agregar secciones nuevas, rehacer la portada, el encabezado o el pie, y cambiar el menú.
 // Se guardan en sitios_vivos.contenido.diseno.estructura y se aplican en cada render (se pueden deshacer).
@@ -7,17 +8,41 @@ const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '
 export const EDITABLES = ['servicios', 'menu', 'faq', 'resenas', 'sobre', 'contacto', 'propiedades', 'trabajo', 'promocion'];
 const IFRAMES_OK = /^https:\/\/(www\.google\.com\/maps\/embed|maps\.google\.com\/maps|www\.youtube(-nocookie)?\.com\/embed\/|player\.vimeo\.com\/video\/)/i;
 
-/** Limpia HTML escrito por el editor: sin scripts, estilos, formularios, eventos ni ligas javascript:. */
+// Etiquetas y atributos permitidos en el HTML que escribe el editor (lista blanca con sanitize-html, no regex):
+// nada de scripts, estilos, formularios, eventos on*, ni ligas javascript:/data:.
+const ETIQUETAS = ['section', 'div', 'header', 'footer', 'nav', 'article', 'aside', 'main', 'figure', 'figcaption', 'picture', 'source',
+  'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'p', 'span', 'strong', 'b', 'em', 'i', 'u', 's', 'small', 'mark', 'br', 'hr', 'blockquote', 'q', 'cite',
+  'ul', 'ol', 'li', 'dl', 'dt', 'dd', 'a', 'img', 'iframe', 'table', 'thead', 'tbody', 'tr', 'th', 'td', 'details', 'summary', 'time', 'address', 'sup', 'sub'];
+const ESTILO_PELIGROSO = /url\s*\(|expression\s*\(|@import|javascript:|behavior\s*:|-moz-binding/i;
+const OPCIONES = {
+  allowedTags: ETIQUETAS,
+  allowedAttributes: {
+    '*': ['class', 'id', 'style', 'title', 'aria-label', 'aria-hidden', 'role', 'lang', 'dir', 'data-*'],
+    a: ['href', 'target', 'rel'],
+    img: ['src', 'srcset', 'sizes', 'alt', 'width', 'height', 'loading', 'decoding', 'fetchpriority'],
+    source: ['srcset', 'sizes', 'media', 'type'],
+    iframe: ['src', 'loading', 'allowfullscreen', 'referrerpolicy', 'title'],
+    time: ['datetime'], td: ['colspan', 'rowspan'], th: ['colspan', 'rowspan', 'scope'], details: ['open'], ol: ['start'],
+  },
+  allowedSchemes: ['https', 'http', 'mailto', 'tel'],
+  allowedSchemesByTag: { img: ['https', 'http'], source: ['https', 'http'], iframe: ['https'] },
+  allowProtocolRelative: false,
+  allowedIframeHostnames: ['www.google.com', 'maps.google.com', 'www.youtube.com', 'www.youtube-nocookie.com', 'player.vimeo.com'],
+  disallowedTagsMode: 'discard',
+  nonTextTags: ['script', 'style', 'textarea', 'option', 'noscript', 'template', 'title', 'head'],
+  transformTags: {
+    a: (tag, at) => ({ tagName: 'a', attribs: { ...at, ...(at.target === '_blank' ? { rel: 'noopener noreferrer' } : {}) } }),
+    iframe: (tag, at) => (IFRAMES_OK.test(at.src || '')
+      ? { tagName: 'iframe', attribs: { src: at.src, loading: 'lazy', style: 'width:100%;aspect-ratio:16/9;border:0;border-radius:16px', allowfullscreen: '', referrerpolicy: 'no-referrer-when-downgrade', ...(at.title ? { title: at.title } : {}) } }
+      : { tagName: 'span', attribs: {}, text: '' }),
+  },
+};
+
+/** Limpia HTML escrito por el editor con lista blanca: sin scripts, estilos, formularios, eventos ni ligas javascript:/data:. */
 export function limpiarHtml(html) {
-  let t = String(html || '').slice(0, 30000);
-  t = t.replace(/<(script|style|form|object|embed|link|meta|base|input|textarea|button)\b[\s\S]*?(<\/\1>|\/?>)/gi, '');
-  t = t.replace(/\son[a-z]+\s*=\s*("[^"]*"|'[^']*'|[^\s>]+)/gi, '');
-  t = t.replace(/(href|src)\s*=\s*(["'])\s*(javascript|vbscript|data):[^"']*\2/gi, '$1="#"');
-  t = t.replace(/<iframe\b([^>]*)>([\s\S]*?)<\/iframe>/gi, (m, attrs) => {
-    const src = (attrs.match(/src\s*=\s*["']([^"']+)["']/i) || [])[1] || '';
-    return IFRAMES_OK.test(src) ? `<iframe src="${esc(src)}" loading="lazy" style="width:100%;aspect-ratio:16/9;border:0;border-radius:16px" allowfullscreen referrerpolicy="no-referrer-when-downgrade"></iframe>` : '';
-  });
-  return t;
+  const t = sanitizeHtml(String(html || '').slice(0, 30000), OPCIONES);
+  // Atributo style: se queda solo si no trae url(), expression(), @import ni javascript:.
+  return t.replace(/\sstyle="([^"]*)"/gi, (m, v) => (ESTILO_PELIGROSO.test(v.replace(/&[#\w]+;/g, '')) ? '' : m));
 }
 
 /** Texto visible de un fragmento HTML, renglón por renglón (para verificar que no se invente texto). */

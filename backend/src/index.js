@@ -37,6 +37,24 @@ app.use('*', cors({
   maxAge: 86400,
 }));
 
+// Cabeceras de seguridad en todas las respuestas (también las de dominios de clientes, por eso va antes).
+// Panel /admin: nadie lo puede meter en un iframe (clickjacking). Sitios y propuestas: solo el mismo sitio.
+const ES_PANEL = /^\/(admin(\/|$)|s\/[^/]+\/admin(\/|$))/;
+app.use('*', async (c, next) => {
+  await next();
+  const h = c.res.headers;
+  const panel = ES_PANEL.test(c.req.path);
+  const fija = (k, v) => { if (!h.has(k)) h.set(k, v); };
+  try {
+    fija('X-Content-Type-Options', 'nosniff');
+    fija('Referrer-Policy', 'strict-origin-when-cross-origin');
+    fija('Strict-Transport-Security', 'max-age=31536000');
+    fija('X-Frame-Options', panel ? 'DENY' : 'SAMEORIGIN');
+    fija('Content-Security-Policy', panel ? "frame-ancestors 'none'; base-uri 'self'; form-action 'self'; object-src 'none'" : "frame-ancestors 'self'; base-uri 'self'; object-src 'none'");
+    if (panel) fija('Permissions-Policy', 'camera=(), microphone=(), geolocation=()');
+  } catch { /* respuestas con cabeceras inmutables (p. ej. redirecciones de fetch): se dejan como vienen */ }
+});
+
 // Dominios propios de clientes (p. ej. toolatte.cafe → propuestas de diseño). Va antes de todas las rutas.
 app.use('*', middlewareDominios());
 
