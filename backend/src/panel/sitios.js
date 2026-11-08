@@ -179,6 +179,13 @@ export function comoSitio(html, brief, { letra, dominio } = {}) {
 }
 
 const cache = new Map(); // `${id}:${version}` → html
+/** Dirección pública del sitio con / final: su dominio, nuestra dirección si pagó sin dominio, o la vista previa. */
+export function urlPublica(sv, { previa = false } = {}) {
+  if (!previa && sv.dominio) return `https://${sv.dominio}/`;
+  if (!previa && sv.url_publica) return `${sv.url_publica.replace(/\/$/, '')}/`;
+  return `${config.publicUrl}/s/${sv.slug}/`;
+}
+
 export function invalidar(id) { for (const k of cache.keys()) if (k.startsWith(`${id}:`)) cache.delete(k); }
 
 /** HTML del sitio en vivo. */
@@ -205,6 +212,11 @@ export async function renderSitio(sv, { previa = false } = {}) {
   if (!pg) throw new Error('no se pudo armar la página');
   if (r.faltan?.length) console.warn('[sitio vivo]', sv.id, 'material sin mostrar:', r.faltan.map((f) => f.clave).join(','));
   let html = comoSitio(pg.html, brief, { letra: fijo.letra, dominio: previa ? null : (sv.dominio || (sv.url_publica ? sv.url_publica.replace(/^https?:\/\//, '').replace(/\/$/, '') : null)) });
+  { // Descripción, tarjeta al compartir, favicon, color y JSON-LD del negocio (también en la vista previa, que sigue noindex).
+    const { conSeo } = await import('./seo.js');
+    const { jsonLd } = await import('../generador/index.js');
+    html = conSeo(html, { brief, mat, url: urlPublica(sv, { previa }), color: fijo.paleta?.primary || fijo.paleta?.p, jsonLd });
+  }
   if (brief.negocio?.arquetipo === 'inmobiliaria') {
     const { listar, conPropiedades } = await import('./propiedades.js');
     html = conPropiedades(html, await listar(sv.id, { publicas: true }), { base: previa ? `/s/${sv.slug}` : '' });

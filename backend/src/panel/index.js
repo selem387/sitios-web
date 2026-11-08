@@ -238,7 +238,7 @@ async function servirPropiedad(c, sv, slug, { previa }) {
     if (!p || !P.VISIBLES.includes(p.datos.estado)) return c.redirect(previa ? `/s/${sv.slug}` : '/', 302);
     const e = await db.obtener(sv.entrevista_id);
     const base = previa ? `/s/${sv.slug}` : '';
-    const url = previa ? `${config.publicUrl}/s/${sv.slug}/propiedad/${p.slug}` : `https://${sv.dominio}/propiedad/${p.slug}`;
+    const url = `${S.urlPublica(sv, { previa })}propiedad/${p.slug}`;
     const html = await S.renderSitio(sv, { previa });
     const wa = String(sv.contenido?.contacto?.whatsapp || e?.brief?.contacto?.whatsapp || '').replace(/\D/g, '');
     P.contarVista(p.id);
@@ -269,7 +269,13 @@ async function modoVivo(c, reg, next, host) {
   if (ruta === '/admin' || ruta.startsWith('/admin/')) return (await atenderPanel(c, sv, '', ruta)) || c.text('No encontrado', 404);
   const mprop = ruta.match(/^\/propiedad\/([a-z0-9-]{1,80})$/);
   if (mprop) return servirPropiedad(c, sv, mprop[1], { previa: false });
-  if (ruta === '/robots.txt') return c.text(`User-agent: *\nDisallow: /admin\nSitemap: https://${host}/sitemap.xml\n`);
+  if (ruta === '/robots.txt') return c.text(`User-agent: *\nDisallow: /admin\nAllow: /\n\n# Motores de IA bienvenidos\nUser-agent: GPTBot\nAllow: /\nUser-agent: ClaudeBot\nAllow: /\nUser-agent: PerplexityBot\nAllow: /\nUser-agent: Google-Extended\nAllow: /\n\nSitemap: https://${host}/sitemap.xml\n`);
+  if (ruta === '/llms.txt') {
+    const e = await db.obtener(sv.entrevista_id);
+    const { contenidoSeo } = await import('./seo.js');
+    const { llmsTxt } = await import('../generador/index.js');
+    return c.text(llmsTxt(e?.brief || {}, contenidoSeo(e?.brief || {}), `https://${host}/`), 200, { 'content-type': 'text/plain; charset=utf-8' });
+  }
   if (ruta === '/sitemap.xml') {
     const props = await P.listar(sv.id, { publicas: true }).catch(() => []);
     const urls = [`<url><loc>https://${host}/</loc><lastmod>${new Date(sv.actualizado).toISOString().slice(0, 10)}</lastmod></url>`, ...props.map((p) => `<url><loc>https://${host}/propiedad/${p.slug}</loc><lastmod>${new Date(p.actualizado).toISOString().slice(0, 10)}</lastmod></url>`)];
