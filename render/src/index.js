@@ -124,6 +124,8 @@ app.post('/v1/captura', async (c) => {
   const t0 = Date.now();
   const buf = await conPagina({ width: b.ancho || 390, height: movil ? 844 : 800, scale: movil ? 2 : 1, movil }, async (page) => {
     await page.goto(b.url, { waitUntil: 'networkidle', timeout: 30000 });
+    // css: estilos extra para la captura (p. ej. ocultar la etiqueta de vista previa y el botón flotante).
+    if (b.css) await page.addStyleTag({ content: String(b.css).slice(0, 4000) });
     // selector: captura solo esa sección (para verificar un cambio de diseño). Las imágenes diferidas se fuerzan a cargar.
     if (b.selector) {
       const el = page.locator(String(b.selector)).first();

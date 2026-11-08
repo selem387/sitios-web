@@ -9,7 +9,7 @@ async function captura(url, { ancho = 1366, selector = null } = {}) {
   if (!config.renderUrl || !url) return null;
   const r = await fetch(`${config.renderUrl}/v1/captura`, {
     method: 'POST', headers: { 'content-type': 'application/json', 'x-api-key': config.renderApiKey },
-    body: JSON.stringify({ url, ancho, ...(selector ? { selector } : {}) }), signal: AbortSignal.timeout(90000),
+    body: JSON.stringify({ url, ancho, css: '.etq,.wa{display:none!important}', ...(selector ? { selector } : {}) }), signal: AbortSignal.timeout(90000),
   }).catch(() => null);
   return r?.ok ? (await r.json()).url : null;
 }
@@ -18,20 +18,21 @@ async function capturasOpcion(o) {
   const [pc, cel, galeria] = await Promise.all([
     captura(o.url, { ancho: 1366 }),
     captura(o.url, { ancho: 390 }),
-    captura(o.url, { ancho: 1366, selector: '#trabajo' }),
+    captura(o.url, { ancho: 1366, selector: '#trabajo .galeria, #galeria .galeria, .galeria, #propiedades' }),
   ]);
   return [{ vista: 'computadora (primera pantalla)', url: pc }, { vista: 'celular (primera pantalla)', url: cel }, { vista: 'galería de trabajos en computadora', url: galeria }];
 }
 
 const REGLAS = `Reglas (todas obligatorias):
-- Ninguna foto deformada (estirada o aplastada); se deben ver enteras, sin recortes que corten caras.
-- Ninguna foto repetida dentro de la misma opción.
+- Ninguna foto deformada: estirada o aplastada (proporciones alteradas). OJO: una foto de fondo a pantalla completa que se recorta en los bordes (cover) es NORMAL y está bien, igual que una foto vertical mostrada completa con los costados difuminados; solo es falla si el recorte corta una cara, una cabeza o al sujeto principal de forma que se ve mal.
+- Ninguna foto repetida dentro de la MISMA sección visible (la foto de portada puede volver a aparecer en la galería).
 - El logo del cliente se ve y es legible; sus fotos están presentes (no hay huecos ni cuadros vacíos).
-- Ningún texto encimado, cortado, ilegible sobre la foto o con poco contraste; todo se lee en celular.
-- Sin desbordes horizontales ni elementos fuera de lugar; nada roto.
+- Ningún texto encimado con otro texto o botón, cortado o ilegible por bajo contraste; todo se lee en celular.
+- Sin desbordes horizontales ni botones cortados; nada roto.
 - No parece una presentación de puro texto: las fotos son protagonistas.
 - Se ve profesional y atractiva, con tipografía y colores que combinan.
-Ignora la etiqueta negra "Propuesta X" abajo a la izquierda y el botón verde redondo de WhatsApp: son de la vista previa.`;
+Si una vista no se pudo capturar, NO la cuentes como falla.
+Pon ok=false solo por fallas reales y visibles de esta lista; detalles de gusto menores van en problemas pero no impiden ok=true.`;
 
 const ESQUEMA = {
   type: 'object',
