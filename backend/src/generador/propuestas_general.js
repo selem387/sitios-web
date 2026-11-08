@@ -375,7 +375,7 @@ export function paginasGenerales({ brief, mat, textos, pares, urlFuentes, ronda 
     };
     const nombre = dref?.nombres?.[i] || NOMBRES_GENERAL[layout];
     let html = pagina(d);
-    if (dref) html = aplicarRef(html, par).replace(` · Propuesta ${letra}: ${esc(NOMBRES_GENERAL[layout])}</footer>`, ` · Propuesta ${letra}: ${esc(nombre)}</footer>`);
+    if (dref) html = aplicarRef(html, par, dref).replace(` · Propuesta ${letra}: ${esc(NOMBRES_GENERAL[layout])}</footer>`, ` · Propuesta ${letra}: ${esc(nombre)}</footer>`);
     return { letra, layout, nombre, html, fuentes: par, paleta: d.pal };
   });
 }

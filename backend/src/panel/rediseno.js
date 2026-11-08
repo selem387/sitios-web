@@ -10,7 +10,7 @@ import { avisar } from '../entrevista/avisos.js';
 import { estudiarReferencias } from '../entrevista/referencias.js';
 import { procesarMateriales } from '../generador/materiales.js';
 import { crearPropuestasHTML } from '../generador/propuestas_html.js';
-import { direccionEditorialSuave } from '../generador/estilo_ref.js';
+import { construirDireccion, PRESETS, LISTA_PRESETS } from '../generador/estilo_ref.js';
 import { revisarOpciones } from '../generador/revision_visual.js';
 import { aplicarContenido, porEntrevista } from './sitios.js';
 
@@ -28,9 +28,11 @@ async function direccion(comentario, estudio, brief) {
       system: `Eres directora de arte. El cliente quiere otro diseño para su página web. Con lo que pidió y el estudio de las páginas que le gustan, decide la dirección para 6 propuestas nuevas.
 - "estilo": uno de ${ESTILOS.join(', ')}.
 - "colores": 2 a 4 colores en palabras sencillas en español (p. ej. "blanco marfil", "negro", "beige", "dorado suave") tomados de la referencia o de lo que pidió; vacío si no hay pista clara.
+- "preset": el estilo base que MÁS se parece a la página de referencia (mira su estudio: letra, colores, modo claro/oscuro, radio de botones, aire) y a lo que pidió:
+${LISTA_PRESETS}
 - "notas": 1 a 3 frases con lo que se debe notar (fotos grandes, frases breves, letra delicada, mucho aire, galerías por tipo…). Nunca copiar textos, imágenes ni logos de la referencia.`,
       contenido: `LO QUE PIDIÓ: ${comentario || '(nada)'}\nNEGOCIO: ${brief.negocio?.nombre || ''} · ${brief.negocio?.giro_texto || ''}\nESTILO ACTUAL: ${brief.marca?.estilo || '-'}\nESTUDIO DE REFERENCIAS: ${JSON.stringify((estudio || []).map((x) => ({ url: x.url, resumen: x.resumen, modo: x.modo, tipografia: x.tipografia, colores: x.colores, densidad: x.densidad, error: x.error })) ).slice(0, 6000)}`,
-      schema: { type: 'object', properties: { estilo: { type: 'string', enum: ESTILOS }, colores: { type: 'array', items: { type: 'string' } }, notas: { type: 'string' } }, required: ['estilo'] },
+      schema: { type: 'object', properties: { estilo: { type: 'string', enum: ESTILOS }, preset: { type: 'string', enum: Object.keys(PRESETS) }, colores: { type: 'array', items: { type: 'string' } }, notas: { type: 'string' } }, required: ['estilo', 'preset'] },
       max_tokens: 600,
     });
     return r.data;
@@ -65,7 +67,9 @@ export async function prepararOpcionesNuevas(entrevistaId, { comentario = '', re
     };
     // Con una página de referencia estudiada y un estilo sobrio, las 6 son variaciones de ese estilo (no los acomodos de siempre).
     const refOk = estudio.some((x) => x && !x.error);
-    if (refOk && ['elegante', 'lujo', 'minimalista', 'tradicional', 'calido'].includes(dir?.estilo || 'elegante')) ajustes.direccion_ref = direccionEditorialSuave();
+    // El estilo base lo elige la IA y se afina con lo medido en la referencia (radio, peso y mayúsculas de títulos, aire, portada, acento).
+    const POR_ESTILO = { elegante: 'editorial_suave', minimalista: 'moderno_limpio', tecnologico: 'moderno_limpio', fresco: 'colorido', divertido: 'colorido', calido: 'calido_rustico', tradicional: 'calido_rustico', lujo: 'lujo_oscuro' };
+    if (refOk) ajustes.direccion_ref = construirDireccion(PRESETS[dir?.preset] ? dir.preset : (POR_ESTILO[dir?.estilo] || 'editorial_suave'), estudio.find((x) => x && !x.error));
     const baseRonda = Math.max(prop.ronda || 0, actual.marca?.propuestas_nuevas?.ronda || 0) + 1;
     // Hasta 3 intentos; solo se guardan (y se mandan) las opciones que pasan la revisión visual. Con menos de 4, se reintenta:
     // cada intento es otra ronda (otras fotos y variaciones) con la MISMA dirección: nunca se abandona el estilo que pidió.
