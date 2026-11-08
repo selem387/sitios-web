@@ -60,8 +60,23 @@ async function sinFondo(url) {
   if (!config.renderUrl) return null;
   try {
     const r = await fetch(`${config.renderUrl}/v1/sin-fondo`, { method: 'POST', headers: { 'content-type': 'application/json', 'x-api-key': config.renderApiKey }, body: JSON.stringify({ url }), signal: AbortSignal.timeout(150000) });
-    return r.ok ? r.json() : null;
+    if (!r.ok) return null;
+    // render borra sus archivos a los 30 días: el PNG se copia al almacenamiento permanente del api.
+    return await rehospedar(await r.json());
   } catch { return null; }
+}
+
+const ES_DE_RENDER = /^https?:\/\/[^\s"'<>]*\/files\/[\w.-]+\.png$/i;
+/** Copia a /data/chat un PNG que vive en el servicio render y devuelve {url, ancho, alto} permanentes. */
+export async function rehospedar(sf) {
+  if (!sf?.url || !ES_DE_RENDER.test(sf.url) || sf.url.startsWith(config.publicUrl)) return sf;
+  const nombre = sf.url.split('/').pop();
+  const interna = config.renderUrl ? `${config.renderUrl}/files/${nombre}` : sf.url;
+  let r = await fetch(interna, { signal: AbortSignal.timeout(30000) }).catch(() => null);
+  if (!r?.ok) r = await fetch(sf.url, { signal: AbortSignal.timeout(30000) }).catch(() => null);
+  if (!r?.ok) return null;
+  const g = await guardar(sharp(Buffer.from(await r.arrayBuffer())), 'sinfondo', 'png');
+  return { ...sf, ...g };
 }
 
 async function descargar(url) {
