@@ -9,6 +9,7 @@ import path from 'node:path';
 import { heroHTML, ESTILOS_CON_LAYOUT } from './plantillas/hero.js';
 import { lighthouse, impeccable, checksPropios } from './auditoria.js';
 import { estudiarSitio } from './estudio.js';
+import { revisarPagina } from './revisar.js';
 
 const PORT = Number(process.env.PORT || 8080);
 const DATA_DIR = process.env.DATA_DIR || '/data';
@@ -144,6 +145,22 @@ app.post('/v1/captura', async (c) => {
   if (!buf) return c.json({ error: 'no existe', selector: b.selector }, 404);
   const f = await guardarPNG(buf, movil ? 'movil' : 'desktop');
   return c.json({ ...f, ms: Date.now() - t0 });
+});
+
+// Revisión objetiva (sin IA) de una página en computadora y celular. Cuerpo: {url, css?}
+app.post('/v1/revisar', async (c) => {
+  const b = await c.req.json().catch(() => null);
+  if (!b || !/^https?:\/\//.test(b.url || '')) return c.json({ error: 'falta url' }, 400);
+  const out = {};
+  for (const [k, ancho] of [['computadora', 1366], ['celular', 390]]) {
+    const movil = ancho <= 500;
+    out[k] = await conPagina({ width: ancho, height: movil ? 844 : 800, scale: 1, movil }, async (page) => {
+      await page.goto(b.url, { waitUntil: 'networkidle', timeout: 30000 });
+      if (b.css) await page.addStyleTag({ content: String(b.css).slice(0, 4000) });
+      return revisarPagina(page);
+    }).catch((err) => ({ error: err.message, problemas: [] }));
+  }
+  return c.json(out);
 });
 
 // Auditoría de un sitio publicado: Lighthouse móvil + Impeccable detect + checks propios + captura móvil.

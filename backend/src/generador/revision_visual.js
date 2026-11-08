@@ -14,6 +14,20 @@ async function captura(url, { ancho = 1366, selector = null } = {}) {
   return r?.ok ? (await r.json()).url : null;
 }
 
+/** Comprobaciones objetivas con código (servicio render): fotos deformadas/rotas/repetidas, desbordes, encimados, letras. */
+async function objetivas(url) {
+  if (!config.renderUrl || !url) return null;
+  const r = await fetch(`${config.renderUrl}/v1/revisar`, {
+    method: 'POST', headers: { 'content-type': 'application/json', 'x-api-key': config.renderApiKey },
+    body: JSON.stringify({ url, css: '.etq,.wa{display:none!important}' }), signal: AbortSignal.timeout(120000),
+  }).catch(() => null);
+  if (!r?.ok) return null;
+  const d = await r.json();
+  const problemas = [...(d.computadora?.problemas || []).map((p) => `computadora: ${p}`), ...(d.celular?.problemas || []).map((p) => `celular: ${p}`)];
+  if (d.computadora?.logo === false) problemas.push('el logo no cargó');
+  return { problemas, fuentes: d.computadora?.fuentes || null };
+}
+
 async function capturasOpcion(o) {
   const [pc, cel, galeria] = await Promise.all([
     captura(o.url, { ancho: 1366 }),
@@ -23,16 +37,14 @@ async function capturasOpcion(o) {
   return [{ vista: 'computadora (primera pantalla)', url: pc }, { vista: 'celular (primera pantalla)', url: cel }, { vista: 'galería de trabajos en computadora', url: galeria }];
 }
 
-const REGLAS = `Reglas (todas obligatorias):
-- Ninguna foto deformada: estirada o aplastada (proporciones alteradas). OJO: una foto de fondo a pantalla completa que se recorta en los bordes (cover) es NORMAL y está bien, igual que una foto vertical mostrada completa con los costados difuminados; solo es falla si el recorte corta una cara, una cabeza o al sujeto principal de forma que se ve mal.
-- Ninguna foto repetida dentro de la MISMA sección visible (la foto de portada puede volver a aparecer en la galería).
-- El logo del cliente se ve y es legible; sus fotos están presentes (no hay huecos ni cuadros vacíos).
-- Ningún texto encimado con otro texto o botón, cortado o ilegible por bajo contraste; todo se lee en celular.
-- Sin desbordes horizontales ni botones cortados; nada roto.
-- No parece una presentación de puro texto: las fotos son protagonistas.
-- Se ve profesional y atractiva, con tipografía y colores que combinan.
-Si una vista no se pudo capturar, NO la cuentes como falla.
-Pon ok=false solo por fallas reales y visibles de esta lista; detalles de gusto menores van en problemas pero no impiden ok=true.`;
+// Lo objetivo (deformadas, repetidas, desbordes, encimados, letras que no cargan) ya lo revisa el código; la IA solo juzga lo visual.
+const REGLAS = `Ya se comprobó con código que no hay fotos deformadas, rotas o repetidas, ni desbordes, ni textos encimados: NO evalúes eso ni lo menciones.
+Juzga solo:
+- Legibilidad: el texto sobre fotos se lee bien (contraste suficiente) en computadora y en celular.
+- Profesionalismo: se ve como una página de calidad, con jerarquía clara, aire y fotos protagonistas (no una presentación de puro texto).
+- Que el recorte de la foto principal no corte una cara o una cabeza (un recorte normal de fondo está bien).
+- Que la tipografía y los colores combinen.
+Pon ok=false solo por una falla clara y visible de esta lista; los detalles de gusto menores van en problemas pero no impiden ok=true.`;
 
 const ESQUEMA = {
   type: 'object',
@@ -44,9 +56,9 @@ const ESQUEMA = {
   required: ['ok', 'problemas'],
 };
 
-async function revisarUna(o, caps, { refCaptura, pedido }) {
+async function revisarUna(o, caps, { refCaptura, pedido, fuentes }) {
   if (!caps.some((c) => c.url)) return { ok: true, problemas: [], sin_capturas: true };
-  const contenido = [{ type: 'text', text: `Opción ${o.letra} (“${o.nombre}”) de la página web de un cliente.${pedido ? `\nLO QUE PIDIÓ EL CLIENTE: ${pedido.slice(0, 800)}` : ''}\n${REGLAS}` }];
+  const contenido = [{ type: 'text', text: `Opción ${o.letra} (“${o.nombre}”) de la página web de un cliente.${fuentes?.titulos ? `\nLetras usadas (dato real, no lo adivines): títulos ${fuentes.titulos}, texto ${fuentes.cuerpo}.` : ''}${pedido ? `\nLO QUE PIDIÓ EL CLIENTE: ${pedido.slice(0, 800)}` : ''}\n${REGLAS}` }];
   if (refCaptura) contenido.push({ type: 'text', text: 'PÁGINA DE REFERENCIA que le gusta al cliente (compara el ESTILO: letra, colores, aire, protagonismo de fotos; no el contenido):' }, { type: 'image', source: { type: 'url', url: refCaptura } });
   for (const c of caps) {
     contenido.push({ type: 'text', text: `OPCIÓN ${o.letra} · ${c.vista}${c.url ? '' : ': no se pudo capturar'}` });
@@ -73,10 +85,12 @@ export async function revisarOpciones(opciones, { referencia = null, pedido = ''
   // De 2 en 2 para no saturar el servicio de capturas.
   for (let i = 0; i < opciones.length; i += 2) {
     const lote = await Promise.all(opciones.slice(i, i + 2).map(async (o) => {
-      const caps = await capturasOpcion(o);
-      const v = await revisarUna(o, caps, { refCaptura, pedido });
+      const [caps, obj] = await Promise.all([capturasOpcion(o), objetivas(o.url)]);
+      const v = await revisarUna(o, caps, { refCaptura, pedido, fuentes: obj?.fuentes });
       if (v.ok && refCaptura && v.parecido != null && v.parecido < 3) { v.ok = false; v.problemas = [...v.problemas, `poco parecida a la referencia (${v.parecido}/5)`]; }
-      return { letra: o.letra, ...v, capturas: caps.map((c) => c.url).filter(Boolean) };
+      // Lo objetivo manda: cualquier falla medida con código hace que no pase.
+      if (obj?.problemas?.length) { v.ok = false; v.problemas = [...obj.problemas, ...v.problemas]; }
+      return { letra: o.letra, ...v, objetivas: obj ? obj.problemas : null, capturas: caps.map((c) => c.url).filter(Boolean) };
     }));
     out.push(...lote);
   }
