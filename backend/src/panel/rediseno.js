@@ -68,10 +68,10 @@ export async function prepararOpcionesNuevas(entrevistaId, { comentario = '', re
     if (refOk && ['elegante', 'lujo', 'minimalista', 'tradicional', 'calido'].includes(dir?.estilo || 'elegante')) ajustes.direccion_ref = direccionEditorialSuave();
     const baseRonda = Math.max(prop.ronda || 0, actual.marca?.propuestas_nuevas?.ronda || 0) + 1;
     // Hasta 3 intentos; solo se guardan (y se mandan) las opciones que pasan la revisión visual. Con menos de 4, se reintenta:
-    // 2º intento con otra ronda (otras fotos/variaciones), 3º sin el estilo de referencia (acomodos de siempre con el estilo elegido).
+    // cada intento es otra ronda (otras fotos y variaciones) con la MISMA dirección: nunca se abandona el estilo que pidió.
     let elegidas = null, ultima = null, mejor = null, avisado = false;
     for (let intento = 0; intento < 3 && !elegidas; intento++) {
-      const aj = intento === 2 ? (({ direccion_ref, ...x }) => x)(ajustes) : ajustes;
+      const aj = ajustes;
       const brief = { ...actual, marca: { ...actual.marca, ...aj } };
       const mat = await procesarMateriales(e.id, brief, { aceptarLoQueHay: true });
       if (sv.contenido?.menu?.secciones) mat.menu_texto = sv.contenido.menu.secciones;
