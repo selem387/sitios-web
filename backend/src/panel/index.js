@@ -368,6 +368,20 @@ export function registerPanelRoutes(app, wrap) {
     return elegirYCrear(c.req.param('id'), { elegido: String(b.elegido || '').toUpperCase(), colores_de: b.colores_de || null }).catch((x) => { throw new HttpError(x.status || 500, x.message); });
   }));
 
+  // Preparar 6 opciones de diseño nuevas y mandárselas por el chat (sin tocar su página): {comentario?, referencias?: [url]}.
+  // Sin comentario, toma lo que pidió en sus últimos mensajes (estilo y ligas de referencia).
+  app.post('/entrevista/v1/sesiones/:id/opciones-nuevas', wrap(async (c) => {
+    auth(c);
+    const id = c.req.param('id');
+    const b = await c.req.json().catch(() => ({}));
+    const { prepararOpcionesNuevas, ligasReferencia } = await import('./rediseno.js');
+    let comentario = String(b.comentario || '');
+    if (!comentario) comentario = (await db.ultimosMensajes(id, 30)).filter((m) => m.rol === 'cliente').map((m) => m.transcripcion || m.contenido || '').join('\n').slice(-3000);
+    const referencias = [...new Set([...(Array.isArray(b.referencias) ? b.referencias : []), ...ligasReferencia(comentario)])];
+    prepararOpcionesNuevas(id, { comentario, referencias }).catch((err) => console.error('rediseno', err));
+    return { ok: true, en_proceso: true, referencias };
+  }));
+
   app.get('/entrevista/v1/sitios-vivos/:id', wrap(async (c) => {
     auth(c);
     await S.migrarPanel();
