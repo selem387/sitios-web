@@ -51,6 +51,7 @@ body.ref .btn{border-radius:0;letter-spacing:.18em;text-transform:uppercase;font
 body.ref .btn:hover{background:var(--fg);color:var(--bg)}
 body.ref .h-portada .btn:hover{background:#fff;color:#1e1b19}
 body.ref .h-portada{min-height:100vh}
+body.ref .h-portada h1,body.ref .h-portada .sub,body.ref .h-portada .kicker,body.ref .h-portada p{text-shadow:0 1px 2px rgba(0,0,0,.45),0 2px 22px rgba(0,0,0,.55)}
 body.ref .sec{padding-top:clamp(72px,10vw,128px);padding-bottom:clamp(72px,10vw,128px)}
 body.ref .galeria{gap:clamp(12px,2vw,26px)}
 body.ref .galeria img,body.ref .mos img{border-radius:0}

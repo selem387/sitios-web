@@ -9,7 +9,7 @@ import path from 'node:path';
 import { heroHTML, ESTILOS_CON_LAYOUT } from './plantillas/hero.js';
 import { lighthouse, impeccable, checksPropios } from './auditoria.js';
 import { estudiarSitio } from './estudio.js';
-import { revisarPagina } from './revisar.js';
+import { revisarPagina, revisarContraste } from './revisar.js';
 
 const PORT = Number(process.env.PORT || 8080);
 const DATA_DIR = process.env.DATA_DIR || '/data';
@@ -157,7 +157,9 @@ app.post('/v1/revisar', async (c) => {
     out[k] = await conPagina({ width: ancho, height: movil ? 844 : 800, scale: 1, movil }, async (page) => {
       await page.goto(b.url, { waitUntil: 'networkidle', timeout: 30000 });
       if (b.css) await page.addStyleTag({ content: String(b.css).slice(0, 4000) });
-      return revisarPagina(page);
+      const contraste = await revisarContraste(page).catch(() => []);
+      const r = await revisarPagina(page);
+      return { ...r, problemas: [...contraste, ...r.problemas] };
     }).catch((err) => ({ error: err.message, problemas: [] }));
   }
   return c.json(out);

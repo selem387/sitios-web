@@ -38,13 +38,14 @@ async function capturasOpcion(o) {
 }
 
 // Lo objetivo (deformadas, repetidas, desbordes, encimados, letras que no cargan) ya lo revisa el código; la IA solo juzga lo visual.
-const REGLAS = `Ya se comprobó con código que no hay fotos deformadas, rotas o repetidas, ni desbordes, ni textos encimados: NO evalúes eso ni lo menciones.
+// Lo objetivo (deformadas, repetidas, desbordes, encimados, letras, CONTRASTE medido en píxeles) ya lo revisa el código;
+// la IA solo juzga lo que no se puede medir.
+const REGLAS = `Ya se comprobó con código (midiendo píxeles) que no hay fotos deformadas, rotas o repetidas, ni desbordes, ni textos encimados, y que el contraste del texto es suficiente: NO evalúes nada de eso ni lo menciones.
 Juzga solo:
-- Legibilidad: el texto sobre fotos se lee bien (contraste suficiente) en computadora y en celular.
 - Profesionalismo: se ve como una página de calidad, con jerarquía clara, aire y fotos protagonistas (no una presentación de puro texto).
 - Que el recorte de la foto principal no corte una cara o una cabeza (un recorte normal de fondo está bien).
-- Que la tipografía y los colores combinen.
-Pon ok=false solo por una falla clara y visible de esta lista; los detalles de gusto menores van en problemas pero no impiden ok=true.`;
+- Que la tipografía y los colores combinen entre sí.
+Pon ok=false solo por una falla clara y visible de esta lista; los detalles de gusto van en problemas pero no impiden ok=true.`;
 
 const ESQUEMA = {
   type: 'object',
