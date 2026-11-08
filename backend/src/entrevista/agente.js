@@ -84,6 +84,9 @@ const ALGO_CONCRETO = /\b(foto\w*|imagen\w*|color\w*|texto\w*|titulo\w*|frase\w*
 // "quiero hacer unas correcciones" (sin decir cuáles) → se le pregunta qué quiere cambiar.
 export const pideCambiosSinDetalle = (texto) => { const t = SIN_ACENTOS(texto); return !!t && t.split(' ').length <= 14 && PIDE_CAMBIOS.test(t) && !ALGO_CONCRETO.test(t); };
 
+/** Guarda (o borra con null) brief.marca.rediseno_pendiente: esperando que diga qué no le gustó de sus opciones. */
+const rediseñoPendiente = (id, valor) => db.q(`UPDATE entrevistas SET brief = jsonb_set(brief, '{marca,rediseno_pendiente}', $2::jsonb, true), actualizado=now() WHERE id=$1`, [id, JSON.stringify(valor)]);
+
 async function respuestaPostCierre(u, texto = '', media = []) {
   const s = (await db.q(`SELECT estado, url_publica FROM sitios WHERE entrevista_id=$1 AND estado<>'reemplazado' ORDER BY id DESC LIMIT 1`, [u.id]).catch(() => ({ rows: [] }))).rows[0];
   const previos = await db.ultimosMensajes(u.id, 6).catch(() => []);
@@ -93,7 +96,10 @@ async function respuestaPostCierre(u, texto = '', media = []) {
   if (await paginaEditable(u.id)) {
     const est = await estadoCambios(u.id);
     let tipo;
-    if (media.length) tipo = 'cambio';
+    // Esperando que diga qué no le gustó de sus opciones: este mensaje es su respuesta.
+    const rp = u.brief?.marca?.rediseno_pendiente;
+    if (rp && !media.length && Date.now() - new Date(rp.desde).getTime() < 3 * 864e5) tipo = 'nuevas_opciones';
+    else if (media.length) tipo = 'cambio';
     else {
       const cl = await clasificarMensaje(u.id, texto, { abierto: est.abierto });
       tipo = cl?.tipo || (pideCambiosSinDetalle(texto) ? 'sin_detalle' : 'cambio');
@@ -101,13 +107,24 @@ async function respuestaPostCierre(u, texto = '', media = []) {
     }
     if (tipo === 'nuevas_opciones') {
       const { prepararOpcionesNuevas, ligasReferencia } = await import('../panel/rediseno.js');
+      const { entenderRechazo, PREGUNTA_RECHAZO } = await import('./propuestas.js');
       // Lo que pidió en sus últimos mensajes (estilo, ligas de referencia) se usa para las nuevas.
       const recientes = (await db.ultimosMensajes(u.id, 16).catch(() => [])).filter((m) => m.rol === 'cliente').map((m) => m.transcripcion || m.contenido || '');
       const comentario = [...recientes, texto].filter(Boolean).join('\n').slice(-3000);
       const refs = ligasReferencia(comentario);
-      prepararOpcionesNuevas(u.id, { comentario, referencias: refs }).catch((err) => console.error('rediseno', err));
-      await db.evento(u.id, 'pidio_opciones_nuevas', { referencias: refs });
-      return `¡Va! 🎨 Te preparo 6 opciones nuevas${refs.length ? ' inspiradas en la página que me compartiste' : ''}, con tus textos y tus fotos. En unos minutos te mando aquí las ligas. Tu página se queda como está hasta que elijas.`;
+      // Antes de rehacer: entender exactamente qué no le gustó; si no está claro, se le pregunta (máximo 2 veces).
+      const rp0 = u.brief?.marca?.rediseno_pendiente || { preguntas: 0, comentarios: [] };
+      const comentarios = [...rp0.comentarios, texto].filter(Boolean);
+      const d = refs.length ? { claro: true } : await entenderRechazo(u.brief || {}, u.brief?.marca?.propuestas || {}, comentarios.length ? comentarios : [comentario]);
+      if (d && !d.claro && rp0.preguntas < 2) {
+        await rediseñoPendiente(u.id, { desde: rp0.desde || new Date().toISOString(), preguntas: rp0.preguntas + 1, comentarios });
+        return rp0.preguntas === 0 && !comentarios.join(' ').trim().split(/\s+/).filter((w) => w.length > 3).length ? PREGUNTA_RECHAZO : (d.pregunta || PREGUNTA_RECHAZO);
+      }
+      if (u.brief?.marca?.rediseno_pendiente) await rediseñoPendiente(u.id, null);
+      const pedido = [comentario, ...comentarios, d?.resumen].filter(Boolean).join('\n').slice(-3000);
+      prepararOpcionesNuevas(u.id, { comentario: pedido, referencias: refs }).catch((err) => console.error('rediseno', err));
+      await db.evento(u.id, 'pidio_opciones_nuevas', { referencias: refs, entendido: d || null });
+      return `${d?.resumen ? `${d.resumen.trim()} ` : ''}¡Va! 🎨 Te preparo 6 opciones nuevas${refs.length ? ' inspiradas en la página que me compartiste' : ''} con eso, con tus textos y tus fotos. En unos minutos te mando aquí las ligas. Tu página se queda como está hasta que elijas.`;
     }
     if (tipo === 'ver_opciones') {
       const prop = u.brief?.marca?.propuestas_nuevas?.estado === 'mostradas' ? u.brief.marca.propuestas_nuevas : (u.brief?.marca?.propuestas || {});
