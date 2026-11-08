@@ -92,7 +92,7 @@ export async function entenderRechazo(brief, p, comentarios) {
 - "estilo": uno de ${ESTILOS.join(', ')}, el que mejor refleje lo que pidió (si no hay pista, el actual).
 - "colores": 2 a 4 colores en palabras sencillas si pidió colores; vacío si no habló de colores.
 - "evitar": lo que pidió no repetir, en frases cortas (p. ej. "letras elaboradas", "fondos oscuros", "rojo"). Si dijo que quiere letra sencilla, incluye "letra sencilla".
-- "preset": SOLO si su pedido apunta claramente a uno de estos estilos base, ponlo; si no, vacío:
+- "preset": el estilo base más parecido a la página de referencia que mandó (y que no contradiga lo que pidió); si no mandó página, vacío:
 ${LISTA_PRESETS}
 - "notas": 1 a 3 frases de lo que se debe notar en las nuevas (fotos grandes, más aire, más color…).
 Nunca inventes cosas que el cliente no dijo.`,
@@ -117,7 +117,11 @@ async function aplicarRechazo(brief, d, comentarios) {
   if (ligas.length) marca.referencias_sitios = [...new Set([...(marca.referencias_sitios || []), ...ligas])];
   const estudio = ligas.length ? await estudiarReferencias({ marca: { referencias_sitios: ligas } }).catch(() => []) : [];
   const ref = estudio.find((x) => x && !x.error) || null;
-  if (ref || ligas.length || PRESETS[d?.preset]) marca.direccion_ref = construirDireccion(PRESETS[d?.preset] ? d.preset : 'editorial_suave', ref);
+  // Estilo base solo con página de referencia: sin ella, la IA a veces elige uno que contradice lo pedido
+  // (p. ej. 'editorial suave', de letra cursiva, cuando pidió letras más sencillas).
+  const sencilla = /sencill|rebuscad|elaborad|cursiv/i.test(String(marca.evitar || ''));
+  const preset = PRESETS[d?.preset] && !(sencilla && PRESETS[d.preset].cursiva) ? d.preset : (sencilla ? 'moderno_limpio' : 'editorial_suave');
+  if (ref || ligas.length) marca.direccion_ref = construirDireccion(preset, ref);
   marca.referencias_que_gusta = [marca.referencias_que_gusta, ...comentarios, d?.notas].filter(Boolean).join(' · ').slice(0, 2000);
   return { ...brief, marca };
 }
