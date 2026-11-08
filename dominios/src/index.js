@@ -4,7 +4,9 @@
 //   3 mapeo dominio→propuestas + capturas  4 Easypanel (apex + www, Let's Encrypt)  5 DNS GoDaddy (@ y www)
 //   6 propagación (Google DNS)  7 HTTPS válido (reintenta el certificado si sale autofirmado)  → listo
 // API (header X-API-Key = DOMINIOS_API_KEY):
-//   POST /v1/dominios {dominio, sesion_id?, modo?: 'propuestas'|'chat', regenerar?, logo_url?, dns?: 'auto'|'cliente'}  → 202 {trabajo_id}
+//   POST /v1/dominios {dominio, sesion_id?, modo?: 'vivo'|'chat', logo_url?, dns?: 'auto'|'cliente'}
+//   'vivo': el dominio muestra SOLO la opción que eligió el cliente (sitio en vivo + panel). Las 6 propuestas nunca se montan
+//   en el dominio del cliente: se entregan como 6 ligas en el host de la API (/p/<token>/A…F).  → 202 {trabajo_id}
 //        dns='cliente': el dueño ya apuntó sus registros (otro proveedor); se omite el paso de DNS.
 //   DNS: GoDaddy (GODADDY_PAT) o Cloudflare (CLOUDFLARE_API_TOKEN), detectado por nameservers.
 //   GET  /v1/dominios/:dominio                                    → último trabajo con pasos
@@ -49,8 +51,8 @@ async function ejecutar(id, { dominio, sesion_id, regenerar, logo_url, modo, dns
       await paso('validado', { proveedor: zonaInfo.proveedor, zona: zonaInfo.zona, registros: zonaInfo.registros.length });
     }
 
-    if (modo === 'propuestas') {
-      // 2) Propuestas: reutiliza las de la sesión salvo que se pida regenerar.
+    if (false) {
+      // 2) (retirado 8-nov-2026) Propuestas: reutiliza las de la sesión salvo que se pida regenerar.
       const s = await P.sesion(sesion_id);
       let token = s?.brief?.marca?.propuestas?.token;
       if (!token || regenerar) {
@@ -115,8 +117,8 @@ app.post('/v1/dominios', async (c) => {
   const b = await c.req.json().catch(() => ({}));
   const dominio = limpiar(b.dominio);
   if (!/^[a-z0-9-]+(\.[a-z0-9-]+)+$/.test(dominio)) return c.json({ error: 'dominio inválido' }, 400);
-  const modo = b.modo === 'chat' ? 'chat' : 'propuestas';
-  if (modo === 'propuestas' && !/^[0-9a-f-]{36}$/.test(String(b.sesion_id || ''))) return c.json({ error: 'sesion_id inválido' }, 400);
+  const modo = b.modo === 'chat' ? 'chat' : 'vivo';
+  if (modo === 'vivo' && !/^[0-9a-f-]{36}$/.test(String(b.sesion_id || ''))) return c.json({ error: 'sesion_id inválido' }, 400);
   if (enCurso.has(dominio)) return c.json({ error: 'ya hay un trabajo en curso para ese dominio' }, 409);
   const r = await q(`INSERT INTO dominios_trabajos (dominio, sesion_id, estado) VALUES ($1,$2,'pendiente') RETURNING id`, [dominio, b.sesion_id || null]);
   ejecutar(r.rows[0].id, { dominio, sesion_id: b.sesion_id || null, regenerar: !!b.regenerar, logo_url: b.logo_url || undefined, modo, dnsCliente: b.dns === 'cliente' });

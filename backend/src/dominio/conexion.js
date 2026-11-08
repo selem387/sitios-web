@@ -18,8 +18,10 @@ async function pedir(metodo, ruta, cuerpo) {
   return d;
 }
 
-export function conectar({ dominio, sesionId, dnsCliente = false }) {
-  return pedir('POST', '/v1/dominios', { dominio, sesion_id: sesionId, modo: 'propuestas', dns: dnsCliente ? 'cliente' : 'auto' });
+/** elegido=false → error 425: el dominio solo se monta con la opción que eligió el cliente. */
+export function conectar({ dominio, sesionId, dnsCliente = false, elegido = true }) {
+  if (!elegido) return Promise.reject(Object.assign(new Error('el cliente aún no elige diseño'), { status: 425 }));
+  return pedir('POST', '/v1/dominios', { dominio, sesion_id: sesionId, modo: 'vivo', dns: dnsCliente ? 'cliente' : 'auto' });
 }
 
 /** Último trabajo del dominio: {estado: pendiente|en_curso|listo|error|interrumpido, resultado, error} */

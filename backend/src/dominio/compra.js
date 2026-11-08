@@ -11,6 +11,7 @@ import * as GD from './godaddy.js';
 import * as ST from './stripe.js';
 import { precioCliente, pesos } from './precio.js';
 import { conectar, estadoConexion, conexionConfigurada } from './conexion.js';
+import { disenoElegido } from '../panel/sitios.js';
 
 const dormir = (ms) => new Promise((r) => setTimeout(r, ms));
 
@@ -188,11 +189,13 @@ async function conectarCompra(compraId) {
   const c = await obtener(compraId);
   if (!conexionConfigurada()) return revisar(c, 'Falta DOMINIOS_API_KEY en api: conectar el dominio a mano con el microservicio dominios.', { sinReembolso: true });
   try {
-    const t = await conectar({ dominio: c.dominio, sesionId: c.entrevista_id });
+    const e = await db.obtener(c.entrevista_id);
+    const t = await conectar({ dominio: c.dominio, sesionId: c.entrevista_id, elegido: disenoElegido(e?.brief) });
     await guardar(c.id, { estado: 'conectando', conexion: t });
     await patchFlujo(c.entrevista_id, { estado: 'conectando' });
   } catch (e) {
     if (e.status === 409) { await guardar(c.id, { estado: 'conectando' }); return; }
+    if (e.status === 425) { await guardar(c.id, { estado: 'esperando_eleccion' }); return; }
     await guardar(c.id, { error: `conexión: ${e.message}`.slice(0, 500) });
   }
 }
@@ -235,7 +238,7 @@ export async function cronCompras() {
     } catch (e) { console.error('cron registrando', c.dominio, e.message); }
   }
   // 3) Registradas sin conectar (faltaba configuración o falló la llamada).
-  for (const c of (await db.q(`SELECT id FROM dominios_compras WHERE estado='registrada' AND actualizado < now() - interval '10 minutes'`)).rows) await conectarCompra(c.id).catch(() => {});
+  for (const c of (await db.q(`SELECT id FROM dominios_compras WHERE (estado='registrada' AND actualizado < now() - interval '10 minutes') OR estado='esperando_eleccion'`)).rows) await conectarCompra(c.id).catch(() => {});
   // 4) Conectando → lista cuando el microservicio termina.
   for (const c of (await db.q(`SELECT * FROM dominios_compras WHERE estado='conectando'`)).rows) {
     try {
@@ -243,7 +246,7 @@ export async function cronCompras() {
       if (t?.estado === 'listo') {
         await guardar(c.id, { estado: 'lista', conexion: t });
         await patchFlujo(c.entrevista_id, { estado: 'lista', url: t.resultado?.url || `https://${c.dominio}/` });
-        await avisar(c.entrevista_id, [`Tu página ya se ve en tu dirección 🎉\nhttps://${c.dominio}/\n\nÁbrela en tu celular.${t.resultado?.modo === 'vivo' ? '' : ' Si aún no eliges diseño, ahí mismo ves las 6 propuestas.'}`], { evento: 'dominio_listo', datos: { compra_id: c.id } });
+        await avisar(c.entrevista_id, [`Tu página ya se ve en tu dirección 🎉\nhttps://${c.dominio}/\n\nÁbrela en tu celular. En unos minutos te mando aquí la liga para administrarla.`], { evento: 'dominio_listo', datos: { compra_id: c.id } });
       } else if (t?.estado === 'error' || t?.estado === 'interrumpido') {
         if (Date.now() - new Date(c.actualizado).getTime() > 3600e3) await revisar(c, `El microservicio dominios terminó en ${t.estado}: ${t.error || ''}`, { sinReembolso: true });
       }

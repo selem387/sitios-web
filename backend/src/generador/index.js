@@ -420,7 +420,7 @@ export function registerGeneradorRoutes(app, wrap) {
     return { token: r.token, opciones: opciones.map((o) => ({ letra: o.letra, nombre: o.nombre, url: o.url, fuentes: o.tipografia })) };
   }));
 
-  // Conectar un dominio propio del cliente a sus propuestas: {dominio, sesion_id}. Hace las capturas para el selector.
+  // Conectar el dominio del cliente a su sitio en vivo (opción elegida): {dominio, sesion_id}. Sin elección → 409.
   app.post('/entrevista/v1/dominios', wrap(async (c) => {
     auth(c);
     const b = await c.req.json().catch(() => ({}));
@@ -439,20 +439,8 @@ export function registerGeneradorRoutes(app, wrap) {
       // El acceso al panel lo entrega el cron de entregas en cuanto https://<dominio>/admin responda.
       return { ok: true, dominio, modo: 'vivo', url: `https://${dominio}/`, sitio_vivo_id: sv.id };
     }
-    const p = e?.brief?.marca?.propuestas;
-    if (!p?.token) throw new HttpError(400, 'la sesión no tiene propuestas');
-    const opciones = [];
-    for (const o of p.opciones || []) {
-      let captura = null;
-      if (config.renderUrl) {
-        const r = await fetch(`${config.renderUrl}/v1/captura`, { method: 'POST', headers: { 'content-type': 'application/json', 'x-api-key': config.renderApiKey }, body: JSON.stringify({ url: o.url, ancho: 390 }), signal: AbortSignal.timeout(90000) }).catch(() => null);
-        if (r?.ok) captura = (await r.json()).url;
-      }
-      opciones.push({ letra: o.letra || o.etiqueta, nombre: o.nombre, captura });
-    }
-    const mat = await procesarMateriales(e.id, e.brief, { aceptarLoQueHay: true }).catch(() => ({}));
-    await asignarDominio({ dominio, entrevista_id: e.id, token: p.token, datos: { nombre: e.brief?.negocio?.nombre, logo: b.logo_url || mat.logo?.url || null, opciones } });
-    return { ok: true, dominio, modo: 'propuestas', url: `https://${dominio}/`, opciones };
+    // Regla (8-nov-2026): las 6 propuestas nunca se montan en el dominio del cliente; solo la opción elegida.
+    throw new HttpError(409, 'el cliente aún no elige diseño: el dominio se monta cuando elija');
   }));
 
   // DNS en GoDaddy (token en GODADDY_PAT): ver registros y apuntar @/www al servidor.

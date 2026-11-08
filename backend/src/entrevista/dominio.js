@@ -14,6 +14,7 @@ import { precioCliente, pesos } from '../dominio/precio.js';
 import { patchFlujo, leerFlujo, borrarFlujo, cotizarParaCliente, crearCompra, ligaDePago, revisarPago, obtener as obtenerCompra } from '../dominio/compra.js';
 import { conectar, estadoConexion, conexionConfigurada } from '../dominio/conexion.js';
 import { stripeConfigurado } from '../dominio/stripe.js';
+import { disenoElegido } from '../panel/sitios.js';
 
 // Extensiones para sugerencias: incluye las baratas en promoción; el tope en pesos decide cuáles se muestran.
 const TLDS = () => (process.env.DOMINIO_TLDS || 'com,mx,com.mx,xyz,online,site,store,shop,space,website,fun,lat,click,link,info,tech').split(',').map((x) => x.trim()).filter(Boolean);
@@ -345,8 +346,17 @@ async function revisarYConectar(e, f, { desdeChat }) {
     if (desdeChat) return { textos: ['¡Ya veo tu dirección apuntando a nuestro servidor! ✅ Alguien del equipo termina de conectarla y te aviso aquí.'], seguirConAri: false };
     return null;
   }
-  try { await conectar({ dominio: f.dominio, sesionId: e.id, dnsCliente: true }); }
-  catch (err) { if (err.status !== 409) { console.error('conectar propio', err.message); if (desdeChat) return { textos: ['Ya veo tu dirección apuntando bien ✅. Tuve un problema al conectarla; lo reintento en unos minutos y te aviso.'], seguirConAri: false }; return null; } }
+  const ent = await db.obtener(e.id);
+  try { await conectar({ dominio: f.dominio, sesionId: e.id, dnsCliente: true, elegido: disenoElegido(ent?.brief) }); }
+  catch (err) {
+    if (err.status === 425) {
+      // Sin diseño elegido no se monta nada en su dominio; el cron conecta en cuanto elija.
+      await patchFlujo(e.id, { estado: 'apuntado' });
+      const t = [`¡Ya veo *${f.dominio}* apuntando a nuestro servidor! ✅ En cuanto elijas una de tus 6 opciones, la pongo en tu dirección.`];
+      if (desdeChat) return { textos: t, seguirConAri: false };
+      return null;
+    }
+    if (err.status !== 409) { console.error('conectar propio', err.message); if (desdeChat) return { textos: ['Ya veo tu dirección apuntando bien ✅. Tuve un problema al conectarla; lo reintento en unos minutos y te aviso.'], seguirConAri: false }; return null; } }
   await patchFlujo(e.id, { estado: 'conectando' });
   const extra = r.ok_www ? '' : ` (falta el cambio de *www*; sin él, solo funcionará escrito sin www)`;
   const textos = [`¡Listo, ya veo *${f.dominio}* apuntando a nuestro servidor! ✅${extra} La estoy conectando con tu página y activando el candado de seguridad; tarda unos minutos y te aviso aquí.`];
@@ -366,7 +376,7 @@ export async function cronDominiosPropios() {
         const dias = (Date.now() - new Date(f.desde).getTime()) / 864e5;
         if (dias > 14) { await patchFlujo(id, { estado: 'abandonado' }); continue; }
         const hecho = await revisarYConectar({ id }, f, { desdeChat: false });
-        if (!hecho && dias > 3 && !f.recordado) {
+        if (!hecho && dias > 3 && !f.recordado && f.estado === 'esperando_cambios') {
           await patchFlujo(id, { recordado: true });
           await avisar(id, [`Hola 👋 Todavía no veo el cambio en *${f.dominio}* para que tu página se vea ahí. Cuando tengas 5 minutos, hazlo con los pasos que te mandé (registro *A* con el valor *${ipServidor()}*) y escríbeme *listo*. Si te atoras, dime en qué paso vas.`], { evento: 'dominio_recordatorio' });
         }
@@ -374,7 +384,7 @@ export async function cronDominiosPropios() {
         const t = await estadoConexion(f.dominio);
         if (t?.estado === 'listo') {
           await patchFlujo(id, { estado: 'lista', url: t.resultado?.url || `https://${f.dominio}/` });
-          await avisar(id, [`Tu página ya se ve en tu dirección 🎉\nhttps://${f.dominio}/\n\nÁbrela en tu celular.${t.resultado?.modo === 'vivo' ? '' : ' Si aún no eliges diseño, ahí mismo ves las 6 propuestas.'}`], { evento: 'dominio_listo' });
+          await avisar(id, [`Tu página ya se ve en tu dirección 🎉\nhttps://${f.dominio}/\n\nÁbrela en tu celular. En unos minutos te mando aquí la liga para administrarla.`], { evento: 'dominio_listo' });
         } else if (t?.estado === 'error' || t?.estado === 'interrumpido') {
           const n = (f.intentos_conexion || 0) + 1;
           if (n >= 3) {
