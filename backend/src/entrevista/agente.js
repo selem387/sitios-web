@@ -20,7 +20,7 @@ import { limpiarDominio } from '../dominio/registrador.js';
 import { paginaEditable, estadoCambios, registrarPedido, clasificarMensaje } from './cambios.js';
 import { alElegir } from '../panel/rehacer.js';
 import { avisarEquipo } from './avisos.js';
-import { notaRequisitos, primerBloqueIncompleto, faltantes, unirNoTiene } from './requisitos.js';
+import { notaRequisitos, primerBloqueIncompleto, faltantes, unirNoTiene, noTieneDelHistorial } from './requisitos.js';
 import { dominioRespondido, quiereDominio, PREGUNTA_DOMINIO, mensajePago, pagoPendiente, atenderPostCierre } from './pago_pagina.js';
 
 // Tope de seguridad (fotos y audios cuentan como mensajes). Una entrevista real ronda 60–130.
@@ -493,6 +493,16 @@ export async function procesarMensaje(b) {
   const assets = [...assetsPrevios, ...nuevosAssets];
   const bloqueAnterior = e.bloque_actual;
 
+  // "No tengo" a una pregunta de algo opcional (reseñas, FAQ, horarios…) se registra en código antes de Ari,
+  // para que la revisión de requisitos no lo vuelva a pedir aunque el modelo no lo marque.
+  {
+    const historial = await db.ultimosMensajes(e.id, 200);
+    const nt = unirNoTiene(e.brief?.no_tiene, noTieneDelHistorial(historial));
+    if (nt.length !== (e.brief?.no_tiene || []).length) {
+      e.brief = { ...(e.brief || {}), no_tiene: nt };
+      await db.guardar(e.id, { brief: e.brief });
+    }
+  }
   let t = await turnoAri(e, { mensajesRecientes, ultimoTexto: textoTurno, regresaDePausa, arquetipos, assets, notaAri });
   let brief = mergeProfundo(e.brief || {}, t.briefPatch);
   brief.no_tiene = unirNoTiene(e.brief?.no_tiene, t.briefPatch?.no_tiene);
@@ -504,7 +514,7 @@ export async function procesarMensaje(b) {
     if (incompleto) {
       const pend = faltantes(brief, assets, { desde: incompleto, hasta: incompleto });
       await db.evento(e.id, 'requisito_pendiente', { destino, bloque: incompleto, faltan: pend.map((f) => f.id) });
-      const nota = `NO PUEDES AVANZAR. Antes de seguir falta del bloque ${incompleto}: ${pend.map((f) => f.id).join(', ')}. Tu reply debe pedir SOLO "${pend[0].pedir}" (con tus palabras, cálido, sin regañar), sin resumen de bloque ni "listo ✅". bloque_actual=${incompleto}, completado=false.`;
+      const nota = `NO PUEDES AVANZAR. Antes de seguir falta del bloque ${incompleto}: ${pend.map((f) => f.id).join(', ')}. Tu reply debe pedir SOLO "${pend[0].pedir}" (con tus palabras, cálido, sin regañar), sin resumen de bloque ni "listo ✅".${pend[0].puedeNoTener ? ` Si en su último mensaje el cliente ya dijo que no lo tiene, NO lo pidas: agrega "${pend[0].id}" a brief_patch.no_tiene y sigue con lo siguiente.` : ''} bloque_actual=${incompleto}, completado=false.`;
       const eForzado = { ...e, bloque_actual: incompleto, brief };
       const t2 = await turnoAri(eForzado, { mensajesRecientes, ultimoTexto: textoTurno, regresaDePausa, arquetipos, assets, notaAri: [notaAri, nota].filter(Boolean).join('\n') }).catch(() => null);
       const brief2 = t2 ? mergeProfundo(brief, t2.briefPatch) : brief;

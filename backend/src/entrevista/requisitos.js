@@ -62,9 +62,48 @@ export function notaRequisitos(brief, assets, bloque) {
   const previos = i > 0 ? faltantes(brief, assets, { hasta: BLOQUES[i - 1] }) : [];
   const actuales = faltantes(brief, assets, { desde: bloque, hasta: bloque });
   const lineas = [];
-  if (previos.length) lineas.push(`FALTA DE BLOQUES ANTERIORES (pídelo YA, antes de cualquier otra pregunta, una cosa por mensaje):\n${previos.map((f) => `- ${f.bloque} ${f.id}: "${f.pedir}"`).join('\n')}`);
+  if (previos.length) lineas.push(`FALTA DE BLOQUES ANTERIORES (pídelo YA, antes de cualquier otra pregunta, una cosa por mensaje):\n${previos.map((f) => `- ${f.bloque} ${f.id}: "${f.pedir}"${f.puedeNoTener ? ' (si dice que no lo tiene, agrega "' + f.id + '" a brief_patch.no_tiene y no lo vuelvas a pedir)' : ''}`).join('\n')}`);
   if (actuales.length) lineas.push(`FALTA EN ESTE BLOQUE (no lo cierres sin esto; pídelo de uno en uno, una cosa por mensaje):\n${actuales.map((f) => `- ${f.id}${f.puedeNoTener ? ' (si dice que no lo tiene, agrega "' + f.id + '" a brief_patch.no_tiene)' : ''}`).join('\n')}`);
   return lineas.length ? `REVISIÓN DE REQUISITOS (la hace el sistema; es la verdad):\n${lineas.join('\n')}` : 'REVISIÓN DE REQUISITOS: todo lo de los bloques anteriores está completo.';
+}
+
+// Respuestas negativas cortas ("no", "no no tengo", "ninguna", "todavía no"…) a una pregunta de un requisito
+// que se puede no tener: se registran en código en brief.no_tiene para que ese requisito no se vuelva a pedir
+// aunque el modelo olvide marcarlo (caso Punto Legal, 8-nov-2026: pidió las reseñas tres veces).
+const TEMA = {
+  testimonios: /rese[nñ]as?|testimonio|comentarios? de (tus |sus )?clientes|clientes contentos|opiniones/,
+  faq: /preguntan|preguntas frecuentes/,
+  diferenciador: /diferente|diferencia|distingue/,
+  horarios: /horario/,
+  logo: /logo/,
+};
+const norm = (x) => String(x || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-zñ0-9 ]+/g, ' ').replace(/\s+/g, ' ').trim();
+const NEG = /^(no+|nop|nel|nada|ningun[oa]?s?|aun no|todavia no|por ahora no|no por (ahora|el momento)|sin \w+|de momento no)( (no|tengo|tenemos|hay|cuento|contamos|con|ninguna?o?s?|las|los|la|lo|ahorita|aun|todavia|por ahora|resenas|testimonios|comentarios|logo|horarios?|nada|gracias|la verdad|realmente|fijo|todavia no))*$/;
+
+export function esNegativa(respuesta) {
+  const r = norm(respuesta);
+  return !!r && r.length <= 60 && NEG.test(r) && !/\b(pero|si tengo|aqui|te mando|ahi va)\b/.test(r);
+}
+
+/** Requisito (puedeNoTener o logo) al que se refiere la última pregunta de un mensaje de Ari, o null. */
+export function requisitoDePregunta(mensaje) {
+  const qs = String(mensaje || '').match(/¿[^?]*\?/g);
+  const q = norm(qs ? qs[qs.length - 1] : mensaje);
+  return Object.keys(TEMA).find((id) => TEMA[id].test(q)) || null;
+}
+
+/** Ids que el cliente dijo que no tiene, leídos del historial (pares pregunta de Ari → respuesta del cliente). */
+export function noTieneDelHistorial(mensajes = []) {
+  const ids = new Set();
+  for (let i = 0; i < mensajes.length - 1; i++) {
+    const m = mensajes[i];
+    if (m.rol !== 'agente' || m.tipo === 'imagen') continue;
+    const sig = mensajes[i + 1];
+    if (sig?.rol !== 'cliente') continue;
+    const id = requisitoDePregunta(m.contenido);
+    if (id && esNegativa(sig.transcripcion || sig.contenido)) ids.add(id);
+  }
+  return [...ids];
 }
 
 /** Une brief.no_tiene anterior con lo que Ari agregó (los arreglos se reemplazan al mezclar). */
