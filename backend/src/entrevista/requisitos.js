@@ -63,7 +63,7 @@ export function notaRequisitos(brief, assets, bloque) {
   const actuales = faltantes(brief, assets, { desde: bloque, hasta: bloque });
   const lineas = [];
   if (previos.length) lineas.push(`FALTA DE BLOQUES ANTERIORES (pídelo YA, antes de cualquier otra pregunta, una cosa por mensaje):\n${previos.map((f) => `- ${f.bloque} ${f.id}: "${f.pedir}"`).join('\n')}`);
-  if (actuales.length) lineas.push(`FALTA EN ESTE BLOQUE (no lo cierres sin esto):\n${actuales.map((f) => `- ${f.id}${f.puedeNoTener ? ' (si dice que no lo tiene, agrega "' + f.id + '" a brief_patch.no_tiene)' : ''}`).join('\n')}`);
+  if (actuales.length) lineas.push(`FALTA EN ESTE BLOQUE (no lo cierres sin esto; pídelo de uno en uno, una cosa por mensaje):\n${actuales.map((f) => `- ${f.id}${f.puedeNoTener ? ' (si dice que no lo tiene, agrega "' + f.id + '" a brief_patch.no_tiene)' : ''}`).join('\n')}`);
   return lineas.length ? `REVISIÓN DE REQUISITOS (la hace el sistema; es la verdad):\n${lineas.join('\n')}` : 'REVISIÓN DE REQUISITOS: todo lo de los bloques anteriores está completo.';
 }
 

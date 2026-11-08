@@ -130,6 +130,7 @@ export async function entrevistasParaCron() {
   const r = await q(`
     SELECT e.id, e.usuario_id, e.canal, e.callback_url, e.metadata, e.estado, e.bloque_actual, e.memoria, e.memoria_msg_id,
            e.recordatorios_enviados, e.ultimo_contacto, e.memoria_en_curso,
+           GREATEST(e.ultimo_contacto, (SELECT max(m.creado) FROM mensajes m WHERE m.entrevista_id=e.id)) AS ultimo_mensaje,
            (SELECT count(*)::int FROM mensajes m WHERE m.entrevista_id=e.id AND m.id>e.memoria_msg_id) AS sin_resumir
     FROM entrevistas e
     WHERE e.estado IN ('en_curso','pausada')`);

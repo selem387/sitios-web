@@ -130,7 +130,8 @@ async function cron() {
   const ahora = Date.now();
   const filas = await db.entrevistasParaCron().catch((err) => { console.error('cron entrevista', err); return []; });
   for (const e of filas) {
-    const inactivo = ahora - new Date(e.ultimo_contacto).getTime();
+    // Silencio contado desde el último mensaje de cualquiera: un aviso manual o de Ari reinicia la cuenta.
+    const inactivo = ahora - new Date(e.ultimo_mensaje || e.ultimo_contacto).getTime();
     try {
       if (inactivo > 2 * 3600e3 && e.sin_resumir > 0 && !e.memoria_en_curso) await actualizarMemoria(e.id, 'pausa');
       if (e.estado === 'en_curso' && inactivo > 7 * 864e5) {

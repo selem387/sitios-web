@@ -251,6 +251,23 @@ async function preguntaRepetida(entrevistaId, reply) {
   return null;
 }
 
+// Quita un saludo inicial ("¡Hola…", "Hola de nuevo…") si no regresa de una pausa, y deja una sola pregunta:
+// todo lo que empieza en la segunda oración con "¿" (al inicio de línea o tras punto) se corta.
+export function pulirReply(reply, regresaDePausa) {
+  let r = String(reply || '').trim();
+  if (!regresaDePausa) {
+    const sinSaludo = r.replace(/^¡?\s*hola\b[^\n!]*[!.]?\s*(?:[^\w\s¿¡]{1,4}\s*)?\n?/iu, '').trim();
+    if (sinSaludo) r = sinSaludo;
+  }
+  const abiertas = [...r.matchAll(/(^|\n|[.!?…:]\s+)¿/g)];
+  if (abiertas.length > 1) {
+    const corte = abiertas[1].index + abiertas[1][1].length;
+    const recortado = r.slice(0, corte).trim();
+    if (recortado.includes('¿')) r = recortado;
+  }
+  return r;
+}
+
 async function turnoAri(e, { mensajesRecientes, ultimoTexto, regresaDePausa, arquetipos, assets, notaAri = null }) {
   const bloque = BLOQUES.includes(e.bloque_actual) ? e.bloque_actual : 'B0';
   const mem = e.memoria && Object.keys(e.memoria).length ? JSON.stringify(e.memoria, null, 1) : 'vacía';
@@ -365,7 +382,10 @@ export async function procesarMensaje(b) {
     Object.assign(e, cambios);
   }
 
-  const regresaDePausa = !nueva && Date.now() - new Date(e.ultimo_contacto).getTime() > PAUSA_MS;
+  // La pausa se mide contra el último mensaje de cualquiera (cliente, Ari o un aviso/recordatorio):
+  // si Ari ya escribió hace poco (p. ej. el recordatorio, que ya saluda), no se vuelve a saludar.
+  const ultimoMsg = nueva ? null : (await db.q('SELECT max(creado) AS t FROM mensajes WHERE entrevista_id=$1', [e.id])).rows[0]?.t;
+  const regresaDePausa = !nueva && Date.now() - new Date(ultimoMsg || e.ultimo_contacto).getTime() > PAUSA_MS;
   if (regresaDePausa && e.estado === 'pausada') { await db.guardar(e.id, { estado: 'en_curso' }); e.estado = 'en_curso'; }
 
   // Registrar el mensaje del cliente (texto + cada media como mensaje y asset).
@@ -494,6 +514,8 @@ export async function procesarMensaje(b) {
       }
     }
   }
+  // Pulido final del texto: sin saludos a media plática y una sola pregunta por mensaje.
+  t = { ...t, reply: pulirReply(t.reply, regresaDePausa) };
   // El estado de las propuestas lo maneja solo propuestas.js; Ari no puede tocarlo (antes lo pisaba con "pendiente").
   if (brief.marca) { if (e.brief?.marca?.propuestas) brief.marca.propuestas = e.brief.marca.propuestas; else delete brief.marca.propuestas; }
   if (brief.marca && e.brief?.marca?.vistazo) brief.marca.vistazo = e.brief.marca.vistazo; else if (brief.marca) delete brief.marca.vistazo;
