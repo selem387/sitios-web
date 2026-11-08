@@ -64,6 +64,8 @@ export function notaRequisitos(brief, assets, bloque) {
   const lineas = [];
   if (previos.length) lineas.push(`FALTA DE BLOQUES ANTERIORES (pídelo YA, antes de cualquier otra pregunta, una cosa por mensaje):\n${previos.map((f) => `- ${f.bloque} ${f.id}: "${f.pedir}"${f.puedeNoTener ? ' (si dice que no lo tiene, agrega "' + f.id + '" a brief_patch.no_tiene y no lo vuelvas a pedir)' : ''}`).join('\n')}`);
   if (actuales.length) lineas.push(`FALTA EN ESTE BLOQUE (no lo cierres sin esto; pídelo de uno en uno, una cosa por mensaje):\n${actuales.map((f) => `- ${f.id}${f.puedeNoTener ? ' (si dice que no lo tiene, agrega "' + f.id + '" a brief_patch.no_tiene)' : ''}`).join('\n')}`);
+  const nt = (brief?.no_tiene || []).filter((x) => ETIQUETA[x]);
+  if (nt.length) lineas.push(`EL CLIENTE YA DIJO QUE NO TIENE (no lo vuelvas a preguntar, ni con otras palabras, ni repitas "ya anoté…" de turnos anteriores): ${nt.map((x) => ETIQUETA[x]).join('; ')}. Si de este bloque ya no queda nada que no esté aquí, ciérralo y pasa al siguiente.`);
   return lineas.length ? `REVISIÓN DE REQUISITOS (la hace el sistema; es la verdad):\n${lineas.join('\n')}` : 'REVISIÓN DE REQUISITOS: todo lo de los bloques anteriores está completo.';
 }
 
@@ -73,10 +75,19 @@ export function notaRequisitos(brief, assets, bloque) {
 const TEMA = {
   testimonios: /rese[nñ]as?|testimonio|comentarios? de (tus |sus )?clientes|clientes contentos|opiniones/,
   faq: /preguntan|preguntas frecuentes/,
+  certificaciones: /certificaci|premio|reconocimiento|titulo|cedula|acreditaci|credencial/,
+  cifras: /cifra|numero que|numeros? que impresione|anos de experiencia|cuantos (clientes|tramites|proyectos)/,
+  garantias: /garantia|quite el miedo/,
+  historia: /como empezo|historia del (negocio|equipo)|como nacio/,
+  equipo: /tu equipo|quien(es)? (esta|estan|trabaja)/,
+  otro_dato_confianza: /otro dato de confianza|algun otro dato|algo mas que (quieras|te gustaria) (incluir|agregar|mostrar)/,
   diferenciador: /diferente|diferencia|distingue/,
   horarios: /horario/,
   logo: /logo/,
 };
+// Temas opcionales (no son requisitos): si dijo que no los tiene, tampoco se vuelven a preguntar.
+export const OPCIONALES = { certificaciones: 'certificaciones, premios o reconocimientos', cifras: 'cifras o números (años, clientes, trámites)', garantias: 'garantías', historia: 'historia del negocio', equipo: 'equipo', otro_dato_confianza: 'otro dato de confianza' };
+const ETIQUETA = { testimonios: 'reseñas o testimonios', faq: 'preguntas frecuentes', diferenciador: 'diferenciador', horarios: 'horarios', logo: 'logotipo', ...OPCIONALES };
 const norm = (x) => String(x || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-zñ0-9 ]+/g, ' ').replace(/\s+/g, ' ').trim();
 const NEG = /^(no+|nop|nel|nada|ningun[oa]?s?|aun no|todavia no|por ahora no|no por (ahora|el momento)|sin \w+|de momento no)( (no|tengo|tenemos|hay|cuento|contamos|con|ninguna?o?s?|las|los|la|lo|ahorita|aun|todavia|por ahora|resenas|testimonios|comentarios|logo|horarios?|nada|gracias|la verdad|realmente|fijo|todavia no))*$/;
 
@@ -106,8 +117,11 @@ export function noTieneDelHistorial(mensajes = []) {
   return [...ids];
 }
 
+/** true si la pregunta del reply es de algo que el cliente ya dijo que no tiene. */
+export const preguntaYaNegada = (reply, brief) => { const id = requisitoDePregunta(reply); return !!id && (brief?.no_tiene || []).includes(id); };
+
 /** Une brief.no_tiene anterior con lo que Ari agregó (los arreglos se reemplazan al mezclar). */
 export function unirNoTiene(anterior, nuevo) {
-  const ids = new Set(REQUISITOS.filter((r) => r.puedeNoTener).map((r) => r.id).concat('logo'));
+  const ids = new Set(REQUISITOS.filter((r) => r.puedeNoTener).map((r) => r.id).concat('logo', ...Object.keys(OPCIONALES)));
   return [...new Set([...(anterior || []), ...(nuevo || [])])].filter((x) => ids.has(x));
 }

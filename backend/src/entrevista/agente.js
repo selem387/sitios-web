@@ -20,7 +20,7 @@ import { limpiarDominio } from '../dominio/registrador.js';
 import { paginaEditable, estadoCambios, registrarPedido, clasificarMensaje } from './cambios.js';
 import { alElegir } from '../panel/rehacer.js';
 import { avisarEquipo } from './avisos.js';
-import { notaRequisitos, primerBloqueIncompleto, faltantes, unirNoTiene, noTieneDelHistorial } from './requisitos.js';
+import { notaRequisitos, primerBloqueIncompleto, faltantes, unirNoTiene, noTieneDelHistorial, preguntaYaNegada } from './requisitos.js';
 import { dominioRespondido, quiereDominio, PREGUNTA_DOMINIO, mensajePago, pagoPendiente, atenderPostCierre } from './pago_pagina.js';
 
 // Tope de seguridad (fotos y audios cuentan como mensajes). Una entrevista real ronda 60–130.
@@ -539,6 +539,21 @@ export async function procesarMensaje(b) {
         b3.no_tiene = unirNoTiene(brief.no_tiene, t3.briefPatch?.no_tiene);
         if (!primerBloqueIncompleto(b3, assets, t3.completado ? 'B12' : t3.bloque)) { brief = b3; t = { ...t3, assetsPatch: [...t.assetsPatch, ...t3.assetsPatch] }; }
       }
+    }
+  }
+  // Nunca volver a preguntar algo que el cliente ya dijo que no tiene (reseñas, certificaciones, cifras…).
+  if (preguntaYaNegada(t.reply, brief)) {
+    await db.evento(e.id, 'pregunta_negada_repetida', { reply: t.reply.slice(0, 200) });
+    const nota = `NO REPITAS: el cliente ya dijo que no tiene eso (ver "EL CLIENTE YA DIJO QUE NO TIENE"). No lo menciones. Pregunta lo SIGUIENTE que falte; si del bloque ${t.bloque} ya no queda nada, ciérralo y pasa al siguiente bloque.`;
+    const t4 = await turnoAri({ ...e, bloque_actual: t.bloque, brief }, { mensajesRecientes, ultimoTexto: textoTurno, regresaDePausa, arquetipos, assets, notaAri: [notaAri, nota].filter(Boolean).join('\n') }).catch(() => null);
+    if (t4 && !preguntaYaNegada(t4.reply, brief)) {
+      const b4 = mergeProfundo(brief, t4.briefPatch);
+      b4.no_tiene = unirNoTiene(brief.no_tiene, t4.briefPatch?.no_tiene);
+      brief = b4; t = { ...t4, assetsPatch: [...t.assetsPatch, ...t4.assetsPatch] };
+    } else {
+      const sig = faltantes(brief, assets).find((f) => !preguntaYaNegada(f.pedir, brief));
+      const i = BLOQUES.indexOf(t.bloque);
+      t = { ...t, reply: sig ? sig.pedir : 'Perfecto, con eso seguimos 👍', bloque: sig ? sig.bloque : (BLOQUES[i + 1] || t.bloque) };
     }
   }
   // Pulido final del texto: sin saludos a media plática y una sola pregunta por mensaje.
