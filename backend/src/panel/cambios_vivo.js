@@ -13,6 +13,7 @@ import { config } from '../config.js';
 import { SECCIONES, limpiarSeccion, contenidoActual, disenoElegido, renderSitio, invalidar, porId } from './sitios.js';
 import { textosInventados, separarPrecio, renglonesAjenos } from './reinterpretar.js';
 import { validarEstructura, textoDe } from './estructura.js';
+import { opcionesNuevasPendientes, adoptarOpcionNueva, restaurarBrief } from './rediseno.js';
 
 const q = db.q;
 const NO_PUDE = 'No pude aplicar ese cambio a tu página 😔 ¿Me lo explicas de otra forma? Por ejemplo, dime en qué parte de la página está y cómo quieres que quede.';
@@ -113,10 +114,12 @@ async function estadoActual(e, sv) {
   try { html = await renderSitio(sv, { previa: true }); htmlCompleto = html; } catch { /* sin html */ }
   html = html.replace(/<script[\s\S]*?<\/script>/g, '').replace(/<svg[\s\S]*?<\/svg>/g, '<svg/>').replace(/<style id="ajustes">[\s\S]*?<\/style>/, '').slice(0, 90000);
   const dz = sv.contenido?.diseno || {};
-  const prop = e.brief?.marca?.propuestas || {};
-  const propuestas = (prop.opciones || []).map((o) => ({ letra: o.letra || o.etiqueta, nombre: o.nombre, tipografia: o.tipografia, url: o.url }));
-  const propuesta = dz.propuesta || prop.elegido;
-  const fuentes = dz.fuentes || propuestas.find((o) => o.letra === propuesta)?.tipografia || null;
+  // Si le mandamos opciones nuevas y aún no elige, la letra que diga es de esas (y ninguna es "la actual").
+  const nuevas = opcionesNuevasPendientes(e.brief);
+  const prop = nuevas || e.brief?.marca?.propuestas || {};
+  const propuestas = (prop.opciones || []).map((o) => ({ letra: o.letra || o.etiqueta, nombre: o.nombre, tipografia: o.tipografia, url: o.url, nueva: !!nuevas }));
+  const propuesta = nuevas ? null : (dz.propuesta || prop.elegido);
+  const fuentes = dz.fuentes || propuestas.find((o) => o.letra === propuesta)?.tipografia || (e.brief?.marca?.propuestas?.opciones || []).find((o) => (o.letra || o.etiqueta) === (dz.propuesta || e.brief?.marca?.propuestas?.elegido))?.tipografia || null;
   return { contenido, paleta, fotos, referencias, css: dz.css || '', estructura: dz.estructura || null, propuestas, propuesta, fuentes, html, htmlCompleto: htmlCompleto || html };
 }
 
@@ -144,7 +147,7 @@ async function planear(e, act, pedidos, conv, errores) {
     `CSS PROPIO ACTUAL (ajustes de diseño ya aplicados a este sitio):\n${act.css || '(ninguno)'}`,
     `SECCIONES EN LA PÁGINA (ids, en orden): portada, ${[...(act.htmlCompleto || '').matchAll(/<section\b[^>]*\sid="([^"]+)"/g)].map((m) => m[1]).join(', ')}. Si el cliente menciona una sección que no está, dilo en no_pude (o pregunta).`,
     `ESTRUCTURA ACTUAL: ${JSON.stringify(act.estructura || {})}`,
-    `PROPUESTAS (puede cambiar a otra): ${act.propuestas.map((o) => `${o.letra}${o.letra === act.propuesta ? ' (la actual)' : ''}: ${o.nombre} · letras ${o.tipografia?.titulos}/${o.tipografia?.cuerpo}${o.url ? ` · ${o.url}` : ''}`).join(' | ') || '(no hay)'}`,
+    `PROPUESTAS (puede cambiar a otra)${act.propuestas[0]?.nueva ? ' — son las 6 NUEVAS que le mandé; si dice una letra es de estas' : ''}: ${act.propuestas.map((o) => `${o.letra}${o.letra === act.propuesta ? ' (la actual)' : ''}: ${o.nombre} · letras ${o.tipografia?.titulos}/${o.tipografia?.cuerpo}${o.url ? ` · ${o.url}` : ''}`).join(' | ') || '(no hay)'}`,
     `LETRA ACTUAL: ${JSON.stringify(act.fuentes || {})}`,
     `HTML ACTUAL DE LA PÁGINA (estructura y estilos del tema; los textos pueden venir recortados):\n${act.html || '(no disponible)'}`,
     `FOTOS (clave · tipo · en la página · descripción):\n${act.fotos.map((a) => `${a.clave} · ${a.tipo} · ${a.usar ? 'sí' : 'no'} · ${(a.descripcion_ia || a.nota || '').slice(0, 120)}`).join('\n') || '(ninguna)'}`,
@@ -289,7 +292,7 @@ export async function aplicarCambioVivo(c, e, sv) {
   const conv = await conversacion(e, sv);
   const fuentes = `${c.pedidos.map((p) => p.texto).join('\n')}\n${conv.cliente}\n${JSON.stringify(act.contenido)}`.replace(/\\n/g, '\n');
   const k = sv.contenido || {};
-  let errores = [], plan, v, nuevo = null, respaldo = null, vista = null, antes = null;
+  let errores = [], plan, v, nuevo = null, respaldo = null, vista = null, antes = null, briefAntes = null;
 
   for (let ronda = 0; ronda < 3; ronda++) {
     // 1) Plan válido (hasta 3 intentos por ronda).
@@ -334,7 +337,12 @@ export async function aplicarCambioVivo(c, e, sv) {
       usar: Object.fromEntries(Object.keys(usar).map((cl) => [cl, act.fotos.find((a) => a.clave === cl)?.usar !== false])),
     };
     await guardar(c.id, { respaldo: { vivo: respaldo } });
-    const diseno = tocaDiseno ? { ...(propNueva ? {} : (k.diseno || {})), ...(Object.keys(v.paleta).length ? { paleta: { ...(k.diseno?.paleta || {}), ...v.paleta } } : {}), ...(cssNuevo !== null ? { css: cssNuevo } : {}), ...(estNueva ? { estructura: estNueva } : {}), ...(propNueva ? { propuesta: propNueva } : {}), ...(fuentesNuevas ? { fuentes: fuentesNuevas } : {}) } : undefined;
+    let diseno = tocaDiseno ? { ...(propNueva ? {} : (k.diseno || {})), ...(Object.keys(v.paleta).length ? { paleta: { ...(k.diseno?.paleta || {}), ...v.paleta } } : {}), ...(cssNuevo !== null ? { css: cssNuevo } : {}), ...(estNueva ? { estructura: estNueva } : {}), ...(propNueva ? { propuesta: propNueva } : {}), ...(fuentesNuevas ? { fuentes: fuentesNuevas } : {}) } : undefined;
+    // Opción de la ronda nueva: pasa a ser su propuesta (se deshace si la página no queda bien).
+    if (propNueva && act.propuestas[0]?.nueva && !briefAntes) {
+      briefAntes = await adoptarOpcionNueva(e, propNueva);
+      if (briefAntes) diseno = {};
+    }
     nuevo = await escribir(sv, e, { secciones: v.secciones, diseno, fotos: plan.portada_foto ? { ...(k.fotos || {}), portada_asset_id: plan.portada_foto } : undefined, usar });
 
     // 4) La página se arma con lo nuevo.
@@ -343,6 +351,7 @@ export async function aplicarCambioVivo(c, e, sv) {
       if (!html || html.length < 500) throw new Error('página vacía');
     } catch (err) {
       await escribir(nuevo, e, respaldo);
+      await restaurarBrief(e, briefAntes); briefAntes = null;
       console.error('[cambios vivo] restaurado', c.id, err);
       return noPude(c, e, { error: String(err.message || err).slice(0, 500) });
     }
@@ -354,6 +363,7 @@ export async function aplicarCambioVivo(c, e, sv) {
     vista = await revisarVista(c.pedidos, antes || [], despues, (plan.no_pude || []).filter(Boolean));
     if (vista.ok) break;
     await escribir(nuevo, e, respaldo);
+    await restaurarBrief(e, briefAntes); briefAntes = null;
     errores = [`La revisión visual con capturas encontró: ${vista.problemas.join('; ') || 'no cumple lo pedido'}. Corrige el plan (CSS, estructura o secciones). Lo que de verdad no se puede va en no_pude.`];
     nuevo = null;
   }

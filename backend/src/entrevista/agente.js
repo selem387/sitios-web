@@ -99,8 +99,18 @@ async function respuestaPostCierre(u, texto = '', media = []) {
       tipo = cl?.tipo || (pideCambiosSinDetalle(texto) ? 'sin_detalle' : 'cambio');
       if (tipo === 'otro') return cl?.respuesta || '¡Con gusto! 🙌 Si quieres cambiar algo de tu página, dime qué y lo ajusto.';
     }
+    if (tipo === 'nuevas_opciones') {
+      const { prepararOpcionesNuevas, ligasReferencia } = await import('../panel/rediseno.js');
+      // Lo que pidió en sus últimos mensajes (estilo, ligas de referencia) se usa para las nuevas.
+      const recientes = (await db.ultimosMensajes(u.id, 16).catch(() => [])).filter((m) => m.rol === 'cliente').map((m) => m.transcripcion || m.contenido || '');
+      const comentario = [...recientes, texto].filter(Boolean).join('\n').slice(-3000);
+      const refs = ligasReferencia(comentario);
+      prepararOpcionesNuevas(u.id, { comentario, referencias: refs }).catch((err) => console.error('rediseno', err));
+      await db.evento(u.id, 'pidio_opciones_nuevas', { referencias: refs });
+      return `¡Va! 🎨 Te preparo 6 opciones nuevas${refs.length ? ' inspiradas en la página que me compartiste' : ''}, con tus textos y tus fotos. En unos minutos te mando aquí las ligas. Tu página se queda como está hasta que elijas.`;
+    }
     if (tipo === 'ver_opciones') {
-      const prop = u.brief?.marca?.propuestas || {};
+      const prop = u.brief?.marca?.propuestas_nuevas?.estado === 'mostradas' ? u.brief.marca.propuestas_nuevas : (u.brief?.marca?.propuestas || {});
       const opc = (prop.opciones || []).filter((o) => o.url);
       if (opc.length) {
         const sv = (await db.q(`SELECT contenido FROM sitios_vivos WHERE entrevista_id=$1 ORDER BY id DESC LIMIT 1`, [u.id]).catch(() => ({ rows: [] }))).rows[0];
@@ -109,7 +119,7 @@ async function respuestaPostCierre(u, texto = '', media = []) {
         await db.evento(u.id, 'opciones_reenviadas', { actual });
         const ref = (texto.match(/https?:\/\/\S+/g) || []).filter((x) => !/\/p\/[A-Za-z0-9]+\/[A-F]/.test(x));
         await db.evento(u.id, 'pregunta_cambio_diseno', { actual, referencias: ref });
-        return `¿Quieres cambiar el diseño de tu página por otra de tus opciones? 😊${ref.length ? ' Revisa cuál se parece más a la página que me compartiste.' : ''}\n\nEstas son:\n\n${lista}\n\nDime la letra de la que quieres. Tus textos, fotos y los cambios que ya hicimos se quedan; solo cambia el diseño.`;
+        return `¿Quieres cambiar el diseño de tu página por otra de tus opciones? 😊${ref.length ? ' Revisa cuál se parece más a la página que me compartiste.' : ''}\n\nEstas son:\n\n${lista}\n\nDime la letra de la que quieres. Si ninguna te convence, dime *ninguna* y te preparo 6 nuevas${ref.length ? ' inspiradas en esa página' : ''}. Tus textos, fotos y los cambios que ya hicimos se quedan; solo cambia el diseño.`;
       }
       tipo = 'cambio';
     }
