@@ -169,7 +169,10 @@ function pagina(d) {
   const fotosT = [...rot(trabajos, d.i * 2), ...capturasT];
   // La foto que el cliente eligió para la portada va en las propuestas A y D; las demás abren con su trabajo.
   // En el sitio en vivo, si el dueño eligió la foto de portada desde su panel, esa abre la página en cualquier diseño.
-  const heroBase = (d.layout === 'portada' || d.layout === 'logo' || (brief.fotos?.portada_manual && mat.hero)) ? (mat.hero || fotosT[0]) : (fotosT[0] || mat.hero || mat.fundador);
+  // Estilo de referencia: varias opciones son "foto a pantalla completa"; solo la A abre con su foto de portada,
+  // las demás con otra foto de su trabajo para que no se vean iguales (si el dueño fijó portada, se respeta en todas).
+  const variar = d.dref && d.letra !== 'A' && !brief.fotos?.portada_manual;
+  const heroBase = !variar && (d.layout === 'portada' || d.layout === 'logo' || (brief.fotos?.portada_manual && mat.hero)) ? (mat.hero || fotosT[0]) : (fotosT[0] || mat.hero || mat.fundador);
   // Si el titular habla de un producto, abre con la foto de ese producto (la eligió la IA de textos por su descripción).
   const fotoTit = !brief.fotos?.portada_manual && t.foto_url ? [mat.hero, ...trabajos].find((x) => x?.url === t.foto_url) : null;
   const heroFoto = fotoTit || heroBase;
@@ -365,7 +368,7 @@ export function paginasGenerales({ brief, mat, textos, pares, urlFuentes, ronda 
     const v = textos.variantes?.[i] || textos.variantes?.[0] || {};
     const par = fijo?.fuentes || (dref ? parPorNombres(dref.pares[i]) : pares[i % pares.length]);
     const d = {
-      i: i + ronda * 3, letra, layout, nombre: brief.negocio?.nombre || '', brief, mat, titulos,
+      i: i + ronda * 3, letra, layout, dref, nombre: brief.negocio?.nombre || '', brief, mat, titulos,
       pal: fijo?.paleta || (dref ? paletaRef(dref, i) : { ...corregirPaleta(paletaGeneral(layout, cps[i].colores, pastel, i + ronda * 2)).paleta, familia: cps[i].familia, origen: cps[i].origen }), f: par, fuentesUrl: urlFuentes([par]),
       t: { titular: v.titular, subtitulo: v.subtitulo, foto_url: v.foto_url || null, cta: v.cta || 'Escríbeme por WhatsApp', info: (textos.info || []).slice(0, 3), sobre: textos.sobre, proceso: textos.proceso, diapositivas: textos.diapositivas },
       wa: waUrl(c.whatsapp, c.mensaje_whatsapp_inicial), tel: c.whatsapp ? formatoTel(c.whatsapp) : null,
