@@ -40,14 +40,14 @@ async function guardarPago(entrevistaId, patch) {
 }
 
 /** Marca el pago (webhook o confirmación manual) y arranca el flujo de la dirección. Idempotente. */
-export async function confirmarPago(entrevistaId, { fuente = 'stripe', payment_intent = null, monto_centavos = null } = {}) {
+export async function confirmarPago(entrevistaId, { fuente = 'stripe', payment_intent = null, monto_centavos = null, descuento_centavos = 0, cupon_pct = 0 } = {}) {
   const e = await db.obtener(entrevistaId);
   if (!e) return { ok: false, error: 'no existe' };
   if (pagoDe(e.brief)?.estado === 'pagado') return { ok: true, repetido: true };
-  await guardarPago(e.id, { estado: 'pagado', pagado: new Date().toISOString(), fuente, payment_intent, monto_centavos });
-  await db.evento(e.id, 'pago_pagina', { fuente, payment_intent, monto_centavos });
+  await guardarPago(e.id, { estado: 'pagado', pagado: new Date().toISOString(), fuente, payment_intent, monto_centavos, descuento_centavos, cupon_pct });
+  await db.evento(e.id, 'pago_pagina', { fuente, payment_intent, monto_centavos, descuento_centavos, cupon_pct });
   const brief = (await db.obtener(e.id)).brief || {};
-  const textos = ['¡Recibí tu pago! ✅ Gracias.'];
+  const textos = [monto_centavos === 0 ? '¡Listo, quedó aplicado tu cupón! ✅ Gracias.' : '¡Recibí tu pago! ✅ Gracias.'];
   if (quiereDominio(brief) && dominioRespondido(brief) && !brief.tecnico?.dominio_flujo) {
     try { textos.push(...(await iniciarDominio(e, brief)).textos); }
     catch (err) { console.error('iniciarDominio tras pago', err); textos.push('Ahora reviso lo de tu dirección y en unos minutos te escribo por aquí con los siguientes pasos.'); }
@@ -56,13 +56,36 @@ export async function confirmarPago(entrevistaId, { fuente = 'stripe', payment_i
   return { ok: true };
 }
 
-/** Evento del webhook de Stripe cuyo client_reference_id es de una página. */
+// Precio de lista de la página en centavos de MXN (el Payment Link de Stripe cobra esto antes de cupones).
+const PRECIO_CENTAVOS = () => Math.round(Number(process.env.PAGO_PAGINA_MONTO_MXN || 1350) * 100);
+
+/** Revisa que la sesión de Stripe sea del cobro de la página: MXN y precio de lista correcto (antes de cupón). */
+export function revisarCobro(s) {
+  const subtotal = s.amount_subtotal ?? null;
+  const total = s.amount_total ?? null;
+  const descuento = s.total_details?.amount_discount ?? 0;
+  if (String(s.currency || '').toLowerCase() !== 'mxn') return { ok: false, motivo: `moneda ${s.currency}` };
+  if (subtotal === null || total === null) return { ok: false, motivo: 'sin montos' };
+  if (subtotal < PRECIO_CENTAVOS()) return { ok: false, motivo: `subtotal ${subtotal} menor al precio ${PRECIO_CENTAVOS()}` };
+  if (total + descuento < subtotal) return { ok: false, motivo: `total ${total} + descuento ${descuento} no cubre el subtotal ${subtotal}` };
+  return { ok: true, subtotal, total, descuento, cupon: descuento > 0 ? Math.round((descuento / subtotal) * 100) : 0 };
+}
+
+/** Evento del webhook de Stripe cuyo client_reference_id es de una página.
+ *  Acepta 'paid' y también 'no_payment_required' (cupón del 100 %: Stripe no cobra y no lo marca como pagado). */
 export async function procesarEventoPagina(ev) {
   const s = ev?.data?.object || {};
   const id = String(s.client_reference_id || '').slice(PREFIJO.length);
   if (!id) return { ignorado: 'sin entrevista' };
-  if (['checkout.session.completed', 'checkout.session.async_payment_succeeded'].includes(ev.type) && s.payment_status === 'paid') {
-    return confirmarPago(id, { fuente: 'stripe', payment_intent: s.payment_intent || null, monto_centavos: s.amount_total ?? null });
+  const pagado = s.payment_status === 'paid' || (s.payment_status === 'no_payment_required' && ev.type === 'checkout.session.completed');
+  if (['checkout.session.completed', 'checkout.session.async_payment_succeeded'].includes(ev.type) && pagado) {
+    const cobro = revisarCobro(s);
+    if (!cobro.ok) {
+      await db.evento(id, 'pago_pagina_rechazado', { motivo: cobro.motivo, sesion: s.id || null, payment_status: s.payment_status }).catch(() => {});
+      console.error('pago página rechazado', id, cobro.motivo);
+      return { ignorado: `cobro no válido: ${cobro.motivo}` };
+    }
+    return confirmarPago(id, { fuente: s.payment_status === 'paid' ? 'stripe' : 'stripe_cupon_100', payment_intent: s.payment_intent || null, monto_centavos: cobro.total, descuento_centavos: cobro.descuento, cupon_pct: cobro.cupon });
   }
   return { ignorado: ev.type };
 }
