@@ -19,7 +19,7 @@ import { crearPropuestasHTML, textosPropuestas } from './propuestas_html.js';
 import * as wp from './wp.js';
 import { sitioDePropuesta } from './sitio_propuesta.js';
 import { NOMBRES_GENERAL } from './propuestas_general.js';
-import { crearSitioVivo } from '../panel/sitios.js';
+import { crearSitioVivo, disenoElegido } from '../panel/sitios.js';
 import { avisar } from '../entrevista/avisos.js';
 
 const q = db.q;
@@ -431,6 +431,14 @@ export function registerGeneradorRoutes(app, wrap) {
       return { ok: true, dominio, modo: 'chat', url: `https://${dominio}/` };
     }
     const e = await db.obtener(b.sesion_id);
+    // Ya eligió diseño → el dominio muestra su sitio en vivo con su panel, no el selector de 6 propuestas.
+    if (e && disenoElegido(e.brief)) {
+      let sv = await crearSitioVivo(e, { dominio });
+      if (sv.dominio !== dominio) sv = (await q(`UPDATE sitios_vivos SET dominio=$2, actualizado=now() WHERE id=$1 RETURNING *`, [sv.id, dominio])).rows[0];
+      await asignarDominio({ dominio, entrevista_id: e.id, modo: 'vivo', datos: { nombre: e.brief?.negocio?.nombre, sitio_vivo_id: sv.id } });
+      // El acceso al panel lo entrega el cron de entregas en cuanto https://<dominio>/admin responda.
+      return { ok: true, dominio, modo: 'vivo', url: `https://${dominio}/`, sitio_vivo_id: sv.id };
+    }
     const p = e?.brief?.marca?.propuestas;
     if (!p?.token) throw new HttpError(400, 'la sesión no tiene propuestas');
     const opciones = [];
@@ -444,7 +452,7 @@ export function registerGeneradorRoutes(app, wrap) {
     }
     const mat = await procesarMateriales(e.id, e.brief, { aceptarLoQueHay: true }).catch(() => ({}));
     await asignarDominio({ dominio, entrevista_id: e.id, token: p.token, datos: { nombre: e.brief?.negocio?.nombre, logo: b.logo_url || mat.logo?.url || null, opciones } });
-    return { ok: true, dominio, url: `https://${dominio}/`, opciones };
+    return { ok: true, dominio, modo: 'propuestas', url: `https://${dominio}/`, opciones };
   }));
 
   // DNS en GoDaddy (token en GODADDY_PAT): ver registros y apuntar @/www al servidor.

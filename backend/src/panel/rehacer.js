@@ -10,6 +10,7 @@ import { procesarMateriales } from '../generador/materiales.js';
 import { crearSitioVivo, disenoElegido, porEntrevista, invalidar } from './sitios.js';
 import { reinterpretarHistorial, briefReinterpretado } from './reinterpretar.js';
 import { urlSitio } from './cambios_vivo.js';
+import { asignarDominio } from '../generador/dominios.js';
 
 const q = db.q;
 
@@ -86,7 +87,14 @@ export async function alElegir(entrevistaId) {
   const e = await db.obtener(entrevistaId);
   if (!disenoElegido(e?.brief)) return [];
   if (await porEntrevista(e.id)) return [];
-  const sv = await crearConDictado(e);
+  let sv = await crearConDictado(e);
   await db.evento(e.id, 'sitio_vivo_por_eleccion', { sitio_vivo_id: sv.id });
+  // Si su dominio ya mostraba el selector de 6 propuestas, ahora muestra su sitio en vivo; el cron entrega el panel.
+  const dom = (await db.q(`SELECT dominio FROM dominios_cliente WHERE entrevista_id=$1 AND modo='propuestas' ORDER BY actualizado DESC LIMIT 1`, [e.id]).catch(() => ({ rows: [] }))).rows[0]?.dominio;
+  if (dom) {
+    sv = (await db.q(`UPDATE sitios_vivos SET dominio=$2, actualizado=now() WHERE id=$1 RETURNING *`, [sv.id, dom])).rows[0];
+    await asignarDominio({ dominio: dom, entrevista_id: e.id, modo: 'vivo', datos: { nombre: e.brief?.negocio?.nombre, sitio_vivo_id: sv.id } });
+    await db.evento(e.id, 'dominio_a_sitio_vivo', { dominio: dom, sitio_vivo_id: sv.id });
+  }
   return [`Tu página ya quedó 🎉: ${urlSitio(sv)}`, 'Ábrela desde tu celular y dime qué quieres ajustar; los cambios los aplico aquí mismo.'];
 }

@@ -374,7 +374,7 @@ export async function cronDominiosPropios() {
         const t = await estadoConexion(f.dominio);
         if (t?.estado === 'listo') {
           await patchFlujo(id, { estado: 'lista', url: t.resultado?.url || `https://${f.dominio}/` });
-          await avisar(id, [`Tu página ya se ve en tu dirección 🎉\nhttps://${f.dominio}/\n\nÁbrela en tu celular. Si aún no eliges diseño, ahí mismo ves las 6 propuestas.`], { evento: 'dominio_listo' });
+          await avisar(id, [`Tu página ya se ve en tu dirección 🎉\nhttps://${f.dominio}/\n\nÁbrela en tu celular.${t.resultado?.modo === 'vivo' ? '' : ' Si aún no eliges diseño, ahí mismo ves las 6 propuestas.'}`], { evento: 'dominio_listo' });
         } else if (t?.estado === 'error' || t?.estado === 'interrumpido') {
           const n = (f.intentos_conexion || 0) + 1;
           if (n >= 3) {

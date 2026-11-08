@@ -62,7 +62,8 @@ async function ejecutar(id, { dominio, sesion_id, regenerar, logo_url, modo, dns
 
     // 3) Mapeo dominio → contenido (propuestas con capturas para el selector, o el chat de Ari).
     const m = await P.mapearDominio(dominio, sesion_id, logo_url, modo);
-    await paso('mapeo', { modo, opciones: m.opciones?.length });
+    const modoReal = m.modo || modo; // 'vivo' si el cliente ya eligió diseño
+    await paso('mapeo', { modo: modoReal, opciones: m.opciones?.length });
 
     // 4) Easypanel: rutas de Traefik con Let's Encrypt (apex + www, o solo el subdominio).
     await paso('easypanel', await P.easypanelDominios(raiz ? [dominio, `www.${dominio}`] : [dominio]));
@@ -83,7 +84,7 @@ async function ejecutar(id, { dominio, sesion_id, regenerar, logo_url, modo, dns
     // 7) HTTPS: si el certificado sale autofirmado (Let's Encrypt validó antes de propagar), se vuelve a pedir.
     let v = null, reintentos = 0;
     for (let i = 0; i < 45; i++) {
-      v = await P.verificarHttps(dominio, modo === 'chat' ? /Ari/ : /Elige el diseño/);
+      v = await P.verificarHttps(dominio, modoReal === 'chat' ? /Ari/ : modoReal === 'vivo' ? /<\/html>/i : /Elige el diseño/);
       if (v.ok) break;
       if (v.tls && i > 0 && i % 9 === 0 && reintentos < 3) {
         await P.easypanelReintentarCertificado(dominio).catch(() => {});
@@ -94,7 +95,7 @@ async function ejecutar(id, { dominio, sesion_id, regenerar, logo_url, modo, dns
       await dormir(20000);
     }
     if (!v?.ok) throw new Error(`HTTPS no quedó listo: ${JSON.stringify(v)}`);
-    const resultado = { url: `https://${dominio}/`, ...(modo === 'propuestas' ? { propuestas: 'abcdef'.split('').map((l) => `https://${dominio}/${l}`) } : {}) };
+    const resultado = { url: `https://${dominio}/`, modo: modoReal, ...(modoReal === 'propuestas' ? { propuestas: 'abcdef'.split('').map((l) => `https://${dominio}/${l}`) } : {}) };
     await paso('listo', resultado);
     await q(`UPDATE dominios_trabajos SET estado='listo', resultado=$2, actualizado=now() WHERE id=$1`, [id, JSON.stringify(resultado)]);
   } catch (e) {

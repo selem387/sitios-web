@@ -243,7 +243,7 @@ export async function cronCompras() {
       if (t?.estado === 'listo') {
         await guardar(c.id, { estado: 'lista', conexion: t });
         await patchFlujo(c.entrevista_id, { estado: 'lista', url: t.resultado?.url || `https://${c.dominio}/` });
-        await avisar(c.entrevista_id, [`Tu página ya se ve en tu dirección 🎉\nhttps://${c.dominio}/\n\nÁbrela en tu celular. Si aún no eliges diseño, ahí mismo ves las 6 propuestas.`], { evento: 'dominio_listo', datos: { compra_id: c.id } });
+        await avisar(c.entrevista_id, [`Tu página ya se ve en tu dirección 🎉\nhttps://${c.dominio}/\n\nÁbrela en tu celular.${t.resultado?.modo === 'vivo' ? '' : ' Si aún no eliges diseño, ahí mismo ves las 6 propuestas.'}`], { evento: 'dominio_listo', datos: { compra_id: c.id } });
       } else if (t?.estado === 'error' || t?.estado === 'interrumpido') {
         if (Date.now() - new Date(c.actualizado).getTime() > 3600e3) await revisar(c, `El microservicio dominios terminó en ${t.estado}: ${t.error || ''}`, { sinReembolso: true });
       }
