@@ -11,6 +11,7 @@ import { estudiarReferencias } from '../entrevista/referencias.js';
 import { procesarMateriales } from '../generador/materiales.js';
 import { crearPropuestasHTML } from '../generador/propuestas_html.js';
 import { direccionEditorialSuave } from '../generador/estilo_ref.js';
+import { revisarOpciones } from '../generador/revision_visual.js';
 import { aplicarContenido, porEntrevista } from './sitios.js';
 
 const ESTILOS = ['minimalista', 'fresco', 'calido', 'elegante', 'tecnologico', 'tradicional', 'lujo', 'divertido'];
@@ -65,23 +66,41 @@ export async function prepararOpcionesNuevas(entrevistaId, { comentario = '', re
     // Con una página de referencia estudiada y un estilo sobrio, las 6 son variaciones de ese estilo (no los acomodos de siempre).
     const refOk = estudio.some((x) => x && !x.error);
     if (refOk && ['elegante', 'lujo', 'minimalista', 'tradicional', 'calido'].includes(dir?.estilo || 'elegante')) ajustes.direccion_ref = direccionEditorialSuave();
-    const brief = { ...actual, marca: { ...actual.marca, ...ajustes } };
-    const mat = await procesarMateriales(e.id, brief, { aceptarLoQueHay: true });
-    if (sv.contenido?.menu?.secciones) mat.menu_texto = sv.contenido.menu.secciones;
-    const ronda = Math.max(prop.ronda || 0, actual.marca?.propuestas_nuevas?.ronda || 0) + 1;
-    const r = await crearPropuestasHTML(brief, mat, textos, { ronda });
-    const opciones = r.opciones.map((o) => ({ etiqueta: o.letra, letra: o.letra, layout: o.layout, nombre: o.nombre, url: o.url, estilo: o.fuentes.estilo, tipografia: { titulos: o.fuentes.titulos, cuerpo: o.fuentes.cuerpo }, paleta: o.paleta }));
+    const baseRonda = Math.max(prop.ronda || 0, actual.marca?.propuestas_nuevas?.ronda || 0) + 1;
+    // Hasta 3 intentos; solo se guardan (y se mandan) las opciones que pasan la revisión visual. Con menos de 4, se reintenta:
+    // 2º intento con otra ronda (otras fotos/variaciones), 3º sin el estilo de referencia (acomodos de siempre con el estilo elegido).
+    let elegidas = null, ultima = null, mejor = null, avisado = false;
+    for (let intento = 0; intento < 3 && !elegidas; intento++) {
+      const aj = intento === 2 ? (({ direccion_ref, ...x }) => x)(ajustes) : ajustes;
+      const brief = { ...actual, marca: { ...actual.marca, ...aj } };
+      const mat = await procesarMateriales(e.id, brief, { aceptarLoQueHay: true });
+      if (sv.contenido?.menu?.secciones) mat.menu_texto = sv.contenido.menu.secciones;
+      const ronda = baseRonda + intento;
+      const r = await crearPropuestasHTML(brief, mat, textos, { ronda });
+      const opciones = r.opciones.map((o) => ({ etiqueta: o.letra, letra: o.letra, layout: o.layout, nombre: o.nombre, url: o.url, estilo: o.fuentes.estilo, tipografia: { titulos: o.fuentes.titulos, cuerpo: o.fuentes.cuerpo }, paleta: o.paleta }));
+      const revision = await revisarOpciones(opciones, { referencia: aj.direccion_ref ? ligas[0] : null, pedido: comentario });
+      const pasan = opciones.filter((o) => revision.find((x) => x.letra === o.letra)?.ok);
+      await db.evento(e.id, 'revision_opciones', { intento, token: r.token, pasan: pasan.map((o) => o.letra), revision: revision.map(({ capturas, ...x }) => ({ ...x, capturas })) });
+      ultima = { r, opciones, pasan, revision, aj, ronda };
+      if (!mejor || pasan.length > mejor.pasan.length) mejor = ultima;
+      if (pasan.length >= 4) elegidas = ultima;
+      else if (enviar && !avisado) { avisado = true; await avisar(e.id, 'Les estoy dando una última revisada a tus opciones para que queden impecables ✨ En unos minutos más te las mando.').catch(() => {}); }
+    }
+    // Si ningún intento junta 4, se mandan las que pasaron del mejor intento (mínimo 2); si no, no se manda nada malo.
+    if (!elegidas && mejor && mejor.pasan.length >= 2) elegidas = mejor;
+    if (!elegidas) throw new Error(`ninguna ronda pasó la revisión visual: ${JSON.stringify((ultima?.revision || []).map((x) => ({ letra: x.letra, problemas: x.problemas })) ).slice(0, 400)}`);
+    const { r, pasan, revision, aj, ronda } = elegidas;
     // Se relee el brief para no pisar lo que haya cambiado mientras se generaban.
     const e2 = await db.obtener(e.id);
-    const nuevas = { estado: 'mostradas', token: r.token, opciones, textos, ronda, ajustes_marca: ajustes, comentario, creado: new Date().toISOString() };
+    const nuevas = { estado: 'mostradas', token: r.token, opciones: pasan, textos, ronda, ajustes_marca: aj, comentario, revision: revision.map(({ letra, ok, parecido, problemas }) => ({ letra, ok, parecido, problemas })), creado: new Date().toISOString() };
     await db.guardar(e.id, { brief: { ...e2.brief, marca: { ...e2.brief.marca, propuestas_nuevas: nuevas } } });
-    await db.evento(e.id, 'opciones_nuevas', { token: r.token, ronda, ligas, estilo: dir?.estilo || null });
+    await db.evento(e.id, 'opciones_nuevas', { token: r.token, ronda, ligas, estilo: dir?.estilo || null, enviadas: pasan.map((o) => o.letra) });
     if (!enviar) return;
     await enviarOpcionesNuevas(e.id);
   } catch (err) {
     console.error('[rediseno]', entrevistaId, err);
     await db.evento(entrevistaId, 'opciones_nuevas_error', { error: String(err.message || err).slice(0, 500) }).catch(() => {});
-    if (enviar) await avisar(entrevistaId, 'Tuve un problema preparando tus opciones nuevas 😔 ¿Me lo vuelves a pedir en un momento? Si quieres, dime también qué te gustaría distinto.').catch(() => {});
+    if (enviar) await avisar(entrevistaId, 'No logré dejar tus opciones nuevas como mereces 😔 ¿Me cuentas un poco más de lo que te gustaría (o me mandas otra página de ejemplo)? Así te preparo unas mejores.').catch(() => {});
   } finally {
     enCurso.delete(entrevistaId);
   }
@@ -97,7 +116,7 @@ export async function enviarOpcionesNuevas(entrevistaId) {
   const r = { token: nuevas.token };
   {
     const lista = opciones.map((o) => `*${o.letra}. ${o.nombre}*\n${o.url}`).join('\n\n');
-    await avisar(entrevistaId, `¡Listo! 😊 Te preparé 6 opciones nuevas${ligas.length ? ' más parecidas a la página que me compartiste' : ''}, con tus textos y tus fotos:\n\n${lista}\n\nÁbrelas y dime la letra de la que quieres. Tu página no cambia hasta que me digas cuál.`, { evento: 'opciones_nuevas_enviadas', datos: { token: r.token } });
+    await avisar(entrevistaId, `¡Listo! 😊 Te preparé ${opciones.length} opciones nuevas${ligas.length ? ' más parecidas a la página que me compartiste' : ''}, con tus textos y tus fotos:\n\n${lista}\n\nÁbrelas y dime la letra de la que quieres. Tu página no cambia hasta que me digas cuál.`, { evento: 'opciones_nuevas_enviadas', datos: { token: r.token } });
   }
   return { token: r.token };
 }
