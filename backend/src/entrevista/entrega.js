@@ -44,13 +44,13 @@ export async function accesoResponde(url) {
 
 export function textoEntrega({ dominio, urlAdmin, email, llave = false }) {
   if (llave) return [
-    `Tu página ya está en tu dirección 🎉\nhttps://${dominio}/`,
+    `${String(dominio).includes('/') ? 'Tu página ya está publicada' : 'Tu página ya está en tu dirección'} 🎉\nhttps://${dominio}/`,
     `Para administrarla tú mismo (precios, productos, servicios, fotos, horarios y promociones) entra con esta liga:\n${urlAdmin}\n\n`
     + 'Es solo para ti: no la compartas. No necesitas contraseña; guárdala en tus favoritos. Lo que cambies se ve en tu página al momento.',
   ];
   const gmail = /@(gmail|googlemail)\.com$/i.test(email || '');
   return [
-    `Tu página ya está en tu dirección 🎉\nhttps://${dominio}/`,
+    `${String(dominio).includes('/') ? 'Tu página ya está publicada' : 'Tu página ya está en tu dirección'} 🎉\nhttps://${dominio}/`,
     `Para administrarla tú mismo (precios, productos, servicios, fotos, horarios y promociones) entra aquí:\n${urlAdmin}\n\n`
     + `No necesitas contraseña: escribe tu correo *${email}* y te llega un código de 6 números.${gmail ? ' Como es Gmail, también puedes tocar *Entrar con Google*.' : ''}\n\n`
     + 'Guarda esta liga en tus favoritos. Lo que cambies se ve en tu página al momento.',
@@ -96,6 +96,15 @@ export async function cronEntregas() {
                            AND COALESCE(e.brief#>>'{administracion,estado}','') <> 'entregado'`).catch(() => ({ rows: [] }));
   for (const s of vivos.rows) {
     await entregarAcceso(s.entrevista_id, { dominio: s.dominio, panel: 'panel_propio', sitio_vivo_id: s.id }).catch((err) => console.error('entrega vivo', s.id, err.message));
+  }
+  // Pagados sin dominio propio: se publican en nuestra dirección y se entrega el panel ahí.
+  const sinDom = await q(`SELECT sv.entrevista_id FROM sitios_vivos sv JOIN entrevistas e ON e.id = sv.entrevista_id
+                          WHERE sv.dominio IS NULL AND sv.acceso_entregado IS NULL AND sv.estado='activo'
+                            AND e.brief#>>'{pago_pagina,estado}' = 'pagado' AND COALESCE(e.brief#>>'{tecnico,quiere_dominio}','') = 'false'
+                            AND COALESCE(e.brief#>>'{administracion,estado}','') <> 'entregado'`).catch(() => ({ rows: [] }));
+  if (sinDom.rows.length) {
+    const { publicarSinDominio } = await import('./pago_pagina.js');
+    for (const s of sinDom.rows) await publicarSinDominio(s.entrevista_id).catch((err) => console.error('publicar sin dominio', s.entrevista_id, err.message));
   }
   // WordPress publicado en un dominio que no es de vista previa.
   const wps = await q(`SELECT DISTINCT ON (s.entrevista_id) s.entrevista_id, s.url_publica FROM sitios s JOIN entrevistas e ON e.id = s.entrevista_id

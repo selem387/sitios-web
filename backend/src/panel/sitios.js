@@ -31,6 +31,7 @@ CREATE TABLE IF NOT EXISTS sitios_vivos (
 );
 -- Enlace mágico permanente al panel (Ari lo manda por el chat; solo el dueño lo tiene).
 ALTER TABLE sitios_vivos ADD COLUMN IF NOT EXISTS llave text UNIQUE;
+ALTER TABLE sitios_vivos ADD COLUMN IF NOT EXISTS url_publica text;
 UPDATE sitios_vivos SET llave = replace(replace(encode(gen_random_bytes(24),'base64'),'/','_'),'+','-') WHERE llave IS NULL;
 CREATE TABLE IF NOT EXISTS codigos_panel (
   id           serial PRIMARY KEY,
@@ -203,7 +204,7 @@ export async function renderSitio(sv, { previa = false } = {}) {
   const pg = r.paginas[0];
   if (!pg) throw new Error('no se pudo armar la página');
   if (r.faltan?.length) console.warn('[sitio vivo]', sv.id, 'material sin mostrar:', r.faltan.map((f) => f.clave).join(','));
-  let html = comoSitio(pg.html, brief, { letra: fijo.letra, dominio: previa ? null : sv.dominio });
+  let html = comoSitio(pg.html, brief, { letra: fijo.letra, dominio: previa ? null : (sv.dominio || (sv.url_publica ? sv.url_publica.replace(/^https?:\/\//, '').replace(/\/$/, '') : null)) });
   if (brief.negocio?.arquetipo === 'inmobiliaria') {
     const { listar, conPropiedades } = await import('./propiedades.js');
     html = conPropiedades(html, await listar(sv.id, { publicas: true }), { base: previa ? `/s/${sv.slug}` : '' });

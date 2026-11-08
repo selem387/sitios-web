@@ -27,7 +27,12 @@ export const quiereDominio = (brief) => brief?.tecnico?.quiere_dominio !== false
 
 export const PREGUNTA_DOMINIO = 'Por último, la dirección de tu página en internet, por ejemplo tunegocio.com. ¿Ya tienes una comprada?';
 
-export const mensajePago = (entrevistaId) => `Ahora, para alojar la página en tu nombre de dominio, completa por favor el pago en este enlace:\n${ligaPago(entrevistaId)}`;
+export const PRECIO_TEXTO = () => `$${Number(process.env.PAGO_PAGINA_MONTO_MXN || 1350).toLocaleString('es-MX')} MXN`;
+/** Base de la dirección nuestra para quien no quiere dominio propio: <base>/s/<slug>. */
+export const BASE_SIN_DOMINIO = () => (process.env.SITIOS_BASE_URL || 'https://websites.timewins.ai').replace(/\/$/, '');
+export const mensajePago = (entrevistaId, { conDominio = true } = {}) => (conDominio
+  ? `Ahora, para publicar tu página en tu propia dirección, completa por favor el pago único de *${PRECIO_TEXTO()}* en este enlace:\n${ligaPago(entrevistaId)}`
+  : `Ahora, para publicar tu página, completa por favor el pago único de *${PRECIO_TEXTO()}* en este enlace:\n${ligaPago(entrevistaId)}\n\nQuedará en una dirección nuestra (${BASE_SIN_DOMINIO().replace(/^https?:\/\//, '')}/s/…). Si después quieres tu propia dirección, escríbeme *comprar dirección*.`);
 
 /** Estado inicial que se guarda al mandar el enlace. */
 export const pagoPendiente = (entrevistaId) => ({ estado: 'pendiente', enlace: ligaPago(entrevistaId), enviado: new Date().toISOString() });
@@ -37,6 +42,25 @@ const pagoDe = (brief) => brief?.pago_pagina || null;
 async function guardarPago(entrevistaId, patch) {
   await db.q(`UPDATE entrevistas SET brief = jsonb_set(brief, '{pago_pagina}', COALESCE(brief->'pago_pagina','{}'::jsonb) || $2::jsonb), actualizado=now() WHERE id=$1`,
     [entrevistaId, JSON.stringify(patch)]);
+}
+
+/**
+ * Sin dominio propio (opción decidida 8-nov-2026): paga igual y su página queda publicada en nuestra dirección
+ * <SITIOS_BASE_URL>/s/<slug> (deja de ser vista previa: se indexa y lleva canonical), y se entrega el panel ahí.
+ * Si el sitio en vivo aún no existe (no ha elegido diseño), el cron de entregas lo publica cuando exista.
+ */
+export async function publicarSinDominio(entrevistaId) {
+  const sv = (await db.q(`SELECT * FROM sitios_vivos WHERE entrevista_id=$1 ORDER BY id DESC LIMIT 1`, [entrevistaId]).catch(() => ({ rows: [] }))).rows[0];
+  if (!sv || sv.dominio) return { publicado: false, motivo: sv ? 'tiene dominio propio' : 'sin sitio en vivo aún' };
+  const url = `${BASE_SIN_DOMINIO()}/s/${sv.slug}`;
+  if (sv.url_publica !== url) {
+    await db.q(`UPDATE sitios_vivos SET url_publica=$2, version=version+1, actualizado=now() WHERE id=$1`, [sv.id, url]);
+    const { invalidar } = await import('../panel/sitios.js');
+    invalidar(sv.id);
+  }
+  const { entregarAcceso } = await import('./entrega.js');
+  const r = await entregarAcceso(entrevistaId, { dominio: url.replace(/^https?:\/\//, ''), panel: 'panel_propio', sitio_vivo_id: sv.id });
+  return { publicado: true, url, entrega: r };
 }
 
 /** Marca el pago (webhook o confirmación manual) y arranca el flujo de la dirección. Idempotente. */
@@ -52,7 +76,10 @@ export async function confirmarPago(entrevistaId, { fuente = 'stripe', payment_i
     try { textos.push(...(await iniciarDominio(e, brief)).textos); }
     catch (err) { console.error('iniciarDominio tras pago', err); textos.push('Ahora reviso lo de tu dirección y en unos minutos te escribo por aquí con los siguientes pasos.'); }
   }
+  const sinDominio = !quiereDominio(brief);
+  if (sinDominio) textos.push('Ahora la publico y en un momento te mando aquí la liga de tu página y la de tu administrador.');
   await avisar(e.id, textos, { evento: 'pago_pagina_recibido' });
+  if (sinDominio) await publicarSinDominio(e.id).catch((err) => console.error('publicarSinDominio', err));
   return { ok: true };
 }
 

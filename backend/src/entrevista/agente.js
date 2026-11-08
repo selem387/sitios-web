@@ -590,7 +590,10 @@ export async function procesarMensaje(b) {
     if (quiereDominio(brief)) {
       brief.pago_pagina = pagoPendiente(e.id);
       t.reply = `${mensajePago(e.id)}\n\n${cierre} En cuanto se refleje tu pago seguimos con tu dirección.`;
-    } else t.reply = `Va 👍 ${cierre} Cuando quieras tu propia dirección, escríbeme *comprar dirección*.`;
+    } else {
+      brief.pago_pagina = pagoPendiente(e.id);
+      t.reply = `${mensajePago(e.id, { conDominio: false })}\n\n${cierre}`;
+    }
   }
 
   const cambios = { brief, bloque_actual: t.bloque, pendientes_bloque: t.pendientes, arquetipo_slug: brief.negocio?.arquetipo || null, nombre: brief.cliente?.nombre || e.nombre };

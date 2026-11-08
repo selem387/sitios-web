@@ -290,15 +290,16 @@ export function registerPanelRoutes(app, wrap) {
     if (!sv) return c.text('No encontrado', 404);
     const base = `/s/${sv.slug}`;
     const ruta = c.req.path.slice(base.length).replace(/\/+$/, '') || '/';
-    if (ruta === '/') return servirSitio(c, sv, { previa: true });
+    if (ruta === '/') return servirSitio(c, sv, { previa: !sv.url_publica });
     const mprop = ruta.match(/^\/propiedad\/([a-z0-9-]{1,80})$/);
-    if (mprop) return servirPropiedad(c, sv, mprop[1], { previa: true });
+    if (mprop) return servirPropiedad(c, sv, mprop[1], { previa: !sv.url_publica });
     return (await atenderPanel(c, sv, base, ruta)) || c.text('No encontrado', 404);
   });
   app.get('/s/:slug', async (c) => {
     await S.migrarPanel();
     const sv = await S.porSlug(c.req.param('slug'));
-    return sv ? servirSitio(c, sv, { previa: true }) : c.text('No encontrado', 404);
+    if (sv?.dominio && sv.url_publica) return c.redirect(`https://${sv.dominio}/`, 301);
+    return sv ? servirSitio(c, sv, { previa: !sv.url_publica }) : c.text('No encontrado', 404);
   });
 
   // Regreso de Google (dominio neutro): valida la cuenta y manda al panel del cliente con un pase de un solo uso.
