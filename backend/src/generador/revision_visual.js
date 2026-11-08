@@ -45,16 +45,16 @@ Juzga solo:
 - Profesionalismo: se ve como una página de calidad, con jerarquía clara, aire y fotos protagonistas (no una presentación de puro texto).
 - Que el recorte de la foto principal no corte una cara o una cabeza (un recorte normal de fondo está bien).
 - Que la tipografía y los colores combinen entre sí.
-Pon ok=false solo por una falla clara y visible de esta lista; los detalles de gusto van en problemas pero no impiden ok=true.`;
+Pon profesional=false solo por una falla clara y visible de esta lista. Califica aparte el parecido con la referencia.`;
 
 const ESQUEMA = {
   type: 'object',
   properties: {
-    ok: { type: 'boolean', description: 'true solo si cumple TODAS las reglas y se ve lista para mostrarse a un cliente.' },
-    parecido: { type: 'integer', minimum: 0, maximum: 5, description: '0 si no hay referencia; 1–5 qué tanto se parece al estilo de la referencia (no a su contenido).' },
-    problemas: { type: 'array', items: { type: 'string' }, description: 'Problemas concretos y dónde (p. ej. "celular: el título se encima con el botón").' },
+    profesional: { type: 'boolean', description: 'false SOLO si hay una falla clara de calidad de la lista (se ve amateur, rota, sin jerarquía, foto principal que corta una cara). El gusto o el parecido con la referencia NO cuentan aquí.' },
+    parecido: { type: 'integer', minimum: 0, maximum: 5, description: '0 si no hay referencia; 1–5 qué tanto se parece al ESTILO de la referencia (no a su contenido).' },
+    problemas: { type: 'array', items: { type: 'string' }, description: 'Observaciones concretas y dónde.' },
   },
-  required: ['ok', 'problemas'],
+  required: ['profesional', 'problemas'],
 };
 
 async function revisarUna(o, caps, { refCaptura, pedido, fuentes }) {
@@ -70,7 +70,7 @@ async function revisarUna(o, caps, { refCaptura, pedido, fuentes }) {
       system: 'Eres directora de arte y revisas propuestas de páginas web antes de enseñárselas a un cliente. Eres estricta: si algo se ve mal, no pasa. No inventes problemas que no se ven en las capturas.',
       contenido, schema: ESQUEMA, model: config.anthropicModel, max_tokens: 900, timeoutMs: 180000,
     });
-    return { ok: !!r.data.ok, parecido: r.data.parecido ?? null, problemas: r.data.problemas || [] };
+    return { ok: r.data.profesional !== false, parecido: r.data.parecido ?? null, problemas: r.data.problemas || [] };
   } catch (err) {
     return { ok: false, problemas: [`no se pudo revisar: ${err.message}`], error: true };
   }

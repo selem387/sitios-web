@@ -39,9 +39,9 @@ export const paletaRef = (d, i) => ({ ...corregirPaleta(PAL[d.paletas?.[i]] || P
 
 const CSS = `
 body.ref{letter-spacing:.003em}
-body.ref h1,body.ref h2,body.ref h3{font-weight:400;letter-spacing:-.012em}
+body.ref h1,body.ref h2,body.ref h3{font-weight:300;letter-spacing:-.012em}
 body.ref h1{font-size:clamp(40px,6vw,82px);line-height:1.04}
-body.ref h1 em,body.ref h2 em{font-style:italic;font-weight:400}
+body.ref h1 em,body.ref h2 em{font-style:italic;font-weight:300}
 body.ref h2{font-size:clamp(30px,3.8vw,52px);line-height:1.1}
 body.ref .barra{border-bottom:0}
 body.ref .barra nav a{font-family:var(--fc);font-size:11px;letter-spacing:.2em;text-transform:uppercase;font-weight:400}
@@ -71,7 +71,9 @@ function cursivaTitular(html) {
 
 /** Aplica el estilo de referencia a la página armada (fuente cursiva, CSS y clase del body). */
 export function aplicarRef(html, par) {
-  const fam = (f) => `family=${encodeURIComponent(f).replace(/%20/g, '+')}:ital@0;1`;
+  // Cursiva y versión delgada (300) cuando la letra la tiene: la referencia usa títulos finos.
+  const DELGADA = new Set(['Newsreader', 'Spectral', 'Cormorant', 'Cormorant Garamond', 'Fraunces', 'Literata']);
+  const fam = (f) => `family=${encodeURIComponent(f).replace(/%20/g, '+')}:${DELGADA.has(f) ? 'ital,wght@0,300;0,400;1,300;1,400' : 'ital@0;1'}`;
   const link = `<link rel="stylesheet" href="https://fonts.googleapis.com/css2?${fam(par.titulos)}&display=swap">`;
   return cursivaTitular(html)
     .replace('</head>', () => `${link}<style id="ref">${CSS}</style></head>`)
