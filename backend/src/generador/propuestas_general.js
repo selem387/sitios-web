@@ -3,6 +3,8 @@
 // REGLA DURA: todo el material del cliente (logo, fotos, su foto, reseñas, catálogos, documentos, video) aparece en
 // cada una de las 6. Lo que no cabe en una sección temática va a la galería final; el validador lo confirma.
 import { corregirPaleta } from './tipo_color.js';
+import { esDireccionRef, paletaRef, aplicarRef } from './estilo_ref.js';
+import { parPorNombres } from './fuentes.js';
 import { coloresParaPropuesta } from './paletas_giro.js';
 import { mezclar, contraste } from '../entrevista/tema.js';
 import { esPastel, coloresDePalabras } from './materiales.js';
@@ -355,17 +357,22 @@ export function paginasGenerales({ brief, mat, textos, pares, urlFuentes, ronda 
   const evitarHex = coloresDePalabras(String(brief.marca?.evitar || '').split(/[,;y]+/));
   const cps = cpsDados || LAYOUTS_GENERAL.map((_, i) => coloresParaPropuesta({ brief, coloresCliente: colores, i, ronda, evitarHex }));
   const c = brief.contacto || {};
-  const todas = LAYOUTS_GENERAL.map((layout, i) => ({ layout, i })).filter(({ i }) => !fijo || 'ABCDEF'[i] === fijo.letra);
+  // Estilo de referencia del cliente: 6 variaciones de ese estilo (acomodos, letras y paletas propias).
+  const dref = esDireccionRef(brief.marca?.direccion_ref) ? brief.marca.direccion_ref : null;
+  const todas = (dref ? dref.layouts : LAYOUTS_GENERAL).map((layout, i) => ({ layout, i })).filter(({ i }) => !fijo || 'ABCDEF'[i] === fijo.letra);
   return todas.map(({ layout, i }) => {
     const letra = 'ABCDEF'[i];
     const v = textos.variantes?.[i] || textos.variantes?.[0] || {};
-    const par = fijo?.fuentes || pares[i % pares.length];
+    const par = fijo?.fuentes || (dref ? parPorNombres(dref.pares[i]) : pares[i % pares.length]);
     const d = {
       i: i + ronda * 3, letra, layout, nombre: brief.negocio?.nombre || '', brief, mat, titulos,
-      pal: fijo?.paleta || { ...corregirPaleta(paletaGeneral(layout, cps[i].colores, pastel, i + ronda * 2)).paleta, familia: cps[i].familia, origen: cps[i].origen }, f: par, fuentesUrl: urlFuentes([par]),
+      pal: fijo?.paleta || (dref ? paletaRef(dref, i) : { ...corregirPaleta(paletaGeneral(layout, cps[i].colores, pastel, i + ronda * 2)).paleta, familia: cps[i].familia, origen: cps[i].origen }), f: par, fuentesUrl: urlFuentes([par]),
       t: { titular: v.titular, subtitulo: v.subtitulo, foto_url: v.foto_url || null, cta: v.cta || 'Escríbeme por WhatsApp', info: (textos.info || []).slice(0, 3), sobre: textos.sobre, proceso: textos.proceso, diapositivas: textos.diapositivas },
       wa: waUrl(c.whatsapp, c.mensaje_whatsapp_inicial), tel: c.whatsapp ? formatoTel(c.whatsapp) : null,
     };
-    return { letra, layout, nombre: NOMBRES_GENERAL[layout], html: pagina(d), fuentes: par, paleta: d.pal };
+    const nombre = dref?.nombres?.[i] || NOMBRES_GENERAL[layout];
+    let html = pagina(d);
+    if (dref) html = aplicarRef(html, par).replace(` · Propuesta ${letra}: ${esc(NOMBRES_GENERAL[layout])}</footer>`, ` · Propuesta ${letra}: ${esc(nombre)}</footer>`);
+    return { letra, layout, nombre, html, fuentes: par, paleta: d.pal };
   });
 }

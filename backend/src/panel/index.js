@@ -378,8 +378,14 @@ export function registerPanelRoutes(app, wrap) {
     let comentario = String(b.comentario || '');
     if (!comentario) comentario = (await db.ultimosMensajes(id, 30)).filter((m) => m.rol === 'cliente').map((m) => m.transcripcion || m.contenido || '').join('\n').slice(-3000);
     const referencias = [...new Set([...(Array.isArray(b.referencias) ? b.referencias : []), ...ligasReferencia(comentario)])];
-    prepararOpcionesNuevas(id, { comentario, referencias }).catch((err) => console.error('rediseno', err));
+    prepararOpcionesNuevas(id, { comentario, referencias, enviar: b.enviar !== false }).catch((err) => console.error('rediseno', err));
     return { ok: true, en_proceso: true, referencias };
+  }));
+  // Mandar por el chat las opciones nuevas ya preparadas (cuando se generaron con enviar:false para revisarlas antes).
+  app.post('/entrevista/v1/sesiones/:id/opciones-nuevas/enviar', wrap(async (c) => {
+    auth(c);
+    const { enviarOpcionesNuevas } = await import('./rediseno.js');
+    return enviarOpcionesNuevas(c.req.param('id')).catch((x) => { throw new HttpError(409, x.message); });
   }));
 
   app.get('/entrevista/v1/sitios-vivos/:id', wrap(async (c) => {

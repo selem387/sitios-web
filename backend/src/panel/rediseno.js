@@ -10,6 +10,7 @@ import { avisar } from '../entrevista/avisos.js';
 import { estudiarReferencias } from '../entrevista/referencias.js';
 import { procesarMateriales } from '../generador/materiales.js';
 import { crearPropuestasHTML } from '../generador/propuestas_html.js';
+import { direccionEditorialSuave } from '../generador/estilo_ref.js';
 import { aplicarContenido, porEntrevista } from './sitios.js';
 
 const ESTILOS = ['minimalista', 'fresco', 'calido', 'elegante', 'tecnologico', 'tradicional', 'lujo', 'divertido'];
@@ -42,7 +43,7 @@ async function direccion(comentario, estudio, brief) {
  * Prepara 6 opciones nuevas en segundo plano y le manda las ligas por el chat.
  * No toca la página publicada.
  */
-export async function prepararOpcionesNuevas(entrevistaId, { comentario = '', referencias = [] } = {}) {
+export async function prepararOpcionesNuevas(entrevistaId, { comentario = '', referencias = [], enviar = true } = {}) {
   if (enCurso.has(entrevistaId)) return;
   enCurso.add(entrevistaId);
   try {
@@ -61,6 +62,9 @@ export async function prepararOpcionesNuevas(entrevistaId, { comentario = '', re
       referencias_estudio: [...(actual.marca?.referencias_estudio || []), ...estudio],
       referencias_que_gusta: [actual.marca?.referencias_que_gusta, comentario, dir?.notas].filter(Boolean).join(' · ').slice(0, 2000),
     };
+    // Con una página de referencia estudiada y un estilo sobrio, las 6 son variaciones de ese estilo (no los acomodos de siempre).
+    const refOk = estudio.some((x) => x && !x.error);
+    if (refOk && ['elegante', 'lujo', 'minimalista', 'tradicional', 'calido'].includes(dir?.estilo || 'elegante')) ajustes.direccion_ref = direccionEditorialSuave();
     const brief = { ...actual, marca: { ...actual.marca, ...ajustes } };
     const mat = await procesarMateriales(e.id, brief, { aceptarLoQueHay: true });
     if (sv.contenido?.menu?.secciones) mat.menu_texto = sv.contenido.menu.secciones;
@@ -72,15 +76,30 @@ export async function prepararOpcionesNuevas(entrevistaId, { comentario = '', re
     const nuevas = { estado: 'mostradas', token: r.token, opciones, textos, ronda, ajustes_marca: ajustes, comentario, creado: new Date().toISOString() };
     await db.guardar(e.id, { brief: { ...e2.brief, marca: { ...e2.brief.marca, propuestas_nuevas: nuevas } } });
     await db.evento(e.id, 'opciones_nuevas', { token: r.token, ronda, ligas, estilo: dir?.estilo || null });
-    const lista = opciones.map((o) => `*${o.letra}. ${o.nombre}*\n${o.url}`).join('\n\n');
-    await avisar(e.id, `¡Listo! 😊 Te preparé 6 opciones nuevas${ligas.length ? ' inspiradas en la página que me compartiste' : ''}, con tus textos y tus fotos:\n\n${lista}\n\nÁbrelas y dime la letra de la que quieres. Tu página no cambia hasta que me digas cuál.`, { evento: 'opciones_nuevas_enviadas', datos: { token: r.token } });
+    if (!enviar) return;
+    await enviarOpcionesNuevas(e.id);
   } catch (err) {
     console.error('[rediseno]', entrevistaId, err);
     await db.evento(entrevistaId, 'opciones_nuevas_error', { error: String(err.message || err).slice(0, 500) }).catch(() => {});
-    await avisar(entrevistaId, 'Tuve un problema preparando tus opciones nuevas 😔 ¿Me lo vuelves a pedir en un momento? Si quieres, dime también qué te gustaría distinto.').catch(() => {});
+    if (enviar) await avisar(entrevistaId, 'Tuve un problema preparando tus opciones nuevas 😔 ¿Me lo vuelves a pedir en un momento? Si quieres, dime también qué te gustaría distinto.').catch(() => {});
   } finally {
     enCurso.delete(entrevistaId);
   }
+}
+
+/** Manda por el chat las ligas de las opciones nuevas ya preparadas. */
+export async function enviarOpcionesNuevas(entrevistaId) {
+  const e = await db.obtener(entrevistaId);
+  const nuevas = opcionesNuevasPendientes(e?.brief);
+  if (!nuevas) throw new Error('no hay opciones nuevas preparadas');
+  const ligas = nuevas.ajustes_marca?.referencias_sitios || [];
+  const opciones = nuevas.opciones;
+  const r = { token: nuevas.token };
+  {
+    const lista = opciones.map((o) => `*${o.letra}. ${o.nombre}*\n${o.url}`).join('\n\n');
+    await avisar(entrevistaId, `¡Listo! 😊 Te preparé 6 opciones nuevas${ligas.length ? ' más parecidas a la página que me compartiste' : ''}, con tus textos y tus fotos:\n\n${lista}\n\nÁbrelas y dime la letra de la que quieres. Tu página no cambia hasta que me digas cuál.`, { evento: 'opciones_nuevas_enviadas', datos: { token: r.token } });
+  }
+  return { token: r.token };
 }
 
 /** Si hay opciones nuevas esperando elección, las devuelve. */
