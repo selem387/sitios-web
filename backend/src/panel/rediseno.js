@@ -69,7 +69,8 @@ export async function prepararOpcionesNuevas(entrevistaId, { comentario = '', re
     const refOk = estudio.some((x) => x && !x.error);
     // El estilo base lo elige la IA y se afina con lo medido en la referencia (radio, peso y mayúsculas de títulos, aire, portada, acento).
     const POR_ESTILO = { elegante: 'editorial_suave', minimalista: 'moderno_limpio', tecnologico: 'moderno_limpio', fresco: 'colorido', divertido: 'colorido', calido: 'calido_rustico', tradicional: 'calido_rustico', lujo: 'lujo_oscuro' };
-    if (refOk) ajustes.direccion_ref = construirDireccion(PRESETS[dir?.preset] ? dir.preset : (POR_ESTILO[dir?.estilo] || 'editorial_suave'), estudio.find((x) => x && !x.error));
+    // Aunque el estudio falle (sitio que bloquea robots), con liga de referencia se usa el estilo base que eligió la IA.
+    if (refOk || ligas.length) ajustes.direccion_ref = construirDireccion(PRESETS[dir?.preset] ? dir.preset : (POR_ESTILO[dir?.estilo] || 'editorial_suave'), estudio.find((x) => x && !x.error) || null);
     const baseRonda = Math.max(prop.ronda || 0, actual.marca?.propuestas_nuevas?.ronda || 0) + 1;
     // Hasta 3 intentos; solo se guardan (y se mandan) las opciones que pasan la revisión visual. Con menos de 4, se reintenta:
     // cada intento es otra ronda (otras fotos y variaciones) con la MISMA dirección: nunca se abandona el estilo que pidió.
@@ -82,7 +83,7 @@ export async function prepararOpcionesNuevas(entrevistaId, { comentario = '', re
       const ronda = baseRonda + intento;
       const r = await crearPropuestasHTML(brief, mat, textos, { ronda });
       const opciones = r.opciones.map((o) => ({ etiqueta: o.letra, letra: o.letra, layout: o.layout, nombre: o.nombre, url: o.url, estilo: o.fuentes.estilo, tipografia: { titulos: o.fuentes.titulos, cuerpo: o.fuentes.cuerpo }, paleta: o.paleta }));
-      const revision = await revisarOpciones(opciones, { referencia: aj.direccion_ref ? ligas[0] : null, pedido: comentario });
+      const revision = await revisarOpciones(opciones, { referencia: ligas[0] || null, pedido: comentario });
       const pasan = opciones.filter((o) => revision.find((x) => x.letra === o.letra)?.ok);
       await db.evento(e.id, 'revision_opciones', { intento, token: r.token, pasan: pasan.map((o) => o.letra), revision: revision.map(({ capturas, ...x }) => ({ ...x, capturas })) });
       ultima = { r, opciones, pasan, revision, aj, ronda };
