@@ -31,6 +31,26 @@ def e(s):
     return html.escape(s, quote=True)
 
 
+JS_GLOBAL = """(function(){
+var rm=matchMedia('(prefers-reduced-motion: reduce)').matches;
+var els=document.querySelectorAll('.rv');
+if('IntersectionObserver' in window&&!rm){var io=new IntersectionObserver(function(es){es.forEach(function(x){if(x.isIntersecting){x.target.classList.add('in');io.unobserve(x.target)}})},{rootMargin:'0px 0px -8% 0px'});els.forEach(function(el){io.observe(el)})}else{els.forEach(function(el){el.classList.add('in')})}
+var sl=document.querySelector('[data-slider]');if(!sl)return;
+var pista=sl.querySelector('.sl-pista'),slides=pista.children,n=slides.length,bars=sl.querySelectorAll('.sl-barras button'),num=sl.querySelector('[data-num]'),i=0,t,DUR=5500;
+sl.style.setProperty('--dur',DUR+'ms');
+function marcar(k){i=(k+n)%n;bars.forEach(function(b,j){b.setAttribute('aria-current',j===i?'true':'false');b.classList.toggle('vista',j<i);b.style.animation='none';b.offsetWidth;b.style.animation=''});for(var j=0;j<n;j++){slides[j].setAttribute('aria-hidden',j===i?'false':'true');slides[j].querySelectorAll('a').forEach(function(a){a.tabIndex=j===i?0:-1})}if(num)num.textContent=String(i+1).padStart(2,'0')+' / '+String(n).padStart(2,'0')}
+function ir(k){marcar(k);pista.scrollTo({left:slides[i].offsetLeft-pista.offsetLeft,behavior:rm?'auto':'smooth'});prog()}
+function prog(){clearTimeout(t);if(!rm&&!sl.classList.contains('pausa'))t=setTimeout(function(){ir(i+1)},DUR)}
+sl.querySelector('[data-prev]').onclick=function(){ir(i-1)};sl.querySelector('[data-next]').onclick=function(){ir(i+1)};
+bars.forEach(function(b,j){b.onclick=function(){ir(j)}});
+function pausa(v){sl.classList.toggle('pausa',v);if(v)clearTimeout(t);else prog()}
+sl.addEventListener('mouseenter',function(){pausa(true)});sl.addEventListener('mouseleave',function(){pausa(false)});
+sl.addEventListener('focusin',function(){pausa(true)});sl.addEventListener('focusout',function(){pausa(false)});
+var st;pista.addEventListener('scroll',function(){clearTimeout(st);st=setTimeout(function(){var k=Math.round(pista.scrollLeft/pista.clientWidth);if(k!==i){marcar(k);prog()}},120)},{passive:true});
+document.addEventListener('visibilitychange',function(){document.hidden?clearTimeout(t):prog()});
+if(rm)sl.classList.add('pausa');marcar(0);prog();
+})();"""
+
 GTM_ID = "GTM-WWSJ3Q4P"  # Google Tag Manager, cuenta Lemoss (contacto@lemoss.co)
 
 NAV = [("/servicios/", "Servicios"), ("/casos/", "Casos"), ("/autodiagnostico/", "Autodiagnóstico"), ("/blog/", "Blog"), ("/sobre/", "Nosotros")]
@@ -43,9 +63,10 @@ def layout(path, title, desc, body, schema=None, og_type="website", extra_head="
     for s in (schema or []):
         ld += f'<script type="application/ld+json">{json.dumps(s, ensure_ascii=False)}</script>\n'
     return f"""<!doctype html>
-<html lang="es-MX">
+<html lang="es-MX" class="no-js">
 <head>
 <meta charset="utf-8">
+<script>document.documentElement.className="js"</script>
 <!-- Google Tag Manager -->
 <script>(function(w,d,s,l,i){{w[l]=w[l]||[];w[l].push({{'gtm.start':
 new Date().getTime(),event:'gtm.js'}});var f=d.getElementsByTagName(s)[0],
@@ -57,7 +78,7 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
 <title>{e(title)}</title>
 <meta name="description" content="{e(desc)}">
 <link rel="canonical" href="{url}">
-<meta name="theme-color" content="#000000">
+<meta name="theme-color" content="#05070d">
 <meta property="og:type" content="{og_type}">
 <meta property="og:site_name" content="Lemoss">
 <meta property="og:locale" content="es_MX">
@@ -72,6 +93,7 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
 <link rel="icon" href="/assets/favicon-32.png" type="image/png" sizes="32x32">
 <link rel="icon" href="/assets/favicon-192.png" type="image/png" sizes="192x192">
 <link rel="apple-touch-icon" href="/assets/favicon-180.png">
+<link rel="preload" href="/assets/fonts/inter-var.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="preload" href="/assets/fonts/poppins-bold.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="stylesheet" href="/assets/site.css?v={CSS_V}">
 <link rel="alternate" type="text/plain" href="/llms.txt" title="llms.txt">
@@ -114,6 +136,7 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
   </div>
   <div class="wrap legal"><span>© {datetime.date.today().year} Lemoss</span><a href="/privacidad/">Aviso de privacidad</a><a href="/terminos/">Términos y condiciones</a></div>
 </footer>
+<script>{JS_GLOBAL}</script>
 <a class="wa-flot" href="{wa()}" rel="noopener" aria-label="Escribir por WhatsApp"><svg viewBox="0 0 24 24" width="26" height="26" aria-hidden="true"><path fill="currentColor" d="M12 2a10 10 0 0 0-8.6 15.1L2 22l5-1.3A10 10 0 1 0 12 2Zm0 18.2a8.2 8.2 0 0 1-4.2-1.1l-.3-.2-3 .8.8-2.9-.2-.3A8.2 8.2 0 1 1 12 20.2Zm4.5-6.1c-.2-.1-1.5-.7-1.7-.8-.2-.1-.4-.1-.6.1l-.8 1c-.1.2-.3.2-.5.1a6.7 6.7 0 0 1-3.3-2.9c-.3-.4.2-.4.7-1.3.1-.2 0-.3 0-.4l-.8-1.8c-.2-.5-.4-.4-.6-.4h-.5a1 1 0 0 0-.7.3 3 3 0 0 0-.9 2.2 5.2 5.2 0 0 0 1.1 2.8 11.9 11.9 0 0 0 4.6 4c1.7.7 2.4.8 3.2.7a2.8 2.8 0 0 0 1.8-1.3 2.3 2.3 0 0 0 .2-1.3c-.1-.1-.2-.2-.4-.3Z"/></svg></a>
 </body>
 </html>
@@ -232,7 +255,7 @@ FAQ = [
 
 # ---------- Bloques ----------
 def cta_final(titulo="¿Platicamos de tu proyecto?", texto="Cuéntanos qué proceso te quita más tiempo o dinero. En una llamada de 30 minutos te decimos si la tecnología puede resolverlo y cómo lo mediríamos."):
-    return f"""<section class="sec cta-fin"><div class="wrap"><div class="cta-in">
+    return f"""<section class="sec cta-fin"><div class="wrap"><div class="cta-in rv"><p class="kicker">Siguiente paso</p>
 <h2>{titulo}</h2><p class="lead">{texto}</p>
 <div class="acciones"><a class="btn" href="{wa()}" rel="noopener">Escríbenos por WhatsApp</a><a class="btn btn-2" href="/autodiagnostico/">Hacer el autodiagnóstico</a></div>
 </div></div></section>"""
@@ -242,7 +265,7 @@ def etapas_html(detalle=False):
     items = ""
     for i, (n, precio, txt, href, link) in enumerate(ETAPAS):
         enlace = f'<p><a href="{href}">{link}</a></p>' if href else ""
-        items += f'<li><span class="paso" aria-hidden="true">{i}</span><div><h3>{n}</h3><p class="precio">{precio}</p><p>{txt}</p>{enlace}</div></li>'
+        items += f'<li class="card rv"><span class="paso" aria-hidden="true">{i}</span><h3>{n}</h3><p class="precio">{precio}</p><p>{txt}</p>{enlace}</li>'
     return f'<ol class="ruta">{items}</ol>'
 
 
@@ -250,13 +273,13 @@ def caso_tarjeta(c, completo=False):
     cifra = f'<p class="cifra"><strong>{c["cifra"]}</strong><span>{c["cifra_txt"]}</span></p>' if c.get("cifra") else ""
     estado = f'<p class="estado">{c["estado"]}</p>' if c.get("estado") else ""
     if not completo:
-        return f'<article class="caso"><p class="sector">{c["sector"]}</p><h3>{c["titulo"]}</h3><p class="cliente">{c["cliente"]}</p>{cifra}{estado}<p><a href="/casos/#{c["id"]}">Ver el caso</a></p></article>'
+        return f'<article class="caso card rv"><p class="sector">{c["sector"]}</p><h3>{c["titulo"]}</h3><p class="cliente">{c["cliente"]}</p>{cifra}{estado}<p><a class="mas" href="/casos/#{c["id"]}">Ver el caso</a></p></article>'
     link = f' · <a href="{c["url"]}" rel="noopener">{c["url"].replace("https://", "").rstrip("/")}</a>' if c.get("url") else ""
     extra = ""
     if c.get("extra"):
         extra = "<p class='muted'>Empresas del grupo: " + ", ".join(f'<a href="{u}" rel="noopener">{n}</a>' for n, u in c["extra"]) + ".</p>"
     contacto = f'<p class="muted">Referencia: <a href="{c["contacto"][1]}" rel="noopener">{c["contacto"][0]}</a></p>' if c.get("contacto") else ""
-    return f"""<article class="caso-largo" id="{c['id']}">
+    return f"""<article class="caso-largo card rv" id="{c['id']}">
 <div class="caso-cab"><p class="sector">{c['sector']}{link}</p><h2>{c['titulo']}</h2><p class="cliente">{c['cliente']}</p>{cifra}{estado}</div>
 <dl><dt>Reto</dt><dd>{c['reto']}</dd><dt>Qué hicimos</dt><dd>{c['solucion']}</dd><dt>Resultado</dt><dd>{c['resultado']}</dd></dl>
 {extra}{contacto}
@@ -276,58 +299,112 @@ def migas(*pares):
 
 
 # ---------- Páginas ----------
+# Slider del hero: servicios (s) y modelos de trabajo (m) intercalados
+SLIDES = [
+    ("s", "Estrategia tecnológica y de negocio", "Hoja de ruta, prioridades y presupuesto con el retorno esperado de cada iniciativa, incluidos nuevos modelos de negocio de servicios tecnológicos.", "Diagnóstico y acompañamiento a dirección", "/servicios/"),
+    ("m", "Diagnóstico", "Revisamos procesos, datos y sistemas, calculamos cuánto te cuesta hoy cada proceso y te entregamos un plan priorizado.", "Desde $18,000 MXN · se acredita 100%", "/servicios/"),
+    ("s", "Procesos y operación", "Inventario, pedidos, cotizaciones y reportes conectados y automatizados de punta a punta, sin capturas manuales.", "ERP, CRM y hojas de cálculo integrados", "/servicios/"),
+    ("m", "Piloto con meta pactada", "Un proceso, una meta medible por escrito y tu equipo real. En 30 a 60 días sabes si funciona.", "Desde $45,000 MXN · 30 a 60 días", "/servicios/"),
+    ("s", "Sistemas y plataformas", "Cuando lo que necesitas no existe, diseñamos la arquitectura y construimos la plataforma, de sistemas de gestión a servicios financieros.", "PaaS, APIs y nube", "/servicios/"),
+    ("m", "Implementación", "Con el piloto probado escalamos a más procesos. Tú eliges: precio cerrado, honorario más bono o garantía de resultado.", "Proyecto cerrado · bono · garantía", "/servicios/"),
+    ("s", "Ventas y atención", "Respuesta inmediata a cada prospecto, calificación automática y seguimiento por WhatsApp con un CRM que se actualiza solo.", "De 2 horas a 5 segundos de respuesta", "/casos/#angeles-alatorre"),
+    ("m", "Operación continua", "Monitoreo, ajustes, nuevas automatizaciones y reportes mensuales para que lo implementado siga rindiendo.", "Mensualidad", "/servicios/"),
+    ("s", "Adopción de inteligencia artificial", "Agentes, contenido y análisis con IA en procesos reales y con supervisión humana, de la mano de timewins.ai.", "Agentes de IA en WhatsApp y web", "/servicios/"),
+    ("m", "Socio estratégico", "En procesos probados y medibles en tus propios sistemas, compartimos el resultado en lugar de cobrar honorarios fijos.", "Participación en resultados", "/servicios/"),
+]
+
+ICONOS = [
+    '<path d="M3 17l6-6 4 4 8-8"/><path d="M14 7h7v7"/>',
+    '<rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><path d="M14 17.5h7M17.5 14v7"/>',
+    '<rect x="3" y="4" width="18" height="6" rx="1.5"/><rect x="3" y="14" width="18" height="6" rx="1.5"/><path d="M7 7h.01M7 17h.01"/>',
+    '<path d="M21 12a8 8 0 0 1-11.6 7.1L4 20l1-4.6A8 8 0 1 1 21 12z"/>',
+    '<path d="M12 3l1.9 5.1L19 10l-5.1 1.9L12 17l-1.9-5.1L5 10l5.1-1.9z"/><path d="M19 15l.8 2.2L22 18l-2.2.8L19 21l-.8-2.2L16 18l2.2-.8z"/>',
+]
+
+
+def icono(i):
+    return f'<span class="ico" aria-hidden="true"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">{ICONOS[i]}</svg></span>'
+
+
+def slider_html():
+    n = len(SLIDES)
+    items = ""
+    for i, (tipo, t, d, meta, href) in enumerate(SLIDES):
+        tag = '<span class="tag tag-s">Servicio</span>' if tipo == "s" else '<span class="tag tag-m">Modelo de trabajo</span>'
+        items += f'<li class="slide" role="group" aria-roledescription="diapositiva" aria-label="{i+1} de {n}">{tag}<h3>{t}</h3><p>{d}</p><div class="meta"><span>{meta}</span><a href="{href}">Ver más</a></div></li>'
+    barras = "".join(f'<button type="button" aria-label="Ir a {SLIDES[j][1]}"></button>' for j in range(n))
+    flecha = lambda d: f'<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="{d}"/></svg>'
+    return f"""<div class="slider" data-slider role="region" aria-roledescription="carrusel" aria-label="Servicios y modelos de trabajo">
+<div class="sl-cab"><strong>Servicios y modelos de trabajo</strong><span data-num>01 / {n:02d}</span></div>
+<ul class="sl-pista">{items}</ul>
+<div class="sl-pie"><button type="button" class="sl-btn" data-prev aria-label="Anterior">{flecha("M15 18l-6-6 6-6")}</button><div class="sl-barras">{barras}</div><button type="button" class="sl-btn" data-next aria-label="Siguiente">{flecha("M9 18l6-6-6-6")}</button></div>
+</div>"""
+
+
 def home():
-    servicios = "".join(f'<li><h3>{t}</h3><p>{d}</p></li>' for t, d, _ in SERVICIOS)
+    servicios = "".join(f'<li class="card rv">{icono(i)}<h3>{t}</h3><p>{d}</p></li>' for i, (t, d, _) in enumerate(SERVICIOS))
     casos = "".join(caso_tarjeta(c) for c in CASOS[:3])
-    inds = "".join(f"<li><strong>{n}</strong><span>{d}</span></li>" for n, d in INDUSTRIAS)
+    inds = "".join(f'<li class="card rv"><strong>{n}</strong><span>{d}</span></li>' for n, d in INDUSTRIAS)
+    clientes = "".join(f"<li>{c}</li>" for c in ["Ángeles Alatorre", "Intiviso · Xinhua", "Luz Consulting", "Ingeniería Zamiza", "Tagma Academia", "Grupo Tecnophone"])
     body = f"""
-<section class="hero"><div class="wrap">
-<h1><span class="az">Tecnología</span> que se mide en <span class="az">RESULTADOS</span></h1>
-<p class="lead">Consultoría en estrategia tecnológica para empresas medianas en México: hoja de ruta, procesos, sistemas, ventas e inteligencia artificial. Antes de empezar acordamos una meta medible, y el trabajo se evalúa contra ella.</p>
+<section class="hero"><div class="wrap hero-in">
+<div>
+<p class="pill"><b>Lemoss</b> Consultoría tecnológica por resultados</p>
+<h1>Tecnología que se mide en <span class="az">resultados</span></h1>
+<p class="lead">Estrategia tecnológica para empresas medianas en México: hoja de ruta, procesos, sistemas, ventas e inteligencia artificial. Antes de empezar acordamos una meta medible y el trabajo se evalúa contra ella.</p>
 <div class="acciones"><a class="btn" href="{wa()}" rel="noopener">Escríbenos por WhatsApp</a><a class="btn btn-2" href="/autodiagnostico/">Autodiagnóstico gratis</a></div>
 <p class="sello">Sede en Mérida · atención en CDMX y todo México</p>
+</div>
+{slider_html()}
 </div></section>
 
+<section class="cifras" aria-label="Resultados"><div class="wrap">
+<ul>
+<li><strong>5 s</strong><span>primera respuesta a prospectos, antes 2 horas</span></li>
+<li><strong>30–60 días</strong><span>para medir un piloto con meta pactada</span></li>
+<li><strong>100%</strong><span>del diagnóstico se acredita si avanzamos</span></li>
+<li><strong>+20 años</strong><span>en tecnología y sistemas críticos</span></li>
+</ul>
+</div></section>
+<div class="wrap clientes"><p>Han trabajado con nosotros</p><ul>{clientes}</ul></div>
+
 <section class="sec"><div class="wrap dos">
-<div><h2>El problema rara vez es la herramienta</h2></div>
-<div><p>La mayoría de los proyectos de tecnología que no dan resultados fallan por otra razón: se eligió un proceso que no estaba listo, nadie midió cuánto costaba antes, o no había un responsable dentro de la empresa.</p>
+<div class="rv"><p class="kicker">Nuestro enfoque</p><h2>El problema rara vez es la herramienta</h2></div>
+<div class="rv"><p>La mayoría de los proyectos de tecnología que no dan resultados fallan por otra razón: se eligió un proceso que no estaba listo, nadie midió cuánto costaba antes, o no había un responsable dentro de la empresa.</p>
 <p>Por eso trabajamos al revés de lo habitual: primero el costo del problema y la meta, después la herramienta. Y avanzamos por etapas, para que solo inviertas más cuando ya viste un resultado.</p></div>
 </div></section>
 
 <section class="sec"><div class="wrap">
-<h2>Qué resolvemos</h2>
-<ul class="lista-serv">{servicios}</ul>
-<p><a href="/servicios/">Ver servicios y precios</a></p>
+<div class="sec-cab rv"><div><p class="kicker">Servicios</p><h2>Qué resolvemos</h2></div><a class="mas" href="/servicios/">Ver servicios y precios</a></div>
+<ul class="bento">{servicios}</ul>
 </div></section>
 
 <section class="sec"><div class="wrap">
-<h2>Una ruta para ganar confianza paso a paso</h2>
-<p class="lead">Cada etapa tiene un entregable claro. Si una no te convence, te detienes ahí sin compromiso de seguir.</p>
+<div class="sec-cab rv"><div><p class="kicker">Modelos de trabajo</p><h2>Una ruta para ganar confianza paso a paso</h2></div><p class="lead">Cada etapa tiene un entregable claro. Si una no te convence, te detienes ahí sin compromiso de seguir.</p></div>
 {etapas_html()}
 </div></section>
 
 <section class="sec"><div class="wrap">
-<h2>Casos</h2>
+<div class="sec-cab rv"><div><p class="kicker">Casos</p><h2>Resultados medidos en proyectos reales</h2></div><a class="mas" href="/casos/">Ver todos los casos</a></div>
 <div class="casos">{casos}</div>
-<p><a href="/casos/">Ver todos los casos</a></p>
 </div></section>
 
 <section class="sec"><div class="wrap dos">
-<div><h2>Industrias donde más rinde</h2><p class="muted">Empresas de 20 a 250 colaboradores con venta consultiva o procesos que dependen de mucho trabajo manual.</p></div>
+<div class="rv"><p class="kicker">Industrias</p><h2>Dónde más rinde</h2><p class="muted">Empresas de 20 a 250 colaboradores con venta consultiva o procesos que dependen de mucho trabajo manual.</p></div>
 <ul class="inds">{inds}</ul>
 </div></section>
 
-<section class="sec"><div class="wrap dos">
-<div><h2>Una familia de marcas</h2></div>
+<section class="sec"><div class="wrap">
+<div class="sec-cab rv"><div><p class="kicker">Ecosistema</p><h2>Una familia de marcas</h2></div></div>
 <div class="marcas">
-<p><a href="https://timewins.ai" rel="noopener"><strong>timewins.ai</strong></a><br>Nuestra marca especializada en adopción de inteligencia artificial: acompañamiento para implementar IA y herramientas listas para usar, como creador de videos, creador de sitios web, pautador de anuncios y publicador de redes.</p>
-<p><a href="https://iaprop.tech" rel="noopener"><strong>iaprop.tech</strong></a><br>IA y automatización para inmobiliarias y asesores.</p>
-<p><a href="https://estrategia.dental" rel="noopener"><strong>estrategia.dental</strong></a><br>Captación y atención de pacientes para clínicas dentales.</p>
+<a class="marca card rv" href="https://timewins.ai" rel="noopener"><strong>timewins.ai</strong><span>Adopción de inteligencia artificial y herramientas listas para usar: creador de videos, de sitios web, pautador de anuncios y publicador de redes.</span><em>Visitar →</em></a>
+<a class="marca card rv" href="https://iaprop.tech" rel="noopener"><strong>iaprop.tech</strong><span>IA y automatización para inmobiliarias y asesores.</span><em>Visitar →</em></a>
+<a class="marca card rv" href="https://estrategia.dental" rel="noopener"><strong>estrategia.dental</strong><span>Captación y atención de pacientes para clínicas dentales.</span><em>Visitar →</em></a>
 </div>
 </div></section>
 
 <section class="sec"><div class="wrap dos">
-<div><h2>Preguntas frecuentes</h2></div>
+<div class="rv"><p class="kicker">Dudas</p><h2>Preguntas frecuentes</h2></div>
 {faq_html(FAQ)}
 </div></section>
 {cta_final()}
@@ -337,11 +414,13 @@ def home():
                   body, [ORG, WEBSITE, faq_schema(FAQ)])
 
 
+
+
 def servicios():
     bloques = ""
     for t, d, items in SERVICIOS:
         lis = "".join(f"<li>{x}</li>" for x in items)
-        bloques += f'<section class="serv"><h2>{t}</h2><p>{d}</p><ul class="puntos">{lis}</ul></section>'
+        bloques += f'<section class="serv card rv"><h2>{t}</h2><p>{d}</p><ul class="puntos">{lis}</ul></section>'
     criterios = """<ul class="puntos">
 <li>El proceso ya pasó por un piloto y su resultado se midió.</li>
 <li>La métrica se puede leer en tus propios sistemas (CRM, ERP, facturación), sin depender de mí.</li>
