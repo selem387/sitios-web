@@ -133,7 +133,7 @@ export async function construir(id) {
       contacto: { whatsapp: tel || null, horarios: horarios(g), direccion: direccion(g, n), redes, email: n.correo || null, mensaje_whatsapp_inicial: `Hola, vi su página y quiero hacer un pedido en ${n.nombre}` },
       modulos: { servicio: ia.servicio || (g.delivery ? 'mixto' : 'comer_aqui'), restaurante: { reservaciones: Boolean(g.reservable), entregas_domicilio: Boolean(g.delivery) } },
       fotos: { acepta_lo_que_hay: true, origen: 'google_maps_y_redes' },
-      prospeccion: { folio: n.folio, place_id: n.place_id, maps_url: n.maps_url },
+      prospeccion: { folio: n.folio, place_id: n.place_id, maps_url: n.maps_url, nota_para_ari: 'Al cliente sus 6 opciones se le mostraron NUMERADAS del 1 al 6 (A=1, B=2, C=3, D=4, E=5, F=6). Refiérete a ellas siempre por número, nunca por letra. Llegó por un correo con su página ya hecha; no le vuelvas a preguntar datos que ya están en el brief.' },
     };
     // Entrevista nueva (o la que ya tenía si se reconstruye).
     let e = n.entrevista_id ? await edb.obtener(n.entrevista_id) : null;
