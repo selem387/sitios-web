@@ -33,7 +33,7 @@ p{margin:0 0 1em;max-width:64ch;text-wrap:pretty}
 /* Encabezado */
 .top{position:sticky;top:0;z-index:20;background:rgba(5,7,13,.72);backdrop-filter:saturate(160%) blur(14px);-webkit-backdrop-filter:saturate(160%) blur(14px);border-bottom:1px solid var(--line)}
 .top-in{display:flex;align-items:center;gap:32px;height:68px}
-.logo{font-family:var(--head);font-weight:500;font-size:1.45rem;color:var(--fg);text-decoration:none;letter-spacing:-.03em;white-space:nowrap}
+.logo{font-family:var(--head);font-weight:500;font-size:1.52rem;color:var(--fg);text-decoration:none;letter-spacing:-.005em;white-space:nowrap}
 .logo span{color:var(--accent);font-weight:700}
 .nav{display:flex;gap:30px;margin-left:auto}
 .nav a{text-decoration:none;color:var(--muted);font-size:.92rem;font-weight:500}
@@ -244,7 +244,7 @@ p{margin:0 0 1em;max-width:64ch;text-wrap:pretty}
   .cta-in{padding:56px 36px}
 }
 @media (max-width:640px){
-  .logo{font-size:1.25rem}
+  .logo{font-size:1.31rem}
   :root{--sec:84px;--gap:24px}
   body{font-size:16px}
   .wrap{padding:0 16px}
