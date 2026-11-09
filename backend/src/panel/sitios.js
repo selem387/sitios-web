@@ -68,7 +68,11 @@ export const porEntrevista = async (id) => (await q(`SELECT * FROM sitios_vivos 
 
 /* ---------------- Contenido editable ---------------- */
 // Secciones que el dueño administra. Cada una se guarda completa en sitios_vivos.contenido.<seccion>.
-export const SECCIONES = ['portada', 'oferta', 'menu', 'promocion', 'contacto', 'redes', 'faq', 'testimonios', 'historia'];
+export const SECCIONES = ['portada', 'oferta', 'menu', 'promocion', 'contacto', 'redes', 'faq', 'testimonios', 'historia', 'titulos', 'pies'];
+// Títulos de sección que el cliente puede cambiar (por id de la sección en la página).
+export const TITULOS_SECCION = ['trabajo', 'servicios', 'sobre', 'resenas', 'faq', 'contacto', 'galeria'];
+/** URL de una imagen sin parámetros (?w=…), para ubicarla aunque cambie el tamaño servido. */
+export const urlBase = (u) => String(u || '').trim().split(/[?#]/)[0];
 
 const txt = (v, max = 400) => (v === null || v === undefined ? '' : String(v).replace(/\s+/g, ' ').trim().slice(0, max));
 const largo = (v, max = 2000) => (v === null || v === undefined ? '' : String(v).replace(/\r/g, '').trim().slice(0, max));
@@ -99,6 +103,16 @@ export function limpiarSeccion(seccion, d = {}) {
     case 'faq': return { items: lista(d.items, 30).map((x) => ({ pregunta: txt(x.pregunta, 200), respuesta: largo(x.respuesta, 800) })).filter((x) => x.pregunta && x.respuesta) };
     case 'testimonios': return { items: lista(d.items, 30).map((x) => ({ nombre: txt(x.nombre, 80), texto: largo(x.texto, 600), fuente: txt(x.fuente, 60) })).filter((x) => x.texto) };
     case 'historia': return { texto: largo(d.texto, 1200) };
+    case 'titulos': {
+      const o = {};
+      for (const [k, v] of Object.entries(d || {})) {
+        if (!TITULOS_SECCION.includes(k)) throw new Error(`No hay título "${k}" (válidos: ${TITULOS_SECCION.join(', ')})`);
+        const t = txt(v, 80);
+        if (t) o[k] = t;
+      }
+      return o;
+    }
+    case 'pies': return { items: lista(d.items, 40).map((x) => ({ imagen: urlBase(x.imagen), texto: largo(x.texto, 400) })).filter((x) => /^https?:\/\//.test(x.imagen) && x.texto) };
     default: throw new Error('Sección desconocida');
   }
 }
@@ -123,6 +137,8 @@ export function contenidoActual(entrevista, sv, mat = null) {
     faq: k.faq || { items: (b.faq || []).map((x) => ({ pregunta: x.pregunta || '', respuesta: x.respuesta || '' })) },
     testimonios: k.testimonios || { items: (b.confianza?.testimonios || []).map((x) => ({ nombre: x.nombre || '', texto: x.texto || '', fuente: x.fuente || '' })) },
     historia: k.historia || { texto: prop.textos?.sobre || b.confianza?.historia_corta || '' },
+    titulos: k.titulos || {},
+    pies: k.pies || { items: [] },
     es_menu: b.negocio?.arquetipo === 'restaurante',
     es_inmobiliaria: b.negocio?.arquetipo === 'inmobiliaria',
   };
@@ -147,7 +163,7 @@ export function aplicarContenido(entrevista, sv) {
   const i = Math.max(0, 'ABCDEF'.indexOf(prop.elegido || 'A'));
   const variantes = [...(prop.textos?.variantes || [])];
   if (k.portada) variantes[i] = { ...(variantes[i] || {}), ...Object.fromEntries(Object.entries(k.portada).filter(([, x]) => x)) };
-  const textos = { ...(prop.textos || {}), variantes, ...(k.historia ? { sobre: k.historia.texto } : {}) };
+  const textos = { ...(prop.textos || {}), variantes, ...(k.historia ? { sobre: k.historia.texto } : {}), ...(k.titulos && Object.keys(k.titulos).length ? { secciones: { ...(prop.textos?.secciones || {}), ...k.titulos } } : {}) };
   return { brief, textos };
 }
 
@@ -227,12 +243,27 @@ export async function renderSitio(sv, { previa = false } = {}) {
   // Estructura y ajustes de diseño propios de este sitio (los escribe el editor de cambios a pedido del cliente).
   { const { conLigaAviso } = await import('./aviso.js'); html = conLigaAviso(html, `${rutaBase(sv, { previa })}/aviso-de-privacidad`); }
   if (dz.estructura) { const { aplicarEstructura } = await import('./estructura.js'); html = aplicarEstructura(html, dz.estructura); }
+  if (sv.contenido?.pies?.items?.length) html = conPies(html, sv.contenido.pies.items);
   { const { conSrcset } = await import('../generador/movimiento.js'); html = conSrcset(html); } // tamaños de foto coherentes tras ediciones
   const css = dz.css;
   if (css) html = html.replace('</head>', () => `<style id="ajustes">${String(css).replace(/<\/style/gi, '')}</style></head>`);
   for (const k of cache.keys()) if (k.startsWith(`${sv.id}:`) && !k.startsWith(`${sv.id}:${sv.version}:`)) cache.delete(k);
   cache.set(clave, html);
   return html;
+}
+
+/** Texto debajo de una imagen: <figcaption> en la figura que la contiene (o figura nueva si la imagen va suelta). */
+export function conPies(html, items) {
+  let out = html;
+  for (const { imagen, texto } of items || []) {
+    const u = urlBase(imagen);
+    if (!u || !texto) continue;
+    const re = new RegExp(`(<figure\\b[^>]*>)((?:(?!</figure>)[\\s\\S])*?<img\\b[^>]*\\ssrc="${u.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}(?:\\?[^"]*)?"[^>]*>(?:(?!</figure>)[\\s\\S])*?)(</figure>)`);
+    const cap = `<figcaption class="pie">${esc(texto).replace(/\n/g, '<br>')}</figcaption>`;
+    if (re.test(out)) out = out.replace(re, (m, a, b, c) => `${a}${b.replace(/<figcaption class="pie">[\s\S]*?<\/figcaption>/, '')}${cap}${c}`);
+  }
+  if (out !== html && !out.includes('id="pies-css"')) out = out.replace('</head>', '<style id="pies-css">figcaption.pie{margin-top:.6rem;font-size:.95rem;line-height:1.45;color:var(--fg);text-align:center}</style></head>');
+  return out;
 }
 
 /* ---------------- Alta ---------------- */

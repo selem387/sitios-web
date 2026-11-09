@@ -10,7 +10,7 @@ import { pedirJSON } from '../entrevista/claude.js';
 import { avisar } from '../entrevista/avisos.js';
 import { procesarMateriales } from '../generador/materiales.js';
 import { config } from '../config.js';
-import { SECCIONES, limpiarSeccion, contenidoActual, disenoElegido, renderSitio, invalidar, porId } from './sitios.js';
+import { SECCIONES, urlBase, limpiarSeccion, contenidoActual, disenoElegido, renderSitio, invalidar, porId } from './sitios.js';
 import { textosInventados, separarPrecio, renglonesAjenos } from './reinterpretar.js';
 import { validarEstructura, textoDe } from './estructura.js';
 import { opcionesNuevasPendientes, adoptarOpcionNueva, restaurarBrief } from './rediseno.js';
@@ -64,7 +64,9 @@ REGLA NÚMERO UNO: EL TEXTO DEL CLIENTE NO SE TOCA
 - Cuando el cliente pide cambiar, quitar o reemplazar palabras de SU texto (p. ej. "donde dice X deja solo Y", "quita Z"), hazlo exactamente: esa es su instrucción y SÍ se puede. Busca el texto en CONTENIDO ACTUAL (títulos de categoría de paquetes = oferta.items[].grupo; nombres = .nombre) y cámbialo en TODOS los elementos donde aparezca, sin tocar nada más.
 
 QUÉ PUEDES HACER
-- Cambiar cualquier sección (devuélvela completa con el mismo formato que tiene en CONTENIDO ACTUAL).
+- Cambiar cualquier sección (devuélvela completa con el mismo formato que tiene en CONTENIDO ACTUAL). Las claves de "secciones" NO son los ids de la página: #resenas → testimonios, #servicios → oferta, #sobre → historia, #faq → faq, #contacto → contacto. Usa solo las claves que aparecen en CONTENIDO ACTUAL.
+- TÍTULOS DE SECCIÓN (el <h2>: "Reseñas de clientes", "Paquetes", "Sobre mí"…): se cambian SOLO con secciones.titulos = {<id de la sección>: "título nuevo"} (ids válidos: trabajo, servicios, sobre, resenas, faq, contacto, galeria). Devuelve titulos completo (los que ya tiene en CONTENIDO ACTUAL más el nuevo). Nunca toques testimonios/oferta/historia para cambiar un título.
+- TEXTO DEBAJO (O AL PIE) DE UNA IMAGEN: secciones.pies = {items:[{imagen:"URL de la imagen tal como está en HTML ACTUAL, sin ?w=", texto:"texto del cliente letra por letra"}]} (completa: los pies que ya hay más el nuevo). Si dice "debajo de la imagen" y en esa sección hay una sola imagen, es esa.
 - Colores: "paleta" con las claves de PALETA ACTUAL que cambian (hex). Cuida que el texto se lea (claro sobre oscuro o al revés).
 - Fotos: portada_foto, fotos_quitar, fotos_poner, usando SOLO claves de FOTOS. Las fotos que manda el cliente se usan; ninguna se repite ni se deforma (el diseño ya lo cuida).
 - Si pide dejarlo como estaba antes del último cambio: accion=revertir.
@@ -173,15 +175,31 @@ async function planear(e, act, pedidos, conv, errores) {
 }
 
 /** Valida el plan y devuelve {secciones limpias, paleta, errores}. */
-function validar(plan, act, fuentes) {
+// Ids de la página → clave de contenido (el modelo a veces usa el id del HTML).
+const ALIAS = { resenas: 'testimonios', servicios: 'oferta', sobre: 'historia', preguntas: 'faq', titulo: 'titulos', pie: 'pies' };
+const quiereQuitar = (fuentes) => /\b(quita|quitar|borra|borrar|elimina|eliminar|saca|sacar)\b/i.test(fuentes);
+const elementos = (v) => (Array.isArray(v?.items) ? v.items.length : Array.isArray(v?.secciones) ? v.secciones.length : null);
+
+function validar(plan, act, fuentes, pedidoTexto = '') {
   const errores = [];
   const secciones = {};
-  for (let [k, v] of Object.entries(plan.secciones || {})) {
-    if (!SECCIONES.includes(k)) { errores.push(`Sección desconocida "${k}"`); continue; }
+  for (let [k0, v] of Object.entries(plan.secciones || {})) {
+    const k = SECCIONES.includes(k0) ? k0 : ALIAS[k0];
+    if (!k) { errores.push(`Sección desconocida "${k0}". Claves válidas: ${SECCIONES.join(', ')} (un título se cambia en "titulos"; un texto bajo una imagen en "pies")`); continue; }
+    if (k !== k0 && secciones[k]) continue;
     if (k === 'oferta' && Array.isArray(v?.items)) v = { ...v, items: v.items.map(separarPrecio) };
-    try { secciones[k] = limpiarSeccion(k, v); } catch (err) { errores.push(`${k}: ${err.message}`); }
+    let limpio;
+    try { limpio = limpiarSeccion(k, v); } catch (err) { errores.push(`${k}: ${err.message}`); continue; }
+    // Nada se pierde en silencio: elementos incompletos que la limpieza descartaría, o una sección que queda vacía sin que lo pidan.
+    const crudos = elementos(v), quedan = elementos(limpio), habia = elementos(act.contenido?.[k]);
+    if (crudos !== null && quedan !== null && quedan < crudos) errores.push(`${k}: ${crudos - quedan} elemento(s) vienen incompletos (p. ej. pregunta sin respuesta) y se perderían. No dejes campos vacíos ni inventes: si el cliente no dio ese dato, no agregues el elemento (va en no_pude).`);
+    if (quedan === 0 && habia > 0 && !quiereQuitar(pedidoTexto)) errores.push(`${k}: quedaría vacía y desaparecería de la página, y el cliente no pidió quitarla`);
+    if (k === 'pies') for (const it of limpio.items) if (!(act.htmlCompleto || '').includes(urlBase(it.imagen))) errores.push(`pies: la imagen ${it.imagen} no está en la página`);
+    secciones[k] = limpio;
   }
   errores.push(...textosInventados(secciones, fuentes));
+  for (const [id, t] of Object.entries(secciones.titulos || {})) if (t !== act.contenido?.titulos?.[id]) for (const l of renglonesAjenos(t, `${fuentes}\n${textoDe(act.htmlCompleto || '')}`)) errores.push(`titulos.${id}: "${l.slice(0, 80)}" no lo escribió el cliente`);
+  for (const [i, it] of (secciones.pies?.items || []).entries()) for (const l of renglonesAjenos(it.texto, fuentes)) errores.push(`pies[${i}]: "${l.slice(0, 80)}" no lo escribió el cliente`);
   const paleta = {};
   for (const [k, v] of Object.entries(plan.paleta || {})) {
     if (!(k in act.paleta) && !COLORES.includes(k)) errores.push(`Color "${k}" no existe en la paleta`);
@@ -300,7 +318,7 @@ export async function aplicarCambioVivo(c, e, sv) {
       plan = await planear(e, act, c.pedidos, conv, errores);
       if (plan.accion === 'no_se_puede' && i < 2) { errores = ['Dijiste no_se_puede, pero cambiar, quitar o agregar textos, datos, colores, fotos, acomodo o secciones SÍ se puede: busca dónde está ese texto en CONTENIDO ACTUAL (p. ej. oferta.items[].grupo o .nombre) y edítalo con accion=editar. Solo usa no_se_puede si de verdad nada de lo pedido es posible.']; v = undefined; continue; }
       if (plan.accion !== 'editar') break;
-      v = validar(plan, act, fuentes);
+      v = validar(plan, act, fuentes, c.pedidos.map((p) => p.texto).join('\n'));
       errores = v.errores;
       if (!errores.length) break;
     }

@@ -76,6 +76,13 @@ export async function estadoCambios(entrevistaId) {
   return { ultimo: u.estado, abierto: ['pendiente', 'aplicando'].includes(u.estado) || (u.estado === 'preguntar' && reciente) };
 }
 
+/** Quita pedidos repetidos (mismo texto, sin contar la descripción de la captura) y preguntas de Ari repetidas; conserva el más reciente. */
+const huella = (p) => String(p.texto || '').split('\n[captura')[0].replace(/[“”"]/g, '').replace(/\s+/g, ' ').trim().toLowerCase();
+function sinRepetidos(pedidos) {
+  const vistos = new Set();
+  return pedidos.slice().reverse().filter((p) => { const h = huella(p); if (!h || vistos.has(h)) return false; vistos.add(h); return true; }).reverse().slice(-12);
+}
+
 /** Suma un pedido del cliente. Devuelve {nuevo, enCurso} para que Ari conteste acorde. */
 export async function registrarPedido(entrevistaId, { texto = '', media = [] }) {
   await migrar();
@@ -91,7 +98,7 @@ export async function registrarPedido(entrevistaId, { texto = '', media = [] }) 
                          RETURNING pedidos, plan`, [entrevistaId])).rows[0];
   const previos = preg ? [...preg.pedidos, { texto: `(Ari preguntó: ${preg.plan?.pregunta || ''})`, media: [], t: null }] : [];
   const ins = await q(`INSERT INTO cambios_sitio (entrevista_id, pedidos, aplicar_en) VALUES ($1, $2::jsonb, now() + make_interval(secs => $3)) RETURNING id`,
-    [entrevistaId, JSON.stringify([...previos, ...pedido]), ESPERA_S]);
+    [entrevistaId, JSON.stringify(sinRepetidos([...previos, ...pedido])), ESPERA_S]);
   const t = setTimeout(() => cronCambios().catch((err) => console.error('cambios', err)), (ESPERA_S + 3) * 1000);
   t.unref?.();
   return { nuevo: true, enCurso, id: ins.rows[0].id };
