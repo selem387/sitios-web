@@ -134,6 +134,43 @@ export function registerChatRoutes(app, wrap) {
     return { avisos: (await pendientesChat(u)).map((x) => ({ texto: x.texto, evento: x.evento })) };
   }));
 
+  // "Mis páginas": resumen de las conversaciones que este navegador conoce (ids web-<uuid>, imposibles de adivinar).
+  app.get('/chat/v1/conversaciones', wrap(async (c) => {
+    auth(c);
+    const ids = [...new Set(String(c.req.query('ids') || '').split(',').map((x) => x.trim()).filter(usuarioValido))].slice(0, 50);
+    if (!ids.length) return { conversaciones: [] };
+    const r = await db.q(
+      `SELECT DISTINCT ON (usuario_id) usuario_id, estado, brief->'negocio'->>'nombre' AS nombre, creado, actualizado
+       FROM entrevistas WHERE usuario_id = ANY($1) AND estado <> 'cancelada' ORDER BY usuario_id, creado DESC`, [ids]);
+    const lista = [];
+    for (const x of r.rows) {
+      const s = x.estado === 'completada' ? await sitioDe(x.usuario_id).catch(() => null) : null;
+      lista.push({ usuario_id: x.usuario_id, nombre: x.nombre || '', estado: s?.estado || (x.estado === 'completada' ? 'armando' : 'entrevista'), url: s?.url_publica || null, actualizado: x.actualizado });
+    }
+    return { conversaciones: lista.sort((a, b) => new Date(b.actualizado) - new Date(a.actualizado)) };
+  }));
+
+  // Historial de una conversación guardado en el servidor (para abrirla en otro navegador o después de cambiar de página).
+  app.get('/chat/v1/historial', wrap(async (c) => {
+    auth(c);
+    const u = c.req.query('usuario_id');
+    if (!usuarioValido(u)) throw new HttpError(400, 'usuario_id inválido');
+    const r = await db.q(
+      `SELECT m.rol, m.tipo, m.contenido, m.transcripcion FROM mensajes m JOIN entrevistas e ON e.id = m.entrevista_id
+       WHERE e.usuario_id=$1 AND e.estado <> 'cancelada' AND m.rol IN ('cliente','agente') ORDER BY m.creado, m.id`, [u]);
+    const ETIQUETA = { imagen: '📷 Foto enviada', audio: '🎤 Nota de voz', documento: '📎 Archivo enviado', video: '🎬 Video enviado', ubicacion: '📍 Ubicación' };
+    const items = [];
+    for (const m of r.rows) {
+      const de = m.rol === 'cliente' ? 'yo' : 'ari';
+      if (m.tipo === 'texto' || !ETIQUETA[m.tipo]) { if (m.contenido) items.push({ de, texto: m.contenido }); continue; }
+      const extra = m.tipo === 'audio' ? m.transcripcion : (String(m.contenido || '').match(/https?:\/\/\S+/) || [])[0];
+      items.push({ de, texto: ETIQUETA[m.tipo] + (extra ? `: ${extra}` : '') });
+    }
+    const s = await sitioDe(u).catch(() => null);
+    if (s?.estado === 'listo' && s.url_publica) items.push({ tipo: 'sitio', url: s.url_publica, captura: s.captura || null });
+    return { items: items.slice(-200) };
+  }));
+
   app.get('/chat/v1/sitio', wrap(async (c) => {
     auth(c);
     const u = c.req.query('usuario_id');

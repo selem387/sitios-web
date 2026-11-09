@@ -53,6 +53,14 @@ button:disabled{opacity:.5;cursor:default}
 #puerta button{border-radius:10px}
 .err{color:var(--peligro);font-size:14px;min-height:1em}
 svg{width:22px;height:22px}
+#lista{position:fixed;inset:0;background:rgba(0,0,0,.35);display:flex;justify-content:flex-end;z-index:5}
+#lista .caja{background:var(--panel);width:100%;max-width:380px;height:100%;display:flex;flex-direction:column;border-left:1px solid var(--linea)}
+#lista .cab{display:flex;align-items:center;gap:8px;padding:12px 16px;border-bottom:1px solid var(--linea)}#lista .cab h2{font-size:17px;margin:0;flex:1}
+#lista ul{list-style:none;margin:0;padding:8px;overflow-y:auto;flex:1}
+#lista li button{width:100%;display:flex;flex-direction:column;align-items:flex-start;text-align:left;border-radius:12px;padding:12px;min-height:56px}
+#lista li button:hover{background:var(--fondo)}#lista li button[aria-current=true]{background:var(--fondo);outline:1px solid var(--acento)}
+#lista .n{font-weight:600;display:block}#lista .d{font-size:13px;color:var(--suave);display:block;margin-top:2px}
+#lista .pie{padding:12px 16px calc(12px + env(safe-area-inset-bottom));border-top:1px solid var(--linea)}#lista .pie button{width:100%;border-radius:10px}
 #cliente{font-weight:600;color:var(--tinta)}#cliente:not(:empty)::after{content:' · ';font-weight:400;color:var(--suave)}
 </style>
 </head>
@@ -60,7 +68,7 @@ svg{width:22px;height:22px}
 <header>
   <div class="avatar" aria-hidden="true">A</div>
   <div><h1>${T}</h1><p><span id="cliente"></span><span id="estado">Tu página web en una conversación</span></p></div>
-  <button class="sec" id="nueva" type="button">Nueva conversación</button>
+  <button class="sec" id="paginas" type="button" aria-haspopup="dialog">Mis páginas</button>
 </header>
 <main id="chat" aria-live="polite"></main>
 <footer>
@@ -73,6 +81,13 @@ svg{width:22px;height:22px}
     <button class="prim" id="enviar" aria-label="Enviar"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 2 11 13M22 2l-7 20-4-9-9-4 20-7z"/></svg></button>
   </form>
 </footer>
+<div id="lista" hidden role="dialog" aria-modal="true" aria-labelledby="lt">
+  <div class="caja">
+    <div class="cab"><h2 id="lt">Mis páginas</h2><button type="button" id="cerrar" aria-label="Cerrar">✕</button></div>
+    <ul id="lu"></ul>
+    <div class="pie"><button class="prim" type="button" id="nueva">+ Empezar otra página</button></div>
+  </div>
+</div>
 <div id="puerta" hidden>
   <form id="fp">
     <h2>Chat de prueba</h2>
@@ -87,16 +102,28 @@ const $ = (s) => document.querySelector(s);
 const chat = $('#chat'), t = $('#t');
 const mem = { get(k){ try { return localStorage.getItem(k); } catch { return null; } }, set(k,v){ try { localStorage.setItem(k,v); } catch {} }, del(k){ try { localStorage.removeItem(k); } catch {} } };
 let codigo = mem.get('ari_codigo') || '';
-let usuario = mem.get('ari_usuario') || nuevoUsuario();
+// Varias conversaciones por navegador ("Mis páginas"): lista de ids en ari_usuarios; historial y nombre por id.
+const valido = (u) => /^web-[a-z0-9-]{8,60}$/.test(String(u || ''));
+function usuarios(){ try { const l = JSON.parse(mem.get('ari_usuarios') || '[]'); return Array.isArray(l) ? l.filter(valido) : []; } catch { return []; } }
+function recordar(u){ const l = usuarios().filter((x) => x !== u); l.unshift(u); mem.set('ari_usuarios', JSON.stringify(l.slice(0, 50))); }
+let usuario = mem.get('ari_usuario');
+if (valido(usuario)) {
+  recordar(usuario);
+  // Migración: antes había un solo historial y un solo nombre.
+  if (mem.get('ari_historial') !== null) { mem.set('ari_historial_' + usuario, mem.get('ari_historial')); mem.del('ari_historial'); }
+  if (mem.get('ari_nombre') !== null) { mem.set('ari_nombre_' + usuario, mem.get('ari_nombre')); mem.del('ari_nombre'); }
+} else usuario = nuevoUsuario();
+// Liga para retomar una conversación en otro navegador: /chat?c=web-…
+try { const q = new URLSearchParams(location.search).get('c'); if (valido(q)) { usuario = q; mem.set('ari_usuario', q); recordar(q); history.replaceState(null, '', location.pathname); } } catch {}
 let pendientes = [], ocupado = false, sondeo = null;
 
-function nuevoUsuario(){ const u = 'web-' + crypto.randomUUID(); mem.set('ari_usuario', u); mem.del('ari_historial'); ponerNombre(''); return u; }
+function nuevoUsuario(){ const u = 'web-' + crypto.randomUUID(); mem.set('ari_usuario', u); recordar(u); return u; }
 // Nombre del cliente arriba del chat en cuanto lo da (se guarda para recargas).
-function ponerNombre(n){ n = String(n || '').trim().slice(0, 40); if (n) mem.set('ari_nombre', n); else mem.del('ari_nombre'); const el = document.getElementById('cliente'); if (el) el.textContent = n; }
+function ponerNombre(n){ n = String(n || '').trim().slice(0, 40); if (n) mem.set('ari_nombre_' + usuario, n); const el = document.getElementById('cliente'); if (el) el.textContent = n; }
 function esc(s){ return String(s).replace(/[&<>"]/g, (c) => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])); }
 function formato(s){ return esc(s).replace(/\\*([^*\\n]+)\\*/g,'<b>$1</b>').replace(/(^|\\s)_([^_\\n]+)_/g,'$1<i>$2</i>').replace(/(https?:\\/\\/[^\\s<]+)/g,'<a href="$1" target="_blank" rel="noopener">$1</a>'); }
-function historial(){ try { return JSON.parse(mem.get('ari_historial') || '[]'); } catch { return []; } }
-function guardar(item){ const h = historial(); h.push(item); mem.set('ari_historial', JSON.stringify(h.slice(-200))); }
+function historial(u = usuario){ try { return JSON.parse(mem.get('ari_historial_' + u) || '[]'); } catch { return []; } }
+function guardar(item){ const h = historial(); h.push(item); mem.set('ari_historial_' + usuario, JSON.stringify(h.slice(-200))); }
 function reparar(x){ if (typeof x !== 'string' || !/[ÃÂ]|ð/.test(x)) return x; try { const b = []; for (const ch of x) { const c = ch.codePointAt(0); if (c > 255) return x; b.push(c); } const r = new TextDecoder('utf-8', { fatal:true }).decode(new Uint8Array(b)); return (r.match(/[ÃÂð]/g) || []).length < (x.match(/[ÃÂð]/g) || []).length ? r : x; } catch { return x; } }
 function pintar(item){
   if (item.texto) item.texto = reparar(item.texto);
@@ -122,7 +149,7 @@ async function api(ruta, op = {}) {
 async function subir(file){ const fd = new FormData(); fd.append('archivo', file); return api('/chat/v1/subir', { method:'POST', body: fd }); }
 
 async function enviar(texto, media = [], opciones = {}, oculto = false) {
-  if (ocupado) return; ocupado = true; $('#enviar').disabled = true;
+  if (ocupado) return; ocupado = true; $('#enviar').disabled = true; $('#paginas').disabled = true;
   if (!oculto && (texto || media.length)) agregar({ de:'yo', texto, media });
   const ind = document.createElement('div'); ind.className='escribiendo'; ind.textContent='Ari está escribiendo…'; chat.appendChild(ind); chat.scrollTop = chat.scrollHeight;
   try {
@@ -135,7 +162,7 @@ async function enviar(texto, media = [], opciones = {}, oculto = false) {
     if (d.total_pasos) $('#estado').textContent = 'Paso ' + Math.min(d.paso, d.total_pasos) + ' de ' + d.total_pasos;
     if (d.estado === 'completada') { $('#estado').textContent = 'Entrevista terminada'; if (d.generando) agregar({ tipo:'sis', texto:'Estoy armando tu página. Tarda unos minutos; aquí te aviso.' }); iniciarSondeo(); }
   } catch (e) { ind.remove(); if (e.message !== 'codigo') agregar({ tipo:'sis', texto:'No se pudo enviar: ' + e.message }); }
-  finally { ocupado = false; $('#enviar').disabled = false; t.focus(); }
+  finally { ocupado = false; $('#enviar').disabled = false; $('#paginas').disabled = false; t.focus(); }
 }
 
 // Avisos de Ari que llegan sin que el cliente escriba (pago recibido, dirección conectada).
@@ -191,11 +218,47 @@ $('#mic').onclick = async () => {
     rec.start(); $('#mic').classList.add('grabando'); $('#mic').setAttribute('aria-label','Detener y enviar');
   } catch { agregar({ tipo:'sis', texto:'No hay permiso para usar el micrófono.' }); }
 };
-$('#nueva').onclick = () => { if (!confirmarNueva()) return; usuario = nuevoUsuario(); chat.innerHTML=''; $('#estado').textContent='Tu página web en una conversación'; enviar('pagina', [], {}, true); };
-function confirmarNueva(){ return historial().length === 0 || window.confirm('¿Empezar una conversación nueva? La actual queda guardada para ${M}.'); }
+// Mis páginas
+const ESTADOS = { entrevista: 'En entrevista', armando: 'Armando la página', listo: 'Página lista', requiere_revision: 'En revisión', error: 'Con un problema' };
+function cerrarLista(){ $('#lista').hidden = true; $('#paginas').focus(); }
+async function abrirLista(){
+  const lu = $('#lu'); lu.innerHTML = '<li class="sis">Cargando…</li>'; $('#lista').hidden = false; $('#cerrar').focus();
+  let datos = [];
+  try { datos = (await api('/chat/v1/conversaciones?ids=' + encodeURIComponent(usuarios().join(',')))).conversaciones || []; } catch (e) { if (e.message === 'codigo') return cerrarLista(); }
+  const vistos = new Set(datos.map((x) => x.usuario_id));
+  // Conversaciones recién empezadas que aún no tienen entrevista en el servidor.
+  for (const u of usuarios()) if (!vistos.has(u) && (u === usuario || historial(u).length)) datos.push({ usuario_id: u, nombre: mem.get('ari_nombre_' + u) || '', estado: 'entrevista' });
+  for (const x of datos) if (x.nombre) mem.set('ari_nombre_' + x.usuario_id, x.nombre);
+  lu.innerHTML = '';
+  for (const x of datos) {
+    const li = document.createElement('li'), b = document.createElement('button');
+    b.type = 'button'; if (x.usuario_id === usuario) b.setAttribute('aria-current', 'true');
+    const fecha = x.actualizado ? new Date(x.actualizado).toLocaleDateString('es-MX', { day:'numeric', month:'short' }) : 'Nueva';
+    b.innerHTML = '<span class="n">' + esc(x.nombre || mem.get('ari_nombre_' + x.usuario_id) || 'Página sin nombre todavía') + '</span><span class="d">' + esc((ESTADOS[x.estado] || '') + ' · ' + fecha) + '</span>';
+    b.onclick = () => { cerrarLista(); if (x.usuario_id !== usuario) abrir(x.usuario_id); };
+    li.appendChild(b); lu.appendChild(li);
+  }
+}
+async function abrir(u, nueva = false){
+  if (sondeo) { clearInterval(sondeo); sondeo = null; }
+  usuario = u; mem.set('ari_usuario', u); recordar(u);
+  pendientes = []; $('#adj').style.display = 'none';
+  $('#estado').textContent = 'Tu página web en una conversación';
+  ponerNombre(mem.get('ari_nombre_' + u) || '');
+  if (!nueva && !historial().length) {
+    // Sin copia en este navegador: traerla del servidor.
+    try { const d = await api('/chat/v1/historial?usuario_id=' + encodeURIComponent(u)); if (d.items?.length) { mem.set('ari_historial_' + u, JSON.stringify(d.items)); if (d.items.some((x) => x.tipo === 'sitio')) mem.set('ari_sitio_' + u, '1'); } } catch {}
+  }
+  arrancar();
+}
+$('#paginas').onclick = abrirLista;
+$('#cerrar').onclick = cerrarLista;
+$('#lista').addEventListener('click', (e) => { if (e.target.id === 'lista') cerrarLista(); });
+document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && !$('#lista').hidden) cerrarLista(); });
+$('#nueva').onclick = () => { cerrarLista(); abrir(nuevoUsuario(), true); };
 $('#fp').addEventListener('submit', async (e) => {
   e.preventDefault(); codigo = $('#codigo').value.trim(); $('#perr').textContent='';
-  try { await api('/chat/v1/sitio?usuario_id=' + encodeURIComponent(usuario)); mem.set('ari_codigo', codigo); $('#puerta').hidden = true; arrancar(); }
+  try { await api('/chat/v1/sitio?usuario_id=' + encodeURIComponent(usuario)); mem.set('ari_codigo', codigo); $('#puerta').hidden = true; abrir(usuario); }
   catch (err) { $('#perr').textContent = err.message === 'codigo' ? 'Código incorrecto' : err.message; $('#puerta').hidden = false; }
 });
 function arrancar(){
@@ -205,8 +268,7 @@ function arrancar(){
   if (h.length) iniciarAvisos();
   t.focus();
 }
-ponerNombre(mem.get('ari_nombre'));
-if (!codigo) $('#puerta').hidden = false; else arrancar();
+if (!codigo) $('#puerta').hidden = false; else abrir(usuario);
 </script>
 </body>
 </html>`;
