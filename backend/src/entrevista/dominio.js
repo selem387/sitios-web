@@ -25,6 +25,8 @@ const MAX_USD = () => Number(process.env.DOMINIO_PRECIO_MAX_USD || 60);
 const TOPE_INCLUIDO = () => Number(process.env.DOMINIO_INCLUIDO_MAX_MXN || process.env.DOMINIO_SUGERIDO_MAX_MXN || 50);
 export const cabeIncluido = (precio) => Number(precio?.neto_mxn) > 0 && Number(precio.neto_mxn) < TOPE_INCLUIDO();
 const MAX_APARTE = 3;
+const TLDS_APARTE = () => (process.env.DOMINIO_TLDS_APARTE || 'com,com.mx,mx,net').split(',').map((x) => x.trim()).filter(Boolean);
+const PIDE_APARTE = /aparte|pagar(la)? yo|la pago|lo pago|con precio|\.com\b|\.mx\b|otras? opciones? (de|con) pago/i;
 const MAX_OPCIONES = 5;
 const MAX_BUSQUEDAS = 6;
 
@@ -36,7 +38,7 @@ const LIGA = /\b(liga|link|enlace|pagar|otra)\b/i;
 const ACEPTO = /\bacept\w*|\bde acuerdo\b|\bestoy de acuerdo\b/i;
 const SI_SUELTO = /^\s*(s[ií]+|va+|ok|okey|dale|claro|perfecto|sale)[\s.!]*$/i;
 
-const BLOQUEANTES = new Set(['opciones', 'titularidad', 'traspaso_email', 'cotizar', 'acuerdos', 'reembolsada', 'buscar']);
+const BLOQUEANTES = new Set(['opciones', 'opciones_aparte', 'titularidad', 'traspaso_email', 'cotizar', 'acuerdos', 'reembolsada', 'buscar']);
 const CON_PALABRAS = new Set(['esperando_cambios', 'pago_pendiente', 'pago_vencido']);
 
 const flujoDe = (brief) => brief?.tecnico?.dominio_flujo || null;
@@ -138,15 +140,45 @@ export async function buscarOpciones(consulta, brief) {
   return { opciones, aparte: aparte.slice(0, MAX_APARTE), pedidoNoLibre };
 }
 
+/** Opciones que se pagan aparte (.com, .com.mx, …) con su precio al cliente: costo de GoDaddy + comisión de la pasarela. */
+export async function buscarAparte(consulta, brief) {
+  const lista = [];
+  for (const bse of basesDe(consulta, brief).slice(0, 2)) {
+    for (const tld of TLDS_APARTE()) {
+      if (lista.length >= MAX_OPCIONES) break;
+      const d = `${bse}.${tld}`;
+      if (lista.some((x) => x.dominio === d)) continue;
+      const r = await GD.disponibilidad(d).catch(() => null);
+      if (!r?.disponible || !r.precio?.monto || (r.inventario && r.inventario !== 'REGISTRY')) continue;
+      if (r.precio.moneda === 'USD' && r.precio.monto > MAX_USD()) continue;
+      const p = await precioCliente(r.precio.monto, r.precio.moneda || 'USD').catch(() => null);
+      if (p && !cabeIncluido(p)) lista.push({ dominio: d, incluido: false, total_mxn: p.total_mxn });
+    }
+  }
+  return lista.sort((a, b) => a.total_mxn - b.total_mxn);
+}
+
+async function pasoAparte(e, brief, consulta) {
+  let lista;
+  try { lista = await buscarAparte(consulta, brief); }
+  catch (err) { console.error('buscarAparte', err); return ['No pude revisar los precios en este momento 😕. Escríbeme *pagar aparte* otra vez en un par de minutos.']; }
+  if (!lista.length) return ['No encontré direcciones libres con ese nombre para pagar aparte. Escríbeme otra idea de nombre, o elige una de las que vienen incluidas.'];
+  await patchFlujo(e.id, { estado: 'opciones_aparte', aparte: lista });
+  return [
+    `Estas están libres y se pagan aparte. El precio es por 1 año e incluye la comisión del pago con tarjeta:\n\n${lista.map((o, i) => `${i + 1}. *${o.dominio}* · ${pesos(o.total_mxn)}`).join('\n')}`,
+    '¿Cuál quieres? Respóndeme con el número. Si mejor prefieres una de las incluidas, escríbeme *incluidas*.',
+  ];
+}
+
 function mensajeOpciones(opciones, aparte = [], pedidoNoLibre = []) {
   const textos = [];
   const ocupados = pedidoNoLibre.length ? `${pedidoNoLibre.map((d) => `*${d}*`).join(', ')} ya ${pedidoNoLibre.length > 1 ? 'están ocupadas' : 'está ocupada'}. ` : '';
   const caras = aparte.length ? `${aparte.map((o) => `*${o.dominio}*`).join(', ')} ${aparte.length > 1 ? 'están libres' : 'está libre'}, pero no ${aparte.length > 1 ? 'entran' : 'entra'} en tu pago: ${aparte.map((o) => `${o.dominio} cuesta ${pesos(o.total_mxn)}`).join(', ')} por 1 año y se paga aparte. ` : '';
   if (opciones.length) {
     textos.push(`${ocupados}${caras}Estas direcciones están libres y ya vienen *incluidas en tu pago*, sin costo extra (1 año):\n\n${opciones.map((o, i) => `${i + 1}. *${o.dominio}*`).join('\n')}`);
-    textos.push(`¿Cuál te late? Respóndeme con el número.${aparte.length ? ` Si prefieres ${aparte.length > 1 ? 'una de las que se pagan aparte' : `*${aparte[0].dominio}*`}, escríbeme su nombre.` : ' Si quieres otra que no esté en la lista, escríbeme el nombre; si cuesta más, se paga aparte.'} Si prefieres dejarlo para después, dime *después* y tu página queda con una dirección temporal.`);
+    textos.push('¿Cuál te late? Respóndeme con el número. Si quieres otra terminación, como *.com* o *.com.mx*, esa se paga aparte: escríbeme *pagar aparte* y te muestro las opciones con su precio. Si prefieres dejarlo para después, dime *después* y tu página queda con una dirección temporal.');
   } else {
-    textos.push(`${ocupados}${caras}¿Te la registro pagándola aparte? Escríbeme su nombre. O dame otra idea de nombre y busco direcciones que vengan incluidas en tu pago.`);
+    textos.push(`${ocupados}${caras}Si quieres pagar una aparte, escríbeme *pagar aparte* y te muestro las opciones con su precio. O dame otra idea de nombre y busco direcciones que vengan incluidas en tu pago.`);
   }
   return textos;
 }
@@ -199,7 +231,7 @@ async function pasoBuscar(e, brief, consulta) {
     await patchFlujo(e.id, { estado: 'buscar', busquedas: (f.busquedas || 0) + 1 });
     return [`No encontré direcciones libres con esa idea${r.pedidoNoLibre.length ? ` (${r.pedidoNoLibre.join(', ')} ya están ocupadas)` : ''}. Dame otra: puede ser el nombre con tu ciudad, con tu giro o una palabra corta. Por ejemplo: _${base(brief?.negocio?.nombre) || 'tunegocio'}${base(brief?.negocio?.ciudad) || 'merida'}.online_`];
   }
-  await patchFlujo(e.id, { estado: 'opciones', opciones: r.opciones, aparte: r.aparte, busquedas: (f.busquedas || 0) + 1 });
+  await patchFlujo(e.id, { estado: 'opciones', opciones: r.opciones, aparte: r.aparte, consulta: String(consulta || '').slice(0, 100), busquedas: (f.busquedas || 0) + 1 });
   return mensajeOpciones(r.opciones, r.aparte, r.pedidoNoLibre);
 }
 
@@ -239,6 +271,7 @@ export async function atenderDominio(e, brief, texto) {
       if (DESPUES.test(t) && !/\d/.test(t)) return posponer(e);
       // Eligió por nombre una de las que se pagan aparte.
       const cara = aparte.find((o) => t.toLowerCase().includes(o.dominio));
+      if (!cara && PIDE_APARTE.test(t) && !/^\D{0,12}?[1-9]\b/.test(t)) return { textos: await pasoAparte(e, brief, (t.match(/[a-z0-9-]+\.[a-z.]{2,10}/i) || [])[0] || f.consulta || brief?.tecnico?.dominio_deseado || brief?.tecnico?.dominio || brief?.negocio?.nombre), seguirConAri: false };
       if (cara) {
         await patchFlujo(e.id, { estado: 'titularidad', dominio: cara.dominio, incluido: false });
         return { textos: [`Va: *${cara.dominio}* ✅ Esta no entra en tu pago; cuesta ${pesos(cara.total_mxn)} por 1 año y te mando la liga para pagarla aparte.`, MENSAJE_TITULARIDAD], seguirConAri: false };
@@ -259,6 +292,24 @@ export async function atenderDominio(e, brief, texto) {
       const elegido = ops[n - 1].dominio;
       await patchFlujo(e.id, { estado: 'titularidad', dominio: elegido, incluido: true });
       return { textos: [`Buena elección: *${elegido}* ✅`, MENSAJE_TITULARIDAD], seguirConAri: false };
+    }
+    case 'opciones_aparte': {
+      const lista = f.aparte || [];
+      if (DESPUES.test(t) && !/\d/.test(t)) return posponer(e);
+      if (/inclu/i.test(t)) { await patchFlujo(e.id, { estado: 'buscar' }); return { textos: await pasoBuscar(e, brief, f.consulta || brief?.tecnico?.dominio_deseado || brief?.negocio?.nombre), seguirConAri: false }; }
+      let n = Number((t.match(/^\D{0,12}?([1-9])\b/) || [])[1]);
+      const porNombre = lista.findIndex((o) => t.toLowerCase().includes(o.dominio));
+      if (porNombre >= 0) n = porNombre + 1;
+      if (!(n >= 1 && n <= lista.length)) {
+        const ia = await interpretar('elegir una dirección de pago aparte', t, `Opciones: ${lista.map((o, i) => `${i + 1}. ${o.dominio} ${pesos(o.total_mxn)}`).join(' ')}`);
+        if (ia.accion === 'elegir' && ia.numero >= 1 && ia.numero <= lista.length) n = ia.numero;
+        else if (ia.accion === 'posponer' || ia.accion === 'rechazar') return posponer(e);
+        else if (ia.accion === 'buscar') return { textos: await pasoAparte(e, brief, ia.consulta || t), seguirConAri: false };
+        else return { textos: [`${ia.accion === 'pregunta' && ia.respuesta ? `${ia.respuesta}\n\n` : ''}Respóndeme con el número de la que quieres, o escríbeme *incluidas* para ver las que no tienen costo extra.`], seguirConAri: false };
+      }
+      const o = lista[n - 1];
+      await patchFlujo(e.id, { estado: 'titularidad', dominio: o.dominio, incluido: false });
+      return { textos: [`Va: *${o.dominio}* ✅ Cuesta ${pesos(o.total_mxn)} por 1 año; después te mando la liga para pagarla.`, MENSAJE_TITULARIDAD], seguirConAri: false };
     }
     case 'titularidad': {
       let op = Number((t.match(/\b([123])\b/) || [])[1]);
