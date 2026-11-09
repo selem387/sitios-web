@@ -78,6 +78,17 @@ function candidatosExactos(consulta, brief) {
   return TLDS().slice(0, 3).map((t) => `${nombre}.${t}`);
 }
 
+const TLDS_BARATAS = () => (process.env.DOMINIO_TLDS_BARATAS || 'online,site,store,xyz,shop,lat,website,space,tech,fun').split(',').map((x) => x.trim()).filter(Boolean);
+/** Nombres base para buscar: lo que pidió (sin terminación), el nombre del negocio y nombre+ciudad. */
+function basesDe(consulta, brief) {
+  const txt = String(consulta || '').toLowerCase();
+  const conTld = (txt.match(/[a-z0-9][a-z0-9-]*(?=\.[a-z]{2,24}\b)/) || [])[0];
+  const pedido = (conTld || base(txt)).replace(/[^a-z0-9-]/g, '').slice(0, 40);
+  const negocio = base(brief?.negocio?.nombre);
+  const ciudad = base(brief?.negocio?.ciudad);
+  return [...new Set([pedido, negocio, negocio && ciudad ? `${negocio}${ciudad}` : ''].filter((x) => x && x.length >= 3 && x.length <= 40))];
+}
+
 export async function buscarOpciones(consulta, brief) {
   const exactos = candidatosExactos(consulta, brief);
   const vistos = new Set();
@@ -94,11 +105,27 @@ export async function buscarOpciones(consulta, brief) {
       else aparte.push({ dominio: d, incluido: false, total_mxn: p.total_mxn });
     } else pedidoNoLibre.push(d);
   }
-  const q = [String(consulta || '').replace(/[.,;:¿?¡!]/g, ' ').trim(), brief?.negocio?.nombre, brief?.negocio?.ciudad].filter(Boolean).join(' ').slice(0, 100);
-  const sug = await GD.sugerencias(q || 'negocio', { tlds: TLDS(), pageSize: 40 }).catch((e) => { console.error('sugerencias', e.message); return []; });
+  // Mismo nombre con terminaciones baratas (.online, .site, …): lo más parecido a lo que pidió.
+  const bases = basesDe(consulta, brief);
+  let revisados = 0;
+  for (const bse of bases) {
+    for (const tld of TLDS_BARATAS()) {
+      if (incluidas.length >= MAX_OPCIONES || revisados >= 14) break;
+      const d = `${bse}.${tld}`;
+      if (vistos.has(d)) continue;
+      vistos.add(d); revisados++;
+      const r = await GD.disponibilidad(d).catch(() => null);
+      if (!r?.disponible || !r.precio?.monto || (r.inventario && r.inventario !== 'REGISTRY')) continue;
+      const p = await precioCliente(r.precio.monto, r.precio.moneda || 'USD').catch(() => null);
+      if (cabeIncluido(p)) incluidas.push({ dominio: d, incluido: true, exacto: bse === bases[0] });
+    }
+  }
+  // Respaldo: sugerencias de GoDaddy con nombres cortos.
+  const sug = incluidas.length >= MAX_OPCIONES ? [] : await GD.sugerencias(bases[0] || 'negocio', { tlds: TLDS(), pageSize: 40 }).catch((e) => { console.error('sugerencias', e.message); return []; });
   for (const s of sug) {
-    if (incluidas.length >= MAX_OPCIONES * 2) break;
+    if (incluidas.length >= MAX_OPCIONES) break;
     if (vistos.has(s.dominio) || !s.precio?.monto) continue;
+    if (s.dominio.split('.')[0].length > 28) continue;
     if (s.inventario && s.inventario !== 'REGISTRY') continue;
     if (s.precio.moneda === 'USD' && s.precio.monto > MAX_USD()) continue;
     const p = await precioCliente(s.precio.monto, s.precio.moneda || 'USD').catch(() => null);
