@@ -1,3 +1,5 @@
+import { compress } from 'hono/compress';
+import { createHash } from 'node:crypto';
 // Un error suelto en segundo plano no debe tumbar el servidor (cada caída = 502 para todos).
 process.on('unhandledRejection', (err) => console.error('unhandledRejection', err));
 // Servidor principal: API compatible con Base44 (/api/apps/...), páginas de acceso,
@@ -29,6 +31,22 @@ import { HttpError, errorBody } from './util.js';
 
 const app = new Hono();
 
+// Compresión gzip/deflate de texto (HTML, CSS, JS, JSON, SVG) > 1 KB; las imágenes no se tocan.
+app.use('*', compress());
+// ETag en HTML: el navegador que ya tiene la página recibe 304 sin cuerpo (el sitio en vivo se sirve con no-cache).
+app.use('*', async (c, next) => {
+  await next();
+  if (c.req.method !== 'GET' || c.res.status !== 200 || !/^text\/html/.test(c.res.headers.get('content-type') || '') || c.res.headers.has('ETag')) return;
+  const cuerpo = await c.res.clone().arrayBuffer();
+  const etag = `W/"${createHash('sha1').update(Buffer.from(cuerpo)).digest('base64url').slice(0, 27)}"`;
+  if ((c.req.header('if-none-match') || '').split(/\s*,\s*/).includes(etag)) {
+    const h = new Headers(c.res.headers); h.delete('content-length'); h.delete('content-type');
+    c.res = new Response(null, { status: 304, headers: h });
+    c.res.headers.set('ETag', etag);
+    return;
+  }
+  c.res.headers.set('ETag', etag);
+});
 app.use('*', cors({
   origin: (origin) => origin || '*',
   credentials: true,
