@@ -70,8 +70,11 @@ export function avisoPrivacidad(brief = {}, { actualizado = new Date() } = {}) {
   const finalidades = ['responder tus mensajes y solicitudes de información', ...g.finalidades];
   const fecha = new Date(actualizado).toLocaleDateString('es-MX', { day: 'numeric', month: 'long', year: 'numeric' });
   const li = (xs) => `<ul>${xs.map((x) => `<li>${esc(x)}</li>`).join('')}</ul>`;
-  return `<section class="aviso" style="max-width:72ch;margin:0 auto;padding:clamp(96px,14vw,140px) 20px 64px;line-height:1.65">
-<h1 style="margin-bottom:.4em">Aviso de privacidad</h1>
+  return `<style>.aviso{max-width:68ch;margin:0 auto;padding:clamp(88px,12vw,128px) clamp(20px,5vw,32px) 72px;line-height:1.65}
+.aviso h1{font-size:clamp(2rem,7vw,3rem);line-height:1.1;margin:0 0 .6em}.aviso h2{font-size:clamp(1.25rem,4.2vw,1.6rem);line-height:1.2;margin:2.2em 0 .6em}
+.aviso p{margin:0 0 1em}.aviso ul{margin:0 0 1.2em;padding-left:1.3em}.aviso li{margin:.3em 0}.aviso li::marker{color:var(--p,currentColor)}.aviso a{color:inherit}</style>
+<section class="aviso">
+<h1>Aviso de privacidad</h1>
 <p><strong>${esc(nombre)}</strong>${titular ? ` (${esc(titular)})` : ''}, con domicilio en ${esc(domicilio(brief))}, es responsable del tratamiento de los datos personales que nos compartes por esta página, WhatsApp, teléfono, correo, redes sociales o en persona, conforme a la Ley Federal de Protección de Datos Personales en Posesión de los Particulares.</p>
 <h2>Datos que recabamos</h2>${li(datos)}
 ${g.sensibles ? `<p>${esc(g.sensibles)}</p>` : ''}
