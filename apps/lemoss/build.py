@@ -349,7 +349,7 @@ def home():
     body = f"""
 <section class="hero"><div class="wrap hero-in">
 <div>
-<p class="pill"><b>Lemoss</b> Consultoría tecnológica por resultados</p>
+<p class="pill">Consultoría tecnológica por resultados</p>
 <h1>Tecnología que se mide en <span class="az">resultados</span></h1>
 <p class="lead">Estrategia tecnológica para empresas medianas en México: hoja de ruta, procesos, sistemas, ventas e inteligencia artificial. Antes de empezar acordamos una meta medible y el trabajo se evalúa contra ella.</p>
 <div class="acciones"><a class="btn" href="{wa()}" rel="noopener">Escríbenos por WhatsApp</a><a class="btn btn-2" href="/autodiagnostico/">Autodiagnóstico gratis</a></div>
