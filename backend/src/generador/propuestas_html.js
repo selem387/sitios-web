@@ -7,7 +7,7 @@ import path from 'node:path';
 import { config } from '../config.js';
 import { mezclar, contraste } from '../entrevista/tema.js';
 import { paresTipograficos, urlFuentes } from './fuentes.js';
-import { corregirPaleta, auditarPaleta, cssTipografia } from './tipo_color.js';
+import { corregirPaleta, auditarPaleta, cssTipografia, textoSobre } from './tipo_color.js';
 import { coloresParaPropuesta, avisosDeGiro } from './paletas_giro.js';
 import { evaluarColoresCliente, asignarFuentes } from './asesor_color.js';
 import { coloresDePalabras, logoTenido } from './materiales.js';
@@ -34,6 +34,12 @@ function base(colores) {
   const claro = claros[0] || mezclar(principal, '#FFFFFF', 0.9);
   const acento = cs.find((c) => c !== principal && c !== claro && Math.abs(lum(c) - lum(principal)) > 0.02) || mezclar(principal, '#FFFFFF', 0.35);
   return { principal, claro, acento };
+}
+// Propuestas B y E (8-nov-2026): el acento de contraste también va en el botón principal ("el tercer color la hace memorable").
+function conBotonAcento(pal, cp) {
+  if (!cp?.acentoCta || !cp.acento) return pal;
+  const { texto, solido } = textoSobre(cp.acento, pal.fg);
+  return { ...pal, btn: solido, onBtn: texto };
 }
 function paleta(layout, b) {
   const crema = mezclar(b.claro, '#FFFFFF', 0.45);
@@ -117,7 +123,7 @@ function pagina(d) {
 <title>${esc(d.nombre)} · Propuesta ${d.letra}</title>
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><!-- Tipografías sin bloquear la portada (7-nov-2026): la página se pinta con la letra de respaldo y cambia a la de Google en cuanto llega (display=swap). Lighthouse móvil ≥ 90. --><link rel="preload" as="style" href="${esc(d.fuentesUrl)}" onload="this.onload=null;this.rel='stylesheet'"><noscript><link href="${esc(d.fuentesUrl)}" rel="stylesheet"></noscript>
 <style>
-:root{--bg:${p.bg};--fg:${p.fg};--p:${p.primary};--on:${p.onPrimary};--acc:${p.accent};--mut:${p.muted};--card:${p.card};--soft:${p.soft};--bor:${p.border};--ft:'${f.titulos}',serif;--fc:'${f.cuerpo}',sans-serif}
+:root{--bg:${p.bg};--fg:${p.fg};--p:${p.primary};--on:${p.onPrimary};--acc:${p.accent};${p.btn ? `--btn:${p.btn};--on-btn:${p.onBtn};` : ''}--mut:${p.muted};--card:${p.card};--soft:${p.soft};--bor:${p.border};--ft:'${f.titulos}',serif;--fc:'${f.cuerpo}',sans-serif}
 *{box-sizing:border-box;margin:0;padding:0}html{scroll-behavior:smooth}body{background:var(--bg);color:var(--fg);font-family:var(--fc);font-size:16px;line-height:1.5;-webkit-font-smoothing:antialiased}
 img{max-width:100%;height:auto;display:block}a{color:inherit}
 h1,h2,h3{font-family:var(--ft);line-height:1.08;letter-spacing:-.01em;text-wrap:balance}h1{font-size:clamp(32px,8.5vw,60px)}h2{font-size:clamp(24px,6vw,36px);margin-bottom:16px}
@@ -127,7 +133,7 @@ h1,h2,h3{font-family:var(--ft);line-height:1.08;letter-spacing:-.01em;text-wrap:
 .barra nav{display:flex;gap:18px;font-weight:600;font-size:15px}.barra nav a{text-decoration:none}
 .wrap{max-width:1120px;margin:0 auto;padding:0 20px}
 .sub{color:var(--soft);font-size:clamp(16px,4.2vw,19px);margin-top:12px;max-width:34ch}
-.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;background:var(--p);color:var(--on);font-weight:700;text-decoration:none;padding:14px 22px;border-radius:999px;margin-top:20px;min-height:48px}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;background:var(--btn,var(--p));color:var(--on-btn,var(--on));font-weight:700;text-decoration:none;padding:14px 22px;border-radius:999px;margin-top:20px;min-height:48px}
 .btn.ancho{display:flex;width:100%}.btn.inv{background:var(--bg);color:var(--fg)}
 .lnk{font-weight:700;margin-left:16px;text-underline-offset:5px}
 .info{list-style:none;display:flex;flex-wrap:wrap;gap:8px 16px;margin-top:16px;font-size:14px;font-weight:600;color:var(--acc)}.info li::before{content:"● ";font-size:10px;vertical-align:2px}.info.centro{justify-content:center}
@@ -263,7 +269,7 @@ export async function renderPropuestas(brief, mat, textos, { ronda = 0, fijo = n
     const rot = (k) => altos.length ? altos[(i * 2 + k) % altos.length].img : (mat.hero?.url || '');
     const d = {
       letra, layout, nombre: brief.negocio?.nombre || '', logo: mat.logo?.url || null, logoObj: mat.logo || null,
-      pal: fijo?.paleta || corregirPaleta(paleta(layout, b)).paleta, f: fijo?.fuentes || pares[i % pares.length], fuentesUrl: urlFuentes([fijo?.fuentes || pares[i % pares.length]]),
+      pal: fijo?.paleta || conBotonAcento(corregirPaleta(paleta(layout, b)).paleta, cp), f: fijo?.fuentes || pares[i % pares.length], fuentesUrl: urlFuentes([fijo?.fuentes || pares[i % pares.length]]),
       textos: { titular: v.titular, subtitulo: v.subtitulo, foto_url: v.foto_url || null, cta: v.cta || 'Pide por WhatsApp', destacados: textos.destacados, categorias: textos.categorias, visita: textos.visita },
       fotosSl: reales.length ? reales.slice(i % reales.length).concat(reales.slice(0, i % reales.length)) : [], diapos,
       heroImgs: [rot(0), rot(1), rot(2)], productos: prods.slice(i % 2 ? 3 : 0).concat(prods.slice(0, i % 2 ? 3 : 0)),

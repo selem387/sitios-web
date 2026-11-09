@@ -24,5 +24,23 @@ t(dos.colores[0] === '#123456' && dos.colores[1] === '#ABCDEF' && dos.origen ===
 const ev = paletasPara({ arquetipo: 'restaurante', subtipo: 'restaurante', evitarHex: ['#C1272D'] });
 t(!ev.familias.some((f) => f.n === 'Rojo chile y verde hoja'), 'excluye familias con el tono que el cliente no quiere');
 t(avisosDeGiro({ subtipo: 'restaurante', colores: ['#2B4FE0'] }).length === 1 && avisosDeGiro({ subtipo: 'dental', colores: ['#F2B705'] }).length === 1, 'avisos de choque con el giro');
+// Acento de contraste (8-nov-2026): "dos colores = web correcta; el tercero la hace memorable".
+const { esAcentoContraste, acentoContraste, PROPUESTAS_CONTRASTE } = await import('../src/generador/paletas_giro.js');
+t(esAcentoContraste('#002941', '#FD6E6E') && esAcentoContraste('#172D4D', '#B58A45') && esAcentoContraste('#3F5228', '#D8492E'), 'los 3 ejemplos de referencia cuentan como acento de contraste');
+t(!esAcentoContraste('#B5462D', '#E3A33B'), 'terracota + mostaza (análogo) no cuenta como contraste');
+const giros = [['inmobiliaria', 'inmobiliaria', 'elegante'], ['restaurante', 'restaurante', 'calido'], ['clinica', 'dental', 'fresco'], ['servicios', 'legal', 'tradicional'], ['turismo', 'lujo', 'lujo'], ['tienda', 'general', 'calido']];
+const props = giros.flatMap(([arquetipo, st, estilo]) => [0, 1, 2, 3, 4, 5].map((i) => ({ st, i, cp: coloresParaPropuesta({ brief: { negocio: { arquetipo, subtipo_resuelto: st }, marca: { estilo } }, i }) })));
+t(props.filter((x) => PROPUESTAS_CONTRASTE.includes(x.i)).every((x) => x.cp.acentoCta && esAcentoContraste(x.cp.colores[0], x.cp.acento)), 'B y E llevan acento de contraste en el botón, en todos los giros probados');
+t(props.filter((x) => !PROPUESTAS_CONTRASTE.includes(x.i)).every((x) => !x.cp.acentoCta), 'las otras 4 conservan el acento de su familia');
+t(props.filter((x) => x.st === 'lujo').every((x) => { const { h } = oklch(x.cp.acento); return !x.cp.acentoCta || (h >= 60 && h <= 100); }), 'en lujo el acento de contraste es oro/champaña, nunca naranja');
+t(props.filter((x) => x.st === 'restaurante').every((x) => { const { h } = oklch(x.cp.acento); return !(h > 220 && h < 310); }), 'en comida el acento nunca es azul/morado');
+t(acentoContraste('#B5462D', '#E3A33B', { subtipo: 'restaurante' }) !== '#E3A33B', 'marca cálida recibe un acento frío');
+const cli2 = coloresParaPropuesta({ brief: { negocio: { arquetipo: 'tienda' }, marca: {} }, coloresCliente: ['#123456', '#2E6B9E'], i: 1 });
+t(!cli2.acentoCta && cli2.colores[0] === '#123456', 'dos colores del cliente sin contraste entre sí: no se inventa acento');
+const cli3 = coloresParaPropuesta({ brief: { negocio: { arquetipo: 'tienda' }, marca: {} }, coloresCliente: ['#123456', '#E07A3F'], i: 4 });
+t(cli3.acentoCta && cli3.acento === '#E07A3F', 'dos colores del cliente que contrastan: el suyo va de acento');
+const fill = corregirPaleta({ bg: '#F4F1EA', fg: '#0F1C30', primary: '#172D4D', accent: '#B58A45', accentUso: 'relleno', card: '#FFFFFF' }).paleta;
+t(auditarPaleta(fill).length === 0 && fill.onAccent, 'acento de relleno: texto legible encima');
+t(['inmobiliaria', 'veterinaria', 'general', 'lujo'].every((st) => PALETAS[st].familias.some((f) => /oro antiguo|terracota|coral/i.test(f.n))), 'familias nuevas del ejemplo de referencia');
 console.log(`${ok}/${n}`);
 if (ok !== n) process.exit(1);

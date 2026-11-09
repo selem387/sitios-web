@@ -38,7 +38,7 @@ export const TITULOS = {
 
 /* ---------------- Paletas ---------------- */
 // Pastel: fondo claro del pastel, botón en el mismo tono oscurecido. Si no, base de la marca (como la plantilla de menú).
-function paletaGeneral(layout, colores, pastel, i) {
+function paletaGeneral(layout, colores, pastel, i, { acento = null, acentoCta = false } = {}) {
   const cs = colores.filter((c) => /^#[0-9A-F]{6}$/i.test(c));
   let base, tinte;
   if (pastel) {
@@ -67,6 +67,9 @@ function paletaGeneral(layout, colores, pastel, i) {
   p.border = mezclar(p.fg, p.bg, 0.86);
   p.card = mezclar(p.bg, '#FFFFFF', 0.6);
   p.tinte = tinte;
+  // Tercer color (8-nov-2026): acento en el 10 % (viñetas, pasos, líneas) y, en B y E, también en el botón principal.
+  const acc = acento && /^#[0-9A-F]{6}$/i.test(acento) && hsl(acento)[1] > 0.2 && ![base, tinte].includes(acento) ? acento : null;
+  if (acc) { p.accent = acc; p.accentUso = 'relleno'; p.acentoCta = !!acentoCta; }
   return p;
 }
 
@@ -276,7 +279,7 @@ function pagina(d) {
 <title>${esc(d.nombre)} · Propuesta ${d.letra}</title>
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><!-- Tipografías sin bloquear la portada (7-nov-2026): la página se pinta con la letra de respaldo y cambia a la de Google en cuanto llega (display=swap). Lighthouse móvil ≥ 90. --><link rel="preload" as="style" href="${esc(d.fuentesUrl)}" onload="this.onload=null;this.rel='stylesheet'"><noscript><link href="${esc(d.fuentesUrl)}" rel="stylesheet"></noscript>
 <style>
-:root{--bg:${p.bg};--fg:${p.fg};--p:${p.primary};--on:${p.onPrimary};--mut:${p.muted};--card:${p.card};--soft:${p.soft};--bor:${p.border};--tin:${p.tinte};--banda:${p.banda || p.primary};--ft:'${ft}',serif;--fc:'${fc}',sans-serif}
+:root{--bg:${p.bg};--fg:${p.fg};--p:${p.primary};--on:${p.onPrimary};--mut:${p.muted};--card:${p.card};--soft:${p.soft};--bor:${p.border};--tin:${p.tinte};--banda:${p.banda || p.primary};--acc:${p.accent || p.primary};--on-acc:${p.onAccent || p.onPrimary};--btn:${p.acentoCta && p.accent ? p.accent : p.primary};--on-btn:${p.acentoCta && p.accent ? p.onAccent || p.onPrimary : p.onPrimary};--ft:'${ft}',serif;--fc:'${fc}',sans-serif}
 *{box-sizing:border-box;margin:0;padding:0}html{scroll-behavior:smooth}body{background:var(--bg);color:var(--fg);font-family:var(--fc);font-size:16px;line-height:1.55;-webkit-font-smoothing:antialiased}
 img{max-width:100%;height:auto;display:block}a{color:inherit}
 h1,h2,h3{font-family:var(--ft);font-weight:400;line-height:1.06;letter-spacing:-.015em;text-wrap:balance}h1{font-size:clamp(36px,9vw,72px)}h2{font-size:clamp(28px,6.5vw,44px);margin-bottom:22px}h3{font-size:22px}
@@ -288,8 +291,8 @@ h1,h2,h3{font-family:var(--ft);font-weight:400;line-height:1.06;letter-spacing:-
 .barra nav{display:flex;gap:22px;font-size:15px;font-weight:600}.barra nav a{text-decoration:none}
 .kicker{text-transform:uppercase;letter-spacing:.14em;font-size:12px;font-weight:700;color:var(--soft);margin-bottom:14px}
 .sub{color:var(--soft);font-size:clamp(17px,4.4vw,20px);margin-top:16px;max-width:38ch}
-.btn{display:inline-flex;align-items:center;justify-content:center;background:var(--p);color:var(--on);font-weight:700;text-decoration:none;padding:15px 26px;border-radius:999px;margin-top:24px;min-height:50px}.btn.inv{background:#fff;color:var(--banda)}
-.info{list-style:none;display:flex;flex-wrap:wrap;gap:6px 18px;margin-top:22px;font-size:14px;color:var(--soft)}.info li::before{content:"";display:inline-block;width:6px;height:6px;border-radius:50%;background:var(--p);margin-right:8px;vertical-align:2px}
+.btn{display:inline-flex;align-items:center;justify-content:center;background:var(--btn);color:var(--on-btn);font-weight:700;text-decoration:none;padding:15px 26px;border-radius:999px;margin-top:24px;min-height:50px}.btn.inv{background:#fff;color:var(--banda)}${p.acentoCta && p.accent ? '.btn.inv{background:var(--acc);color:var(--on-acc)}' : ''}
+.info{list-style:none;display:flex;flex-wrap:wrap;gap:6px 18px;margin-top:22px;font-size:14px;color:var(--soft)}.info li::before{content:"";display:inline-block;width:6px;height:6px;border-radius:50%;background:var(--acc);margin-right:8px;vertical-align:2px}
 .sec{padding:64px 0 8px}section[id]{scroll-margin-top:80px}
 /* héroes */
 .h-portada{position:relative;min-height:88vh;display:flex;align-items:flex-end;color:#fff;overflow:hidden}.h-portada .fondo{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
@@ -314,7 +317,7 @@ h1,h2,h3{font-family:var(--ft);font-weight:400;line-height:1.06;letter-spacing:-
 .paq-det ul.inc{list-style:disc;padding-left:18px;margin-top:8px;color:var(--soft);font-size:14px}.paq-det ul.inc li{padding:2px 0}p.historia+p.historia{margin-top:14px}
 .s-in.sin-foto{grid-template-columns:1fr!important}.sin-foto .historia{max-width:none}
 @media (min-width:900px){.sin-foto .historias{columns:2;column-gap:56px}.sin-foto .historias p{break-inside:avoid}}.paq ul.inc{list-style:disc;padding-left:18px;margin-top:6px;color:var(--soft);font-size:14px}.paq ul.inc li{display:list-item;border:0;padding:2px 0}
-body.l-carta .paq{background:none;border:0;border-top:2px solid var(--fg);border-radius:0;padding:18px 0}body.l-dostonos .paq{border-top:6px solid var(--p)}
+body.l-carta .paq{background:none;border:0;border-top:2px solid var(--fg);border-radius:0;padding:18px 0}body.l-dostonos .paq{border-top:6px solid var(--acc)}
 .cats{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:12px;margin-top:18px}.catimg img{width:100%;height:auto;border-radius:14px;border:1px solid var(--bor)}
 .doc{display:inline-block;margin-top:18px;font-weight:700;text-underline-offset:5px}
 /* sobre */
@@ -326,7 +329,7 @@ body.l-carta .paq{background:none;border:0;border-top:2px solid var(--fg);border
 .quotes .cap{margin:0}.quotes .cap img{width:100%;height:auto;border-radius:20px;border:1px solid var(--bor);display:block}
 @media (min-width:900px){.quotes.q2{grid-template-columns:repeat(2,minmax(0,1fr))}.quotes.q3{grid-template-columns:repeat(3,minmax(0,1fr))}.quotes.q4{grid-template-columns:repeat(4,minmax(0,1fr))}}
 .capturas{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:12px;margin-top:18px;align-items:start}.capturas img{width:100%;height:auto;border-radius:14px;border:1px solid var(--bor)}
-.pasos{counter-reset:p;list-style:none;display:grid;gap:12px}.pasos li{counter-increment:p;padding-left:52px;position:relative;min-height:40px}.pasos li::before{content:counter(p);position:absolute;left:0;top:-4px;width:38px;height:38px;border-radius:50%;background:var(--p);color:var(--on);display:grid;place-items:center;font-weight:800}
+.pasos{counter-reset:p;list-style:none;display:grid;gap:12px}.pasos li{counter-increment:p;padding-left:52px;position:relative;min-height:40px}.pasos li::before{content:counter(p);position:absolute;left:0;top:-4px;width:38px;height:38px;border-radius:50%;background:var(--acc);color:var(--on-acc);display:grid;place-items:center;font-weight:800}
 details{border-bottom:1px solid var(--bor);padding:16px 0}summary{font-family:var(--ft);font-size:21px;cursor:pointer;list-style:none}summary::-webkit-details-marker{display:none}details p{margin-top:10px;color:var(--soft)}
 .video{width:100%;border-radius:18px}
 .promo{background:var(--p);color:var(--on);padding:16px 0;text-align:center;font-size:17px}.promo b{margin-right:8px;text-transform:uppercase;letter-spacing:.08em;font-size:13px}
@@ -369,7 +372,7 @@ export function paginasGenerales({ brief, mat, textos, pares, urlFuentes, ronda 
     const par = fijo?.fuentes || (dref ? parPorNombres(dref.pares[i]) : pares[i % pares.length]);
     const d = {
       i: i + ronda * 3, letra, layout, dref, nombre: brief.negocio?.nombre || '', brief, mat, titulos,
-      pal: fijo?.paleta || (dref ? paletaRef(dref, i) : { ...corregirPaleta(paletaGeneral(layout, cps[i].colores, pastel, i + ronda * 2)).paleta, familia: cps[i].familia, origen: cps[i].origen }), f: par, fuentesUrl: urlFuentes([par]),
+      pal: fijo?.paleta || (dref ? paletaRef(dref, i) : { ...corregirPaleta(paletaGeneral(layout, cps[i].colores, pastel, i + ronda * 2, { acento: cps[i].acento, acentoCta: cps[i].acentoCta })).paleta, familia: cps[i].familia, origen: cps[i].origen }), f: par, fuentesUrl: urlFuentes([par]),
       t: { titular: v.titular, subtitulo: v.subtitulo, foto_url: v.foto_url || null, cta: v.cta || 'Escríbeme por WhatsApp', info: (textos.info || []).slice(0, 3), sobre: textos.sobre, proceso: textos.proceso, diapositivas: textos.diapositivas },
       wa: waUrl(c.whatsapp, c.mensaje_whatsapp_inicial), tel: c.whatsapp ? formatoTel(c.whatsapp) : null,
     };

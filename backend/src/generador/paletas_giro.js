@@ -59,6 +59,7 @@ export const PALETAS = {
       P('Verde selva y terracota', ['calido', 'tradicional', 'fresco'], ['sincera', 'ruda'], '#2F5D46', '#C2643F', '#F4EEE4', '#1B2A22', 'Naturaleza y casa; buena para desarrollos campestres y costa'),
       P('Grafito y latón', ['lujo', 'elegante', 'tecnologico'], ['sofisticada', 'competente'], '#23262B', '#B08D57', '#F2F0EC', '#15171A', 'Alto contraste y metal cálido: inmuebles premium'),
       P('Azul luminoso 2027', ['tecnologico', 'fresco', 'divertido'], ['emocionante', 'competente'], T.luminous_blue.hex, '#F2A65A', '#F6F7FB', '#151B33', 'Proptech o agencias jóvenes: azul de tendencia 2027'),
+      P('Marino profundo, marfil y oro antiguo', ['elegante', 'lujo', 'tradicional'], ['sofisticada', 'competente'], '#172D4D', '#B58A45', '#F4F1EA', '#0F1C30', 'Dos colores base + un acento que la hace memorable (8-nov-2026): marino y marfil, oro solo en botón y detalles'),
     ],
   },
   medica: {
@@ -98,6 +99,7 @@ export const PALETAS = {
       P('Verde pradera y naranja', ['calido', 'divertido'], ['sincera', 'emocionante'], '#3F7D4E', T.energy_orange.hex, '#F5F6EE', '#1C2A1F', 'Meadowland/Energy Orange 2027: cercanía y energía'),
       P('Teal y mostaza', ['fresco', 'minimalista'], ['competente', 'sincera'], '#13707A', '#E0A93B', '#F3F8F7', '#12292C', 'Hospital veterinario confiable'),
       P('Marino y coral', ['tradicional', 'elegante'], ['competente'], '#1F3B5A', '#EF7D5E', '#F6F6F3', '#141F2C', 'Especialidades y cirugía'),
+      P('Olivo, crema y terracota', ['calido', 'divertido', 'tradicional'], ['sincera', 'emocionante'], '#3F5228', '#D8492E', '#F5E8D9', '#1E2614', 'Dos colores base + un acento que la hace memorable (8-nov-2026): alimento y tiendas de mascotas'),
     ],
   },
   restaurante: {
@@ -181,6 +183,8 @@ export const PALETAS = {
       P('Arena y verde pradera', ['calido', 'fresco'], ['sincera'], '#3F6E45', '#D9A441', '#F5F1E8', '#1B2A1D', 'Productos naturales, locales, artesanales'),
       P('Crema y rosa mexicano', ['divertido', 'tradicional'], ['emocionante', 'sincera'], '#C8076E', '#F0A23B', '#FFF6EF', '#2A0F1C', 'Regalos, artesanía, papelería'),
       P('Cacao y naranja', ['calido', 'elegante'], ['sincera', 'sofisticada'], T.cocoa_powder.hex, T.energy_orange.hex, '#F6EFE6', '#22160F', 'Ropa, accesorios, cuero'),
+      P('Menta, marino y coral', ['fresco', 'divertido', 'tecnologico'], ['emocionante', 'competente'], '#002941', '#FD6E6E', '#CFE8E1', '#0B1A26', 'Dos colores base + un acento que la hace memorable (8-nov-2026): bebidas, deporte, productos frescos'),
+      P('Olivo, crema y terracota', ['calido', 'tradicional', 'fresco'], ['sincera', 'ruda'], '#3F5228', '#D8492E', '#F5E8D9', '#1E2614', 'Dos colores base + un acento (8-nov-2026): alimento natural, mascotas, productos de campo'),
     ],
   },
   lujo: {
@@ -191,6 +195,7 @@ export const PALETAS = {
       P('Esmeralda y oro', ['lujo', 'tradicional'], ['sofisticada'], '#0F4D3A', '#C6A15B', '#F4F1E9', '#0E211A', 'Joyería, relojes'),
       P('Vino y marfil', ['elegante', 'calido'], ['sofisticada', 'sincera'], '#5C1A27', '#C9A27E', '#F6F1EB', '#220C11', 'Vinos, perfumería'),
       P('Marino tinta y plata', ['minimalista', 'tecnologico'], ['sofisticada', 'competente'], '#0F1A2E', '#A9B3BF', '#F4F5F6', '#0C1320', 'Lujo contemporáneo'),
+      P('Marino profundo, marfil y oro antiguo', ['lujo', 'elegante', 'tradicional'], ['sofisticada'], '#172D4D', '#B58A45', '#F4F1EA', '#0F1C30', 'Dos colores base + un acento (8-nov-2026): residencial y hospitalidad de lujo'),
     ],
   },
   floreria: {
@@ -304,22 +309,76 @@ const cromatico = (h) => oklch(h).c > 0.04;
 const porTono = (fams, hex) => { const h = oklch(hex).h; return [...fams].sort((a, b) => distTono(oklch(a.m).h, h) - distTono(oklch(b.m).h, h)); };
 const tonoCercano = (fams, hex) => porTono(fams, hex)[0];
 
+/* ---------- Acento de contraste (8-nov-2026) ----------
+ * "Dos colores hacen una web correcta; el tercero, de acento, la hace memorable": base clara + base oscura y un acento
+ * de temperatura opuesta (cálido sobre frío: coral sobre marino/menta, oro antiguo sobre marino/marfil, terracota sobre
+ * olivo/crema), usado solo en el 10 % (botón principal y detalles), nunca en superficies grandes.
+ * En 2 de las 6 propuestas (B y E) el acento es de contraste aunque el estilo pida análogo, para que el cliente vea
+ * variedad; las otras 4 conservan el acento de su familia. */
+export const PROPUESTAS_CONTRASTE = [1, 4];
+const calido = (h) => h < 110 || h >= 345;
+/** ¿El acento contrasta con la marca? Marca neutra: basta un acento con color. Si no: temperatura opuesta y ≥ 90° de tono. */
+export function esAcentoContraste(marca, acento) {
+  const m = oklch(marca), a = oklch(acento);
+  if (a.c < 0.09) return false;
+  if (m.c <= 0.04) return true;
+  return calido(m.h) !== calido(a.h) && distTono(m.h, a.h) >= 90;
+}
+// Acentos universales (los del ejemplo de referencia + fríos para marcas cálidas).
+const ACENTOS_CALIDOS = ['#B58A45', '#D8492E', '#FD6E6E', '#E3A33B'];
+const ACENTOS_FRIOS = ['#2F7A3D', '#1F5C63', '#0E8C99', '#4F7C6A'];
+/** Restricciones del giro para el acento (es 10 %, pero se evita lo que el giro rechaza). */
+function acentoPermitido(st, hex) {
+  const { h, c } = oklch(hex);
+  if (st === 'lujo') return h >= 60 && h <= 100 && c <= 0.13; // oro/champaña; el naranja se percibe barato
+  if (['restaurante', 'cafeteria_panaderia'].includes(st) && h > 220 && h < 310) return false;
+  if (['medica', 'dental'].includes(st) && h >= 15 && h <= 30 && c > 0.12) return false;
+  if (st === 'dental' && h > 45 && h < 110) return false;
+  return true;
+}
+/**
+ * Acento de contraste para una marca: primero los acentos de las familias del giro (por ajuste), luego los universales.
+ * Si el acento propio ya contrasta, se conserva.
+ */
+export function acentoContraste(marca, propio, { familias = [], subtipo, evitarHex = [], semilla = 0 } = {}) {
+  if (propio && esAcentoContraste(marca, propio) && acentoPermitido(subtipo, propio)) return propio;
+  const frio = oklch(marca).c > 0.04 && calido(oklch(marca).h);
+  const evitado = (hex) => chocaConEvitar({ m: hex, a: hex }, evitarHex);
+  const cands = [...new Set([...familias.map((f) => f.a), ...(frio ? ACENTOS_FRIOS : ACENTOS_CALIDOS)])]
+    .filter((a) => esAcentoContraste(marca, a) && acentoPermitido(subtipo, a) && !evitado(a));
+  return cands.length ? cands[semilla % cands.length] : propio;
+}
+
 /**
  * Colores de partida para la propuesta i (0..5) de la ronda r.
  * - El cliente dio ≥ 2 colores con color: son suyos, mandan (solo se completan neutros de la familia más cercana).
  * - Dio 1: es la marca; acento y neutros de la familia del giro con tono más cercano.
  * - Dio 0 (o solo blanco/negro): rota entre las familias del giro, ordenadas por ajuste, para que las 6 propuestas varíen.
- * @returns {{colores:string[], familia:string, origen:'cliente'|'cliente+giro'|'giro', por:string}}
+ * - Propuestas B y E (PROPUESTAS_CONTRASTE): acento de contraste que además va en el botón principal (acentoCta).
+ * @returns {{colores:string[], acento:string, acentoCta:boolean, familia:string, origen:'cliente'|'cliente+giro'|'giro', por:string}}
  */
 export function coloresParaPropuesta({ brief = {}, coloresCliente = [], i = 0, ronda = 0, evitarHex = [] }) {
   const n = brief.negocio || {};
-  const { familias } = paletasPara({ arquetipo: n.arquetipo, subtipo: n.subtipo_resuelto || n.subtipo, estilo: brief.marca?.estilo, dimensiones: dimensionesDe(brief), evitarHex });
+  const { subtipo, familias } = paletasPara({ arquetipo: n.arquetipo, subtipo: n.subtipo_resuelto || n.subtipo, estilo: brief.marca?.estilo, dimensiones: dimensionesDe(brief), evitarHex });
   const propios = coloresCliente.filter((c) => /^#[0-9A-F]{6}$/i.test(c));
   const conColor = propios.filter(cromatico);
-  if (conColor.length >= 2) { const f = tonoCercano(familias, conColor[0]); return { colores: [...propios, f.c], familia: f.n, origen: 'cliente', por: 'Colores del cliente; neutros de la familia más afín' }; }
-  if (conColor.length === 1) { const cerca = porTono(familias, conColor[0]).slice(0, 3); const f = cerca[(i + ronda) % cerca.length]; return { colores: [conColor[0], f.c, f.a, ...propios.filter((c) => c !== conColor[0])], familia: f.n, origen: 'cliente+giro', por: f.por }; }
+  const contraste = PROPUESTAS_CONTRASTE.includes(i);
+  const ctx = { familias, subtipo, evitarHex, semilla: ronda + (i > 2 ? 1 : 0) };
+  if (conColor.length >= 2) {
+    // Los colores del cliente mandan: solo se usa acento de contraste si uno de SUS colores contrasta con otro.
+    const f = tonoCercano(familias, conColor[0]);
+    let par = null;
+    if (contraste) for (const m of conColor) { const a = conColor.find((x) => x !== m && esAcentoContraste(m, x)); if (a) { par = [m, a]; break; } }
+    return { colores: [...propios, f.c], acento: par ? par[1] : conColor[1], acentoCta: !!par, familia: f.n, origen: 'cliente', por: 'Colores del cliente; neutros de la familia más afín' };
+  }
+  if (conColor.length === 1) {
+    const cerca = porTono(familias, conColor[0]).slice(0, 3); const f = cerca[(i + ronda) % cerca.length];
+    const acento = contraste ? acentoContraste(conColor[0], f.a, ctx) : f.a;
+    return { colores: [conColor[0], f.c, acento, ...propios.filter((c) => c !== conColor[0])], acento, acentoCta: contraste && esAcentoContraste(conColor[0], acento), familia: f.n, origen: 'cliente+giro', por: f.por };
+  }
   const f = familias[(i + ronda * 2) % familias.length];
-  return { colores: [f.m, f.c, f.a], familia: f.n, origen: 'giro', por: f.por };
+  const acento = contraste ? acentoContraste(f.m, f.a, ctx) : f.a;
+  return { colores: [f.m, f.c, acento], acento, acentoCta: contraste && esAcentoContraste(f.m, acento), familia: f.n, origen: 'giro', por: f.por };
 }
 
 /** Avisos de ajuste de los colores del cliente con su giro (no los cambia: se le explica a Ari/cliente). */
@@ -348,6 +407,7 @@ export const REGLA_PALETAS = {
     'Tendencias 2026–2027 (Cloud Dancer, Transformative Teal, Cocoa Powder, Luminous Blue, Energy Orange, Clay…) solo como neutros o acentos',
     'Sin colores del cliente: las 6 propuestas recorren distintas familias del giro ordenadas por ajuste; "ninguna me gustó" pasa a las siguientes',
     'Excluir familias con el tono de cualquier color que el cliente dijo que no quiere (marca.evitar)',
+    'Dos colores base (neutro claro + oscuro de marca) hacen una web correcta; el tercero, de acento, la hace memorable. En 2 de las 6 propuestas (B y E) el acento es de contraste (temperatura opuesta y ≥ 90° de tono: cálido sobre frío) y va en el botón principal y detalles; nunca en superficies grandes. Con ≥ 2 colores del cliente solo si uno de los suyos contrasta',
   ],
   bibliografia: [
     'Labrecque & Milne (2012), Exciting red and competent blue, Journal of the Academy of Marketing Science',

@@ -302,7 +302,13 @@ export function corregirPaleta(pal) {
   fija('fg', fg, 'texto principal');
   // 2. Texto secundario y acento.
   if (p.soft) fija('soft', buscarL(p.soft, (c) => sobreTodo(c, 'secundario', p.bg, p.card)), 'texto secundario');
-  if (p.accent) fija('accent', buscarL(p.accent, (c) => sobreTodo(c, 'secundario', p.bg, p.card)), 'acento usado como texto');
+  if (p.accent && p.accentUso === 'relleno') {
+    // Acento como relleno (botón, viñetas, pasos, líneas; 8-nov-2026): sólido con texto legible encima.
+    // Nunca se usa como texto ni como único indicador (el botón se identifica por su texto), así conserva su viveza.
+    const tAcc = [...new Set([...TINTAS, norm(p.fg)])];
+    fija('accent', buscarL(p.accent, (c) => tAcc.some((t) => cumple(t, c, 'boton'))), 'acento de relleno');
+    fija('onAccent', tAcc.filter((t) => cumple(t, p.accent, 'boton')).sort((a, b) => apca(b, p.accent) - apca(a, p.accent))[0], 'texto sobre el acento');
+  } else if (p.accent) fija('accent', buscarL(p.accent, (c) => sobreTodo(c, 'secundario', p.bg, p.card)), 'acento usado como texto');
   // 3. Color de marca: botón (sólido + texto) y precios/enlaces (texto sobre fondo y tarjeta).
   const tintas = [...new Set([...TINTAS, norm(p.fg)])];
   const botonOk = (c) => tintas.some((t) => cumple(t, c, 'boton'));
@@ -318,7 +324,9 @@ export function auditarPaleta(p) {
   const chk = (fg, bg, uso, nombre) => { if (fg && bg && !cumple(fg, bg, uso)) e.push(`${nombre}: WCAG ${wcag(fg, bg).toFixed(2)} / Lc ${apca(fg, bg).toFixed(0)} < ${UMBRALES[uso].wcag} / ${UMBRALES[uso].lc}`); };
   chk(p.fg, p.bg, 'cuerpo', 'texto/fondo'); chk(p.fg, p.card, 'cuerpo', 'texto/tarjeta');
   chk(p.soft, p.bg, 'secundario', 'secundario/fondo'); chk(p.onPrimary, p.primary, 'boton', 'botón');
-  chk(p.accent, p.bg, 'secundario', 'acento/fondo'); chk(p.primary, p.bg, 'secundario', 'precio/fondo');
+  if (p.accentUso === 'relleno') { chk(p.onAccent, p.accent, 'boton', 'texto/acento'); }
+  else chk(p.accent, p.bg, 'secundario', 'acento/fondo');
+  chk(p.primary, p.bg, 'secundario', 'precio/fondo'); chk(p.onBtn, p.btn, 'boton', 'botón de acento');
   return e;
 }
 
@@ -340,7 +348,8 @@ export const REGLA_TIPO_COLOR = {
   color: [
     'Trabajar en OKLCH: tintes, sombras y acentos se derivan cambiando L y C con el mismo tono; nunca mezclas RGB para derivar estados',
     'Proporción 60-30-10 por roles: 60 % fondo neutro teñido con el tono de la marca (croma ≤ 0.04 claro, ≤ 0.08 oscuro), 30 % superficies y texto, 10 % color de marca en el botón principal, enlaces y lo clave',
-    'Un solo color de marca + un acento armónico + neutros; los colores de estado (éxito/error) solo para estados',
+    'Un solo color de marca + un acento + neutros; los colores de estado (éxito/error) solo para estados. Dos colores base hacen la web correcta; el acento (10 %) la hace memorable',
+    'En 2 de las 6 propuestas (B y E) el acento es de contraste (temperatura opuesta, ≥ 90° de tono: cálido sobre frío) y va en el botón principal, viñetas, pasos y líneas; como relleno debe tener texto legible encima (WCAG 4.5 + Lc 60); nunca se usa como texto',
     'Acento cuando el cliente da un solo color: análogo ±30° (elegante, lujo, cálido, tradicional), monocromático (minimalista), complementario dividido 150°/210° (fresco, divertido), complementario (tecnológico), con el mismo peso perceptual',
     'El tono del cliente es intocable; para cumplir contraste solo se mueve la luminosidad (y la croma si sale de gamut)',
     'Contraste obligatorio WCAG 2.2: 4.5:1 texto, 3:1 títulos grandes y componentes (bordes de campos, foco, íconos con significado)',
