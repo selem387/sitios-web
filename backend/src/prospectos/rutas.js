@@ -17,7 +17,7 @@ import * as edb from '../entrevista/db.js';
 import { DIR_PROPUESTAS } from '../generador/propuestas_html.js';
 import { registrarModo } from '../generador/dominios.js';
 import * as pdb from './db.js';
-import { encolar, enCola, usuarioDe } from './construir.js';
+import { encolar, enCola, usuarioDe, reanudar } from './construir.js';
 
 const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const LETRAS = 'ABCDEF';
@@ -273,6 +273,7 @@ export function registerProspectosRoutes(app) {
     if (!b.destino) return c.json(armarCorreo(n, Number(b.paso || 0), dominio));
     return c.json(await enviarCorreo(n, Number(b.paso || 0), dominio, { destino: b.destino }));
   });
+  reanudar();
   import('./correos.js').then((m) => m.programarCorreos()).catch((e) => console.error('[prospectos] cron', e.message));
   app.all('/pr/*', async (c) => {
     const ruta = c.req.path.slice(3).replace(/\/+$/, '') || '/';

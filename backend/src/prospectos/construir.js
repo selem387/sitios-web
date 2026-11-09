@@ -10,7 +10,7 @@ import path from 'node:path';
 import { config } from '../config.js';
 import * as edb from '../entrevista/db.js';
 import { pedirJSON } from '../entrevista/claude.js';
-import { procesarMateriales } from '../generador/materiales.js';
+import { procesarMateriales, analizarAsset } from '../generador/materiales.js';
 import { mostrar } from '../entrevista/propuestas.js';
 import * as pdb from './db.js';
 
@@ -137,10 +137,12 @@ export async function construir(id) {
     };
     // Entrevista nueva (o la que ya tenía si se reconstruye).
     let e = n.entrevista_id ? await edb.obtener(n.entrevista_id) : null;
+    if (!e) e = (await edb.q(`SELECT * FROM entrevistas WHERE usuario_id=$1 ORDER BY creado DESC LIMIT 1`, [usuarioDe(n.folio)])).rows[0] || null;
+    if (e) await pdb.actualizar(id, { entrevista_id: e.id });
     if (!e) {
       e = await edb.crear({ id: crypto.randomUUID(), usuario_id: usuarioDe(n.folio), canal: 'web', metadata: { prospecto: { folio: n.folio, negocio_id: n.id } } });
       // Fotos: hasta 8 de Google (las de mayor tamaño primero) + 6 de Instagram; logo = foto de perfil de Instagram o Facebook.
-      const fotos = (g.photos || []).sort((a, b) => (b.widthPx * b.heightPx) - (a.widthPx * a.heightPx)).slice(0, 8);
+      const fotos = (g.photos || []).sort((a, b) => (b.widthPx * b.heightPx) - (a.widthPx * a.heightPx)).slice(0, 7);
       let k = 0;
       const logo = ig?.foto || fb?.foto;
       if (logo) {
@@ -151,12 +153,15 @@ export async function construir(id) {
         const a = await fotoGoogle(f.name).catch(() => null);
         if (a) await edb.insertarAsset(e.id, { clave: `a${++k}`, tipo: 'foto_local', url: a.url, mime: a.mime, nota: 'Foto de su ficha de Google Maps' });
       }
-      for (const p of (ig?.ultimas || []).slice(0, 6)) {
+      for (const p of (ig?.ultimas || []).slice(0, 4)) {
         const a = await guardarImagen(p.img).catch(() => null);
         if (a) await edb.insertarAsset(e.id, { clave: `a${++k}`, tipo: 'foto_trabajo', url: a.url, mime: a.mime, nota: 'Publicación de su Instagram' });
       }
       if (!k) throw new Error('sin fotos utilizables');
     }
+    // Análisis de fotos de 4 en 4 (el de Ari va una por una al subirlas; aquí llegan todas juntas). Queda en caché por asset.
+    const pend = (await edb.assetsDe(e.id)).filter((a) => !a.analisis);
+    for (let i = 0; i < pend.length; i += 4) await Promise.all(pend.slice(i, i + 4).map((a) => analizarAsset(a, { negocio: n.nombre }).catch((err) => console.error('[prospectos] analisis', a.clave, err.message))));
     const mat = await procesarMateriales(e.id, brief, { aceptarLoQueHay: true });
     const m = await mostrar(e, brief, mat);
     const final = { ...brief, marca: { ...brief.marca, propuestas: m.propuestas } };
@@ -188,3 +193,18 @@ async function correr() {
   trabajando = false;
 }
 export const enCola = () => cola.length + (trabajando ? 1 : 0);
+
+// Los despliegues (frecuentes) reinician el proceso y vacían la cola en memoria: al arrancar y cada 5 minutos se
+// retoman los autorizados y los que se quedaron "construyendo" (los assets ya analizados quedan en caché).
+export function reanudar() {
+  const tick = async () => {
+    if (trabajando || cola.length) return;
+    try {
+      await pdb.migrar();
+      const ids = (await pdb.q(`SELECT id FROM prospeccion.negocios WHERE estado='autorizado' OR (estado='construyendo' AND actualizado < now() - interval '15 minutes') ORDER BY resenas DESC LIMIT 50`)).rows.map((r) => r.id);
+      if (ids.length) encolar(ids);
+    } catch (err) { console.error('[prospectos] reanudar', err.message); }
+  };
+  setTimeout(tick, 20000);
+  setInterval(tick, 5 * 60000).unref();
+}
