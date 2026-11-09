@@ -103,7 +103,7 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
 <a class="skip" href="#contenido">Saltar al contenido</a>
 <header class="top">
   <div class="wrap top-in">
-    <a class="logo" href="/" aria-label="Lemoss Consulting, inicio">Lemoss<span>.</span>consulting</a>
+    <a class="logo" href="/" aria-label="Lemoss Consulting, inicio">lemoss<span>.</span></a>
     <nav class="nav" aria-label="Principal">{nav}</nav>
     <a class="btn btn-sm" href="{wa()}" rel="noopener">WhatsApp</a>
     <details class="menu">
