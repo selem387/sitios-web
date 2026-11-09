@@ -1,4 +1,4 @@
-// La dirección de la página (B10) dentro de la entrevista. Ari solo pregunta si ya la tiene comprada y cuál es
+// La dirección de la página (B10, incluida en el pago desde 9-nov-2026) dentro de la entrevista. Ari solo pregunta si ya la tiene comprada y cuál es
 // (o cómo le gustaría que se llamara); a partir de ahí lo lleva este módulo:
 //   propio: investigar registrador y quién administra el DNS → pasos vigentes de ese proveedor → "listo" → revisar → conectar
 //   compra: opciones libres → a nombre de quién (1/2/3) → condiciones → "acepto" → registro en GoDaddy → conexión → aviso
