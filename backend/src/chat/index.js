@@ -77,17 +77,11 @@ export function registerChatRoutes(app, wrap) {
     if (!/^[\w-]+\.[a-z0-9]{2,4}$/.test(nombre)) return c.text('no', 404);
     // ?w=480|800|1200|1600: versión reducida en WebP para el srcset de las páginas (generador/movimiento.js: conSrcset).
     const w = Number(c.req.query('w'));
-    if ([480, 800, 1200, 1600].includes(w) && /\.(jpe?g|png|webp)$/i.test(nombre)) {
+    if (w) {
       try {
-        const destino = path.join(DIR, '_w', `${nombre}-${w}.webp`);
-        let buf = await fs.readFile(destino).catch(() => null);
-        if (!buf) {
-          const sharp = (await import('sharp')).default;
-          buf = await sharp(path.join(DIR, nombre)).rotate().resize({ width: w, withoutEnlargement: true }).webp({ quality: 74 }).toBuffer();
-          await fs.mkdir(path.dirname(destino), { recursive: true });
-          await fs.writeFile(`${destino}.tmp`, buf); await fs.rename(`${destino}.tmp`, destino);
-        }
-        return c.body(buf, 200, { 'content-type': 'image/webp', 'cache-control': 'public, max-age=31536000, immutable' });
+        const { reducida } = await import('../imagenes.js');
+        const buf = await reducida(path.join(DIR, nombre), w);
+        if (buf) return c.body(buf, 200, { 'content-type': 'image/webp', 'cache-control': 'public, max-age=31536000, immutable' });
       } catch { /* si falla, sirve el original */ }
     }
     try {

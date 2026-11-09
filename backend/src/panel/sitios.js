@@ -246,7 +246,7 @@ export async function renderSitio(sv, { previa = false } = {}) {
   if (!previa && sv.medicion) { const { conMedicion } = await import('./medicion.js'); html = conMedicion(html, sv.medicion); }
   if (dz.estructura) { const { aplicarEstructura } = await import('./estructura.js'); html = aplicarEstructura(html, dz.estructura); }
   if (sv.contenido?.pies?.items?.length) html = conPies(html, sv.contenido.pies.items);
-  { const { conSrcset } = await import('../generador/movimiento.js'); html = conSrcset(html); } // tamaños de foto coherentes tras ediciones
+  { const { conImagenesOptimizadas } = await import('../imagenes.js'); html = await conImagenesOptimizadas(html); } // srcset WebP + tamaño real en todas las fotos
   const css = dz.css;
   if (css) html = html.replace('</head>', () => `<style id="ajustes">${String(css).replace(/<\/style/gi, '')}</style></head>`);
   for (const k of cache.keys()) if (k.startsWith(`${sv.id}:`) && !k.startsWith(`${sv.id}:${sv.version}:`)) cache.delete(k);

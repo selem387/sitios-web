@@ -211,6 +211,13 @@ app.get('/files/*', async (c) => {
     } else if (visibility !== 'public') {
       throw new HttpError(404, 'Archivo no encontrado');
     }
+    // ?w=480|800|1200|1600: versión reducida en WebP de fotos públicas (srcset de los sitios, imagenes.js).
+    const w = Number(c.req.query('w'));
+    if (w && visibility === 'public') {
+      const { reducida } = await import('./imagenes.js');
+      const buf = await reducida(resolveFilePath(rel), w).catch(() => null);
+      if (buf) return c.body(buf, 200, { 'content-type': 'image/webp', 'cache-control': 'public, max-age=31536000, immutable' });
+    }
     const { stream, size, mime } = await streamFile(resolveFilePath(rel));
     return new Response(Readable.toWeb(stream), {
       headers: {

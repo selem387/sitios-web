@@ -242,7 +242,8 @@ async function servirPropiedad(c, sv, slug, { previa }) {
     const html = await S.renderSitio(sv, { previa });
     const wa = String(sv.contenido?.contacto?.whatsapp || e?.brief?.contacto?.whatsapp || '').replace(/\D/g, '');
     P.contarVista(p.id);
-    return c.html(P.paginaPropiedad(html, p, { base, url, negocio: e?.brief?.negocio?.nombre || '', wa: wa ? (wa.length === 10 ? `52${wa}` : wa) : null }), 200, { 'cache-control': 'no-cache', ...(previa ? { 'x-robots-tag': 'noindex' } : {}) });
+    const { conImagenesOptimizadas } = await import('../imagenes.js');
+    return c.html(await conImagenesOptimizadas(P.paginaPropiedad(html, p, { base, url, negocio: e?.brief?.negocio?.nombre || '', wa: wa ? (wa.length === 10 ? `52${wa}` : wa) : null })), 200, { 'cache-control': 'no-cache', ...(previa ? { 'x-robots-tag': 'noindex' } : {}) });
   } catch (x) {
     console.error('[propiedad]', sv.id, slug, x);
     return c.redirect(previa ? `/s/${sv.slug}` : '/', 302);

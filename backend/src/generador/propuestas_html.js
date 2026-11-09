@@ -1,6 +1,7 @@
 // 6 propuestas de diseño como páginas HTML navegables (cada una con su liga), con los materiales reales del cliente:
 // logo, productos sin fondo, precios y secciones de su menú, imágenes de su menú, contacto. Responsive (celular primero).
 // Cada propuesta cambia composición, paleta y tipografía (poco común, acorde al estilo del cliente).
+import { conImagenesOptimizadas } from '../imagenes.js';
 import crypto from 'node:crypto';
 import fs from 'node:fs/promises';
 import path from 'node:path';
@@ -243,7 +244,7 @@ export async function renderPropuestas(brief, mat, textos, { ronda = 0, fijo = n
       faltanTodas.push(...faltan);
       if (faltan.length && !fijo) throw new Error(`Propuesta ${pg.letra} sin material del cliente: ${faltan.map((f) => f.clave).join(', ')}`);
       if (repetidas.length && !fijo) throw new Error(`Propuesta ${pg.letra} con fotos repetidas: ${repetidas.map((f) => f.url.split('/').pop()).join(', ')}`);
-      out.push({ letra: pg.letra, layout: pg.layout, nombre: pg.nombre, html: conSrcset(html), fuentes: pg.fuentes, paleta: pg.paleta });
+      out.push({ letra: pg.letra, layout: pg.layout, nombre: pg.nombre, html: await conImagenesOptimizadas(html), fuentes: pg.fuentes, paleta: pg.paleta });
     }
     return { paginas: out, faltan: faltanTodas, avisos_color: avisosDeGiro({ arquetipo: brief.negocio?.arquetipo, subtipo: brief.negocio?.subtipo_resuelto || brief.negocio?.subtipo, colores: coloresCliente }), asesor };
   }
@@ -283,7 +284,7 @@ export async function renderPropuestas(brief, mat, textos, { ronda = 0, fijo = n
     const { html, faltan } = completarMaterial(conReglaTipo(pagina(d), d.f, fijo?.fuentes?.estilo || estilo), mat, { titulo: 'Más de nosotros' });
     faltanTodas.push(...faltan);
     if (faltan.length && !fijo) throw new Error(`Propuesta ${letra} sin material del cliente: ${faltan.map((f) => f.clave).join(', ')}`);
-    out.push({ letra, layout, nombre: NOMBRES[layout], html: conSrcset(html), fuentes: d.f, paleta: fijo?.paleta || { ...d.pal, familia: cp.familia, origen: cp.origen } });
+    out.push({ letra, layout, nombre: NOMBRES[layout], html: await conImagenesOptimizadas(html), fuentes: d.f, paleta: fijo?.paleta || { ...d.pal, familia: cp.familia, origen: cp.origen } });
   }
   return { paginas: out, faltan: faltanTodas, avisos_color: avisosDeGiro({ arquetipo: brief.negocio?.arquetipo, subtipo: brief.negocio?.subtipo_resuelto || brief.negocio?.subtipo, colores }), asesor };
 }
