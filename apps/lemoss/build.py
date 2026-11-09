@@ -352,8 +352,7 @@ def home():
 <p class="pill">Lemoss consulting - Innovación con Resultados Medibles</p>
 <h1>Automatización e IA que se miden en <span class="az">resultados</span></h1>
 <p class="lead">Rediseñamos procesos, sistemas y ventas con inteligencia artificial para empresas medianas en México. Antes de empezar acordamos una meta medible y el trabajo se evalúa contra ella.</p>
-<div class="acciones"><a class="btn" href="{wa()}" rel="noopener">Escríbenos por WhatsApp</a><a class="btn btn-2" href="/autodiagnostico/">Autodiagnóstico gratis</a></div>
-<p class="sello">Sede en Mérida · atención en CDMX y todo México</p>
+<div class="acciones"><a class="btn" href="{wa()}" rel="noopener">Escríbenos por WhatsApp</a><a class="btn btn-2" href="/autodiagnostico/">Autodiagnóstico</a></div>
 </div>
 {slider_html()}
 </div></section>
