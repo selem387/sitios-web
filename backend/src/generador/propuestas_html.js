@@ -4,6 +4,7 @@
 import crypto from 'node:crypto';
 import fs from 'node:fs/promises';
 import path from 'node:path';
+import { enlacesRedes, CSS_REDES } from './iconos_redes.js';
 import { config } from '../config.js';
 import { mezclar, contraste } from '../entrevista/tema.js';
 import { paresTipograficos, urlFuentes } from './fuentes.js';
@@ -92,7 +93,7 @@ function pagina(d) {
   const menuTxt = d.categorias.map((c, i) => `<details${i === 0 ? ' open' : ''}><summary>${esc(c.nombre)} <span>desde $${c.desde}</span></summary><ul>${c.items.slice(0, 14).map((it) => `<li><span><b>${esc(it.nombre)}</b>${it.descripcion ? `<small>${esc(it.descripcion)}</small>` : ''}</span><em>${esc(it.precio || '')}</em></li>`).join('')}</ul></details>`).join('');
   const menuImgs = d.menus.length ? `<div class="carr" aria-roledescription="carrusel" aria-label="Imágenes del menú"><div class="pista">${d.menus.map((u, i) => `<a class="slide" href="${esc(u)}" target="_blank" rel="noopener" aria-label="Menú ${i + 1} de ${d.menus.length}"><img src="${esc(u)}" alt="Menú de ${esc(d.nombre)} (${i + 1} de ${d.menus.length})" loading="${i < 2 ? 'eager' : 'lazy'}"></a>`).join('')}</div>${d.menus.length > 1 ? `<button class="cb prev" type="button" aria-label="Anterior">‹</button><button class="cb next" type="button" aria-label="Siguiente">›</button><div class="puntos">${d.menus.map((_, i) => `<button type="button" aria-label="Ir al menú ${i + 1}"${i === 0 ? ' aria-current="true"' : ''}></button>`).join('')}</div>` : ''}</div>` : '';
   const info = d.info.map((t) => `<li>${esc(t)}</li>`).join('');
-  const vis = `<section class="sec visita" id="contacto"><h2>${esc(d.textos.visita || 'Visítanos')}</h2><div class="vis">${d.direccion ? `<p><b>Dónde</b>${esc(d.direccion)}</p>` : ''}${d.horarios ? `<p><b>Horario</b>${esc(d.horarios)}</p>` : ''}${d.email ? `<p><b>Correo</b><a href="mailto:${esc(d.email)}">${esc(d.email)}</a></p>` : ''}${(d.redes || []).length ? `<p><b>Redes</b><span class="rs">${d.redes.map(([n, u]) => `<a href="${esc(u)}" target="_blank" rel="noopener">${n}</a>`).join(' · ')}</span></p>` : ''}${d.tel ? `<p><b>WhatsApp</b><a${wa}>${esc(d.tel)}</a></p>` : ''}</div><a class="btn"${wa}>${esc(d.textos.cta)}</a></section>`;
+  const vis = `<section class="sec visita" id="contacto"><h2>${esc(d.textos.visita || 'Visítanos')}</h2><div class="vis">${d.direccion ? `<p><b>Dónde</b>${esc(d.direccion)}</p>` : ''}${d.horarios ? `<p><b>Horario</b>${esc(d.horarios)}</p>` : ''}${d.email ? `<p><b>Correo</b><a href="mailto:${esc(d.email)}">${esc(d.email)}</a></p>` : ''}${(d.redes || []).length ? `<p><b>Redes</b><span class="rs">${enlacesRedes(d.redes)}</span></p>` : ''}${d.tel ? `<p><b>WhatsApp</b><a${wa}>${esc(d.tel)}</a></p>` : ''}</div><a class="btn"${wa}>${esc(d.textos.cta)}</a></section>`;
 
   const heros = {
     protagonista: `<section class="hero h-prot"><div class="txt"><h1>${esc(d.textos.titular)}</h1><p class="sub">${esc(d.textos.subtitulo)}</p><div class="ctas"><a class="btn"${wa}>${esc(d.textos.cta)}</a><a class="lnk" href="#menu">Ver menú</a></div><ul class="info">${info}</ul></div><div class="vis1"><img src="${esc(heroImgs[0])}" alt=""></div></section>`,
@@ -161,7 +162,7 @@ body.menu .prod,body.menu .cat{color:var(--fg)}
 .mtxt ul{list-style:none;margin-top:10px}.mtxt li{display:flex;justify-content:space-between;gap:12px;padding:8px 0;border-bottom:1px dashed var(--bor)}.mtxt li small{display:block;color:var(--soft);font-size:13px}.mtxt li em{font-style:normal;font-weight:800;color:var(--p);white-space:nowrap}
 
 .promo{background:var(--p);color:var(--on);border-radius:18px;padding:14px 18px;margin-top:22px;text-align:center}.promo b{margin-right:8px;text-transform:uppercase;letter-spacing:.08em;font-size:13px}
-.vis{display:grid;gap:12px}.vis p{display:flex;flex-direction:column}.vis b{font-family:var(--ft);font-size:18px}
+.vis{display:grid;gap:12px}.vis p{display:flex;flex-direction:column}.vis b{font-family:var(--ft);font-size:18px}${CSS_REDES}
 footer{margin-top:48px;padding:24px 20px 90px;border-top:1px solid var(--bor);font-size:14px;color:var(--soft);text-align:center}
 .wa{position:fixed;right:16px;bottom:16px;width:58px;height:58px;border-radius:50%;background:#1F7A4C;display:grid;place-items:center;box-shadow:0 8px 20px rgba(0,0,0,.25);z-index:30}.wa svg{width:30px;height:30px;fill:#fff}
 .etq{position:fixed;left:16px;bottom:16px;z-index:30;background:#111;color:#fff;font:700 14px/1 var(--fc);padding:9px 12px;border-radius:999px}

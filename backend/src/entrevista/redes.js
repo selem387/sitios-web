@@ -8,6 +8,8 @@ const limpio = (v) => String(v || '').trim();
 export function usuarioDeRed(valor) {
   let v = limpio(valor);
   if (!v) return null;
+  const fbId = v.match(/profile\.php\?(?:[^#]*&)?id=(\d+)/i);
+  if (fbId) return `profile.php?id=${fbId[1]}`;
   v = v.replace(/^https?:\/\/(www\.|m\.|web\.)?[^/]+\//i, '').replace(/[?#].*$/, '').replace(/\/+$/, '');
   v = v.replace(/^(company|in|c|user|channel)\//i, '').replace(/^@/, '');
   return v || null;

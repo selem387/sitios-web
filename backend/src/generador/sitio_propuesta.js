@@ -11,6 +11,7 @@ import { logoTenido } from './materiales.js';
 import { DIR_PROPUESTAS } from './propuestas_html.js';
 import fs from 'node:fs/promises';
 import path from 'node:path';
+import { enlacesRedes, CSS_REDES } from './iconos_redes.js';
 
 const esc = (s) => String(s ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 // JSON de atributos dentro de un comentario HTML: no puede contener "--".
@@ -144,7 +145,7 @@ html{scroll-behavior:smooth}
 .iap .pasos{counter-reset:p;list-style:none;display:grid;gap:12px;padding:0}.iap .pasos li{counter-increment:p;padding-left:52px;position:relative;min-height:40px}.iap .pasos li::before{content:counter(p);position:absolute;left:0;top:-4px;width:38px;height:38px;border-radius:50%;background:var(--p);color:var(--on);display:grid;place-items:center;font-weight:800}
 .iap .wp-block-details{border-bottom:1px solid var(--bor);padding:16px 0}.iap .wp-block-details summary{font-size:21px;cursor:pointer;list-style:none}.iap .wp-block-details summary::-webkit-details-marker{display:none}.iap .wp-block-details p{margin-top:10px;color:var(--soft)}
 .iap .video{margin:0}.iap .video video{width:100%;border-radius:18px}
-.iap .datos{display:grid;gap:14px}.iap .datos p{display:flex;flex-direction:column;max-width:none}.iap .datos strong{font-family:var(--ft);font-weight:400;font-size:20px}.iap .datos .rs a{font-weight:700;margin-right:16px}
+.iap .datos{display:grid;gap:14px}.iap .datos p{display:flex;flex-direction:column;max-width:none}.iap .datos strong{font-family:var(--ft);font-weight:400;font-size:20px}${CSS_REDES}
 .pie{margin-top:64px;padding:26px 20px 92px;border-top:1px solid var(--bor);font-size:14px;color:var(--soft);text-align:center}.pie p{max-width:none}
 .iap a:focus-visible,.iap summary:focus-visible,.barra a:focus-visible{outline:3px solid var(--p);outline-offset:3px}
 @media (min-width:900px){.iap .h-portada .wp-block-cover__background{background:linear-gradient(90deg,rgba(0,0,0,.6),rgba(0,0,0,.15) 70%)!important}.iap .h-edit{grid-template-columns:1.1fr .9fr;align-items:center;padding-top:64px}.iap .h-dos .in{grid-template-columns:1.1fr .9fr;align-items:end}.iap .mos{grid-template-columns:repeat(4,1fr)}.iap .mos figure:first-child{grid-column:span 2;grid-row:span 2}.iap .mos figure:first-child img{aspect-ratio:auto}
@@ -270,12 +271,12 @@ export async function sitioDePropuesta({ brief, mat, prop, elegida, deColores = 
   const secContacto = () => {
     const dir = c.direccion && typeof c.direccion === 'object' ? [c.direccion.calle, c.direccion.colonia, c.direccion.ciudad].filter(Boolean).join(', ') : c.direccion;
     const zona = (brief.zona?.cobertura || []).join(' · ');
-    const rs = redes(c).map(([n, u]) => `<a href="${esc(u)}" target="_blank" rel="noreferrer noopener">${n}</a>`).join(' ');
+    const rs = enlacesRedes(redes(c), 'noreferrer noopener');
     const datos = [
       tel ? B.p(`<strong>WhatsApp</strong><a href="${esc(wa)}"${/^https?:/.test(wa) ? ' target="_blank" rel="noreferrer noopener"' : ''}>${esc(tel)}</a>`) : '',
       dir ? B.p(`<strong>Dónde</strong>${esc(dir)}`) : zona ? B.p(`<strong>Dónde</strong>${esc(zona)}`) : '',
       typeof c.horarios === 'string' ? B.p(`<strong>Horario</strong>${esc(c.horarios)}`) : '',
-      rs ? B.p(`<strong>Redes</strong>${rs}`, 'rs') : '',
+      rs ? B.p(`<strong>Redes</strong><span class="rs">${rs}</span>`) : '',
     ].join('');
     return sec('contacto', B.titulo(T.contacto) + B.grupo(datos, { clase: 'datos' }) + cta(), 'sec contacto');
   };
