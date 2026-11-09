@@ -237,7 +237,7 @@ async function servirPropiedad(c, sv, slug, { previa }) {
     const p = await P.porSlug(sv.id, slug);
     if (!p || !P.VISIBLES.includes(p.datos.estado)) return c.redirect(previa ? `/s/${sv.slug}` : '/', 302);
     const e = await db.obtener(sv.entrevista_id);
-    const base = previa ? `/s/${sv.slug}` : '';
+    const base = S.rutaBase(sv, { previa });
     const url = `${S.urlPublica(sv, { previa })}propiedad/${p.slug}`;
     const html = await S.renderSitio(sv, { previa });
     const wa = String(sv.contenido?.contacto?.whatsapp || e?.brief?.contacto?.whatsapp || '').replace(/\D/g, '');
@@ -259,6 +259,20 @@ async function servirSitio(c, sv, { previa }) {
   }
 }
 
+/** Aviso de privacidad con el encabezado y pie del sitio. */
+async function servirAviso(c, sv, { previa }) {
+  try {
+    const e = await db.obtener(sv.entrevista_id);
+    const { paginaAviso } = await import('./aviso.js');
+    const html = await S.renderSitio(sv, { previa });
+    const url = `${S.urlPublica(sv, { previa })}aviso-de-privacidad`;
+    return c.html(paginaAviso(html, e?.brief || {}, { base: S.rutaBase(sv, { previa }), url }), 200, { 'cache-control': 'no-cache', ...(previa ? { 'x-robots-tag': 'noindex' } : {}) });
+  } catch (x) {
+    console.error('[aviso]', sv.id, x);
+    return c.redirect(S.rutaBase(sv, { previa }) || '/', 302);
+  }
+}
+
 /** Modo "vivo" del middleware de dominios. */
 async function modoVivo(c, reg, next, host) {
   await S.migrarPanel();
@@ -269,6 +283,7 @@ async function modoVivo(c, reg, next, host) {
   if (ruta === '/admin' || ruta.startsWith('/admin/')) return (await atenderPanel(c, sv, '', ruta)) || c.text('No encontrado', 404);
   const mprop = ruta.match(/^\/propiedad\/([a-z0-9-]{1,80})$/);
   if (mprop) return servirPropiedad(c, sv, mprop[1], { previa: false });
+  if (ruta === '/aviso-de-privacidad') return servirAviso(c, sv, { previa: false });
   if (ruta === '/robots.txt') return c.text(`User-agent: *\nDisallow: /admin\nAllow: /\n\n# Motores de IA bienvenidos\nUser-agent: GPTBot\nAllow: /\nUser-agent: ClaudeBot\nAllow: /\nUser-agent: PerplexityBot\nAllow: /\nUser-agent: Google-Extended\nAllow: /\n\nSitemap: https://${host}/sitemap.xml\n`);
   if (ruta === '/llms.txt') {
     const e = await db.obtener(sv.entrevista_id);
@@ -299,6 +314,7 @@ export function registerPanelRoutes(app, wrap) {
     if (ruta === '/') return servirSitio(c, sv, { previa: !sv.url_publica });
     const mprop = ruta.match(/^\/propiedad\/([a-z0-9-]{1,80})$/);
     if (mprop) return servirPropiedad(c, sv, mprop[1], { previa: !sv.url_publica });
+    if (ruta === '/aviso-de-privacidad') return servirAviso(c, sv, { previa: !sv.url_publica });
     return (await atenderPanel(c, sv, base, ruta)) || c.text('No encontrado', 404);
   });
   app.get('/s/:slug', async (c) => {

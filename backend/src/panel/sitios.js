@@ -186,6 +186,9 @@ export function urlPublica(sv, { previa = false } = {}) {
   return `${config.publicUrl}/s/${sv.slug}/`;
 }
 
+/** Prefijo de rutas internas: '' en su dominio propio; /s/<slug> en vista previa o publicado en nuestra dirección. */
+export const rutaBase = (sv, { previa = false } = {}) => (!previa && sv.dominio ? '' : `/s/${sv.slug}`);
+
 export function invalidar(id) { for (const k of cache.keys()) if (k.startsWith(`${id}:`)) cache.delete(k); }
 
 /** HTML del sitio en vivo. */
@@ -219,9 +222,10 @@ export async function renderSitio(sv, { previa = false } = {}) {
   }
   if (brief.negocio?.arquetipo === 'inmobiliaria') {
     const { listar, conPropiedades } = await import('./propiedades.js');
-    html = conPropiedades(html, await listar(sv.id, { publicas: true }), { base: previa ? `/s/${sv.slug}` : '' });
+    html = conPropiedades(html, await listar(sv.id, { publicas: true }), { base: rutaBase(sv, { previa }) });
   }
   // Estructura y ajustes de diseño propios de este sitio (los escribe el editor de cambios a pedido del cliente).
+  { const { conLigaAviso } = await import('./aviso.js'); html = conLigaAviso(html, `${rutaBase(sv, { previa })}/aviso-de-privacidad`); }
   if (dz.estructura) { const { aplicarEstructura } = await import('./estructura.js'); html = aplicarEstructura(html, dz.estructura); }
   { const { conSrcset } = await import('../generador/movimiento.js'); html = conSrcset(html); } // tamaños de foto coherentes tras ediciones
   const css = dz.css;
