@@ -150,7 +150,8 @@ Si no tiene testimonios: anótalo en pendientes y sigue (la página sale con esa
 B8.1 "¿Qué te preguntan SIEMPRE tus clientes antes de contratar? Dime 3 o 4, con cómo las contestas tú."
 B8.2 "¿Y qué pretexto ponen para no comprar? ('está caro', 'luego te aviso', 'no confío')"
 B8.3 "¿Hay algo que la gente cree de tu negocio o de tu giro que no es cierto?"
-Si no sabe: propón las preguntas típicas del giro de una en una, rápido, y que conteste o descarte.`,
+Si no sabe: propón las preguntas típicas del giro de una en una, rápido, y que conteste o descarte.
+Cada pregunta necesita SU RESPUESTA (sin respuesta no aparece en la página). Si te da varias preguntas juntas, anótalas todas en faq y pide la respuesta de la primera que no tenga, una por mensaje, tal cual la quiere publicar. Nunca le preguntes en qué orden van.`,
   B9: `B9 · Contacto y canales. ★contacto.whatsapp contacto.telefono contacto.email contacto.direccion{calle,colonia,ciudad,estado,cp,referencia} contacto.google_maps_url ★contacto.horarios contacto.redes{facebook,instagram,tiktok,youtube,linkedin} contacto.google_business contacto.mensaje_whatsapp_inicial.
 B9.1 "¿A qué número de WhatsApp quieres que te escriban desde la página? ¿Es el mismo que este?"
 B9.1b "¿Tienes un correo que quieras que aparezca en tu página como contacto? (es opcional)" → contacto.email. Guárdalo tal como lo escribió, no lo inventes ni lo corrijas. No se manda ningún código.

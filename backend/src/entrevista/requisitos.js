@@ -6,6 +6,9 @@ import { BLOQUES } from './prompts.js';
 
 const vacio = (v) => v === null || v === undefined || (typeof v === 'string' && !v.trim()) || (Array.isArray(v) && !v.length);
 const noTiene = (brief, id) => Array.isArray(brief?.no_tiene) && brief.no_tiene.includes(id);
+const faqLista = (b) => (Array.isArray(b?.faq) ? b.faq.filter((x) => x && !vacio(x.pregunta)) : []);
+const faqConRespuesta = (b) => faqLista(b).filter((x) => !vacio(x.respuesta)).length;
+const faqSinRespuesta = (b) => faqLista(b).filter((x) => vacio(x.respuesta));
 const TIPOS_FOTO = ['foto_local', 'foto_producto', 'foto_equipo', 'foto_fundador', 'foto_otro'];
 
 export const fotosUtiles = (assets = []) => assets.filter((a) => a.usar !== false && TIPOS_FOTO.includes(a.tipo));
@@ -29,7 +32,9 @@ export const REQUISITOS = [
   { id: 'fotos', bloque: 'B6', cumple: (b, a) => fotosUtiles(a).length > 0 || (b.fotos?.sin_fotos === true && !vacio(b.fotos?.temas)),
     pedir: (b) => (b.fotos?.sin_fotos === true ? 'Como no tienes fotos, dime de qué te gustaría que fueran (por ejemplo: tu local, tus platillos, gente usando tu servicio) para buscarte ejemplos o crearlas.' : 'Antes de seguir necesito las fotos de tu negocio: tu local o espacio, tus productos o trabajos, tú y tu equipo. Mándame las que tengas. Si no tienes, dime de qué te gustaría que fueran para buscarte ejemplos o crearlas.') },
   { id: 'testimonios', bloque: 'B7', puedeNoTener: true, cumple: (b) => !vacio(b.confianza?.testimonios) || !vacio(b.confianza?.link_resenas), pedir: '¿Tienes reseñas en Google o Facebook? Mándame la liga, o copia 2 o 3 comentarios de clientes contentos.' },
-  { id: 'faq', bloque: 'B8', puedeNoTener: true, cumple: (b) => Array.isArray(b.faq) && b.faq.length >= 3, pedir: '¿Qué te preguntan SIEMPRE tus clientes antes de contratar? Dime 3 o 4, con cómo las contestas tú.' },
+  // Una pregunta sin respuesta no se publica (la sección no sale): cuentan solo las que traen respuesta, y se pide la que falte.
+  { id: 'faq', bloque: 'B8', puedeNoTener: true, cumple: (b) => faqConRespuesta(b) >= 3 && !faqSinRespuesta(b).length,
+    pedir: (b) => { const sin = faqSinRespuesta(b); return sin.length ? `¿Cómo le contestas a tus clientes cuando te preguntan "${String(sin[0].pregunta).trim()}"? Escríbemelo tal cual quieres que aparezca en tu página.` : '¿Qué te preguntan SIEMPRE tus clientes antes de contratar? Dime 3 o 4, con cómo las contestas tú.'; } },
   { id: 'whatsapp', bloque: 'B9', cumple: (b) => !vacio(b.contacto?.whatsapp) || !vacio(b.contacto?.telefono), pedir: '¿A qué número de WhatsApp quieres que te escriban desde la página? ¿Es el mismo que este?' },
   { id: 'horarios', bloque: 'B9', puedeNoTener: true, cumple: (b) => !vacio(b.contacto?.horarios), pedir: '¿Cuáles son tus horarios de atención?' },
 ];
