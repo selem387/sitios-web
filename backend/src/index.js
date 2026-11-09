@@ -22,6 +22,7 @@ import { registerGeneradorRoutes } from './generador/index.js';
 import { registerChatRoutes } from './chat/index.js';
 import { repararGuardados } from './entrevista/avisos.js';
 import { registerPanelRoutes } from './panel/index.js';
+import { registerProspectosRoutes } from './prospectos/rutas.js';
 import { middlewareDominios } from './generador/dominios.js';
 import { invokeFunction } from './functions.js';
 import { attachRealtime } from './realtime.js';
@@ -146,6 +147,7 @@ registerEntrevistaRoutes(app, wrap);
 registerGeneradorRoutes(app, wrap);
 registerChatRoutes(app, wrap);
 registerPanelRoutes(app, wrap);
+registerProspectosRoutes(app);
 
 // Funciones backend: el SDK hace POST /api/apps/:appId/functions/:name.
 async function proxyFunction(c, tenant, name) {
