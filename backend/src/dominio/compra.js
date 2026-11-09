@@ -1,4 +1,5 @@
-// Compra de dominio para el cliente (sin margen, 1 año, sin renovación automática):
+// Compra de dominio para el cliente (sin margen, 1 año, sin renovación automática). Incluida en el pago de la página
+// si nos cuesta menos de DOMINIO_INCLUIDO_MAX_MXN (registrarIncluida, sin cobro); si no, se cobra aparte con Stripe:
 //   cotizada → pago_pendiente → pagada → registrando → registrada → conectando → lista
 //   desvíos: pago_vencido · reembolsada (no se pudo registrar) · requiere_revision (avisa al equipo)
 // La cuenta que paga a GoDaddy es la de IAprop: el registro SOLO se ejecuta con el pago de Stripe confirmado.
@@ -73,6 +74,18 @@ export async function ligaDePago(compraId, { email, agreedAt = new Date().toISOS
   await guardar(compraId, { estado: 'pago_pendiente', stripe_session_id: s.id, stripe_url: s.url, stripe_expira: new Date(s.expires_at * 1000) });
   await db.evento(c.entrevista_id, 'dominio_liga_pago', { compra_id: compraId, session: s.id });
   return s.url;
+}
+
+/** Dominio incluido en el pago de la página: sin cobro, pasa directo a registrarse. */
+export async function registrarIncluida(compraId, { agreedAt = new Date().toISOString() } = {}) {
+  const r = await db.q(`UPDATE dominios_compras SET estado='pagada', pagado=now(), cobrado_centavos=0, acuerdo_aceptado=COALESCE(acuerdo_aceptado, $2), actualizado=now()
+                        WHERE id=$1 AND estado='cotizada' AND (precio->>'incluido')::boolean IS TRUE RETURNING *`, [compraId, agreedAt]);
+  const c = r.rows[0];
+  if (!c) return false;
+  await patchFlujo(c.entrevista_id, { estado: 'pagada' });
+  await db.evento(c.entrevista_id, 'dominio_incluido', { compra_id: c.id, dominio: c.dominio, costo_mxn: c.precio?.neto_mxn });
+  registrarCompra(c.id).catch((err) => console.error('registrarCompra', err));
+  return true;
 }
 
 /** Revisa en Stripe si ya se pagó (por si el webhook se retrasa). → true si quedó pagada */
@@ -206,8 +219,9 @@ async function fallarConReembolso(c, motivo) {
   catch (e) { return revisar(c, `${motivo} Además falló el reembolso automático: ${e.message}`); }
   await guardar(c.id, { estado: 'reembolsada', error: motivo, reembolso });
   await patchFlujo(c.entrevista_id, { estado: 'reembolsada', motivo });
+  const cobrado = Boolean(c.stripe_payment_intent) && !c.precio?.incluido;
   await avisar(c.entrevista_id, [
-    `No pude registrar *${c.dominio}*: ${motivo.charAt(0).toLowerCase()}${motivo.slice(1)} Ya te regresé tu pago completo (${pesos((c.cobrado_centavos || c.precio.total_centavos) / 100)}); según tu banco se ve en 5 a 10 días.`,
+    `No pude registrar *${c.dominio}*: ${motivo.charAt(0).toLowerCase()}${motivo.slice(1)}${cobrado ? ` Ya te regresé tu pago completo (${pesos((c.cobrado_centavos || c.precio.total_centavos) / 100)}); según tu banco se ve en 5 a 10 días.` : ''}`,
     '¿Buscamos otra dirección? Dime una idea de nombre y reviso cuáles están libres.',
   ], { evento: 'dominio_reembolsado', datos: { compra_id: c.id } });
   await avisarEquipo('Dominio reembolsado', `${c.dominio}: ${motivo} (compra ${c.id})`, c.entrevista_id);
@@ -216,7 +230,7 @@ async function fallarConReembolso(c, motivo) {
 async function revisar(c, motivo, { sinReembolso = false } = {}) {
   await guardar(c.id, { estado: 'requiere_revision', error: motivo.slice(0, 1000) });
   await patchFlujo(c.entrevista_id, { estado: 'requiere_revision' });
-  if (!sinReembolso) await avisar(c.entrevista_id, [`Tu pago de *${c.dominio}* está recibido. Hubo un detalle al registrarlo y alguien de nuestro equipo lo está revisando; te aviso por aquí en cuanto quede.`], { evento: 'dominio_revision' });
+  if (!sinReembolso) await avisar(c.entrevista_id, [`${c.precio?.incluido ? `Tu dirección *${c.dominio}* ya está en proceso.` : `Tu pago de *${c.dominio}* está recibido.`} Hubo un detalle al registrarlo y alguien de nuestro equipo lo está revisando; te aviso por aquí en cuanto quede.`], { evento: 'dominio_revision' });
   await avisarEquipo('Compra de dominio requiere revisión', `${c.dominio} (compra ${c.id}, entrevista ${c.entrevista_id}): ${motivo}`, c.entrevista_id);
 }
 

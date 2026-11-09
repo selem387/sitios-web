@@ -1,8 +1,9 @@
 // La dirección de la página (B10) dentro de la entrevista. Ari solo pregunta si ya la tiene comprada y cuál es
 // (o cómo le gustaría que se llamara); a partir de ahí lo lleva este módulo:
 //   propio: investigar registrador y quién administra el DNS → pasos vigentes de ese proveedor → "listo" → revisar → conectar
-//   compra: opciones libres con precio → a nombre de quién (1/2/3) → condiciones + total → "acepto" → liga de Stripe
-//           → (webhook) registro en GoDaddy → conexión → aviso con la liga
+//   compra: opciones libres → a nombre de quién (1/2/3) → condiciones → "acepto" → registro en GoDaddy → conexión → aviso
+//           Incluida en los $1,350 (decidido 9-nov-2026): solo se proponen las que nos cuestan menos de $50 MXN el 1er año
+//           y se registran sin cobrar. Otra que pida el cliente y cueste más se paga aparte (liga de Stripe, como antes).
 // Estado en brief.tecnico.dominio_flujo (escrito de forma atómica con patchFlujo).
 import * as db from './db.js';
 import { pedirJSON, MODELO_MEMORIA } from './claude.js';
@@ -11,7 +12,7 @@ import { investigar, revisarApuntado, limpiarDominio, esDominio, partes, ipServi
 import { guiaParaCliente } from '../dominio/guias.js';
 import * as GD from '../dominio/godaddy.js';
 import { precioCliente, pesos } from '../dominio/precio.js';
-import { patchFlujo, leerFlujo, borrarFlujo, cotizarParaCliente, crearCompra, ligaDePago, revisarPago, obtener as obtenerCompra } from '../dominio/compra.js';
+import { patchFlujo, leerFlujo, borrarFlujo, cotizarParaCliente, crearCompra, ligaDePago, registrarIncluida, revisarPago, obtener as obtenerCompra } from '../dominio/compra.js';
 import { conectar, estadoConexion, conexionConfigurada } from '../dominio/conexion.js';
 import { stripeConfigurado } from '../dominio/stripe.js';
 import { disenoElegido } from '../panel/sitios.js';
@@ -19,9 +20,11 @@ import { disenoElegido } from '../panel/sitios.js';
 // Extensiones para sugerencias: incluye las baratas en promoción; el tope en pesos decide cuáles se muestran.
 const TLDS = () => (process.env.DOMINIO_TLDS || 'com,mx,com.mx,xyz,online,site,store,shop,space,website,fun,lat,click,link,info,tech').split(',').map((x) => x.trim()).filter(Boolean);
 const MAX_USD = () => Number(process.env.DOMINIO_PRECIO_MAX_USD || 60);
-// Tope del total que paga el cliente (1er año, con tipo de cambio y comisión) para los dominios SUGERIDOS.
-// Los que el cliente pide por nombre no llevan este tope (solo MAX_USD).
-const MAX_MXN_SUGERIDO = () => Number(process.env.DOMINIO_SUGERIDO_MAX_MXN || 50);
+// Tope de lo que nos cuesta (1er año, con tipo de cambio y tolerancia) un dominio incluido en el pago de la página.
+// Solo se proponen los que están debajo; uno que el cliente pide por nombre y cuesta más se le ofrece pagándolo aparte.
+const TOPE_INCLUIDO = () => Number(process.env.DOMINIO_INCLUIDO_MAX_MXN || process.env.DOMINIO_SUGERIDO_MAX_MXN || 50);
+export const cabeIncluido = (precio) => Number(precio?.neto_mxn) > 0 && Number(precio.neto_mxn) < TOPE_INCLUIDO();
+const MAX_APARTE = 3;
 const MAX_OPCIONES = 5;
 const MAX_BUSQUEDAS = 6;
 
@@ -78,41 +81,46 @@ function candidatosExactos(consulta, brief) {
 export async function buscarOpciones(consulta, brief) {
   const exactos = candidatosExactos(consulta, brief);
   const vistos = new Set();
-  const libres = [];
+  const incluidas = [];
+  const aparte = [];
   const pedidoNoLibre = [];
   for (const d of exactos) {
     vistos.add(d);
     const r = await GD.disponibilidad(d).catch(() => null);
-    if (r?.disponible && r.precio?.monto && (r.precio.moneda !== 'USD' || r.precio.monto <= MAX_USD()) && (!r.inventario || r.inventario === 'REGISTRY')) libres.push({ dominio: d, costo: r.precio.monto, moneda: r.precio.moneda, exacto: true });
-    else pedidoNoLibre.push(d);
+    if (r?.disponible && r.precio?.monto && (r.precio.moneda !== 'USD' || r.precio.monto <= MAX_USD()) && (!r.inventario || r.inventario === 'REGISTRY')) {
+      const p = await precioCliente(r.precio.monto, r.precio.moneda || 'USD').catch(() => null);
+      if (!p) continue;
+      if (cabeIncluido(p)) incluidas.push({ dominio: d, incluido: true, exacto: true });
+      else aparte.push({ dominio: d, incluido: false, total_mxn: p.total_mxn });
+    } else pedidoNoLibre.push(d);
   }
   const q = [String(consulta || '').replace(/[.,;:¿?¡!]/g, ' ').trim(), brief?.negocio?.nombre, brief?.negocio?.ciudad].filter(Boolean).join(' ').slice(0, 100);
   const sug = await GD.sugerencias(q || 'negocio', { tlds: TLDS(), pageSize: 40 }).catch((e) => { console.error('sugerencias', e.message); return []; });
   for (const s of sug) {
-    if (libres.length >= MAX_OPCIONES * 2) break;
+    if (incluidas.length >= MAX_OPCIONES * 2) break;
     if (vistos.has(s.dominio) || !s.precio?.monto) continue;
     if (s.inventario && s.inventario !== 'REGISTRY') continue;
     if (s.precio.moneda === 'USD' && s.precio.monto > MAX_USD()) continue;
     const p = await precioCliente(s.precio.monto, s.precio.moneda || 'USD').catch(() => null);
-    if (!p || p.total_mxn >= MAX_MXN_SUGERIDO()) continue;
+    if (!cabeIncluido(p)) continue;
     vistos.add(s.dominio);
-    libres.push({ dominio: s.dominio, costo: s.precio.monto, moneda: s.precio.moneda, exacto: false });
+    incluidas.push({ dominio: s.dominio, incluido: true, exacto: false });
   }
-  // Primero lo que pidió, luego los más cortos; precio al cliente con tipo de cambio, tolerancia y comisión.
-  const orden = libres.sort((a, b) => (b.exacto - a.exacto) || (a.dominio.length - b.dominio.length)).slice(0, MAX_OPCIONES);
-  const opciones = [];
-  for (const o of orden) {
-    const p = await precioCliente(o.costo, o.moneda || 'USD');
-    opciones.push({ dominio: o.dominio, total_mxn: p.total_mxn });
-  }
-  return { opciones, pedidoNoLibre };
+  // Primero lo que pidió, luego los más cortos.
+  const opciones = incluidas.sort((a, b) => (b.exacto - a.exacto) || (a.dominio.length - b.dominio.length)).slice(0, MAX_OPCIONES).map(({ dominio }) => ({ dominio, incluido: true }));
+  return { opciones, aparte: aparte.slice(0, MAX_APARTE), pedidoNoLibre };
 }
 
-function mensajeOpciones(opciones, pedidoNoLibre = []) {
+function mensajeOpciones(opciones, aparte = [], pedidoNoLibre = []) {
   const textos = [];
   const ocupados = pedidoNoLibre.length ? `${pedidoNoLibre.map((d) => `*${d}*`).join(', ')} ya ${pedidoNoLibre.length > 1 ? 'están ocupadas' : 'está ocupada'}. ` : '';
-  textos.push(`${ocupados}Revisé y estas direcciones están libres. El precio es por 1 año y ya incluye todo (es lo que cuesta registrarla, sin ganancia para nosotros):\n\n${opciones.map((o, i) => `${i + 1}. *${o.dominio}* · ${pesos(o.total_mxn)}`).join('\n')}`);
-  textos.push('¿Cuál te late? Respóndeme con el número. Si quieres revisar otra idea, escríbeme el nombre. Si prefieres dejarlo para después, dime *después* y tu página queda con una dirección temporal.');
+  const caras = aparte.length ? `${aparte.map((o) => `*${o.dominio}*`).join(', ')} ${aparte.length > 1 ? 'están libres' : 'está libre'}, pero no ${aparte.length > 1 ? 'entran' : 'entra'} en tu pago: ${aparte.map((o) => `${o.dominio} cuesta ${pesos(o.total_mxn)}`).join(', ')} por 1 año y se paga aparte. ` : '';
+  if (opciones.length) {
+    textos.push(`${ocupados}${caras}Estas direcciones están libres y ya vienen *incluidas en tu pago*, sin costo extra (1 año):\n\n${opciones.map((o, i) => `${i + 1}. *${o.dominio}*`).join('\n')}`);
+    textos.push(`¿Cuál te late? Respóndeme con el número.${aparte.length ? ` Si prefieres ${aparte.length > 1 ? 'una de las que se pagan aparte' : `*${aparte[0].dominio}*`}, escríbeme su nombre.` : ' Si quieres otra que no esté en la lista, escríbeme el nombre; si cuesta más, se paga aparte.'} Si prefieres dejarlo para después, dime *después* y tu página queda con una dirección temporal.`);
+  } else {
+    textos.push(`${ocupados}${caras}¿Te la registro pagándola aparte? Escríbeme su nombre. O dame otra idea de nombre y busco direcciones que vengan incluidas en tu pago.`);
+  }
   return textos;
 }
 
@@ -160,12 +168,12 @@ async function pasoBuscar(e, brief, consulta) {
     await patchFlujo(e.id, { estado: 'buscar' });
     return ['No pude revisar las direcciones en este momento 😕. Escríbeme de nuevo la idea de nombre en un par de minutos y lo intento otra vez.'];
   }
-  if (!r.opciones.length) {
+  if (!r.opciones.length && !r.aparte.length) {
     await patchFlujo(e.id, { estado: 'buscar', busquedas: (f.busquedas || 0) + 1 });
     return [`No encontré direcciones libres con esa idea${r.pedidoNoLibre.length ? ` (${r.pedidoNoLibre.join(', ')} ya están ocupadas)` : ''}. Dame otra: puede ser el nombre con tu ciudad, con tu giro o una palabra corta. Por ejemplo: _${base(brief?.negocio?.nombre) || 'tunegocio'}${base(brief?.negocio?.ciudad) || 'merida'}.online_`];
   }
-  await patchFlujo(e.id, { estado: 'opciones', opciones: r.opciones, busquedas: (f.busquedas || 0) + 1 });
-  return mensajeOpciones(r.opciones, r.pedidoNoLibre);
+  await patchFlujo(e.id, { estado: 'opciones', opciones: r.opciones, aparte: r.aparte, busquedas: (f.busquedas || 0) + 1 });
+  return mensajeOpciones(r.opciones, r.aparte, r.pedidoNoLibre);
 }
 
 /* ---------------- Interpretación de respuestas libres ---------------- */
@@ -200,7 +208,14 @@ export async function atenderDominio(e, brief, texto) {
     }
     case 'opciones': {
       const ops = f.opciones || [];
+      const aparte = f.aparte || [];
       if (DESPUES.test(t) && !/\d/.test(t)) return posponer(e);
+      // Eligió por nombre una de las que se pagan aparte.
+      const cara = aparte.find((o) => t.toLowerCase().includes(o.dominio));
+      if (cara) {
+        await patchFlujo(e.id, { estado: 'titularidad', dominio: cara.dominio, incluido: false });
+        return { textos: [`Va: *${cara.dominio}* ✅ Esta no entra en tu pago; cuesta ${pesos(cara.total_mxn)} por 1 año y te mando la liga para pagarla aparte.`, MENSAJE_TITULARIDAD], seguirConAri: false };
+      }
       let n = Number((t.match(/^\D{0,12}?([1-9])\b/) || [])[1]);
       const porNombre = ops.findIndex((o) => t.toLowerCase().includes(o.dominio));
       if (porNombre >= 0) n = porNombre + 1;
@@ -215,7 +230,7 @@ export async function atenderDominio(e, brief, texto) {
       }
       if (consulta) return { textos: await pasoBuscar(e, brief, consulta), seguirConAri: false };
       const elegido = ops[n - 1].dominio;
-      await patchFlujo(e.id, { estado: 'titularidad', dominio: elegido });
+      await patchFlujo(e.id, { estado: 'titularidad', dominio: elegido, incluido: true });
       return { textos: [`Buena elección: *${elegido}* ✅`, MENSAJE_TITULARIDAD], seguirConAri: false };
     }
     case 'titularidad': {
@@ -265,7 +280,7 @@ export async function atenderDominio(e, brief, texto) {
       }
       if (/\b(liga|link|enlace)\b/i.test(t)) {
         const c = await obtenerCompra(f.compra_id);
-        return { textos: [`Aquí está tu liga para pagar *${pesos(c.precio.total_mxn)}* por *${c.dominio}*:\n${c.stripe_url}`], seguirConAri: false };
+        return { textos: [c?.stripe_url ? `Aquí está tu liga para pagar *${pesos(c.precio.total_mxn)}* por *${c.dominio}*:\n${c.stripe_url}` : `*${c?.dominio || f.dominio}* viene incluida en tu pago; no hay nada que pagar. Ya la estoy registrando y te aviso aquí.`], seguirConAri: false };
       }
       return { textos: [], seguirConAri: true };
     }
@@ -284,10 +299,6 @@ export async function atenderDominio(e, brief, texto) {
 
 async function pasoCotizar(e, brief) {
   const f = await leerFlujo(e.id);
-  if (!stripeConfigurado()) {
-    await patchFlujo(e.id, { estado: 'cotizar' });
-    return { textos: ['Estoy terminando de habilitar el pago con tarjeta para direcciones. Alguien de nuestro equipo te escribe por aquí para completarlo; mientras, seguimos con lo demás.'], seguirConAri: true, notaAri: 'La compra de la dirección quedó en espera; no la menciones. Sigue con la siguiente pregunta pendiente.' };
-  }
   let r;
   try { r = await cotizarParaCliente(f.dominio); }
   catch (err) {
@@ -299,16 +310,27 @@ async function pasoCotizar(e, brief) {
     await patchFlujo(e.id, { estado: 'cotizar' });
     return { textos: ['No pude confirmar el precio en este momento 😕. Escríbeme cualquier cosa en un par de minutos y lo intento de nuevo.'], seguirConAri: false };
   }
-  const compraId = await crearCompra(e, { dominio: f.dominio, titularidad: f.titularidad, traspasoEmail: f.traspaso_email, cotizacion: r.cotizacion, precio: r.precio });
-  await patchFlujo(e.id, { estado: 'acuerdos', compra_id: compraId, total_mxn: r.precio.total_mxn });
+  // Incluida: solo si al cotizar sigue debajo del tope; si subió, pasa a pagarse aparte.
+  let incluido = f.incluido === true && cabeIncluido(r.precio);
+  const subio = f.incluido === true && !incluido;
+  if (!incluido && !stripeConfigurado()) {
+    await patchFlujo(e.id, { estado: 'cotizar', incluido: false });
+    return { textos: [`${subio ? `El precio de *${f.dominio}* cambió y ya no entra en tu pago. ` : ''}Estoy terminando de habilitar el pago con tarjeta para direcciones que se pagan aparte. Alguien de nuestro equipo te escribe por aquí para completarlo; si prefieres una que venga incluida, escríbeme otra idea de nombre.`], seguirConAri: true, notaAri: 'La compra de la dirección quedó en espera; no la menciones. Sigue con la siguiente pregunta pendiente.' };
+  }
+  const precio = { ...r.precio, incluido };
+  const compraId = await crearCompra(e, { dominio: f.dominio, titularidad: f.titularidad, traspasoEmail: f.traspaso_email, cotizacion: r.cotizacion, precio });
+  await patchFlujo(e.id, { estado: 'acuerdos', compra_id: compraId, total_mxn: incluido ? 0 : r.precio.total_mxn, incluido });
   const quien = { iaprop: 'A nombre de IAprop (puedes pedir que te la pasemos cuando quieras)', traspaso: 'A nombre de IAprop mientras se registra; luego te la pasamos a tu cuenta', aviso_vencimiento: 'A nombre de IAprop, con aviso un mes antes de que venza' }[f.titularidad];
   const acuerdos = r.cotizacion.acuerdos.length
     ? r.cotizacion.acuerdos.map((a) => `• ${a.titulo}${a.url ? `: ${a.url}` : ''}`).join('\n')
     : '• Condiciones de registro de GoDaddy: https://www.godaddy.com/legal/agreements/domain-name-registration-agreement';
+  const costo = incluido
+    ? '• Costo: *incluido en tu pago de la página*, no pagas nada extra'
+    : `• Total: *${pesos(r.precio.total_mxn)}*, se paga aparte (ya incluye la comisión del pago con tarjeta)`;
   return {
     textos: [
-      `Así queda la compra:\n• Dirección: *${f.dominio}*\n• Vigencia: 1 año, *no se renueva sola*\n• Privacidad de tus datos en el registro: incluida\n• Queda: ${quien}\n• Total: *${pesos(r.precio.total_mxn)}* (ya incluye la comisión del pago con tarjeta)`,
-      `Para registrarla hay que aceptar estas condiciones:\n${acuerdos}\n\nSi estás de acuerdo, escríbeme *acepto* y te mando la liga para pagar con tarjeta.`,
+      `${subio ? `Ojo: el precio de *${f.dominio}* cambió y ya no entra en tu pago. ` : ''}Así queda:\n• Dirección: *${f.dominio}*\n• Vigencia: 1 año, *no se renueva sola*\n• Privacidad de tus datos en el registro: incluida\n• Queda: ${quien}\n${costo}`,
+      `Para registrarla hay que aceptar estas condiciones:\n${acuerdos}\n\nSi estás de acuerdo, escríbeme *acepto* y ${incluido ? 'la registro' : 'te mando la liga para pagar con tarjeta'}.`,
     ],
     seguirConAri: false,
   };
@@ -318,6 +340,11 @@ async function pasoPagar(e, brief, f) {
   const c = await obtenerCompra(f.compra_id);
   // Precio de hace más de 6 h: se vuelve a cotizar para no cobrar de menos o de más.
   if (!c || Date.now() - new Date(c.creado).getTime() > 6 * 3600e3) { await patchFlujo(e.id, { estado: 'cotizar' }); return pasoCotizar(e, brief); }
+  if (c.precio?.incluido) {
+    await registrarIncluida(c.id, { agreedAt: new Date().toISOString() });
+    await db.evento(e.id, 'dominio_acuerdos_aceptados', { compra_id: c.id, acuerdos: c.acuerdos, incluido: true });
+    return { textos: [`¡Perfecto! Estoy registrando *${c.dominio}* ✅ En unos minutos te aviso por aquí.`], seguirConAri: false };
+  }
   let url;
   try { url = await ligaDePago(c.id, { email: brief.contacto?.email, agreedAt: new Date().toISOString() }); }
   catch (err) {
