@@ -58,8 +58,15 @@ function porGiro({ a, s }) {
   return g;
 }
 
+function herramientas(m) {
+  const fuentes = 'Para mostrar los tipos de letra se cargan desde Google Fonts, por lo que Google puede recibir datos técnicos de tu conexión (como tu dirección IP).';
+  const usa = [m?.ga4 && 'Google Analytics, para saber cuántas personas visitan la página y qué secciones les interesan', m?.pixel && 'el Pixel de Meta (Facebook e Instagram), para medir los resultados de nuestros anuncios y mostrar publicidad a quien ya nos visitó'].filter(Boolean);
+  if (!usa.length) return `<p>Esta página no usa cookies para rastrearte. ${fuentes} Si en el futuro usamos herramientas de medición o publicidad, lo indicaremos aquí.</p>`;
+  return `<p>Esta página usa cookies y tecnologías similares de terceros: ${usa.map(esc).join('; y ')}. Registran datos de navegación como páginas vistas, clics en los botones de contacto, tipo de dispositivo y una dirección IP aproximada; no recaban tu nombre ni tu teléfono. Puedes desactivarlas o borrarlas desde la configuración de tu navegador, y administrar tus preferencias de anuncios en Google y en Meta. ${fuentes}</p>`;
+}
+
 /** HTML del aviso (dentro de <main>). */
-export function avisoPrivacidad(brief = {}, { actualizado = new Date() } = {}) {
+export function avisoPrivacidad(brief = {}, { actualizado = new Date(), medicion = null } = {}) {
   const n = brief.negocio || {};
   const c = brief.contacto || {};
   const nombre = limpio(n.nombre) || 'Este negocio';
@@ -87,18 +94,18 @@ ${g.transferencias.length ? `<p>Solo compartimos tus datos con:</p>${li(g.transf
 <h2>Tus derechos (ARCO) y cómo revocar tu consentimiento</h2>
 <p>Puedes pedirnos acceder a tus datos, corregirlos, cancelarlos u oponerte a su uso, así como revocar tu consentimiento o limitar su uso, escribiéndonos ${medio}. Indica tu nombre, lo que solicitas y un medio para responderte; te contestaremos en los plazos que marca la ley. Si consideras que no atendimos tu solicitud, puedes acudir a la Secretaría Anticorrupción y Buen Gobierno.</p>
 <h2>Cookies y tecnologías de esta página</h2>
-<p>Esta página no usa cookies para rastrearte. Para mostrar los tipos de letra se cargan desde Google Fonts, por lo que Google puede recibir datos técnicos de tu conexión (como tu dirección IP). Si en el futuro usamos herramientas de medición o publicidad, lo indicaremos aquí.</p>
+${herramientas(medicion)}
 <h2>Cambios a este aviso</h2>
 <p>Cualquier cambio lo publicaremos en esta misma página. Última actualización: ${esc(fecha)}.</p>
 </section>`;
 }
 
 /** Página completa: usa el encabezado, letras, colores y pie del sitio; solo cambia el contenido. */
-export function paginaAviso(htmlSitio, brief, { base = '', url = '' } = {}) {
+export function paginaAviso(htmlSitio, brief, { base = '', url = '', medicion = null } = {}) {
   return htmlSitio
     .replace(/<!--seo-->[\s\S]*?<!--\/seo-->/, '')
     .replace(/<link rel="canonical"[^>]*>/, '')
-    .replace(/<main([^>]*)>[\s\S]*<\/main>/, (m, at) => `<main${at}>${avisoPrivacidad(brief)}</main>`)
+    .replace(/<main([^>]*)>[\s\S]*<\/main>/, (m, at) => `<main${at}>${avisoPrivacidad(brief, { medicion })}</main>`)
     .replace(/<title>[^<]*<\/title>/, () => `<title>Aviso de privacidad · ${esc(brief.negocio?.nombre || '')}</title>`)
     .replace('</head>', () => `${url ? `<link rel="canonical" href="${esc(url)}">` : ''}<meta name="description" content="Aviso de privacidad de ${esc(brief.negocio?.nombre || '')}: qué datos recabamos, para qué y cómo ejercer tus derechos."></head>`)
     .replace(/(<nav[\s\S]*?<\/nav>)/, (nav) => nav.replace(/href="#/g, `href="${base}/#`));

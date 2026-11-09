@@ -32,6 +32,7 @@ CREATE TABLE IF NOT EXISTS sitios_vivos (
 -- Enlace mágico permanente al panel (Ari lo manda por el chat; solo el dueño lo tiene).
 ALTER TABLE sitios_vivos ADD COLUMN IF NOT EXISTS llave text UNIQUE;
 ALTER TABLE sitios_vivos ADD COLUMN IF NOT EXISTS url_publica text;
+ALTER TABLE sitios_vivos ADD COLUMN IF NOT EXISTS medicion jsonb;
 UPDATE sitios_vivos SET llave = replace(replace(encode(gen_random_bytes(24),'base64'),'/','_'),'+','-') WHERE llave IS NULL;
 CREATE TABLE IF NOT EXISTS codigos_panel (
   id           serial PRIMARY KEY,
@@ -242,6 +243,7 @@ export async function renderSitio(sv, { previa = false } = {}) {
   }
   // Estructura y ajustes de diseño propios de este sitio (los escribe el editor de cambios a pedido del cliente).
   { const { conLigaAviso } = await import('./aviso.js'); html = conLigaAviso(html, `${rutaBase(sv, { previa })}/aviso-de-privacidad`); }
+  if (!previa && sv.medicion) { const { conMedicion } = await import('./medicion.js'); html = conMedicion(html, sv.medicion); }
   if (dz.estructura) { const { aplicarEstructura } = await import('./estructura.js'); html = aplicarEstructura(html, dz.estructura); }
   if (sv.contenido?.pies?.items?.length) html = conPies(html, sv.contenido.pies.items);
   { const { conSrcset } = await import('../generador/movimiento.js'); html = conSrcset(html); } // tamaños de foto coherentes tras ediciones

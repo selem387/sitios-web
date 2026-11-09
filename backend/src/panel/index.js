@@ -266,7 +266,7 @@ async function servirAviso(c, sv, { previa }) {
     const { paginaAviso } = await import('./aviso.js');
     const html = await S.renderSitio(sv, { previa });
     const url = `${S.urlPublica(sv, { previa })}aviso-de-privacidad`;
-    return c.html(paginaAviso(html, e?.brief || {}, { base: S.rutaBase(sv, { previa }), url }), 200, { 'cache-control': 'no-cache', ...(previa ? { 'x-robots-tag': 'noindex' } : {}) });
+    return c.html(paginaAviso(html, e?.brief || {}, { base: S.rutaBase(sv, { previa }), url, medicion: previa ? null : sv.medicion }), 200, { 'cache-control': 'no-cache', ...(previa ? { 'x-robots-tag': 'noindex' } : {}) });
   } catch (x) {
     console.error('[aviso]', sv.id, x);
     return c.redirect(S.rutaBase(sv, { previa }) || '/', 302);
@@ -409,6 +409,21 @@ export function registerPanelRoutes(app, wrap) {
     auth(c);
     const { enviarOpcionesNuevas } = await import('./rediseno.js');
     return enviarOpcionesNuevas(c.req.param('id')).catch((x) => { throw new HttpError(409, x.message); });
+  }));
+
+  // Medición (GA4 / Meta Pixel): la pone el equipo. {ga4?, pixel?}; vacío = quitar.
+  app.put('/entrevista/v1/sitios-vivos/:id/medicion', wrap(async (c) => {
+    auth(c);
+    await S.migrarPanel();
+    const sv = await S.porId(c.req.param('id'));
+    if (!sv) throw new HttpError(404, 'no existe');
+    const { limpiarMedicion } = await import('./medicion.js');
+    let m;
+    try { m = limpiarMedicion(await c.req.json().catch(() => ({}))); } catch (x) { throw new HttpError(400, x.message); }
+    await q(`UPDATE sitios_vivos SET medicion=$2, version=version+1, actualizado=now() WHERE id=$1`, [sv.id, Object.keys(m).length ? m : null]);
+    S.invalidar(sv.id);
+    await db.evento(sv.entrevista_id, 'medicion_sitio', m).catch(() => {});
+    return { ok: true, sitio_vivo_id: sv.id, medicion: m };
   }));
 
   app.get('/entrevista/v1/sitios-vivos/:id', wrap(async (c) => {
