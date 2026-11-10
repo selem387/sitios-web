@@ -46,6 +46,13 @@ button.sec{border:1px solid var(--linea);padding:0 14px;font-size:14px;min-heigh
 button:disabled{opacity:.5;cursor:default}
 .grabando{background:var(--peligro)!important;color:#fff!important}
 .adj{font-size:13px;color:var(--suave);max-width:760px;margin:0 auto 6px;display:none}
+.prev{display:flex;gap:8px;overflow-x:auto;max-width:760px;margin:0 auto 8px;padding:2px 0 4px}
+.prev:empty{display:none}
+.mini{position:relative;flex:none;width:72px;height:72px;border-radius:10px;overflow:hidden;border:1px solid var(--linea);background:var(--fondo);display:grid;place-items:center;font-size:12px;color:var(--suave);text-align:center}
+.mini img{width:100%;height:100%;object-fit:cover;display:block}
+.mini.subiendo img{opacity:.45}.mini.fallo{outline:2px solid var(--peligro)}
+.mini .q{position:absolute;top:3px;right:3px;width:24px;height:24px;min-width:24px;min-height:24px;border-radius:50%;background:rgba(0,0,0,.6);color:#fff;font-size:13px;line-height:1;padding:0}
+.mini .est{position:absolute;bottom:0;left:0;right:0;background:rgba(0,0,0,.55);color:#fff;font-size:11px;padding:2px 0}
 #puerta{position:fixed;inset:0;background:var(--fondo);display:grid;place-items:center;padding:16px}
 #puerta form{flex-direction:column;align-items:stretch;background:var(--panel);padding:24px;border-radius:16px;border:1px solid var(--linea);width:100%;max-width:360px;gap:12px}
 #puerta input{font:inherit;padding:12px;border-radius:10px;border:1px solid var(--linea);background:var(--fondo);color:var(--tinta)}
@@ -74,7 +81,8 @@ svg{width:22px;height:22px}
 </header>
 <main id="chat" aria-live="polite"></main>
 <footer>
-  <div class="adj" id="adj"></div>
+  <div class="prev" id="prev" aria-label="Archivos por enviar"></div>
+  <div class="adj" id="adj" aria-live="polite"></div>
   <form id="f">
     <input type="file" id="archivo" accept="image/*,audio/*,application/pdf" hidden multiple>
     <button type="button" id="clip" aria-label="Adjuntar foto o archivo"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m21.4 11.1-9.2 9.2a6 6 0 0 1-8.5-8.5l9.2-9.2a4 4 0 0 1 5.7 5.7l-9.2 9.2a2 2 0 0 1-2.8-2.8l8.5-8.5"/></svg></button>
@@ -190,18 +198,59 @@ function iniciarSondeo(){
 $('#f').addEventListener('submit', async (ev) => {
   ev.preventDefault();
   const texto = t.value.trim(); if (!texto && !pendientes.length) return;
-  const media = pendientes; pendientes = []; $('#adj').style.display='none';
+  if (pendientes.some((p) => p.estado === 'subiendo')) { avisoAdj('Espera a que terminen de subir tus archivos.'); return; }
+  const media = pendientes.filter((p) => p.estado === 'listo').map((p) => p.res);
+  if (!texto && !media.length) return;
+  limpiarAdj();
   t.value=''; t.style.height='';
   enviar(texto, media);
 });
 t.addEventListener('keydown', (e) => { if (e.key === 'Enter' && !e.shiftKey && matchMedia('(pointer:fine)').matches) { e.preventDefault(); $('#f').requestSubmit(); } });
 t.addEventListener('input', () => { t.style.height='auto'; t.style.height = Math.min(t.scrollHeight, 140) + 'px'; });
 $('#clip').onclick = () => $('#archivo').click();
+// Adjuntos: hasta MAX_ADJ por envío, con miniatura y ✕ para quitar antes de enviar. Se suben en paralelo (4 a la vez).
+const MAX_ADJ = 18;
+let idAdj = 0;
+function avisoAdj(txt){ const a = $('#adj'); a.textContent = txt; a.style.display = txt ? 'block' : 'none'; }
+function limpiarAdj(){ for (const p of pendientes) if (p.local) URL.revokeObjectURL(p.local); pendientes = []; pintarAdj(); }
+function resumenAdj(){
+  if (!pendientes.length) return avisoAdj('');
+  const sub = pendientes.filter((p) => p.estado === 'subiendo').length, mal = pendientes.filter((p) => p.estado === 'error').length;
+  const ok = pendientes.length - sub - mal;
+  let txt = sub ? 'Subiendo ' + sub + ' de ' + pendientes.length + '…' : ok + ' de ' + MAX_ADJ + ' archivo(s) listo(s) para enviar. Puedes agregar un comentario.';
+  if (mal) txt += ' ' + mal + ' no se pudo subir (quítalo con ✕).';
+  avisoAdj(txt);
+}
+function pintarAdj(){
+  const cont = $('#prev'); cont.innerHTML = '';
+  for (const p of pendientes) {
+    const d = document.createElement('div'); d.className = 'mini' + (p.estado === 'subiendo' ? ' subiendo' : '') + (p.estado === 'error' ? ' fallo' : '');
+    if (p.local) { const im = document.createElement('img'); im.src = p.local; im.alt = p.file.name; d.appendChild(im); }
+    else d.textContent = p.file.type.startsWith('audio/') ? '🎤 Audio' : p.file.type === 'application/pdf' ? '📄 PDF' : '📎 Archivo';
+    if (p.estado !== 'listo') { const s = document.createElement('span'); s.className = 'est'; s.textContent = p.estado === 'error' ? 'Error' : 'Subiendo…'; d.appendChild(s); }
+    const q = document.createElement('button'); q.type = 'button'; q.className = 'q'; q.textContent = '✕'; q.setAttribute('aria-label', 'Quitar ' + p.file.name);
+    q.onclick = () => { if (p.local) URL.revokeObjectURL(p.local); pendientes = pendientes.filter((x) => x !== p); pintarAdj(); };
+    d.appendChild(q); cont.appendChild(d);
+  }
+  resumenAdj();
+}
 $('#archivo').onchange = async (e) => {
-  const files = [...e.target.files].slice(0, 5); e.target.value='';
-  $('#adj').style.display='block'; $('#adj').textContent = 'Subiendo ' + files.length + ' archivo(s)…';
-  try { for (const f of files) pendientes.push(await subir(f)); $('#adj').textContent = pendientes.length + ' archivo(s) listo(s) para enviar. Puedes agregar un comentario.'; }
-  catch (err) { $('#adj').textContent = 'No se pudo subir: ' + err.message; }
+  const elegidos = [...e.target.files]; e.target.value='';
+  const libres = MAX_ADJ - pendientes.length;
+  const files = elegidos.slice(0, Math.max(0, libres));
+  const nuevos = files.map((f) => ({ id: ++idAdj, file: f, local: f.type.startsWith('image/') ? URL.createObjectURL(f) : '', estado: 'subiendo', res: null }));
+  pendientes.push(...nuevos); pintarAdj();
+  if (elegidos.length > files.length) avisoAdj('Puedes mandar hasta ' + MAX_ADJ + ' archivos por mensaje; no agregué ' + (elegidos.length - files.length) + '. Envía estos y luego manda los demás.');
+  const cola = [...nuevos];
+  const trabajador = async () => {
+    for (let p = cola.shift(); p; p = cola.shift()) {
+      if (!pendientes.includes(p)) continue; // lo quitaron antes de subir
+      try { p.res = await subir(p.file); p.estado = 'listo'; } catch { p.estado = 'error'; }
+      if (pendientes.includes(p)) pintarAdj();
+    }
+  };
+  await Promise.all([trabajador(), trabajador(), trabajador(), trabajador()]);
+  if (elegidos.length > files.length) avisoAdj('Listos ' + pendientes.filter((p) => p.estado === 'listo').length + ' de ' + MAX_ADJ + '. No agregué ' + (elegidos.length - files.length) + ' (máximo ' + MAX_ADJ + ' por mensaje); mándalos en el siguiente.');
 };
 let rec = null, trozos = [];
 $('#mic').onclick = async () => {
@@ -265,7 +314,7 @@ function pintarLista(){
 async function abrir(u, nueva = false){
   if (sondeo) { clearInterval(sondeo); sondeo = null; }
   usuario = u; mem.set('ari_usuario', u); recordar(u);
-  pendientes = []; $('#adj').style.display = 'none';
+  limpiarAdj();
   $('#estado').textContent = 'Tu página web en una conversación';
   ponerNombre(mem.get('ari_nombre_' + u) || '');
   let existe = false;

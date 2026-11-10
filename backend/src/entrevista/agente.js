@@ -348,7 +348,7 @@ export async function procesarMensaje(b) {
   const usuario_id = String(b.usuario_id || '').trim().slice(0, 120);
   if (!usuario_id) throw Object.assign(new Error('falta usuario_id'), { status: 400 });
   const texto = String(b.texto || '').trim().slice(0, 4000);
-  const entrantes = (Array.isArray(b.media) ? b.media : []).filter((m) => /^https?:\/\//.test(m?.url || '')).slice(0, 10);
+  const entrantes = (Array.isArray(b.media) ? b.media : []).filter((m) => /^https?:\/\//.test(m?.url || '')).slice(0, 18);
   const palabra = normalizar(texto);
   const reiniciar = b.reiniciar === true || quiereReiniciar(texto);
   const comando = palabra === PALABRA_INICIO || reiniciar;
@@ -416,6 +416,13 @@ export async function procesarMensaje(b) {
   let n = assetsPrevios.length;
   const nuevosAssets = [];
   if (textoTurno) await db.insertarMensaje(e.id, { rol: 'cliente', tipo: 'texto', contenido: textoTurno, bloque: e.bloque_actual });
+  // Describir las imágenes en paralelo (4 a la vez): con 18 fotos en serie la respuesta tardaba demasiado.
+  const descripciones = new Map();
+  {
+    const cola = entrantes.filter((m) => tipoMedia(m.tipo, m.mime) === 'imagen');
+    const trabajador = async () => { for (let m = cola.shift(); m; m = cola.shift()) descripciones.set(m, await describirImagen(m.url).catch(() => null)); };
+    await Promise.all([trabajador(), trabajador(), trabajador(), trabajador()]);
+  }
   for (const m of entrantes) {
     const tipo = tipoMedia(m.tipo, m.mime);
     if (tipo === 'audio') {
@@ -428,7 +435,7 @@ export async function procesarMensaje(b) {
       continue;
     }
     const clave = `a${++n}`;
-    const desc = tipo === 'imagen' ? await describirImagen(m.url) : null;
+    const desc = tipo === 'imagen' ? (descripciones.get(m) || null) : null;
     const contenido = `[${tipo} ${clave}${m.caption ? `: ${m.caption}` : ''}${desc ? ` — ${desc.descripcion} (calidad ${desc.calidad})` : ''}]`;
     const msgId = await db.insertarMensaje(e.id, { rol: 'cliente', tipo, contenido, bloque: e.bloque_actual });
     const a = await db.insertarAsset(e.id, { mensaje_id: msgId, clave, tipo: desc?.tipo || (tipo === 'documento' ? 'documento' : tipo === 'video' ? 'video' : 'foto_otro'), url: m.url, mime: m.mime, nota: m.caption, descripcion_ia: desc?.descripcion, calidad: desc?.calidad, usar: desc?.calidad !== 'mala' });

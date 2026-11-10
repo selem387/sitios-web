@@ -23,15 +23,16 @@ import { urlSitio } from '../panel/cambios_vivo.js';
 const DIR = path.join(config.dataDir, 'chat');
 const CODIGO = process.env.CHAT_CODIGO || '';
 const MAX_MB = 16;
+const MAX_ADJ = 18; // archivos por mensaje (igual que MAX_ADJ en pagina.js)
 const TIPOS = { 'image/jpeg': 'jpg', 'image/png': 'png', 'image/webp': 'webp', 'image/heic': 'heic', 'audio/webm': 'webm', 'audio/ogg': 'ogg', 'audio/mp4': 'm4a', 'audio/mpeg': 'mp3', 'application/pdf': 'pdf', 'video/mp4': 'mp4' };
 
-// Límite simple por IP: 40 peticiones por minuto.
+// Límite simple por IP: 90 peticiones por minuto (un envío de 18 fotos ya son 19 peticiones).
 const golpes = new Map();
 function limitar(c) {
   const ip = c.req.header('x-forwarded-for')?.split(',')[0].trim() || 'x';
   const ahora = Date.now();
   const lista = (golpes.get(ip) || []).filter((t) => ahora - t < 60000);
-  if (lista.length >= 40) throw new HttpError(429, 'Demasiados mensajes, espera un minuto');
+  if (lista.length >= 90) throw new HttpError(429, 'Demasiados mensajes, espera un minuto');
   lista.push(ahora); golpes.set(ip, lista);
 }
 const usuarioValido = (u) => /^web-[a-z0-9-]{8,60}$/.test(String(u || ''));
@@ -112,7 +113,7 @@ export function registerChatRoutes(app, wrap) {
     auth(c);
     const b = await c.req.json().catch(() => { throw new HttpError(400, 'JSON inválido'); });
     if (!usuarioValido(b.usuario_id)) throw new HttpError(400, 'usuario_id inválido');
-    const media = (Array.isArray(b.media) ? b.media : []).filter((m) => String(m?.url || '').startsWith(`${config.publicUrl}/chat/archivos/`)).slice(0, 5);
+    const media = (Array.isArray(b.media) ? b.media : []).filter((m) => String(m?.url || '').startsWith(`${config.publicUrl}/chat/archivos/`)).slice(0, MAX_ADJ);
     const res = await enSerie(b.usuario_id, () => procesarMensaje({ usuario_id: b.usuario_id, texto: b.texto, media, canal: 'web', reiniciar: b.reiniciar === true }));
     // Cierre de la entrevista: lanzar el generador una sola vez (los sitios WordPress retirados no cuentan).
     if (res.estado === 'completada') {
