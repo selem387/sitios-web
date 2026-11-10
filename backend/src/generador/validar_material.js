@@ -19,7 +19,8 @@ export function validarMaterial(html, mat) {
 export function fotosRepetidas(html, mat) {
   const logos = new Set([mat.logo?.url, ...Object.values(mat.logo?.tenidos || {})].filter(Boolean));
   const cuenta = new Map();
-  for (const m of html.matchAll(/<img\b[^>]*\bsrc="([^"]+)"/g)) { const u = m[1].replace(/&amp;/g, '&'); if (!logos.has(u)) cuenta.set(u, (cuenta.get(u) || 0) + 1); }
+  // Las fotos del slider (sl-img) pueden repetirse en "Nuestro trabajo" (10-nov-2026): no cuentan como repetidas.
+  for (const m of html.matchAll(/<img\b[^>]*\bsrc="([^"]+)"[^>]*>/g)) { if (/class="[^"]*\b(sl-img|rep-ok)\b/.test(m[0])) continue; const u = m[1].replace(/&amp;/g, '&'); if (!logos.has(u)) cuenta.set(u, (cuenta.get(u) || 0) + 1); }
   return [...cuenta].filter(([, n]) => n > 1).map(([url, n]) => ({ url, veces: n }));
 }
 

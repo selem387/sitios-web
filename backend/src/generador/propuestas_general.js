@@ -203,8 +203,11 @@ function pagina(d) {
 
   // Slider de portada (aprobado 6-nov-2026): foto principal + hasta 4 fotos más, cada una con su texto encima.
   // Solo fotos buenas del cliente (o variaciones IA de su foto si dijo que no tiene más); nunca se repiten en el resto del sitio.
-  const emp = emparejarFotos({ hero: heroFoto, pool: fotosT.filter(buenaFoto), diapos: diapositivasDe({ diapositivas: t.diapositivas }, brief), items: brief.oferta?.items || [], cta: t.cta });
+  // Mínimo 5 fotos en el slider (10-nov-2026): si las de trabajo no alcanzan, se suman equipo y otras fotos buenas.
+  const extraSl = [...mat.equipo, ...(mat.otras || [])].filter((x) => buenaFoto(x) && /^(foto|imagen)/.test(x.tipo || 'foto') && !fotosT.some((y) => y.url === x.url));
+  const emp = emparejarFotos({ hero: heroFoto, pool: [...fotosT.filter(buenaFoto), ...extraSl], diapos: diapositivasDe({ diapositivas: t.diapositivas }, brief), items: brief.oferta?.items || [], cta: t.cta });
   const poolSl = emp.fotos, diapos = emp.diapos;
+  const enPortada = new Set(); // fotos del mosaico de portada: pueden repetirse en "Nuestro trabajo" como las del slider
   const slider = (o) => sliderHTML({ fotos: poolSl, diapos, img, cta: t.cta, href: wa, nombre: d.nombre, ...o }).html;
   const textoPortada = `<p class="kicker">${esc(neg.ciudad ? `${giroCorto(neg.giro_texto) || ''} · ${neg.ciudad}` : giroCorto(neg.giro_texto) || '')}</p><h1>${esc(t.titular)}</h1><p class="sub">${esc(t.subtitulo)}</p>${cta()}`;
 
@@ -213,18 +216,26 @@ function pagina(d) {
     portada: () => (heroFoto ? slider({ tag: 'section', clase: 'hero h-portada', envolver: true, primera: textoPortada })
       : `<section class="hero h-portada"><div class="velo"></div><div class="wrap in">${textoPortada}</div></section>`),
     editorial: () => `<section class="hero h-edit wrap"><div class="txt"><p class="kicker">${esc(giroCorto(neg.giro_texto) || '')}</p><h1>${esc(t.titular)}</h1><p class="sub">${esc(t.subtitulo)}</p>${cta()}<ul class="info">${info}</ul></div>${heroFoto ? slider({ tag: 'figure', clase: 'arco sl-marco' }) : ''}</section>`,
-    mosaico: () => { const s = poolSl.length ? slider({ tag: 'div', clase: 'mos-sl sl-marco' }) : ''; const m = fotosT.filter((x) => !usadas.has(x.url)).slice(0, s ? 4 : 5); return `<section class="hero h-mos wrap"><h1>${esc(t.titular)}</h1><p class="sub">${esc(t.subtitulo)}</p>${cta()}<div class="mos m${m.length + (s ? 1 : 0)}${s && m.length < 2 ? ' solo' : ''}">${s}${m.map((x, k) => img(x, { eager: k < 1 })).join('')}</div></section>`; },
+    mosaico: () => { const s = poolSl.length ? slider({ tag: 'div', clase: 'mos-sl sl-marco' }) : ''; const m = fotosT.filter((x) => !usadas.has(x.url)).slice(0, s ? 4 : 5); return `<section class="hero h-mos wrap"><h1>${esc(t.titular)}</h1><p class="sub">${esc(t.subtitulo)}</p>${cta()}<div class="mos m${m.length + (s ? 1 : 0)}${s && m.length < 2 ? ' solo' : ''}">${s}${m.map((x, k) => { enPortada.add(x.url); return img(x, { eager: k < 1, cls: 'rep-ok' }); }).join('')}</div></section>`; },
     logo: () => `<section class="hero h-logo wrap">${mat.logo ? logoHTML(mat.logo, p.bg, p.fg, { clase: 'logo-grande', alt: d.nombre }) : `<p class="nombre-grande">${esc(d.nombre)}</p>`}<h1>${esc(t.titular)}</h1><p class="sub">${esc(t.subtitulo)}</p>${cta()}${heroFoto ? slider({ tag: 'figure', clase: 'ovalo sl-marco' }) : ''}</section>`,
     dostonos: () => `<section class="hero h-dos"><div class="wrap in"><div class="txt"><h1>${esc(t.titular)}</h1><p class="sub">${esc(t.subtitulo)}</p>${cta('inv')}</div>${heroFoto ? slider({ tag: 'figure', clase: 'marco sl-marco' }) : ''}</div></section>`,
-    carta: () => { const s = poolSl.length ? `<div class="wrap">${slider({ tag: 'figure', clase: 'sl-carta sl-marco' })}</div>` : ''; const resto = fotosT.filter((x) => !usadas.has(x.url)).slice(0, 8); return `<section class="hero h-carta wrap"><p class="kicker">${esc(d.nombre)}</p><h1>${esc(t.titular)}</h1><p class="sub">${esc(t.subtitulo)}</p>${cta()}</section>${s}${resto.length ? `<div class="wrap">${filaJustificada(resto, img)}</div>` : ''}`; },
+    carta: () => { const s = poolSl.length ? `<div class="wrap">${slider({ tag: 'figure', clase: 'sl-carta sl-marco' })}</div>` : ''; const resto = s ? [] : fotosT.filter((x) => !usadas.has(x.url)).slice(0, 8); return `<section class="hero h-carta wrap"><p class="kicker">${esc(d.nombre)}</p><h1>${esc(t.titular)}</h1><p class="sub">${esc(t.subtitulo)}</p>${cta()}</section>${s}${resto.length ? `<div class="wrap">${filaJustificada(resto, img)}</div>` : ''}`; },
   };
   const promo = brief.oferta?.promocion_actual ? `<section class="promo" id="promocion"><div class="wrap"><p><b>Promoción</b> ${esc(brief.oferta.promocion_actual)}</p></div></section>` : '';
   const hero = heros[d.layout]() + promo;
 
   /* --- Secciones --- */
   const T = d.titulos;
+  // "Nuestro trabajo" (10-nov-2026, decisión de Sebastián): lleva SIEMPRE todas las fotos de trabajo, aunque estén en el
+  // slider (única excepción a "ninguna foto se repite"), y nunca menos de 5: si faltan, se suman otras fotos del cliente.
+  // Solo se excluyen las que ya salieron fuera del slider (filas o mosaicos de la portada) para no duplicarlas.
+  const enSlider = new Set(poolSl.map((x) => x.url));
   const secTrabajo = () => {
-    const resto = fotosT.filter((x) => !usadas.has(x.url));
+    const resto = fotosT.filter((x) => !usadas.has(x.url) || enSlider.has(x.url) || enPortada.has(x.url));
+    for (const x of [...mat.equipo, ...(mat.otras || []), ...poolSl]) {
+      if (resto.length >= 5) break;
+      if (x?.url && /^(foto|imagen)/.test(x.tipo || 'foto') && !resto.some((y) => y.url === x.url) && (!usadas.has(x.url) || enSlider.has(x.url) || enPortada.has(x.url))) resto.push(x);
+    }
     if (!resto.length) return '';
     return `<section class="sec" id="trabajo"><div class="wrap"><h2>${esc(T.trabajo)}</h2><div class="galeria g-${d.layout}">${resto.map((x) => `<figure>${img(x)}</figure>`).join('')}</div></div></section>`;
   };

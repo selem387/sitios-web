@@ -45,6 +45,7 @@ Juzga solo:
 - Profesionalismo: se ve como una página de calidad, con jerarquía clara, aire y fotos protagonistas (no una presentación de puro texto).
 - Que el recorte de la foto principal no corte una cara o una cabeza (un recorte normal de fondo está bien).
 - Que la tipografía y los colores combinen entre sí (la paleta ya sale de los colores del logo por código: no la juzgues por su origen).
+- NO es error que las fotos del slider de portada se repitan en la sección de trabajo (es una decisión del dueño); sí lo es que se repitan en otra parte.
 - Que el logo no se vea cortado (letras o lema recortados) ni repetido en la misma pantalla.
 - Proporción: que el tamaño de los textos se vea proporcionado al ancho de la página (ni titulares diminutos en una pantalla ancha ni descripciones apenas legibles).
 Pon profesional=false solo por una falla clara y visible de esta lista. Califica aparte el parecido con la referencia.`;
