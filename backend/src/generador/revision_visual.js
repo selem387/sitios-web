@@ -44,7 +44,7 @@ const REGLAS = `Ya se comprobó con código (midiendo píxeles) que no hay fotos
 Juzga solo:
 - Profesionalismo: se ve como una página de calidad, con jerarquía clara, aire y fotos protagonistas (no una presentación de puro texto).
 - Que el recorte de la foto principal no corte una cara o una cabeza (un recorte normal de fondo está bien).
-- Que la tipografía y los colores combinen entre sí y que los colores de la página salgan de la paleta del logo (si hay logo).
+- Que la tipografía y los colores combinen entre sí (la paleta ya sale de los colores del logo por código: no la juzgues por su origen).
 - Que el logo no se vea cortado (letras o lema recortados) ni repetido en la misma pantalla.
 - Proporción: que el tamaño de los textos se vea proporcionado al ancho de la página (ni titulares diminutos en una pantalla ancha ni descripciones apenas legibles).
 Pon profesional=false solo por una falla clara y visible de esta lista. Califica aparte el parecido con la referencia.`;
@@ -130,9 +130,18 @@ const archivoDe = (url) => { const m = String(url || '').match(/\/p\/([A-Za-z0-9
 
 // CSS seguro: fuera @import/url()/expression y cualquier regla que oculte imágenes, el logo o textos.
 function cssSeguro(css) {
-  let c = String(css || '').slice(0, 6000).replace(/<\/?style[^>]*>/gi, '').replace(/@import[^;]*;?/gi, '').replace(/url\([^)]*\)/gi, 'none').replace(/expression\(/gi, '');
+  let c = String(css || '').slice(0, 6000).replace(/<\/?style[^>]*>/gi, '').replace(/\/\*[\s\S]*?\*\//g, '').replace(/@import[^;]*;?/gi, '').replace(/url\([^)]*\)/gi, 'none').replace(/expression\(/gi, '');
   c = c.replace(/[^{}]*\{[^{}]*(display\s*:\s*none|visibility\s*:\s*hidden|opacity\s*:\s*0(\.0+)?\s*[;}!])[^{}]*\}/gi, '');
-  return c.trim();
+  // Nada global (10-nov-2026: una corrección puso max-width al body y cambió la paleta por colores inventados):
+  // fuera reglas sobre html/body/:root/* solos y cualquier declaración de color, fondo, tipo de letra o variables.
+  const PROHIBIDAS = /^\s*(--[\w-]+|color|background(-color|-image)?|font-family|font-weight|max-width|width|margin(-left|-right)?|padding(-left|-right)?|border-radius|filter|transform)\s*:/i;
+  const global = (sel) => sel.split(',').some((x) => /^\s*(html|body|:root|\*|header|main|footer|section|div|p|a|img|figure)\s*$/i.test(x));
+  c = c.replace(/([^{}@]+)\{([^{}]*)\}/g, (m, sel, decl) => {
+    if (global(sel)) return '';
+    const keep = decl.split(';').map((d) => d.trim()).filter((d) => d && !PROHIBIDAS.test(d));
+    return keep.length ? `${sel.trim()}{${keep.join(';')}}` : '';
+  });
+  return c.replace(/@media[^{]*\{\s*\}/g, '').trim();
 }
 
 async function corregirUna(o, problemas, caps) {
@@ -147,7 +156,7 @@ async function corregirUna(o, problemas, caps) {
   for (const c of caps || []) if (c.url) contenido.push({ type: 'text', text: c.vista }, { type: 'image', source: { type: 'url', url: c.url } });
   try {
     const r = await pedirJSON({
-      system: 'Eres directora de arte y desarrolladora front-end. Corriges una página web SOLO con CSS que se agrega al final. No cambies textos, no ocultes ni quites fotos, logo o contenido; no deformes fotos. Usa selectores específicos (con body delante si hace falta ganar especificidad) y media queries para computadora (min-width:900px) y celular.',
+      system: 'Eres directora de arte y desarrolladora front-end. Corriges una página web SOLO con CSS que se agrega al final y SOLO para los problemas listados (no rediseñes ni "mejores" otra cosa). Prohibido: cambiar colores, fondos, tipos de letra o variables (la paleta sale del logo y ya es correcta), poner anchos o márgenes al body/html, cambiar textos, ocultar o quitar fotos, logo o contenido, deformar fotos. Si un problema no se arregla con un ajuste puntual, no lo toques. Usa selectores específicos (con body delante si hace falta ganar especificidad) y media queries para computadora (min-width:900px) y celular.',
       contenido, schema: ESQUEMA_CORRECCION, model: config.anthropicModel, max_tokens: 2500, timeoutMs: 180000,
     });
     const css = cssSeguro(r.data.css);
@@ -155,7 +164,7 @@ async function corregirUna(o, problemas, caps) {
     const bloque = `<style data-correccion="agente">\n${css}\n</style>`;
     const nuevo = html.includes('data-correccion="agente"') ? html.replace(/<style data-correccion="agente">[\s\S]*?<\/style>/, bloque) : html.replace('</head>', `${bloque}\n</head>`);
     await fs.writeFile(archivo, nuevo, 'utf8');
-    return true;
+    return { archivo, original: html };
   } catch (err) {
     console.error('[agente revisión] corrección', o.letra, err.message);
     return false;
@@ -173,13 +182,16 @@ export async function revisarYCorregir(opciones, { referencia = null, pedido = '
   for (let k = 0; k < rondas && Date.now() - t0 < presupuestoMs; k++) {
     const malas = revision.filter((x) => !x.ok && !x.error && !x.sin_capturas);
     if (!malas.length) break;
-    const corregidas = [];
+    const corregidas = [], respaldos = new Map();
     for (const m of malas) {
       const o = opciones.find((x) => x.letra === m.letra);
-      if (o && await corregirUna(o, m.problemas || [], (m.capturas || []).map((url, i) => ({ url, vista: ['computadora', 'celular', 'galería'][i] || 'captura' })))) corregidas.push(o);
+      const r = o && await corregirUna(o, m.problemas || [], (m.capturas || []).map((url, i) => ({ url, vista: ['computadora', 'celular', 'galería'][i] || 'captura' })));
+      if (r) { corregidas.push(o); respaldos.set(o.letra, r); }
     }
     if (!corregidas.length) break;
     const nueva = await revisarOpciones(corregidas, { referencia, pedido });
+    // Una corrección que no deja la opción aprobada se deshace: nunca se queda un cambio que no sirvió (o que empeoró).
+    for (const n of nueva) if (!n.ok) { const b = respaldos.get(n.letra); if (b) await fs.writeFile(b.archivo, b.original, 'utf8').catch(() => {}); }
     revision = revision.map((x) => nueva.find((n) => n.letra === x.letra) || x);
   }
   const pasan = opciones.filter((o) => revision.find((x) => x.letra === o.letra)?.ok !== false);

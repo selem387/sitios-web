@@ -52,7 +52,9 @@ export async function revisarPagina(page) {
     const px = (e) => parseFloat(getComputedStyle(e).fontSize) || 0;
     const parrafos = Array.from(document.querySelectorAll('main p')).filter((e) => visible(e) && (e.textContent || '').trim().length > 40 && !e.closest('.sl,.etq,.wa,footer,.kicker'));
     const tams = parrafos.map(px).sort((a, b) => a - b);
-    const cuerpo = tams.length ? tams[Math.floor(tams.length / 2)] : px(document.body);
+    // Cuerpo = tamaño del texto base de la página (body). La mediana de párrafos engañaba: subtítulos y textos del
+    // slider son más grandes a propósito y hacían ver "chicas" descripciones de tamaño normal.
+    const cuerpo = px(document.body) || (tams.length ? tams[Math.floor(tams.length / 2)] : 16);
     // 1) Texto de lectura (descripciones, datos) desproporcionadamente chico frente al cuerpo.
     const lectura = Array.from(document.querySelectorAll('main p, main li, main span, main dd')).filter((e) => visible(e) && !e.children.length && (e.textContent || '').trim().length > 25 && !e.closest('.sl,.etq,.wa,footer,.kicker,.btn,nav,.info'));
     const chicos = lectura.filter((e) => px(e) < Math.max(14.5, cuerpo * 0.86));

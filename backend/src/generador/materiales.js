@@ -103,15 +103,38 @@ async function guardar(img, prefijo, formato = 'jpg') {
   return { url: urlPublica(nombre), ancho: info.width, alto: info.height };
 }
 
-/** Logo: el color de fondo (esquina) se vuelve transparente con borde suave, y se recorta al contenido. */
+/** Logo: el fondo se vuelve transparente y se recorta al contenido.
+ * 10-nov-2026 (caso El Rincón del Mayab: logo sobre negro con un filo de otro color en la esquina): el color de fondo es
+ * el más común del borde (no solo el pixel de la esquina) y se borra solo lo conectado al borde (relleno por inundación),
+ * así no se agujerean letras o detalles del mismo color dentro del logo. */
 async function fondoTransparente(buf) {
   const { data, info } = await sharp(buf).ensureAlpha().raw().toBuffer({ resolveWithObject: true });
-  const [r0, g0, b0] = [data[0], data[1], data[2]];
-  for (let i = 0; i < data.length; i += 4) {
-    const d = Math.abs(data[i] - r0) + Math.abs(data[i + 1] - g0) + Math.abs(data[i + 2] - b0);
-    if (d < 28) data[i + 3] = 0; else if (d < 60) data[i + 3] = Math.min(data[i + 3], Math.round(255 * (d - 28) / 32));
+  const W = info.width, H = info.height;
+  const cuenta = new Map(); let mejor = null;
+  const borde = [];
+  for (let x = 0; x < W; x++) borde.push([x, 0], [x, H - 1]);
+  for (let y = 0; y < H; y++) borde.push([0, y], [W - 1, y]);
+  for (const [x, y] of borde) {
+    const k = (y * W + x) * 4; if (data[k + 3] < 20) continue;
+    const q = `${data[k] >> 4},${data[k + 1] >> 4},${data[k + 2] >> 4}`;
+    const n = (cuenta.get(q) || 0) + 1; cuenta.set(q, n);
+    if (!mejor || n > mejor.n) mejor = { n, k };
   }
-  return sharp(data, { raw: { width: info.width, height: info.height, channels: 4 } }).trim().png().toBuffer();
+  if (!mejor || mejor.n < borde.length * 0.3) return sharp(data, { raw: { width: W, height: H, channels: 4 } }).trim().png().toBuffer();
+  const [r0, g0, b0] = [data[mejor.k], data[mejor.k + 1], data[mejor.k + 2]];
+  const dist = (k) => Math.abs(data[k] - r0) + Math.abs(data[k + 1] - g0) + Math.abs(data[k + 2] - b0);
+  const visto = new Uint8Array(W * H), pila = [];
+  for (const [x, y] of borde) { const i = y * W + x; if (!visto[i] && dist(i * 4) < 60) { visto[i] = 1; pila.push(i); } }
+  while (pila.length) {
+    const i = pila.pop(), k = i * 4, d = dist(k);
+    if (d < 28) data[k + 3] = 0; else data[k + 3] = Math.min(data[k + 3], Math.round(255 * (d - 28) / 32));
+    if (d >= 28) continue; // borde suave: no se sigue inundando hacia el dibujo
+    const x = i % W, y = (i / W) | 0;
+    for (const n of [x > 0 ? i - 1 : -1, x < W - 1 ? i + 1 : -1, y > 0 ? i - W : -1, y < H - 1 ? i + W : -1]) {
+      if (n >= 0 && !visto[n] && dist(n * 4) < 60) { visto[n] = 1; pila.push(n); }
+    }
+  }
+  return sharp(data, { raw: { width: W, height: H, channels: 4 } }).trim().png().toBuffer();
 }
 
 /** Colores dominantes por cuantización simple (sin fondo blanco/negro puro). */
@@ -209,6 +232,27 @@ async function sinBandas(buf) {
   return guardar(sharp(await sharp(buf).rotate().extract(a).jpeg({ quality: 92 }).toBuffer()), 'rec');
 }
 
+/** Amplía una caja (px) hasta que cada lado quede sobre una franja uniforme de fondo; máx. 12% del lado por lado. */
+async function ampliarHastaFondo(original, a, W, H) {
+  if (!a) return null;
+  const esc = Math.min(1, 900 / Math.max(W, H));
+  const w = Math.round(W * esc), h = Math.round(H * esc);
+  const { data } = await sharp(original).rotate().resize(w, h, { fit: 'fill' }).removeAlpha().raw().toBuffer({ resolveWithObject: true });
+  let x0 = Math.floor(a.left * esc), y0 = Math.floor(a.top * esc), x1 = Math.min(w - 1, Math.ceil((a.left + a.width) * esc)), y1 = Math.min(h - 1, Math.ceil((a.top + a.height) * esc));
+  const px = (x, y) => { const k = (y * w + x) * 3; return [data[k], data[k + 1], data[k + 2]]; };
+  const ref = px(Math.max(0, x0 - 1), Math.max(0, y0 - 1));
+  const lisa = (pts) => { let ok = 0; for (const [x, y] of pts) { const c = px(x, y); if (Math.abs(c[0] - ref[0]) + Math.abs(c[1] - ref[1]) + Math.abs(c[2] - ref[2]) < 45) ok++; } return ok >= pts.length * 0.97; };
+  const fila = (y) => Array.from({ length: x1 - x0 + 1 }, (_, i) => [x0 + i, y]);
+  const col = (x) => Array.from({ length: y1 - y0 + 1 }, (_, i) => [x, y0 + i]);
+  const maxX = Math.round(w * 0.12), maxY = Math.round(h * 0.12);
+  for (let k = 0; k < maxY && y0 > 0 && !lisa(fila(y0)); k++) y0--;
+  for (let k = 0; k < maxY && y1 < h - 1 && !lisa(fila(y1)); k++) y1++;
+  for (let k = 0; k < maxX && x0 > 0 && !lisa(col(x0)); k++) x0--;
+  for (let k = 0; k < maxX && x1 < w - 1 && !lisa(col(x1)); k++) x1++;
+  const left = Math.max(0, Math.floor(x0 / esc)), top = Math.max(0, Math.floor(y0 / esc));
+  return { left, top, width: Math.min(W - left, Math.ceil((x1 - x0 + 1) / esc)), height: Math.min(H - top, Math.ceil((y1 - y0 + 1) / esc)) };
+}
+
 /** Imagen que en realidad es el logo (con o sin lema, sobre cualquier fondo): sin personas y el logo cubre ≥ 35%. */
 export function esVersionLogo(r = {}) {
   if (r.personas || !r.logo?.ancho || !r.contenido?.ancho) return false;
@@ -248,16 +292,15 @@ export async function analizarAsset(a, { negocio = '' } = {}) {
   } else {
     out.contenido = { url: a.url, ancho: W, alto: H };
   }
-  // Logo (10-nov-2026, caso El Rincón del Mayab: letras cortadas por abajo): la caja del modelo es aproximada, así que se
-  // recorta con margen generoso y el fondo sobrante se quita con trim. Un archivo que ES el logo se recorta completo.
-  // Si la imagen es básicamente el logo (sin personas, logo ≥ 35% del área), también completa: así no se corta el lema.
-  const casiTodo = !v.personas && v.logo?.w > 0 && v.logo.w * v.logo.h >= 0.35;
   if (v.tipo !== 'logo') {
     const nueva = await (out.contenido.url === a.url ? Promise.resolve(original) : descargar(out.contenido.url)).then(sinBandas).catch(() => null);
     if (nueva) out.contenido = nueva;
     out.bandas_ok = true;
   }
-  const lb = v.tipo === 'logo' || casiTodo ? { left: 0, top: 0, width: W, height: H } : caja(v.logo, W, H, 0.04);
+  // Logo (10-nov-2026, caso El Rincón del Mayab: letras cortadas por abajo): un archivo que ES el logo se recorta completo;
+  // un logo dentro de otra imagen se amplía lado por lado hasta topar con una franja de puro fondo (no se cortan letras
+  // ni se mete medio lema o el marco decorativo).
+  const lb = v.tipo === 'logo' ? { left: 0, top: 0, width: W, height: H } : await ampliarHastaFondo(original, caja(v.logo, W, H, 0.005), W, H).catch(() => caja(v.logo, W, H, 0.02));
   if (lb) out.logo_caja = { x: lb.left / W, y: lb.top / H, w: lb.width / W, h: lb.height / H };
   if (lb) {
     try {
@@ -376,7 +419,7 @@ async function procesarMaterialesBase(entrevistaId, brief = {}, { aceptarLoQueHa
     // una "Galería"). Un archivo que ES un logo distinto al elegido, o una imagen sin personas donde el logo ocupa casi
     // todo, no es una foto de trabajo: va como marca en el pie de página, nunca en galerías ni en el slider.
     if (r.tipo === 'logo' || esVersionLogo(r)) {
-      if (r.logo?.url !== res.logo?.url && !res.logos_extra.some((x) => x.url === f.url)) res.logos_extra.push({ ...f, tipo: 'logo_extra' });
+      if (f.url !== res.logo?.url && !res.logos_extra.some((x) => x.url === f.url)) res.logos_extra.push({ ...f, tipo: 'logo_extra' });
       continue;
     }
     const chica = r.calidad === 'mala' || r.contenido.ancho < MIN_FOTO;

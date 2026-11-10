@@ -186,9 +186,12 @@ export function conSrcset(html) {
 export function filaJustificada(fotos = [], img, { clase = '' } = {}) {
   if (!fotos.length) return '';
   const r = (x) => (x.ancho && x.alto ? Math.min(2.4, Math.max(0.3, x.ancho / x.alto)) : 0.75).toFixed(3);
-  return `<div class="just${clase ? ` ${clase}` : ''}">${fotos.map((x) => `<figure style="--r:${r(x)}">${img(x)}</figure>`).join('')}</div>`;
+  // Una sola fila (las fotos caben a ~300 px de alto en 1100 px): se estira a todo el ancho. Con varias filas, la última
+  // no se estira de más (relleno invisible al final).
+  const varias = fotos.reduce((a, x) => a + Number(r(x)), 0) * 300 > 1320;
+  return `<div class="just${varias ? ' varias' : ''}${clase ? ` ${clase}` : ''}">${fotos.map((x) => `<figure style="--r:${r(x)}">${img(x)}</figure>`).join('')}</div>`;
 }
-export const CSS_JUSTIFICADA = `.just{display:flex;flex-wrap:wrap;gap:10px;margin-top:12px}.just::after{content:"";flex:999 1 0}.just figure{margin:0;flex:var(--r) 1 calc(var(--r) * 240px);min-width:0}.just img{display:block;width:100%;height:auto;border-radius:8px}
+export const CSS_JUSTIFICADA = `.just{display:flex;flex-wrap:wrap;gap:10px;margin-top:12px}.just.varias::after{content:"";flex:999 1 0}.just figure{margin:0;flex:var(--r) 1 calc(var(--r) * 240px);min-width:0}.just img{display:block;width:100%;height:auto;border-radius:8px}
 @media (min-width:900px){.just figure{flex-basis:calc(var(--r) * 300px)}}`;
 
 export const CSS_MOVIMIENTO = `
