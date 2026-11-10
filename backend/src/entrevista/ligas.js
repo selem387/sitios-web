@@ -92,10 +92,13 @@ export function registrarRutasLigas(app, { auth, wrap }) {
     try {
       await migrar();
       const r = await db.q(`UPDATE ligas_pago SET aperturas=aperturas+1, primera_apertura=COALESCE(primera_apertura, now()), ultima_apertura=now()
-                            WHERE codigo=$1 RETURNING estado, destino`, [codigo]);
+                            WHERE codigo=$1 RETURNING estado, destino, tipo, entrevista_id`, [codigo]);
       const l = r.rows[0];
       if (!l) return c.html(paginaSimple('Liga no encontrada', 'Revisa que la liga esté completa o pídele a Ari que te la mande de nuevo.'), 404);
-      if (l.estado === 'pagado') return c.html(paginaSimple('Este pago ya está hecho ✅', 'Ya quedó registrado. Regresa a la conversación con Ari para seguir.'));
+      // La página ya pagada (aunque el pago haya llegado antes de existir esta liga) no se vuelve a cobrar.
+      const yaPagada = l.tipo === 'pagina' && l.entrevista_id
+        && (await db.q(`SELECT brief->'pago_pagina'->>'estado' AS e FROM entrevistas WHERE id=$1`, [l.entrevista_id])).rows[0]?.e === 'pagado';
+      if (l.estado === 'pagado' || yaPagada) return c.html(paginaSimple('Este pago ya está hecho ✅', 'Ya quedó registrado. Regresa a la conversación con Ari para seguir.'));
       return c.redirect(l.destino, 302);
     } catch (e) {
       console.error('liga corta', e.message);
