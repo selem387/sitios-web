@@ -239,31 +239,39 @@ async function ampliarHastaFondo(original, a, W, H) {
   if (!a) return null;
   const esc = Math.min(1, 900 / Math.max(W, H));
   const w = Math.round(W * esc), h = Math.round(H * esc);
-  const { data } = await sharp(original).rotate().resize(w, h, { fit: 'fill' }).removeAlpha().raw().toBuffer({ resolveWithObject: true });
+  const { data } = await sharp(original).rotate().resize(w, h, { fit: 'fill' }).flatten({ background: '#ffffff' }).removeAlpha().raw().toBuffer({ resolveWithObject: true });
   let x0 = Math.floor(a.left * esc), y0 = Math.floor(a.top * esc), x1 = Math.min(w - 1, Math.ceil((a.left + a.width) * esc)), y1 = Math.min(h - 1, Math.ceil((a.top + a.height) * esc));
   const px = (x, y) => { const k = (y * w + x) * 3; return [data[k], data[k + 1], data[k + 2]]; };
-  const ref = px(Math.max(0, x0 - 1), Math.max(0, y0 - 1));
+  // Color de fondo = el más común de la imagen (cuantizado); la caja puede empezar sobre el dibujo.
+  const cuenta = new Map(); let ref = px(0, 0), mejor = 0;
+  for (let k = 0; k < data.length; k += 3 * 7) { const q = (data[k] >> 4) * 256 + (data[k + 1] >> 4) * 16 + (data[k + 2] >> 4); const n = (cuenta.get(q) || 0) + 1; cuenta.set(q, n); if (n > mejor) { mejor = n; ref = [data[k], data[k + 1], data[k + 2]]; } }
   const lisa = (pts) => { let ok = 0; for (const [x, y] of pts) { const c = px(x, y); if (Math.abs(c[0] - ref[0]) + Math.abs(c[1] - ref[1]) + Math.abs(c[2] - ref[2]) < 45) ok++; } return ok >= pts.length * 0.985; };
   const fila = (y) => Array.from({ length: x1 - x0 + 1 }, (_, i) => [x0 + i, y]);
   const col = (x) => Array.from({ length: y1 - y0 + 1 }, (_, i) => [x, y0 + i]);
-  // Avanza un lado: d = -1/+1; devuelve la última línea con dibujo (más un margen de 2 px). Lo que aparezca en el 8%
-  // exterior de la imagen después de un hueco de fondo es un marco decorativo (líneas, grecas, puntos): no se incluye.
-  const lado = (ini, d, n, linea, hueco, max) => {
-    let ult = ini, vacias = 0, fuera = null;
-    const enZona = (v) => (d > 0 ? n - 1 - v : v) < n * 0.08;
+  // Línea de marco: casi toda dibujo de punta a punta (≥ 72% de píxeles distintos al fondo en el 88% central de la
+  // imagen, para no contar los marcos laterales). Así son las grecas y filetes de un marco; el logo y su lema no.
+  // Si aparece en el 10% exterior después de un hueco de fondo, ese lado se detiene ahí.
+  const distinto = (c) => Math.abs(c[0] - ref[0]) + Math.abs(c[1] - ref[1]) + Math.abs(c[2] - ref[2]) >= 45;
+  const cobertura = (pts) => pts.reduce((a, [x, y]) => a + (distinto(px(x, y)) ? 1 : 0), 0) / pts.length;
+  const mx = Math.round(w * 0.06), my = Math.round(h * 0.06);
+  const marcoFila = (y) => cobertura(Array.from({ length: w - 2 * mx }, (_, i) => [mx + i, y])) >= 0.72;
+  const marcoCol = (x) => cobertura(Array.from({ length: h - 2 * my }, (_, i) => [x, my + i])) >= 0.72;
+  // Avanza un lado: d = -1/+1; devuelve la última línea con dibujo (más un margen de 2 px).
+  const lado = (ini, d, n, linea, hueco, max, marco) => {
+    let ult = ini, vacias = 0;
     for (let v = ini + d, k = 0; v >= 0 && v <= n - 1 && k < max; v += d, k++) {
+      // Marco: línea densa en el 10% exterior que aparece después de un hueco de fondo.
+      if (vacias > 0 && (d > 0 ? n - 1 - v : v) < n * 0.1 && marco(v)) break;
       if (lisa(linea(v))) { if (++vacias > hueco) break; continue; }
-      if (enZona(v) && vacias > 0 && fuera == null && !enZona(ult)) fuera = ult; // primer dibujo en el borde tras un hueco
       vacias = 0; ult = v;
     }
-    if (fuera != null) ult = fuera;
     return Math.max(0, Math.min(n - 1, ult + d * 2));
   };
   for (let vuelta = 0; vuelta < 2; vuelta++) { // dos vueltas: al crecer en alto pueden aparecer dibujos a los lados y al revés
-    y0 = lado(y0, -1, h, fila, Math.round(h * 0.1), Math.round(h * 0.4));
-    y1 = lado(y1, 1, h, fila, Math.round(h * 0.1), Math.round(h * 0.4));
-    x0 = lado(x0, -1, w, col, Math.round(w * 0.05), Math.round(w * 0.3));
-    x1 = lado(x1, 1, w, col, Math.round(w * 0.05), Math.round(w * 0.3));
+    y0 = lado(y0, -1, h, fila, Math.round(h * 0.1), Math.round(h * 0.45), marcoFila);
+    y1 = lado(y1, 1, h, fila, Math.round(h * 0.1), Math.round(h * 0.45), marcoFila);
+    x0 = lado(x0, -1, w, col, Math.round(w * 0.05), Math.round(w * 0.45), marcoCol);
+    x1 = lado(x1, 1, w, col, Math.round(w * 0.05), Math.round(w * 0.45), marcoCol);
   }
   const left = Math.max(0, Math.floor(x0 / esc)), top = Math.max(0, Math.floor(y0 / esc));
   return { left, top, width: Math.min(W - left, Math.ceil((x1 - x0 + 1) / esc)), height: Math.min(H - top, Math.ceil((y1 - y0 + 1) / esc)) };
@@ -279,7 +287,7 @@ export function esVersionLogo(r = {}) {
 export async function analizarAsset(a, { negocio = '' } = {}) {
   // Logos recortados con la caja justa del modelo (antes de 10-nov-2026) salían con las letras cortadas: esos análisis
   // se rehacen una vez (solo los que tienen logo) para recortarlo con margen.
-  if (a.analisis?.version === VERSION && !(a.analisis.logo && a.analisis.logo_v !== 4)) {
+  if (a.analisis?.version === VERSION && !(a.analisis.logo && a.analisis.logo_v !== 5)) {
     if (!a.analisis.huella) {
       a.analisis.huella = await descargar(a.analisis.contenido?.url || a.url).then(huella).catch(() => null);
       if (a.analisis.huella) await db.q(`UPDATE assets SET analisis = analisis || jsonb_build_object('huella', $2::text) WHERE id=$1`, [a.id, a.analisis.huella]).catch(() => {});
@@ -316,8 +324,14 @@ export async function analizarAsset(a, { negocio = '' } = {}) {
   // Logo (10-nov-2026, caso El Rincón del Mayab: letras cortadas por abajo): un archivo que ES el logo se recorta completo;
   // un logo dentro de otra imagen se amplía lado por lado hasta topar con una franja de puro fondo (no se cortan letras
   // ni se mete medio lema o el marco decorativo).
-  const lb = v.tipo === 'logo' ? { left: 0, top: 0, width: W, height: H } : await ampliarHastaFondo(original, caja(v.logo, W, H, 0.005), W, H).catch(() => caja(v.logo, W, H, 0.02));
-  if (lb) { out.logo_caja = { x: lb.left / W, y: lb.top / H, w: lb.width / W, h: lb.height / H }; out.logo_v = 4; }
+  // Un archivo que ES el logo también pasa por la ampliación (10-nov-2026, caso El Rincón del Mayab: logo sobre un
+  // rectángulo negro con marco decorativo): se parte del centro, se excluye el marco del borde y luego el fondo se
+  // vuelve transparente. Si no hay marco, la ampliación termina cubriendo todo el dibujo igual que antes.
+  const centro = { left: Math.round(W * 0.3), top: Math.round(H * 0.3), width: Math.round(W * 0.4), height: Math.round(H * 0.4) };
+  const lb = v.tipo === 'logo'
+    ? await ampliarHastaFondo(original, caja(v.logo, W, H, 0.005) || centro, W, H).catch(() => ({ left: 0, top: 0, width: W, height: H }))
+    : await ampliarHastaFondo(original, caja(v.logo, W, H, 0.005), W, H).catch(() => caja(v.logo, W, H, 0.02));
+  if (lb) { out.logo_caja = { x: lb.left / W, y: lb.top / H, w: lb.width / W, h: lb.height / H }; out.logo_v = 5; }
   if (lb) {
     try {
       let buf = await recortar(original, lb);
