@@ -13,7 +13,16 @@ const PATHS = {
 export const iconoRed = (nombre) => (PATHS[nombre] ? `<svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true" focusable="false"><path fill="currentColor" d="${PATHS[nombre]}"/></svg>` : esc(nombre));
 
 /** [[nombre, url], …] → enlaces con logo (texto oculto solo para lectores de pantalla). */
-export const enlacesRedes = (lista, rel = 'noopener') => lista.map(([n, u]) => `<a class="red" href="${esc(u)}" target="_blank" rel="${rel}" aria-label="${esc(n)}" title="${esc(n)}">${iconoRed(n)}</a>`).join('');
+// Siempre se muestran las 5 redes (10-nov-2026, pedido de Sebastián), aunque el negocio todavía no tenga alguna:
+// las que no tienen liga salen con su logo sin enlace; cuando el dueño o el equipo agreguen la liga, quedan activas.
+export const REDES_SIEMPRE = ['Facebook', 'Instagram', 'TikTok', 'YouTube', 'LinkedIn'];
+export const enlacesRedes = (lista = [], rel = 'noopener') => {
+  const urls = new Map((lista || []).map(([n, u]) => [String(n).toLowerCase(), u]));
+  const extra = (lista || []).filter(([n]) => !REDES_SIEMPRE.some((r) => r.toLowerCase() === String(n).toLowerCase()));
+  return [...REDES_SIEMPRE.map((n) => [n, urls.get(n.toLowerCase())]), ...extra].map(([n, u]) => (u
+    ? `<a class="red" href="${esc(u)}" target="_blank" rel="${rel}" aria-label="${esc(n)}" title="${esc(n)}">${iconoRed(n)}</a>`
+    : `<span class="red red-pend" role="img" aria-label="${esc(n)}" title="${esc(n)}">${iconoRed(n)}</span>`)).join('');
+};
 
 // Mismo estilo en todos los generadores. Usa las variables de color del sitio con respaldo.
-export const CSS_REDES = `.rs{display:flex;gap:12px;flex-wrap:wrap;align-items:center}.rs a.red{display:inline-grid;place-items:center;width:44px;height:44px;margin:0;border-radius:50%;background:var(--p,currentColor);color:var(--on,#fff);text-decoration:none;transition:transform .2s ease,background-color .2s ease,color .2s ease}.rs a.red:hover,.rs a.red:focus-visible{transform:translateY(-2px);background:var(--acc,var(--p));color:var(--on-acc,var(--on,#fff))}.rs a.red svg{display:block}`;
+export const CSS_REDES = `.rs{display:flex;gap:12px;flex-wrap:wrap;align-items:center}.rs .red-pend{display:inline-grid;place-items:center;width:44px;height:44px;margin:0;border-radius:50%;background:var(--p,currentColor);color:var(--on,#fff)}.rs a.red{display:inline-grid;place-items:center;width:44px;height:44px;margin:0;border-radius:50%;background:var(--p,currentColor);color:var(--on,#fff);text-decoration:none;transition:transform .2s ease,background-color .2s ease,color .2s ease}.rs a.red:hover,.rs a.red:focus-visible{transform:translateY(-2px);background:var(--acc,var(--p));color:var(--on-acc,var(--on,#fff))}.rs a.red svg{display:block}`;
