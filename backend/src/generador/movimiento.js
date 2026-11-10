@@ -136,6 +136,10 @@ export function emparejarFotos({ hero, fotoTitular = null, pool = [], diapos = [
 export function sliderHTML({ fotos = [], diapos = [], img, primera = '', cta = '', href = '', tag = 'div', clase = '', envolver = false, nombre = '' }) {
   const n = Math.min(fotos.length, 1 + diapos.length, MAX_DIAPOSITIVAS);
   const lista = fotos.slice(0, Math.max(n, 1));
+  // Ningún botón dentro del slider (10-nov-2026, pedido de Sebastián): los botones del texto de portada se sacan y van
+  // en una franja justo debajo del slider.
+  let botones = '';
+  primera = String(primera || '').replace(/<div class="ctas">[\s\S]*?<\/div>|<a class="btn[^"]*"[^>]*>[\s\S]*?<\/a>/g, (m) => { botones += m; return ''; });
   const clips = [];
   const caja = (html) => (envolver ? `<div class="wrap">${html}</div>` : html);
   const slides = lista.map((f, k) => {
@@ -157,7 +161,7 @@ export function sliderHTML({ fotos = [], diapos = [], img, primera = '', cta = '
   const ctrl = n > 1 ? `<div class="sl-ctrl"><button type="button" class="sl-b sl-pausa" aria-label="Pausar fotos" aria-pressed="false"><svg viewBox="0 0 24 24" aria-hidden="true"><path class="i-pausa" d="M7 5h3.5v14H7zM13.5 5H17v14h-3.5z"/><path class="i-play" d="M8 5l11 7-11 7z"/></svg></button><button type="button" class="sl-b sl-prev" aria-label="Foto anterior"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 5l-7 7 7 7" fill="none" stroke="currentColor" stroke-width="2.4"/></svg></button><span class="sl-pos">1 / ${n}</span><button type="button" class="sl-b sl-sig" aria-label="Foto siguiente"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 5l7 7-7 7" fill="none" stroke="currentColor" stroke-width="2.4"/></svg></button></div>` : '';
   if (clips.length) encolarClips(clips);
   const reg = n > 1 ? ` data-sl role="region" aria-roledescription="carrusel" aria-label="${esc(nombre ? `Fotos de ${nombre}` : 'Fotos')}"` : '';
-  return { html: `<${tag} class="${clase} sl"${reg}>${slides}${ctrl}</${tag}>`, n, usadas: lista.map((f) => f.url) };
+  return { html: `<${tag} class="${clase} sl"${reg}>${slides}${ctrl}</${tag}>${botones ? `<div class="sl-cta-bar">${botones}</div>` : ''}`, n, usadas: lista.map((f) => f.url) };
 }
 
 /**
@@ -232,6 +236,7 @@ export const CSS_MOVIMIENTO = `
 /* fondo en canvas diminuto (no cuenta para LCP ni pesa) */
 .sl.carrusel .sl-d{opacity:1;visibility:visible;background:none;z-index:2;pointer-events:none}.sl.carrusel .sl-d>img.sl-img,.sl.carrusel .sl-d>canvas.sl-fondo,.sl.carrusel .sl-d>video{display:none}.sl.carrusel .sl-cap{pointer-events:auto}
 .sl.carrusel .sl-prev,.sl.carrusel .sl-sig,.sl.carrusel .sl-pos{display:none}.sl.carrusel .sl-ctrl{z-index:3}
+.sl-cta-bar{max-width:1140px;margin:0 auto;padding:20px 20px 8px;display:flex;gap:14px;align-items:center;flex-wrap:wrap}.sl-cta-bar .ctas{display:flex;gap:14px;align-items:center;flex-wrap:wrap}.sl-cta-bar .lnk{color:var(--fg,#1a1714)}.sl-cta-bar .btn{margin-top:0}
 .sl-car{position:absolute;inset:0;overflow:hidden;z-index:1}
 .sl-car::after{content:"";position:absolute;inset:0;pointer-events:none;background:linear-gradient(90deg,rgba(0,0,0,.66) 0%,rgba(0,0,0,.5) 45%,rgba(0,0,0,.18) 80%,rgba(0,0,0,.08)),linear-gradient(0deg,rgba(0,0,0,.45),rgba(0,0,0,0) 55%)}
 .sl.carrusel .sl-cap{text-shadow:0 1px 3px rgba(0,0,0,.55)}.sl-pista{display:flex;gap:10px;height:100%;width:max-content;animation:sl-corre 60s linear infinite;will-change:transform}
