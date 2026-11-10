@@ -148,7 +148,8 @@ export function sliderHTML({ fotos = [], diapos = [], img, primera = '', cta = '
     else {
       const d = diapos[k - 1] || {};
       if (d.sin_texto || !d.titular) txt = '';
-      else txt = `<p class="sl-t">${esc(d.titular)}</p>${d.apoyo ? `<p class="sl-a">${esc(d.apoyo)}</p>` : ''}${(d.cta || cta) ? `<a class="btn sl-btn"${href} tabindex="0">${esc(d.cta || cta)}</a>` : ''}`;
+      // Sin botón dentro de las diapositivas (10-nov-2026, pedido de Sebastián): el botón de WhatsApp vive fuera del slider.
+      else txt = `<p class="sl-t">${esc(d.titular)}</p>${d.apoyo ? `<p class="sl-a">${esc(d.apoyo)}</p>` : ''}`;
     }
     const attrs = n > 1 ? ` role="group" aria-roledescription="diapositiva" aria-label="${k + 1} de ${n}"${k ? ' inert aria-hidden="true"' : ''}` : '';
     return `<div class="sl-d${k === 0 ? ' activa' : ''}${txt ? ' con-txt' : ''}"${attrs}>${foto}${txt ? `<div class="sl-cap">${caja(txt)}</div>` : ''}</div>`;
