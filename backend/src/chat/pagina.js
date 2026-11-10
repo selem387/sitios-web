@@ -57,9 +57,11 @@ svg{width:22px;height:22px}
 #lista .caja{background:var(--panel);width:100%;max-width:380px;height:100%;display:flex;flex-direction:column;border-left:1px solid var(--linea)}
 #lista .cab{display:flex;align-items:center;gap:8px;padding:12px 16px;border-bottom:1px solid var(--linea)}#lista .cab h2{font-size:17px;margin:0;flex:1}
 #lista ul{list-style:none;margin:0;padding:8px;overflow-y:auto;flex:1}
-#lista li button{width:100%;display:flex;flex-direction:column;align-items:flex-start;text-align:left;border-radius:12px;padding:12px;min-height:56px}
-#lista li button:hover{background:var(--fondo)}#lista li button[aria-current=true]{background:var(--fondo);outline:1px solid var(--acento)}
+#lista li{display:flex;align-items:center;gap:4px}#lista li .abrir{flex:1;min-width:0;display:flex;flex-direction:column;align-items:flex-start;text-align:left;border-radius:12px;padding:12px;min-height:56px}
+#lista li .abrir:hover{background:var(--fondo)}#lista li .abrir[aria-current=true]{background:var(--fondo);outline:1px solid var(--acento)}
 #lista .n{font-weight:600;display:block}#lista .d{font-size:13px;color:var(--suave);display:block;margin-top:2px}
+#lista .arch{background:transparent;border:0;font-size:13px;color:var(--suave);padding:8px 10px;min-height:44px;border-radius:10px;flex:none}#lista .arch:hover{background:var(--fondo);color:var(--tinta)}
+#lista .ver{background:transparent;border:0;display:block;margin:4px auto 0;font-size:13px;color:var(--suave);padding:8px;text-decoration:underline}
 #lista .pie{padding:12px 16px calc(12px + env(safe-area-inset-bottom));border-top:1px solid var(--linea)}#lista .pie button{width:100%;border-radius:10px}
 #cliente{font-weight:600;color:var(--tinta)}#cliente:not(:empty)::after{content:' · ';font-weight:400;color:var(--suave)}
 </style>
@@ -85,7 +87,7 @@ svg{width:22px;height:22px}
   <div class="caja">
     <div class="cab"><h2 id="lt">Mis páginas</h2><button type="button" id="cerrar" aria-label="Cerrar">✕</button></div>
     <ul id="lu"></ul>
-    <div class="pie"><button class="prim" type="button" id="nueva">+ Empezar otra página</button></div>
+    <div class="pie"><button class="prim" type="button" id="nueva">+ Empezar otra página</button><button class="ver" type="button" id="verArch" hidden></button></div>
   </div>
 </div>
 <div id="puerta" hidden>
@@ -221,6 +223,11 @@ $('#mic').onclick = async () => {
 // Mis páginas
 const ESTADOS = { entrevista: 'En entrevista', armando: 'Armando la página', listo: 'Página lista', requiere_revision: 'En revisión', error: 'Con un problema' };
 function cerrarLista(){ $('#lista').hidden = true; $('#paginas').focus(); }
+// Páginas archivadas: se ocultan de la lista en este navegador (no se borra nada).
+function archivadas(){ try { const l = JSON.parse(mem.get('ari_archivadas') || '[]'); return new Set(Array.isArray(l) ? l : []); } catch { return new Set(); } }
+function archivar(u, si){ const a = archivadas(); if (si) a.add(u); else a.delete(u); mem.set('ari_archivadas', JSON.stringify([...a])); }
+let verArchivadas = false;
+let ultimaLista = [];
 async function abrirLista(){
   const lu = $('#lu'); lu.innerHTML = '<li class="sis">Cargando…</li>'; $('#lista').hidden = false; $('#cerrar').focus();
   let datos = [];
@@ -229,15 +236,31 @@ async function abrirLista(){
   // Conversaciones recién empezadas que aún no tienen entrevista en el servidor.
   for (const u of usuarios()) if (!vistos.has(u) && (u === usuario || historial(u).length)) datos.push({ usuario_id: u, nombre: mem.get('ari_nombre_' + u) || '', estado: 'entrevista' });
   for (const x of datos) if (x.nombre) mem.set('ari_nombre_' + x.usuario_id, x.nombre);
+  ultimaLista = datos;
+  pintarLista();
+}
+function pintarLista(){
+  const lu = $('#lu'), arch = archivadas();
+  const visibles = ultimaLista.filter((x) => arch.has(x.usuario_id) === verArchivadas);
+  const nArch = ultimaLista.filter((x) => arch.has(x.usuario_id)).length;
   lu.innerHTML = '';
-  for (const x of datos) {
-    const li = document.createElement('li'), b = document.createElement('button');
-    b.type = 'button'; if (x.usuario_id === usuario) b.setAttribute('aria-current', 'true');
+  if (!visibles.length) lu.innerHTML = '<li class="sis">' + (verArchivadas ? 'No hay páginas archivadas.' : 'No hay páginas activas.') + '</li>';
+  for (const x of visibles) {
+    const li = document.createElement('li'), b = document.createElement('button'), ar = document.createElement('button');
+    b.type = 'button'; b.className = 'abrir'; if (x.usuario_id === usuario) b.setAttribute('aria-current', 'true');
     const fecha = x.actualizado ? new Date(x.actualizado).toLocaleDateString('es-MX', { day:'numeric', month:'short' }) : 'Nueva';
-    b.innerHTML = '<span class="n">' + esc(x.nombre || mem.get('ari_nombre_' + x.usuario_id) || 'Página sin nombre todavía') + '</span><span class="d">' + esc((ESTADOS[x.estado] || '') + ' · ' + fecha) + '</span>';
+    const nombre = x.nombre || mem.get('ari_nombre_' + x.usuario_id) || 'Página sin nombre todavía';
+    b.innerHTML = '<span class="n">' + esc(nombre) + '</span><span class="d">' + esc((ESTADOS[x.estado] || '') + ' · ' + fecha) + '</span>';
     b.onclick = () => { cerrarLista(); if (x.usuario_id !== usuario) abrir(x.usuario_id); };
-    li.appendChild(b); lu.appendChild(li);
+    ar.type = 'button'; ar.className = 'arch';
+    ar.textContent = verArchivadas ? 'Restaurar' : 'Archivar';
+    ar.setAttribute('aria-label', (verArchivadas ? 'Restaurar ' : 'Archivar ') + nombre);
+    ar.onclick = () => { archivar(x.usuario_id, !verArchivadas); pintarLista(); };
+    li.appendChild(b); li.appendChild(ar); lu.appendChild(li);
   }
+  const v = $('#verArch');
+  v.hidden = !nArch && !verArchivadas;
+  v.textContent = verArchivadas ? '← Volver a mis páginas' : 'Ver archivadas (' + nArch + ')';
 }
 async function abrir(u, nueva = false){
   if (sondeo) { clearInterval(sondeo); sondeo = null; }
@@ -252,7 +275,8 @@ async function abrir(u, nueva = false){
   }
   arrancar(existe);
 }
-$('#paginas').onclick = abrirLista;
+$('#paginas').onclick = () => { verArchivadas = false; abrirLista(); };
+$('#verArch').onclick = () => { verArchivadas = !verArchivadas; pintarLista(); };
 $('#cerrar').onclick = cerrarLista;
 $('#lista').addEventListener('click', (e) => { if (e.target.id === 'lista') cerrarLista(); });
 document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && !$('#lista').hidden) cerrarLista(); });
