@@ -178,12 +178,57 @@ async function recortar(original, area, trim = true) {
   return sharp(e).trim({ threshold: 18 }).png().toBuffer().catch(() => e);
 }
 
+// Franjas lisas en los bordes (10-nov-2026, caso El Rincón del Mayab): fotos generadas con barras negras arriba/abajo
+// (letterbox) se veían desalineadas en filas y galerías. Se detectan midiendo filas/columnas uniformes y se recortan.
+/** Detecta bandas lisas (letterbox negro/blanco o de un color) pegadas a los bordes. Devuelve el área útil o null. */
+async function areaSinBandas(buf, { tol = 14, maxFrac = 0.3 } = {}) {
+  const img = sharp(buf).rotate();
+  const { width: W0, height: H0 } = await img.metadata();
+  const esc = Math.min(1, 600 / Math.max(W0, H0));
+  const w = Math.max(1, Math.round(W0 * esc)), h = Math.max(1, Math.round(H0 * esc));
+  const { data } = await img.clone().resize(w, h, { fit: 'fill' }).greyscale().raw().toBuffer({ resolveWithObject: true });
+  const linea = (get, n) => { let s = 0, s2 = 0, mn = 255, mx = 0; for (let i = 0; i < n; i++) { const v = get(i); s += v; s2 += v * v; if (v < mn) mn = v; if (v > mx) mx = v; } const m = s / n; return { m, sd: Math.sqrt(Math.max(0, s2 / n - m * m)), rango: mx - mn }; };
+  const fila = (y) => linea((i) => data[y * w + i], w), col = (x) => linea((i) => data[i * w + x], h);
+  const lisa = (l, ref) => l.sd < 4 && l.rango < tol * 2 && Math.abs(l.m - ref.m) < tol;
+  const contar = (n, get, lim) => { const ref = get(0); if (ref.sd >= 4 || ref.m > 40) return 0; /* solo franjas oscuras: un fondo claro de estudio es parte de la foto */ let k = 0; while (k < lim && lisa(get(k), ref)) k++; return k; };
+  const top = contar(h, (k) => fila(k), Math.floor(h * maxFrac)), bot = contar(h, (k) => fila(h - 1 - k), Math.floor(h * maxFrac));
+  const izq = contar(w, (k) => col(k), Math.floor(w * maxFrac)), der = contar(w, (k) => col(w - 1 - k), Math.floor(w * maxFrac));
+  const min = 2; // ≥ 2 px a esta escala: una banda real, no un borde de 1 px
+  const t = top >= min ? top + 1 : 0, b = bot >= min ? bot + 1 : 0, l = izq >= min ? izq + 1 : 0, r = der >= min ? der + 1 : 0;
+  if (!t && !b && !l && !r) return null;
+  const left = Math.round(l / esc), topPx = Math.round(t / esc);
+  const width = W0 - left - Math.round(r / esc), height = H0 - topPx - Math.round(b / esc);
+  if (width < W0 * 0.5 || height < H0 * 0.5) return null;
+  return { left, top: topPx, width, height };
+}
+
+/** Si la foto trae franjas lisas en los bordes, guarda una versión sin ellas. Devuelve {url, ancho, alto} o null. */
+async function sinBandas(buf) {
+  const a = await areaSinBandas(buf).catch(() => null);
+  if (!a) return null;
+  return guardar(sharp(await sharp(buf).rotate().extract(a).jpeg({ quality: 92 }).toBuffer()), 'rec');
+}
+
+/** Imagen que en realidad es el logo (con o sin lema, sobre cualquier fondo): sin personas y el logo cubre ≥ 35%. */
+export function esVersionLogo(r = {}) {
+  if (r.personas || !r.logo?.ancho || !r.contenido?.ancho) return false;
+  return (r.logo.ancho * r.logo.alto) / (r.contenido.ancho * r.contenido.alto) >= 0.35;
+}
+
 /** Analiza (o reutiliza el análisis guardado de) un asset de imagen y genera sus recortes. */
 export async function analizarAsset(a, { negocio = '' } = {}) {
-  if (a.analisis?.version === VERSION) {
+  // Logos recortados con la caja justa del modelo (antes de 10-nov-2026) salían con las letras cortadas: esos análisis
+  // se rehacen una vez (solo los que tienen logo) para recortarlo con margen.
+  if (a.analisis?.version === VERSION && !(a.analisis.logo && !a.analisis.logo_caja)) {
     if (!a.analisis.huella) {
       a.analisis.huella = await descargar(a.analisis.contenido?.url || a.url).then(huella).catch(() => null);
       if (a.analisis.huella) await db.q(`UPDATE assets SET analisis = analisis || jsonb_build_object('huella', $2::text) WHERE id=$1`, [a.id, a.analisis.huella]).catch(() => {});
+    }
+    if (!a.analisis.bandas_ok && a.analisis.tipo !== 'logo' && a.analisis.contenido?.url) {
+      const nueva = await descargar(a.analisis.contenido.url).then(sinBandas).catch(() => null);
+      if (nueva) a.analisis.contenido = nueva;
+      a.analisis.bandas_ok = true;
+      await db.q(`UPDATE assets SET analisis = analisis || jsonb_build_object('contenido', $2::jsonb, 'bandas_ok', true) WHERE id=$1`, [a.id, JSON.stringify(a.analisis.contenido)]).catch(() => {});
     }
     return a.analisis;
   }
@@ -203,7 +248,17 @@ export async function analizarAsset(a, { negocio = '' } = {}) {
   } else {
     out.contenido = { url: a.url, ancho: W, alto: H };
   }
-  const lb = v.tipo === 'logo' ? cont : caja(v.logo, W, H, 0.01);
+  // Logo (10-nov-2026, caso El Rincón del Mayab: letras cortadas por abajo): la caja del modelo es aproximada, así que se
+  // recorta con margen generoso y el fondo sobrante se quita con trim. Un archivo que ES el logo se recorta completo.
+  // Si la imagen es básicamente el logo (sin personas, logo ≥ 35% del área), también completa: así no se corta el lema.
+  const casiTodo = !v.personas && v.logo?.w > 0 && v.logo.w * v.logo.h >= 0.35;
+  if (v.tipo !== 'logo') {
+    const nueva = await (out.contenido.url === a.url ? Promise.resolve(original) : descargar(out.contenido.url)).then(sinBandas).catch(() => null);
+    if (nueva) out.contenido = nueva;
+    out.bandas_ok = true;
+  }
+  const lb = v.tipo === 'logo' || casiTodo ? { left: 0, top: 0, width: W, height: H } : caja(v.logo, W, H, 0.04);
+  if (lb) out.logo_caja = { x: lb.left / W, y: lb.top / H, w: lb.width / W, h: lb.height / H };
   if (lb) {
     try {
       let buf = await recortar(original, lb);
@@ -279,7 +334,7 @@ async function procesarMaterialesBase(entrevistaId, brief = {}, { aceptarLoQueHa
   const todos = (await db.assetsDe(entrevistaId)).filter((a) => a.usar);
   const esImagen = (a) => /\.(jpe?g|png|webp|heic)(\?|$)/i.test(a.url) || /^image\//.test(a.mime || '');
   const assets = todos.filter(esImagen);
-  const res = { logo: null, hero: null, fundador: null, fotos: [], trabajos: [], equipo: [], local: [], resenas: [], catalogos: [], menus: [], otras: [], documentos: [], videos: [],
+  const res = { logo: null, logos_extra: [], hero: null, fundador: null, fotos: [], trabajos: [], equipo: [], local: [], resenas: [], catalogos: [], menus: [], otras: [], documentos: [], videos: [],
     menu_texto: [], colores: [], faltan: [], avisos: [], usables: [], total_imagenes: assets.length };
   // Regla dura: TODO lo que mandó el cliente se usa. usables = cada asset con todas las URLs que lo representan (para el validador).
   for (const a of todos.filter((x) => !esImagen(x))) {
@@ -316,8 +371,14 @@ async function procesarMaterialesBase(entrevistaId, brief = {}, { aceptarLoQueHa
     // Copia de otra foto: no se muestra; cuenta como usada a través de la foto que se queda.
     res.usables.push({ id: a.id, clave: a.clave, tipo: r.tipo, urls: original ? [...urlsDe(a, r), ...urlsDe(original.a, original.r)] : urlsDe(a, r) });
     if (original) continue;
-    if (r.tipo === 'logo') continue; // se usa como logo (su URL recortada está en usables)
     const f = ficha(a, r, { sin_fondo: r.sin_fondo?.url || null, personas: r.personas, captura: r.es_captura, calidad: r.calidad });
+    // Otra versión del logo (10-nov-2026, caso El Rincón del Mayab: su logo sobre fondo negro salió como única foto de
+    // una "Galería"). Un archivo que ES un logo distinto al elegido, o una imagen sin personas donde el logo ocupa casi
+    // todo, no es una foto de trabajo: va como marca en el pie de página, nunca en galerías ni en el slider.
+    if (r.tipo === 'logo' || esVersionLogo(r)) {
+      if (r.logo?.url !== res.logo?.url && !res.logos_extra.some((x) => x.url === f.url)) res.logos_extra.push({ ...f, tipo: 'logo_extra' });
+      continue;
+    }
     const chica = r.calidad === 'mala' || r.contenido.ancho < MIN_FOTO;
     if (/^foto_/.test(r.tipo) && !chica) res.fotos.push(f);
     if (r.tipo === 'foto_fundador') { if (!res.fundador || f.ancho > res.fundador.ancho) { if (res.fundador) res.equipo.push(res.fundador); res.fundador = f; } else res.equipo.push(f); }

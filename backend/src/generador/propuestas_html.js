@@ -108,7 +108,7 @@ function pagina(d) {
   // Slider de portada (6-nov-2026): con 2 o más fotos reales del local/negocio reemplaza la portada de productos recortados
   // en las 6 propuestas. Los recortes siguen en "Lo más pedido". Texto encima de cada foto; la foto 1 lleva el H1.
   const imgS = (x, { cls = '', eager = false, extra = '' } = {}) => `<img class="${cls}" src="${esc(x.url)}" alt="${esc(x.alt || '')}" loading="${eager ? 'eager' : 'lazy'}"${x.ancho ? ` width="${x.ancho}" height="${x.alto}"` : ''}${extra}>`;
-  const emp = emparejarFotos({ hero: d.fotosSl[0], fotoTitular: d.textos.foto_url, pool: d.fotosSl, diapos: d.diapos });
+  const emp = emparejarFotos({ hero: d.fotosSl[0], fotoTitular: d.textos.foto_url, pool: d.fotosSl, diapos: d.diapos, items: d.brief?.oferta?.items || [], cta: d.textos?.cta || '' });
   const heroSl = emp.fotos.length >= 2 && emp.diapos.length ? sliderHTML({
     fotos: emp.fotos, diapos: emp.diapos, img: imgS, cta: d.textos.cta, href: wa, tag: 'section', clase: 'hero h-sl', nombre: d.nombre,
     primera: `<h1>${esc(d.textos.titular)}</h1><p class="sub">${esc(d.textos.subtitulo)}</p><div class="ctas"><a class="btn"${wa}>${esc(d.textos.cta)}</a><a class="lnk" href="#menu">Ver menú</a></div>`,
@@ -274,7 +274,7 @@ export async function renderPropuestas(brief, mat, textos, { ronda = 0, fijo = n
       letra, layout, nombre: brief.negocio?.nombre || '', logo: mat.logo?.url || null, logoObj: mat.logo || null,
       pal: fijo?.paleta || conBotonAcento(corregirPaleta(paleta(layout, b)).paleta, cp), f: fijo?.fuentes || pares[i % pares.length], fuentesUrl: urlFuentes([fijo?.fuentes || pares[i % pares.length]]),
       textos: { titular: v.titular, subtitulo: v.subtitulo, foto_url: v.foto_url || null, cta: v.cta || 'Pide por WhatsApp', destacados: textos.destacados, categorias: textos.categorias, visita: textos.visita },
-      fotosSl: reales.length ? reales.slice(i % reales.length).concat(reales.slice(0, i % reales.length)) : [], diapos,
+      fotosSl: reales.length ? reales.slice(i % reales.length).concat(reales.slice(0, i % reales.length)) : [], diapos, brief,
       heroImgs: [rot(0), rot(1), rot(2)], productos: prods.slice(i % 2 ? 3 : 0).concat(prods.slice(0, i % 2 ? 3 : 0)),
       categorias: cats, menus: mat.menus.map((m) => m.url), info: (textos.info || []).slice(0, 3),
       wa: waUrl(c.whatsapp, c.mensaje_whatsapp_inicial), tel: c.whatsapp ? formatoTel(c.whatsapp) : null, direccion: dir, horarios: typeof c.horarios === 'string' ? c.horarios : null,

@@ -83,7 +83,7 @@ const coincide = (texto, foto) => { const a = palabras(texto), b = palabras(foto
  * @param {object} o  hero: foto 1 por omisión; fotoTitular: url que eligió la IA para el titular; pool: fotos disponibles; diapos: textos 2-5
  * @returns {{fotos: Array, diapos: Array}} alineados: diapos[k-1] va con fotos[k]
  */
-export function emparejarFotos({ hero, fotoTitular = null, pool = [], diapos = [] }) {
+export function emparejarFotos({ hero, fotoTitular = null, pool = [], diapos = [], items = [], cta = '' }) {
   const vistas = new Set();
   const todas = [hero, ...pool].filter((x) => x?.url && !vistas.has(x.url) && vistas.add(x.url));
   if (!todas.length) return { fotos: [], diapos: [] };
@@ -104,6 +104,17 @@ export function emparejarFotos({ hero, fotoTitular = null, pool = [], diapos = [
     if (!f) f = todas.find((x) => libre(x) && !pedidas.has(x.url) && !diapos.some((o) => o !== d && o.tipo === 'oferta' && coincide(`${o.titular} ${o.apoyo || ''}`, x) > 0));
     if (!f) continue;
     usadas.add(f.url); fotos.push(f); out.push(d);
+  }
+  // Slider completo (10-nov-2026, caso El Rincón del Mayab: 5 fotos disponibles y el slider solo mostraba 2 porque solo
+  // había 1 texto). Las fotos buenas que sobran entran hasta MAX_DIAPOSITIVAS; cada una lleva el nombre (y descripción)
+  // del producto o servicio del cliente que mejor coincide con la foto, tal cual lo escribió; si ninguno coincide, va sin texto.
+  const libres = todas.filter(libre);
+  for (const f of libres) {
+    if (fotos.length >= MAX_DIAPOSITIVAS) break;
+    const it = items.map((x) => [x, coincide(`${x?.nombre || ''} ${x?.descripcion_corta || x?.descripcion || ''}`, f)])
+      .filter(([x, n]) => n > 0 && x?.nombre && !out.some((d) => d.titular === x.nombre.trim())).sort((a, b) => b[1] - a[1])[0]?.[0];
+    usadas.add(f.url); fotos.push(f);
+    out.push(it ? { tipo: 'producto', titular: corto(it.nombre.trim(), 60), apoyo: corto(it.descripcion_corta || '', 110), cta } : { tipo: 'foto', titular: '', apoyo: '', sin_texto: true });
   }
   return { fotos, diapos: out };
 }
@@ -136,7 +147,8 @@ export function sliderHTML({ fotos = [], diapos = [], img, primera = '', cta = '
     if (k === 0) txt = primera;
     else {
       const d = diapos[k - 1] || {};
-      txt = `<p class="sl-t">${esc(d.titular)}</p>${d.apoyo ? `<p class="sl-a">${esc(d.apoyo)}</p>` : ''}${(d.cta || cta) ? `<a class="btn sl-btn"${href} tabindex="0">${esc(d.cta || cta)}</a>` : ''}`;
+      if (d.sin_texto || !d.titular) txt = '';
+      else txt = `<p class="sl-t">${esc(d.titular)}</p>${d.apoyo ? `<p class="sl-a">${esc(d.apoyo)}</p>` : ''}${(d.cta || cta) ? `<a class="btn sl-btn"${href} tabindex="0">${esc(d.cta || cta)}</a>` : ''}`;
     }
     const attrs = n > 1 ? ` role="group" aria-roledescription="diapositiva" aria-label="${k + 1} de ${n}"${k ? ' inert aria-hidden="true"' : ''}` : '';
     return `<div class="sl-d${k === 0 ? ' activa' : ''}${txt ? ' con-txt' : ''}"${attrs}>${foto}${txt ? `<div class="sl-cap">${caja(txt)}</div>` : ''}</div>`;
@@ -164,6 +176,20 @@ export function conSrcset(html) {
     return `<img${a} src="${src}" srcset="${set}"${sizes}${b}>`;
   });
 }
+
+
+/**
+ * Fila justificada de fotos (10-nov-2026, caso El Rincón del Mayab): reemplaza la "tira" que se salía de la columna
+ * (empezaba pegada al borde de la pantalla y dejaba hueco a la derecha). Cada foto crece en proporción a su ancho/alto,
+ * así todas las de una fila quedan a la misma altura, alineadas con la columna del sitio, sin recortar ni deformar.
+ */
+export function filaJustificada(fotos = [], img, { clase = '' } = {}) {
+  if (!fotos.length) return '';
+  const r = (x) => (x.ancho && x.alto ? Math.min(2.4, Math.max(0.3, x.ancho / x.alto)) : 0.75).toFixed(3);
+  return `<div class="just${clase ? ` ${clase}` : ''}">${fotos.map((x) => `<figure style="--r:${r(x)}">${img(x)}</figure>`).join('')}</div>`;
+}
+export const CSS_JUSTIFICADA = `.just{display:flex;flex-wrap:wrap;gap:10px;margin-top:12px}.just::after{content:"";flex:999 1 0}.just figure{margin:0;flex:var(--r) 1 calc(var(--r) * 240px);min-width:0}.just img{display:block;width:100%;height:auto;border-radius:8px}
+@media (min-width:900px){.just figure{flex-basis:calc(var(--r) * 300px)}}`;
 
 export const CSS_MOVIMIENTO = `
 /* slider de portada (generador/movimiento.js) */

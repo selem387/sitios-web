@@ -125,10 +125,17 @@ export function escalaTipografica(estilo = 'calido', { cuerpo } = {}) {
   const bMin = serifCuerpo ? 17 : 16, bMax = serifCuerpo ? 19 : 18;
   const paso = (n) => fluido(bMin * rMin ** n, bMax * rMax ** n);
   const h1Paso = rMax > 1.25 ? 4 : 5;
+  // Titular de portada = tamaño de exhibición (10-nov-2026, caso El Rincón del Mayab): con ratio 1.25 el paso 5 daba
+  // 55 px, chico para una columna de 1100 px. El h1 crece con la pantalla hasta 4.75–5.5 rem en escritorio
+  // (≈ 1/14 del ancho de la columna), nunca menos que la escala modular.
+  const h1Max = Math.max(bMax * rMax ** h1Paso, rMax > 1.25 ? 88 : 76), h1Min = Math.max(bMin * rMin ** h1Paso, 36);
+  // Texto secundario (descripciones de productos, datos, notas): mínimo 90% del cuerpo. Antes quedaba fijo en 14 px
+  // con cuerpo de 18 px y se veía desproporcionado.
+  const secMin = Math.max(15, Math.round(bMin * 0.94)), secMax = Math.max(16, Math.round(bMax * 0.94));
   return {
     ratio: [rMin, rMax],
     pasos: { '-1': paso(-1), 0: paso(0), 1: paso(1), 2: paso(2), 3: paso(3), 4: paso(4), 5: paso(5) },
-    h1: paso(h1Paso), h2: paso(h1Paso - 2), h3: paso(1), cuerpo: paso(0), chico: paso(-1),
+    h1: fluido(h1Min, h1Max, 360, 1280), h2: paso(h1Paso - 2), h3: paso(1), cuerpo: paso(0), chico: paso(-1), secundario: fluido(secMin, secMax),
     interlineado: { cuerpo: serifCuerpo ? 1.6 : 1.55, h1: 1.08, h2: 1.15, h3: 1.25 },
     tracking: { h1: '-0.02em', h2: '-0.01em', versalitas: '0.06em' },
     medida: '65ch',
@@ -150,6 +157,11 @@ h3{line-height:${e.interlineado.h3}}
 p,li,blockquote,dd{text-wrap:pretty}p{max-width:${e.medida}}
 .precio,em,.cat span,summary span,[class*="precio"],td{font-variant-numeric:tabular-nums lining-nums}
 small,.hint{font-size:max(13px,${e.chico})}
+/* Proporción del texto (10-nov-2026): ningún texto de lectura por debajo del 90% del cuerpo; títulos de tarjeta en paso 1.
+   Los selectores van con body para ganarle a los tamaños fijos en px de cada plantilla. */
+body .paq-det span,body .paq-det ul.inc,body .paq ul.inc,body .paq li span,body .paq-op,body .opc .op-d,body .info,body .cred,body .datos p,body .paq li b,body .opc .op-n,body .sl-marco .sl-a{font-size:${e.secundario}}
+body .paq-cab h3,body .paq-cab h4,body .paq h3,body .datos b,body .datos strong{font-size:${e.h3}}
+body .sub{font-size:${fluido(17, 22)}}
 `;
 }
 

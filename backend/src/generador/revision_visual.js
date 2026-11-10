@@ -40,11 +40,13 @@ async function capturasOpcion(o) {
 // Lo objetivo (deformadas, repetidas, desbordes, encimados, letras que no cargan) ya lo revisa el código; la IA solo juzga lo visual.
 // Lo objetivo (deformadas, repetidas, desbordes, encimados, letras, CONTRASTE medido en píxeles) ya lo revisa el código;
 // la IA solo juzga lo que no se puede medir.
-const REGLAS = `Ya se comprobó con código (midiendo píxeles) que no hay fotos deformadas, rotas o repetidas, ni desbordes, ni textos encimados, y que el contraste del texto es suficiente: NO evalúes nada de eso ni lo menciones.
+const REGLAS = `Ya se comprobó con código (midiendo píxeles) que no hay fotos deformadas, rotas, repetidas o con franjas negras, ni desbordes, ni textos encimados, ni bloques fuera de la columna, ni textos por debajo del 86% del cuerpo, y que el contraste del texto es suficiente: NO evalúes nada de eso ni lo menciones.
 Juzga solo:
 - Profesionalismo: se ve como una página de calidad, con jerarquía clara, aire y fotos protagonistas (no una presentación de puro texto).
 - Que el recorte de la foto principal no corte una cara o una cabeza (un recorte normal de fondo está bien).
-- Que la tipografía y los colores combinen entre sí.
+- Que la tipografía y los colores combinen entre sí y que los colores de la página salgan de la paleta del logo (si hay logo).
+- Que el logo no se vea cortado (letras o lema recortados) ni repetido en la misma pantalla.
+- Proporción: que el tamaño de los textos se vea proporcionado al ancho de la página (ni titulares diminutos en una pantalla ancha ni descripciones apenas legibles).
 Pon profesional=false solo por una falla clara y visible de esta lista. Califica aparte el parecido con la referencia.`;
 
 const ESQUEMA = {

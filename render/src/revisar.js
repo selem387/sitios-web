@@ -48,6 +48,71 @@ export async function revisarPagina(page) {
         if (iw > 6 && ih > 6 && iw * ih > 0.15 * Math.min(r1.width * r1.height, r2.width * r2.height)) prob.push(`texto encimado: "${(x.textContent || '').trim().slice(0, 30)}" con "${(y.textContent || '').trim().slice(0, 30)}"`);
       }
     }
+    // ---- Proporción y alineación (10-nov-2026, caso El Rincón del Mayab) ----
+    const px = (e) => parseFloat(getComputedStyle(e).fontSize) || 0;
+    const parrafos = Array.from(document.querySelectorAll('main p')).filter((e) => visible(e) && (e.textContent || '').trim().length > 40 && !e.closest('.sl,.etq,.wa,footer,.kicker'));
+    const tams = parrafos.map(px).sort((a, b) => a - b);
+    const cuerpo = tams.length ? tams[Math.floor(tams.length / 2)] : px(document.body);
+    // 1) Texto de lectura (descripciones, datos) desproporcionadamente chico frente al cuerpo.
+    const lectura = Array.from(document.querySelectorAll('main p, main li, main span, main dd')).filter((e) => visible(e) && !e.children.length && (e.textContent || '').trim().length > 25 && !e.closest('.sl,.etq,.wa,footer,.kicker,.btn,nav,.info'));
+    const chicos = lectura.filter((e) => px(e) < Math.max(14.5, cuerpo * 0.86));
+    if (chicos.length) prob.push(`texto desproporcionadamente chico: ${Math.round(px(chicos[0]))}px frente a ${Math.round(cuerpo)}px del cuerpo ("${chicos[0].textContent.trim().slice(0, 40)}")`);
+    if (W >= 1200) {
+      // 2) Titular de portada chico para el ancho de la página.
+      const h1 = Array.from(document.querySelectorAll('h1')).find(visible);
+      if (h1 && px(h1) < 56) prob.push(`titular de portada chico para computadora: ${Math.round(px(h1))}px (mínimo 56px)`);
+      // 3) Bloques fuera de la columna del sitio: la columna es el borde izquierdo más común de los h2 de sección.
+      const lefts = Array.from(document.querySelectorAll('main h2')).filter(visible).map((e) => Math.round(e.getBoundingClientRect().left));
+      const moda = lefts.sort((a, b) => lefts.filter((x) => x === b).length - lefts.filter((x) => x === a).length)[0];
+      if (moda != null) {
+        const bloques = Array.from(document.querySelectorAll('main h1, .hero .sub, .galeria, .just, .tira, .paqs, .quotes, .datos')).filter((e) => visible(e) && !e.closest('.sl'));
+        for (const e of bloques) {
+          const r = e.getBoundingClientRect(), s = getComputedStyle(e);
+          const centrado = Math.abs((r.left + r.right) / 2 - W / 2) < 8 && (s.textAlign === 'center' || e.closest('[style*="center"],.h-logo'));
+          if (centrado || r.left < 4) continue; // centrado a propósito o a todo el ancho
+          if (Math.abs(r.left - moda) > 12) { prob.push(`bloque desalineado con la columna del sitio: ${e.tagName.toLowerCase()}.${String(e.className).split(' ')[0]} empieza en ${Math.round(r.left)}px y la columna en ${moda}px`); break; }
+        }
+      }
+      // 4) Fila de fotos que deja más de un tercio del ancho vacío.
+      for (const g of document.querySelectorAll('.just, .tira')) {
+        if (!visible(g)) continue;
+        const gr = g.getBoundingClientRect(), ims = Array.from(g.querySelectorAll('img')).filter(visible);
+        if (!ims.length) continue;
+        const der = Math.max(...ims.map((i) => i.getBoundingClientRect().right));
+        if (gr.right - der > gr.width / 3) { prob.push('fila de fotos con más de un tercio del ancho vacío'); break; }
+      }
+    }
+    // 4b) Texto o botón pegado al borde inferior de una sección con fondo propio (sin margen).
+    for (const sec of document.querySelectorAll('main section, main .hero')) {
+      if (!visible(sec)) continue;
+      const cs = getComputedStyle(sec), sr = sec.getBoundingClientRect();
+      const conFondo = cs.backgroundColor !== 'rgba(0, 0, 0, 0)' && cs.backgroundColor !== 'transparent' && cs.backgroundColor !== getComputedStyle(document.body).backgroundColor;
+      if (!conFondo) continue;
+      const pegado = Array.from(sec.querySelectorAll('h1,h2,p,.btn')).filter((e) => visible(e) && !e.closest('.sl')).find((e) => sr.bottom - e.getBoundingClientRect().bottom < 16);
+      if (pegado) { prob.push(`texto pegado al borde inferior de su sección: "${(pegado.textContent || '').trim().slice(0, 30)}"`); break; }
+    }
+    // 5) Sección con título y una sola imagen (p. ej. "Galería" con el logo).
+    for (const sec of document.querySelectorAll('main section')) {
+      const h = sec.querySelector('h2'); if (!h || !visible(h)) continue;
+      const ims = Array.from(sec.querySelectorAll('img')).filter(visible);
+      const texto = (sec.textContent || '').replace(h.textContent, '').trim();
+      if (ims.length === 1 && texto.length < 20 && !sec.querySelector('form,video,iframe')) prob.push(`sección "${h.textContent.trim().slice(0, 30)}" con una sola imagen y nada más`);
+    }
+    // 6) El logo no se repite en la primera pantalla.
+    const vh = window.innerHeight;
+    const logosArriba = Array.from(document.querySelectorAll('img')).filter((i) => /\blogo/.test(i.className) && visible(i) && +getComputedStyle(i).opacity > 0.2 && !i.closest('[style*="opacity: 0"]') && i.getBoundingClientRect().top < vh && getComputedStyle(i.closest('.barra,header') || i).opacity > 0.2);
+    if (logosArriba.length > 1) prob.push(`el logo aparece ${logosArriba.length} veces en la primera pantalla`);
+    // 7) Fotos con franjas negras/lisas (letterbox) arriba y abajo o a los lados.
+    const lisa = (ctx, x, y, w, h) => { const d = ctx.getImageData(x, y, w, h).data; let s = 0, s2 = 0, n = d.length / 4; for (let k = 0; k < d.length; k += 4) { const v = (d[k] + d[k + 1] + d[k + 2]) / 3; s += v; s2 += v * v; } const m = s / n; return m < 35 && Math.sqrt(Math.max(0, s2 / n - m * m)) < 4; }; // franja negra (letterbox); un fondo blanco de estudio no cuenta
+    for (const i of imgs) {
+      if (!i.naturalWidth || /\blogo/.test(i.className) || i.closest('header,.barra,footer')) continue;
+      try {
+        const w = 120, h = Math.max(2, Math.round(120 * i.naturalHeight / i.naturalWidth)), c = document.createElement('canvas'); c.width = w; c.height = h;
+        const ctx = c.getContext('2d', { willReadFrequently: true }); ctx.drawImage(i, 0, 0, w, h);
+        const b = Math.max(2, Math.round(h * 0.03)), bw = Math.max(2, Math.round(w * 0.03));
+        if ((lisa(ctx, 0, 0, w, b) && lisa(ctx, 0, h - b, w, b)) || (lisa(ctx, 0, 0, bw, h) && lisa(ctx, w - bw, 0, bw, h))) prob.push(`foto con franjas negras en los bordes: ${nombre(i.currentSrc || i.src)}`);
+      } catch { /* imagen de otro dominio: no se puede medir */ }
+    }
     const logo = document.querySelector('header img, .barra img');
     const fuente = (sel) => {
       const e = document.querySelector(sel); if (!e) return null;

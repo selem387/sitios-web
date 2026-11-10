@@ -9,7 +9,7 @@ import { coloresParaPropuesta } from './paletas_giro.js';
 import { mezclar, contraste } from '../entrevista/tema.js';
 import { esPastel, coloresDePalabras } from './materiales.js';
 import { waUrl, formatoTel } from './bloques.js';
-import { sliderHTML, diapositivasDe, emparejarFotos, CSS_MOVIMIENTO, JS_MOVIMIENTO, efectosDe } from './movimiento.js';
+import { sliderHTML, diapositivasDe, emparejarFotos, CSS_MOVIMIENTO, JS_MOVIMIENTO, efectosDe, filaJustificada, CSS_JUSTIFICADA } from './movimiento.js';
 import { enlacesRedes, CSS_REDES } from './iconos_redes.js';
 
 const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -47,10 +47,19 @@ function paletaGeneral(layout, colores, pastel, i, { acento = null, acentoCta = 
     tinte = pas[i % Math.max(pas.length, 1)] || '#F2C4CE';
     base = conContraste(tono(tinte, 0.42, 0.22, 0.34), '#FFFFFF', 4.6, tono(tinte, 0.18, 0.25, 0.34));
   } else {
-    const oscuros = cs.filter((c) => lum(c) < 0.25);
-    base = oscuros[i % Math.max(oscuros.length, 1)] || cs.find((c) => lum(c) < 0.5) || '#3A3330';
-    base = conContraste(base, '#FFFFFF', 4.6);
-    tinte = cs.find((c) => lum(c) > 0.5) || mezclar(base, '#FFFFFF', 0.82);
+    // Paleta del logo (10-nov-2026): cuando hay logo sus colores mandan y las 6 opciones ROTAN el color protagonista
+    // entre los colores del logo (60-30-10: neutro derivado del logo / color protagonista / acento del logo).
+    // Antes solo rotaban los oscuros (negro y verde azulado en El Rincón del Mayab) y el dorado del logo nunca protagonizaba.
+    // Orden de candidatos: cromáticos oscuros tal cual → cromáticos claros profundizados hasta contraste AA con blanco →
+    // negro/gris solo como última variante (es tinta, no color de marca, salvo que no haya otro).
+    const croma = (c) => { const v = [1, 3, 5].map((k) => parseInt(c.slice(k, k + 2), 16)); return (Math.max(...v) - Math.min(...v)) / 255; };
+    const crom = cs.filter((c) => croma(c) > 0.2 && lum(c) > 0.015 && lum(c) < 0.92); // color de verdad (no cremas ni grises)
+    const acrom = cs.filter((c) => !crom.includes(c) && lum(c) < 0.25);
+    const candidatos = [...crom.filter((c) => lum(c) < 0.25), ...crom.filter((c) => lum(c) >= 0.25), ...acrom];
+    const elegido = candidatos[i % Math.max(candidatos.length, 1)] || cs.find((c) => lum(c) < 0.5) || '#3A3330';
+    base = conContraste(elegido, '#FFFFFF', 4.6);
+    // Tinte: el color claro del logo que NO es el protagonista (o el protagonista aclarado).
+    tinte = crom.find((c) => c !== elegido && lum(c) > 0.3) || cs.find((c) => c !== elegido && lum(c) > 0.5) || mezclar(base, '#FFFFFF', 0.82);
   }
   const papel = mezclar(tinte, '#FFFFFF', 0.72);
   const tinta = conContraste(tono(base, 0.17, 0.12, 0.3), papel, 8);
@@ -69,7 +78,11 @@ function paletaGeneral(layout, colores, pastel, i, { acento = null, acentoCta = 
   p.card = mezclar(p.bg, '#FFFFFF', 0.6);
   p.tinte = tinte;
   // Tercer color (8-nov-2026): acento en el 10 % (viñetas, pasos, líneas) y, en B y E, también en el botón principal.
-  const acc = acento && /^#[0-9A-F]{6}$/i.test(acento) && hsl(acento)[1] > 0.2 && ![base, tinte].includes(acento) ? acento : null;
+  // El acento nunca repite el tono del protagonista: si coincide (diferencia < 25°), se usa otro color del logo.
+  const difTono = (a, b) => { const d = Math.abs(hsl(a)[0] - hsl(b)[0]); return Math.min(d, 1 - d) * 360; };
+  const croma2 = (c) => { const v = [1, 3, 5].map((k) => parseInt(c.slice(k, k + 2), 16)); return (Math.max(...v) - Math.min(...v)) / 255; };
+  const distinto = (c) => c && /^#[0-9A-F]{6}$/i.test(c) && croma2(c) > 0.2 && lum(c) < 0.6 && c !== base && difTono(c, base) >= 25;
+  const acc = distinto(acento) ? acento : (colores.filter((c) => /^#[0-9A-F]{6}$/i.test(c)).find(distinto) || null);
   if (acc) { p.accent = acc; p.accentUso = 'relleno'; p.acentoCta = !!acentoCta; }
   return p;
 }
@@ -155,6 +168,10 @@ export function redes(c = {}) {
   return [['Instagram', url(r.instagram, 'https://instagram.com/')], ['Facebook', url(/^\d{6,}$/.test(String(r.facebook || '')) ? `profile.php?id=${r.facebook}` : r.facebook, 'https://facebook.com/')], ['TikTok', url(r.tiktok, 'https://tiktok.com/@')], ['YouTube', url(r.youtube, 'https://youtube.com/@')], ['LinkedIn', url(r.linkedin, 'https://www.linkedin.com/company/')]].filter((x) => x[1]);
 }
 
+// Diseño "Tu logo al centro" (10-nov-2026): el logo grande de la portada y el de la barra no se ven a la vez;
+// el de la barra aparece cuando el grande sale de la pantalla.
+const JS_LOGO_UNICO = `<script>(()=>{const g=document.querySelector('.h-logo .logo-grande,.h-logo .logo-grande-placa'),b=document.querySelector('.barra');if(!b)return;if(!g||!('IntersectionObserver'in window)){b.classList.add('ver-logo');return;}new IntersectionObserver(([e])=>b.classList.toggle('ver-logo',!e.isIntersecting),{rootMargin:'-70px 0px 0px 0px'}).observe(g);})();</script>`;
+
 /* ---------------- Página ---------------- */
 function pagina(d) {
   const { pal: p, f, t, mat, brief } = d;
@@ -186,7 +203,7 @@ function pagina(d) {
 
   // Slider de portada (aprobado 6-nov-2026): foto principal + hasta 4 fotos más, cada una con su texto encima.
   // Solo fotos buenas del cliente (o variaciones IA de su foto si dijo que no tiene más); nunca se repiten en el resto del sitio.
-  const emp = emparejarFotos({ hero: heroFoto, pool: fotosT.filter(buenaFoto), diapos: diapositivasDe({ diapositivas: t.diapositivas }, brief) });
+  const emp = emparejarFotos({ hero: heroFoto, pool: fotosT.filter(buenaFoto), diapos: diapositivasDe({ diapositivas: t.diapositivas }, brief), items: brief.oferta?.items || [], cta: t.cta });
   const poolSl = emp.fotos, diapos = emp.diapos;
   const slider = (o) => sliderHTML({ fotos: poolSl, diapos, img, cta: t.cta, href: wa, nombre: d.nombre, ...o }).html;
   const textoPortada = `<p class="kicker">${esc(neg.ciudad ? `${giroCorto(neg.giro_texto) || ''} · ${neg.ciudad}` : giroCorto(neg.giro_texto) || '')}</p><h1>${esc(t.titular)}</h1><p class="sub">${esc(t.subtitulo)}</p>${cta()}`;
@@ -199,7 +216,7 @@ function pagina(d) {
     mosaico: () => { const s = poolSl.length ? slider({ tag: 'div', clase: 'mos-sl sl-marco' }) : ''; const m = fotosT.filter((x) => !usadas.has(x.url)).slice(0, s ? 4 : 5); return `<section class="hero h-mos wrap"><h1>${esc(t.titular)}</h1><p class="sub">${esc(t.subtitulo)}</p>${cta()}<div class="mos m${m.length + (s ? 1 : 0)}${s && m.length < 2 ? ' solo' : ''}">${s}${m.map((x, k) => img(x, { eager: k < 1 })).join('')}</div></section>`; },
     logo: () => `<section class="hero h-logo wrap">${mat.logo ? logoHTML(mat.logo, p.bg, p.fg, { clase: 'logo-grande', alt: d.nombre }) : `<p class="nombre-grande">${esc(d.nombre)}</p>`}<h1>${esc(t.titular)}</h1><p class="sub">${esc(t.subtitulo)}</p>${cta()}${heroFoto ? slider({ tag: 'figure', clase: 'ovalo sl-marco' }) : ''}</section>`,
     dostonos: () => `<section class="hero h-dos"><div class="wrap in"><div class="txt"><h1>${esc(t.titular)}</h1><p class="sub">${esc(t.subtitulo)}</p>${cta('inv')}</div>${heroFoto ? slider({ tag: 'figure', clase: 'marco sl-marco' }) : ''}</div></section>`,
-    carta: () => { const s = poolSl.length ? `<div class="wrap">${slider({ tag: 'figure', clase: 'sl-carta sl-marco' })}</div>` : ''; const resto = fotosT.filter((x) => !usadas.has(x.url)).slice(0, 8); return `<section class="hero h-carta wrap"><p class="kicker">${esc(d.nombre)}</p><h1>${esc(t.titular)}</h1><p class="sub">${esc(t.subtitulo)}</p>${cta()}</section>${s}${resto.length ? `<div class="tira" aria-label="Fotos">${resto.map((x) => img(x)).join('')}</div>` : ''}`; },
+    carta: () => { const s = poolSl.length ? `<div class="wrap">${slider({ tag: 'figure', clase: 'sl-carta sl-marco' })}</div>` : ''; const resto = fotosT.filter((x) => !usadas.has(x.url)).slice(0, 8); return `<section class="hero h-carta wrap"><p class="kicker">${esc(d.nombre)}</p><h1>${esc(t.titular)}</h1><p class="sub">${esc(t.subtitulo)}</p>${cta()}</section>${s}${resto.length ? `<div class="wrap">${filaJustificada(resto, img)}</div>` : ''}`; },
   };
   const promo = brief.oferta?.promocion_actual ? `<section class="promo" id="promocion"><div class="wrap"><p><b>Promoción</b> ${esc(brief.oferta.promocion_actual)}</p></div></section>` : '';
   const hero = heros[d.layout]() + promo;
@@ -272,7 +289,21 @@ function pagina(d) {
   // Galería final: TODO lo que el cliente mandó y aún no aparece (regla dura). Nada se queda fuera.
   const pendientes = [...mat.trabajos, ...mat.local, ...mat.equipo, mat.fundador, ...mat.resenas, ...mat.catalogos, ...mat.otras, ...mat.menus, ...mat.fotos.filter((x) => !x.recorte)]
     .filter((x) => x && !usadas.has(x.url)).filter((x, k, a) => a.findIndex((y) => y.url === x.url) === k);
-  const galeria = pendientes.length ? `<section class="sec" id="galeria"><div class="wrap"><h2>${esc(T.galeria)}</h2><div class="galeria g-mas">${pendientes.map((x) => `<figure>${img(x)}</figure>`).join('')}</div></div></section>` : '';
+  // Galería final (10-nov-2026): una sección titulada "Galería" con 1 o 2 imágenes se ve vacía. Si sobran menos de 3,
+  // se suman a la última sección de fotos que ya existe (fila de fotos o galería de trabajo); solo si no hay ninguna,
+  // se arma una fila sin título. Con 3 o más sí lleva su sección.
+  let galeria = '', cuerpoFinal = cuerpo, heroFinal = hero;
+  if (pendientes.length >= 3) galeria = `<section class="sec" id="galeria"><div class="wrap"><h2>${esc(T.galeria)}</h2><div class="galeria g-mas">${pendientes.map((x) => `<figure>${img(x)}</figure>`).join('')}</div></div></section>`;
+  else if (pendientes.length) {
+    const r = (x) => (x.ancho && x.alto ? Math.min(2.4, Math.max(0.3, x.ancho / x.alto)) : 0.75).toFixed(3);
+    const figs = pendientes.map((x) => `<figure style="--r:${r(x)}">${img(x)}</figure>`).join('');
+    const enGal = /(<section class="sec" id="trabajo">[\s\S]*?<div class="galeria[^"]*">[\s\S]*?)(<\/div><\/div><\/section>)/;
+    if (heroFinal.includes('<div class="just')) heroFinal = heroFinal.replace(/(<div class="just[^"]*">[\s\S]*?)(<\/div><\/div>)(?![\s\S]*<div class="just)/, `$1${figs}$2`);
+    else if (enGal.test(cuerpoFinal)) cuerpoFinal = cuerpoFinal.replace(enGal, (m, a, b) => `${a}${pendientes.map((x) => `<figure>${img(x)}</figure>`).join('')}${b}`);
+    else galeria = `<div class="wrap">${filaJustificada(pendientes, img)}</div>`;
+  }
+  // Otras versiones del logo (logo sobre fondo, con lema): firma de marca en el pie, nunca como foto de galería.
+  const marcaPie = (mat.logos_extra || []).filter((x) => x?.url).map((x) => `<img class="pie-marca" src="${esc(x.url)}" alt="${esc(d.nombre)}" loading="lazy"${x.ancho ? ` width="${x.ancho}" height="${x.alto}"` : ''}>`).join('');
 
   const navs = [['trabajo', T.trabajo], ['servicios', T.servicios], ['sobre', T.sobre], ['contacto', T.contacto]].filter(([id]) => cuerpo.includes(`id="${id}"`));
   const ft = f.titulos, fc = f.cuerpo;
@@ -302,8 +333,9 @@ h1,h2,h3{font-family:var(--ft);font-weight:400;line-height:1.06;letter-spacing:-
 .h-mos{padding-top:40px;text-align:left}.mos{display:grid;gap:8px;margin-top:34px;grid-template-columns:repeat(2,1fr)}.mos>img{width:100%;height:100%;object-fit:cover;border-radius:14px;aspect-ratio:1}.mos>:first-child{grid-column:span 2;aspect-ratio:16/10}.mos-sl{border-radius:14px}.mos>.mos-sl{aspect-ratio:4/5}.mos.solo{grid-template-columns:1fr!important}.mos.solo>.mos-sl{grid-column:1/-1!important;grid-row:auto!important;aspect-ratio:4/5!important}.mos.solo>img{aspect-ratio:16/10}
 .h-logo{text-align:center;padding-top:40px;padding-bottom:10px}.h-logo .sub{margin:16px auto 0}.logo-grande{height:auto;width:min(84%,460px);margin:0 auto 26px;display:block}
 .nombre-grande{font-family:var(--ft);font-size:44px;margin-bottom:20px}.ovalo{width:min(78%,380px);margin:38px auto 0;border-radius:50%;overflow:hidden;aspect-ratio:3/4;border:8px solid var(--mut)}.ovalo img{width:100%;height:100%;object-fit:cover}
-.h-dos{background:var(--banda);color:#fff;padding:42px 0 0;border-radius:0 0 36px 36px}.h-dos .in{display:grid;gap:26px}.h-dos .sub{color:rgba(255,255,255,.86)}.marco{border-radius:24px 24px 0 0;overflow:hidden;aspect-ratio:4/5;max-height:560px;border:10px solid rgba(255,255,255,.14);border-bottom:0}.marco img{width:100%;height:100%;object-fit:cover}
-.h-carta{padding-top:60px;padding-bottom:30px;max-width:820px}.tira{display:flex;gap:10px;overflow-x:auto;padding:0 20px 8px;scroll-snap-type:x mandatory;scrollbar-width:none}.tira::-webkit-scrollbar{display:none}.tira img{height:340px;width:auto;max-width:none;border-radius:8px;scroll-snap-align:start;flex:0 0 auto}
+.h-dos{background:var(--banda);color:#fff;padding:42px 0 0;border-radius:0 0 36px 36px}.h-dos .in{display:grid;gap:26px}.h-dos .txt{padding-bottom:clamp(40px,5vw,72px)}.h-dos .sub{color:rgba(255,255,255,.86)}.marco{border-radius:24px 24px 0 0;overflow:hidden;aspect-ratio:4/5;max-height:560px;border:10px solid rgba(255,255,255,.14);border-bottom:0}.marco img{width:100%;height:100%;object-fit:cover}
+.pie-marcas{display:flex;justify-content:center;gap:16px;margin-bottom:18px}.pie-marca{height:auto;width:auto;max-height:140px;max-width:min(80vw,360px);border-radius:12px;object-fit:contain}body.l-logo .barra .logo,body.l-logo .barra [class$="-placa"]{transition:opacity .3s ease}body.l-logo .barra:not(.ver-logo) .logo,body.l-logo .barra:not(.ver-logo) [class$="-placa"]{opacity:0;pointer-events:none}
+.h-carta{padding-top:clamp(56px,8vw,112px);padding-bottom:clamp(28px,4vw,48px)}.h-carta h1{max-width:16ch}.h-carta .sub{max-width:46ch}${CSS_JUSTIFICADA}
 /* galerías */
 .galeria{columns:2 160px;column-gap:10px}.galeria figure{break-inside:avoid;margin-bottom:10px}.galeria img{width:100%;height:auto;border-radius:12px}
 .g-editorial{columns:2 150px}.g-carta img,.g-dostonos img{border-radius:4px}.g-logo img{border-radius:999px 999px 14px 14px}
@@ -341,15 +373,15 @@ footer{margin-top:64px;padding:26px 20px 92px;border-top:1px solid var(--bor);fo
 a:focus-visible,summary:focus-visible{outline:3px solid var(--p);outline-offset:3px}
 @media (max-width:760px){.barra nav{display:none}}
 @media (min-width:900px){.h-portada .velo{background:linear-gradient(90deg,rgba(0,0,0,.6),rgba(0,0,0,.15) 70%)}.h-edit{grid-template-columns:1.1fr .9fr;align-items:center;padding-top:64px}.h-dos .in{grid-template-columns:1.1fr .9fr;align-items:end}.mos{grid-template-columns:repeat(4,1fr)}.mos>:first-child{grid-column:span 2;grid-row:span 2;aspect-ratio:auto}.mos-sl{min-height:380px}.mos.solo>.mos-sl{aspect-ratio:16/8!important;min-height:0}.h-portada .sl-d.con-txt::after{background:linear-gradient(90deg,rgba(0,0,0,.66),rgba(0,0,0,.18) 72%)}
-.s-in{grid-template-columns:.8fr 1.2fr}.galeria{columns:3 220px}.g-editorial{columns:4 220px}.contacto .datos{grid-template-columns:repeat(3,1fr)}.tira img{height:460px}}
+.s-in{grid-template-columns:.8fr 1.2fr}.galeria{columns:3 220px}.g-editorial{columns:4 220px}.contacto .datos{grid-template-columns:repeat(3,1fr)}}
 @media (prefers-reduced-motion:reduce){html{scroll-behavior:auto}}
 ${CSS_MOVIMIENTO}
 </style></head>
 <body class="l-${d.layout}">
 <header class="barra"><div class="wrap in">${logoBarra}<nav>${navs.map(([id, n]) => `<a href="#${id}">${esc(n)}</a>`).join('')}</nav></div></header>
-<main>${hero}${cuerpo}${galeria}</main>
-<footer>© ${new Date().getFullYear()} ${esc(d.nombre)} · Propuesta ${d.letra}: ${esc(NOMBRES_GENERAL[d.layout])}</footer>
-<span class="etq">Propuesta ${d.letra}</span>${JS_MOVIMIENTO}
+<main>${heroFinal}${cuerpoFinal}${galeria}</main>
+<footer>${marcaPie ? `<div class="pie-marcas">${marcaPie}</div>` : ''}© ${new Date().getFullYear()} ${esc(d.nombre)} · Propuesta ${d.letra}: ${esc(NOMBRES_GENERAL[d.layout])}</footer>
+<span class="etq">Propuesta ${d.letra}</span>${JS_MOVIMIENTO}${d.layout === 'logo' ? JS_LOGO_UNICO : ''}
 <a class="wa"${wa} aria-label="Escríbeme por WhatsApp"><svg viewBox="0 0 32 32" aria-hidden="true"><path d="M16 3a13 13 0 0 0-11.2 19.6L3 29l6.6-1.7A13 13 0 1 0 16 3Zm0 23.7c-2 0-4-.6-5.7-1.6l-.4-.2-3.9 1 1-3.8-.3-.4A10.7 10.7 0 1 1 16 26.7Zm5.9-8c-.3-.2-1.9-1-2.2-1-.3-.1-.5-.2-.7.1l-1 1.3c-.2.2-.4.2-.7.1a8.8 8.8 0 0 1-4.4-3.8c-.3-.6.3-.5.9-1.7.1-.2 0-.4 0-.6l-1-2.4c-.3-.6-.5-.5-.7-.5h-.6c-.2 0-.6.1-.9.4-.3.3-1.2 1.1-1.2 2.8s1.2 3.2 1.4 3.5c.2.2 2.4 3.6 5.7 5 2.1.9 3 1 4 .8.7-.1 1.9-.8 2.2-1.5.3-.8.3-1.4.2-1.5l-.6-.3Z"/></svg></a>
 </body></html>`;
   return html;
