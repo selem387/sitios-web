@@ -7,7 +7,7 @@ import { esDireccionRef, paletaRef, aplicarRef } from './estilo_ref.js';
 import { parPorNombres } from './fuentes.js';
 import { coloresParaPropuesta } from './paletas_giro.js';
 import { mezclar, contraste } from '../entrevista/tema.js';
-import { esPastel, coloresDePalabras } from './materiales.js';
+import { esPastel, coloresDePalabras, articuloDe } from './materiales.js';
 import { waUrl, formatoTel } from './bloques.js';
 import { sliderHTML, diapositivasDe, emparejarFotos, CSS_MOVIMIENTO, JS_MOVIMIENTO, efectosDe, filaJustificada, CSS_JUSTIFICADA } from './movimiento.js';
 import { enlacesRedes, CSS_REDES } from './iconos_redes.js';
@@ -190,7 +190,8 @@ function pagina(d) {
     try {
       const u0 = new URL(d.wa), tel = (u0.pathname.match(/\d{8,}/) || [u0.searchParams.get('phone') || ''])[0];
       const nombre = (x.nombre || (x.alt || '').split(/[,.;]/)[0] || 'este producto').trim();
-      const texto = `Hola, me interesa: ${nombre}. ¿Me das más información?`;
+      const art = x.articulo || articuloDe(nombre);
+      const texto = `Hola, me interesa ${art} ${nombre.charAt(0).toLowerCase()}${nombre.slice(1)}. ¿Me das más información?`;
       // api.whatsapp.com/send con app_absent=0 abre el chat directo (app en celular, WhatsApp Web en computadora).
       const u = `https://api.whatsapp.com/send/?phone=${tel}&text=${encodeURIComponent(texto)}&type=phone_number&app_absent=0`;
       return ` href="${esc(u)}" target="_blank" rel="noopener"`;

@@ -61,8 +61,17 @@ async function visionJSON(buf, mime, negocio) {
  * llamando al producto por su nombre. Las fotos analizadas antes de existir el campo se nombran en una sola llamada de
  * texto (con los nombres de productos del cliente como referencia) y se guarda en el análisis para no repetirlo.
  */
+/** Artículo de respaldo por la primera palabra (si la IA no lo dio). */
+export function articuloDe(nombre = '') {
+  const w = String(nombre).trim().split(/\s+/)[0].toLowerCase();
+  if (/^(miel|sal|piel|flor|leche|carne|crema|mano)$/.test(w)) return 'la';
+  if (/as$/.test(w)) return 'las';
+  if (/(os|es)$/.test(w)) return 'los';
+  if (/(a|ión|dad|tud)$/.test(w) && !/^(día|mapa|sofá|problema|tema|sistema|programa)$/.test(w)) return 'la';
+  return 'el';
+}
 async function nombrarFotos(analisis, brief = {}) {
-  const faltan = analisis.filter(({ r }) => !r.nombre && r.descripcion && /^foto/.test(r.tipo || ''));
+  const faltan = analisis.filter(({ r }) => (!r.nombre || !r.articulo) && r.descripcion && /^foto/.test(r.tipo || ''));
   if (!faltan.length) return;
   const productos = (brief.oferta?.items || []).map((x) => x?.nombre).filter(Boolean).slice(0, 30);
   const lista = faltan.map(({ r }, i) => `${i + 1}. ${r.descripcion}`).join('\n');
@@ -71,14 +80,15 @@ async function nombrarFotos(analisis, brief = {}) {
     headers: { 'x-api-key': config.anthropicApiKey, 'anthropic-version': '2023-06-01', 'content-type': 'application/json' },
     body: JSON.stringify({
       model: config.anthropicModel, max_tokens: 1500,
-      messages: [{ role: 'user', content: `Da a cada foto un nombre corto de producto (2 a 5 palabras, en español, como lo pediría un cliente; sin "modelo", "mujer" ni "foto"). El nombre SIEMPRE empieza con el tipo de producto o servicio (p. ej. "Blusa blanca con flores", "Vestido bordado de venado", "Hamaca de algodón"), nunca con un color o adjetivo suelto. Si coincide con uno de estos productos del negocio, usa ese término: ${productos.join(', ') || '(sin lista)'}.\n\nFotos:\n${lista}\n\nResponde solo JSON: {"nombres":["...", ...]} en el mismo orden.` }],
+      messages: [{ role: 'user', content: `Da a cada foto un nombre corto de producto (2 a 5 palabras, en español, como lo pediría un cliente; sin "modelo", "mujer" ni "foto"). El nombre SIEMPRE empieza con el tipo de producto o servicio (p. ej. "Blusa blanca con flores", "Vestido bordado de venado", "Hamaca de algodón"), nunca con un color o adjetivo suelto. Si coincide con uno de estos productos del negocio, usa ese término: ${productos.join(', ') || '(sin lista)'}.\n\nFotos:\n${lista}\n\nPara cada nombre da también su artículo definido en español ("el", "la", "los" o "las") según el género y número del producto. Responde solo JSON: {"nombres":["...", ...], "articulos":["la", ...]} en el mismo orden.` }],
     }),
     signal: AbortSignal.timeout(60000),
   });
   const j = await res.json();
   if (!res.ok) throw new Error(j?.error?.message || res.status);
   const t = (j.content || []).filter((b) => b.type === 'text').map((b) => b.text).join('');
-  const nombres = JSON.parse(t.slice(t.indexOf('{'), t.lastIndexOf('}') + 1)).nombres || [];
+  const resp = JSON.parse(t.slice(t.indexOf('{'), t.lastIndexOf('}') + 1));
+  const nombres = resp.nombres || [], articulos = resp.articulos || [];
   for (let i = 0; i < faltan.length; i++) {
     let n = String(nombres[i] || '').trim().slice(0, 60);
     // Respaldo: un nombre que empieza con color o adjetivo ("blanca con flores") se completa con el producto de la descripción.
@@ -88,8 +98,9 @@ async function nombrarFotos(analisis, brief = {}) {
     }
     n = n.charAt(0).toUpperCase() + n.slice(1);
     if (!n) continue;
-    faltan[i].r.nombre = n;
-    await db.q(`UPDATE assets SET analisis = analisis || jsonb_build_object('nombre', $2::text) WHERE id=$1`, [faltan[i].a.id, n]).catch(() => {});
+    const art = /^(el|la|los|las)$/i.test(String(articulos[i] || '').trim()) ? String(articulos[i]).trim().toLowerCase() : articuloDe(n);
+    faltan[i].r.nombre = n; faltan[i].r.articulo = art;
+    await db.q(`UPDATE assets SET analisis = analisis || jsonb_build_object('nombre', $2::text, 'articulo', $3::text) WHERE id=$1`, [faltan[i].a.id, n, art]).catch(() => {});
   }
 }
 
@@ -476,7 +487,7 @@ async function procesarMaterialesBase(entrevistaId, brief = {}, { aceptarLoQueHa
     .sort((p, q) => (q.propio - p.propio) || (q.ancho * q.alto - p.ancho * p.alto));
   if (logos[0]) res.logo = logos[0];
   await nombrarFotos(analisis, brief).catch((e) => console.warn('[materiales] nombrar fotos:', e.message));
-  const ficha = (a, r, extra = {}) => ({ url: r.contenido.url, ancho: r.contenido.ancho, alto: r.contenido.alto, alt: r.descripcion || '', nombre: r.nombre || '', tipo: r.tipo, clave: a.clave, ...extra });
+  const ficha = (a, r, extra = {}) => ({ url: r.contenido.url, ancho: r.contenido.ancho, alto: r.contenido.alto, alt: r.descripcion || '', nombre: r.nombre || '', articulo: r.articulo || '', tipo: r.tipo, clave: a.clave, ...extra });
   const urlsDe = (a, r) => [a.url, r.contenido?.url, r.sin_fondo?.url, r.logo?.url, ...(r.productos || []).map((p) => p.url)].filter(Boolean);
   for (const { a, r } of analisis) {
     const original = copias.get(a.id);
