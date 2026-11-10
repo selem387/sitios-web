@@ -168,6 +168,12 @@ export function redes(c = {}) {
   return [['Instagram', url(r.instagram, 'https://instagram.com/')], ['Facebook', url(/^\d{6,}$/.test(String(r.facebook || '')) ? `profile.php?id=${r.facebook}` : r.facebook, 'https://facebook.com/')], ['TikTok', url(r.tiktok, 'https://tiktok.com/@')], ['YouTube', url(r.youtube, 'https://youtube.com/@')], ['LinkedIn', url(r.linkedin, 'https://www.linkedin.com/company/')]].filter((x) => x[1]);
 }
 
+// Flechas del carrusel de "Nuestro trabajo": avanzan ~80% del ancho visible y se apagan en los extremos.
+const JS_CAR_TRABAJO = `<script>(()=>{document.querySelectorAll('#trabajo').forEach(sec=>{const g=sec.querySelector('.g-car'),a=sec.querySelector('.tr-ant'),b=sec.querySelector('.tr-sig');if(!g||!a||!b)return;
+const est=()=>{a.disabled=g.scrollLeft<4;b.disabled=g.scrollLeft+g.clientWidth>=g.scrollWidth-4;sec.querySelector('.tr-nav').hidden=g.scrollWidth<=g.clientWidth+4};
+a.addEventListener('click',()=>g.scrollBy({left:-g.clientWidth*.8,behavior:'smooth'}));b.addEventListener('click',()=>g.scrollBy({left:g.clientWidth*.8,behavior:'smooth'}));
+g.addEventListener('scroll',est,{passive:true});addEventListener('resize',est,{passive:true});addEventListener('load',est);est()})})();</script>`;
+
 // Diseño "Tu logo al centro" (10-nov-2026): el logo grande de la portada y el de la barra no se ven a la vez;
 // el de la barra aparece cuando el grande sale de la pantalla.
 const JS_LOGO_UNICO = `<script>(()=>{const g=document.querySelector('.h-logo .logo-grande,.h-logo .logo-grande-placa'),b=document.querySelector('.barra');if(!b)return;if(!g||!('IntersectionObserver'in window)){b.classList.add('ver-logo');return;}new IntersectionObserver(([e])=>b.classList.toggle('ver-logo',!e.isIntersecting),{rootMargin:'-70px 0px 0px 0px'}).observe(g);})();</script>`;
@@ -178,6 +184,12 @@ function pagina(d) {
   const usadas = new Set();
   const img = (x, { cls = '', eager = false, sizes = '', extra = '' } = {}) => { usadas.add(x.url); return `<img${cls ? ` class="${cls}"` : ''} src="${esc(x.url)}" alt="${esc(x.alt || '')}" loading="${eager ? 'eager' : 'lazy'}"${x.ancho ? ` width="${x.ancho}" height="${x.alto}"` : ''}${sizes}${extra}>`; };
   const wa = d.wa ? ` href="${esc(d.wa)}" target="_blank" rel="noopener"` : ' href="#contacto"';
+  // WhatsApp con mensaje sobre una foto concreta (para "+ info" del carrusel de trabajo).
+  const waFoto = (x) => {
+    if (!d.wa) return ' href="#contacto"';
+    try { const u = new URL(d.wa); const que = x.alt && x.alt.length < 80 ? ` (${x.alt})` : ''; u.searchParams.set('text', `Hola, quiero más información de esto${que}: ${x.url}`); return ` href="${esc(u.toString())}" target="_blank" rel="noopener"`; } catch { return wa; }
+  };
+  const figTr = (x) => `<figure>${img(x)}<a class="tr-info"${waFoto(x)} aria-label="Más información por WhatsApp">+ info</a></figure>`;
   const logoBarra = logoHTML(mat.logo, p.bg, p.fg, { alt: d.nombre });
   const neg = brief.negocio || {}, conf = brief.confianza || {}, fund = conf.fundador || {};
 
@@ -237,7 +249,9 @@ function pagina(d) {
       if (x?.url && /^(foto|imagen)/.test(x.tipo || 'foto') && !resto.some((y) => y.url === x.url) && (!usadas.has(x.url) || enSlider.has(x.url) || enPortada.has(x.url))) resto.push(x);
     }
     if (!resto.length) return '';
-    return `<section class="sec" id="trabajo"><div class="wrap"><h2>${esc(T.trabajo)}</h2><div class="galeria g-${d.layout}">${resto.map((x) => `<figure>${img(x)}</figure>`).join('')}</div></div></section>`;
+    // Carrusel horizontal (10-nov-2026, pedido de Sebastián): todas las fotos una al lado de la otra, misma altura, se
+    // desliza con el dedo o con las flechas; cada foto lleva "+ info" que abre WhatsApp con la liga de esa foto.
+    return `<section class="sec" id="trabajo"><div class="wrap"><div class="tr-cab"><h2>${esc(T.trabajo)}</h2><div class="tr-nav"><button type="button" class="tr-b tr-ant" aria-label="Fotos anteriores">&#8249;</button><button type="button" class="tr-b tr-sig" aria-label="Más fotos">&#8250;</button></div></div><div class="galeria g-car" tabindex="0" aria-label="${esc(T.trabajo)}">${resto.map(figTr).join('')}</div></div></section>`;
   };
   const grupos = agruparOferta(brief.oferta?.items || []);
   const mostrarPrecios = brief.oferta?.mostrar_precios !== false || brief.oferta?.mostrar_paquetes;
@@ -310,7 +324,7 @@ function pagina(d) {
     const figs = pendientes.map((x) => `<figure style="--r:${r(x)}">${img(x)}</figure>`).join('');
     const enGal = /(<section class="sec" id="trabajo">[\s\S]*?<div class="galeria[^"]*">[\s\S]*?)(<\/div><\/div><\/section>)/;
     if (heroFinal.includes('<div class="just')) heroFinal = heroFinal.replace(/(<div class="just[^"]*">[\s\S]*?)(<\/div><\/div>)(?![\s\S]*<div class="just)/, `$1${figs}$2`);
-    else if (enGal.test(cuerpoFinal)) cuerpoFinal = cuerpoFinal.replace(enGal, (m, a, b) => `${a}${pendientes.map((x) => `<figure>${img(x)}</figure>`).join('')}${b}`);
+    else if (enGal.test(cuerpoFinal)) cuerpoFinal = cuerpoFinal.replace(enGal, (m, a, b) => `${a}${pendientes.map((x) => (a.includes('g-car') ? figTr(x) : `<figure>${img(x)}</figure>`)).join('')}${b}`);
     else galeria = `<div class="wrap">${filaJustificada(pendientes, img)}</div>`;
   }
   // Otras versiones del logo (logo sobre fondo, con lema): firma de marca en el pie, nunca como foto de galería.
@@ -348,6 +362,10 @@ h1,h2,h3{font-family:var(--ft);font-weight:400;line-height:1.06;letter-spacing:-
 .pie-marcas{display:flex;justify-content:center;gap:16px;margin-bottom:18px}.pie-marca{height:auto;width:auto;max-height:140px;max-width:min(80vw,360px);border-radius:12px;object-fit:contain}body.l-logo .barra .logo,body.l-logo .barra [class$="-placa"]{transition:opacity .3s ease}body.l-logo .barra:not(.ver-logo) .logo,body.l-logo .barra:not(.ver-logo) [class$="-placa"]{opacity:0;pointer-events:none}
 .h-carta{padding-top:clamp(56px,8vw,112px);padding-bottom:clamp(28px,4vw,48px)}.h-carta h1{max-width:16ch}.h-carta .sub{max-width:46ch}${CSS_JUSTIFICADA}
 /* galerías */
+.tr-cab{display:flex;align-items:flex-end;justify-content:space-between;gap:16px}.tr-nav{display:flex;gap:8px;margin-bottom:22px}.tr-b{width:46px;height:46px;border-radius:50%;border:1px solid var(--bor);background:var(--card,#fff);color:var(--fg);font-size:26px;line-height:1;cursor:pointer;display:grid;place-items:center}.tr-b:hover{background:var(--fg);color:var(--bg)}.tr-b[disabled]{opacity:.35;cursor:default}
+.galeria.g-car{display:flex;columns:auto;gap:12px;overflow-x:auto;scroll-snap-type:x mandatory;scroll-behavior:smooth;-webkit-overflow-scrolling:touch;scrollbar-width:thin;padding-bottom:10px;overscroll-behavior-x:contain}
+.galeria.g-car figure{position:relative;flex:0 0 auto;margin:0;scroll-snap-align:start;border-radius:12px;overflow:hidden;break-inside:auto}.galeria.g-car img{display:block;height:clamp(340px,52vw,520px);width:auto;max-width:none;border-radius:12px}
+.tr-info{position:absolute;left:12px;bottom:12px;padding:10px 16px;min-height:44px;display:inline-flex;align-items:center;border-radius:999px;background:rgba(255,255,255,.94);color:#111;text-decoration:none;font-weight:600;box-shadow:0 4px 14px rgba(0,0,0,.22);transition:transform .2s ease}.tr-info:hover{transform:translateY(-2px)}
 .galeria{columns:2 160px;column-gap:10px}.galeria figure{break-inside:avoid;margin-bottom:10px}.galeria img{width:100%;height:auto;border-radius:12px}
 .g-editorial{columns:2 150px}.g-carta img,.g-dostonos img{border-radius:4px}.g-logo img{border-radius:999px 999px 14px 14px}
 .g-eq{margin-top:20px}
@@ -392,7 +410,7 @@ ${CSS_MOVIMIENTO}
 <header class="barra"><div class="wrap in">${logoBarra}<nav>${navs.map(([id, n]) => `<a href="#${id}">${esc(n)}</a>`).join('')}</nav></div></header>
 <main>${heroFinal}${cuerpoFinal}${galeria}</main>
 <footer>${marcaPie ? `<div class="pie-marcas">${marcaPie}</div>` : ''}© ${new Date().getFullYear()} ${esc(d.nombre)} · Propuesta ${d.letra}: ${esc(NOMBRES_GENERAL[d.layout])}</footer>
-<span class="etq">Propuesta ${d.letra}</span>${JS_MOVIMIENTO}${d.layout === 'logo' ? JS_LOGO_UNICO : ''}
+<span class="etq">Propuesta ${d.letra}</span>${JS_MOVIMIENTO}${JS_CAR_TRABAJO}${d.layout === 'logo' ? JS_LOGO_UNICO : ''}
 <a class="wa"${wa} aria-label="Escríbeme por WhatsApp"><svg viewBox="0 0 32 32" aria-hidden="true"><path d="M16 3a13 13 0 0 0-11.2 19.6L3 29l6.6-1.7A13 13 0 1 0 16 3Zm0 23.7c-2 0-4-.6-5.7-1.6l-.4-.2-3.9 1 1-3.8-.3-.4A10.7 10.7 0 1 1 16 26.7Zm5.9-8c-.3-.2-1.9-1-2.2-1-.3-.1-.5-.2-.7.1l-1 1.3c-.2.2-.4.2-.7.1a8.8 8.8 0 0 1-4.4-3.8c-.3-.6.3-.5.9-1.7.1-.2 0-.4 0-.6l-1-2.4c-.3-.6-.5-.5-.7-.5h-.6c-.2 0-.6.1-.9.4-.3.3-1.2 1.1-1.2 2.8s1.2 3.2 1.4 3.5c.2.2 2.4 3.6 5.7 5 2.1.9 3 1 4 .8.7-.1 1.9-.8 2.2-1.5.3-.8.3-1.4.2-1.5l-.6-.3Z"/></svg></a>
 </body></html>`;
   return html;
