@@ -99,3 +99,89 @@ export async function revisarOpciones(opciones, { referencia = null, pedido = ''
   }
   return out;
 }
+
+/* ======================= Agente de revisión y corrección (10-nov-2026) =======================
+ * Antes de mandar las propuestas: revisa cada opción (código + IA), y a las que fallan les aplica una corrección de
+ * estilos hecha por una IA "directora de arte" siguiendo las reglas de diseño vigentes del proyecto; vuelve a revisar.
+ * Nunca toca textos del cliente ni quita o cambia fotos/logo (regla dura): solo CSS que se agrega al final de la página.
+ * Solo se mandan las opciones que pasan. */
+import fs from 'node:fs/promises';
+import path from 'node:path';
+import { DIR_PROPUESTAS } from './propuestas_html.js';
+
+const REGLAS_DISENO = `Reglas de diseño vigentes (bibliografía de tipografía y color 2026 del proyecto):
+- Columna única alineada: logo, titulares, fotos y secciones empiezan en el mismo borde izquierdo de la columna (max 1140 px).
+- Escala tipográfica fluida: titular de portada de exhibición (≈ 1/14 del ancho de la columna en computadora, 56–90 px); cuerpo 16–19 px; ningún texto de lectura por debajo del 90% del cuerpo; títulos de tarjeta un paso arriba del cuerpo.
+- Aire: ningún texto ni botón pegado al borde de su sección (mínimo 40 px en computadora); ritmo vertical constante.
+- Fotos enteras y proporcionadas (sin deformar ni recortar caras); filas de fotos a la misma altura llenando la columna, sin huecos grandes.
+- Colores 60-30-10 tomados de la paleta del logo: neutro claro derivado del logo, color protagonista del logo, acento del logo; contraste AA.
+- El logo se ve completo y una sola vez por pantalla.`;
+
+const ESQUEMA_CORRECCION = {
+  type: 'object',
+  properties: {
+    css: { type: 'string', description: 'CSS que corrige los problemas. Solo estilos; sin @import, sin url() externas, sin ocultar fotos, logo ni textos del cliente.' },
+    explicacion: { type: 'string' },
+  },
+  required: ['css'],
+};
+
+const archivoDe = (url) => { const m = String(url || '').match(/\/p\/([A-Za-z0-9]{8,40})\/([A-F])\b/); return m ? path.join(DIR_PROPUESTAS, m[1], `${m[2]}.html`) : null; };
+
+// CSS seguro: fuera @import/url()/expression y cualquier regla que oculte imágenes, el logo o textos.
+function cssSeguro(css) {
+  let c = String(css || '').slice(0, 6000).replace(/<\/?style[^>]*>/gi, '').replace(/@import[^;]*;?/gi, '').replace(/url\([^)]*\)/gi, 'none').replace(/expression\(/gi, '');
+  c = c.replace(/[^{}]*\{[^{}]*(display\s*:\s*none|visibility\s*:\s*hidden|opacity\s*:\s*0(\.0+)?\s*[;}!])[^{}]*\}/gi, '');
+  return c.trim();
+}
+
+async function corregirUna(o, problemas, caps) {
+  const archivo = archivoDe(o.url);
+  if (!archivo) return false;
+  const html = await fs.readFile(archivo, 'utf8').catch(() => null);
+  if (!html) return false;
+  // Estructura (sin scripts ni estilos) para que la IA conozca clases y jerarquía.
+  const estructura = html.replace(/<script[\s\S]*?<\/script>/gi, '').replace(/<style[\s\S]*?<\/style>/gi, '').replace(/\s(src|srcset|alt)="[^"]*"/g, '').replace(/>[^<]{60,}</g, (m) => `>${m.slice(1, 58)}…<`).slice(0, 14000);
+  const estilos = (html.match(/<style[^>]*>([\s\S]*?)<\/style>/gi) || []).join('\n').replace(/<\/?style[^>]*>/gi, '').slice(-9000);
+  const contenido = [{ type: 'text', text: `${REGLAS_DISENO}\n\nOpción ${o.letra} ("${o.nombre}"). PROBLEMAS DETECTADOS (corrígelos todos):\n- ${problemas.join('\n- ')}\n\nESTRUCTURA HTML:\n${estructura}\n\nCSS ACTUAL (final):\n${estilos}` }];
+  for (const c of caps || []) if (c.url) contenido.push({ type: 'text', text: c.vista }, { type: 'image', source: { type: 'url', url: c.url } });
+  try {
+    const r = await pedirJSON({
+      system: 'Eres directora de arte y desarrolladora front-end. Corriges una página web SOLO con CSS que se agrega al final. No cambies textos, no ocultes ni quites fotos, logo o contenido; no deformes fotos. Usa selectores específicos (con body delante si hace falta ganar especificidad) y media queries para computadora (min-width:900px) y celular.',
+      contenido, schema: ESQUEMA_CORRECCION, model: config.anthropicModel, max_tokens: 2500, timeoutMs: 180000,
+    });
+    const css = cssSeguro(r.data.css);
+    if (!css) return false;
+    const bloque = `<style data-correccion="agente">\n${css}\n</style>`;
+    const nuevo = html.includes('data-correccion="agente"') ? html.replace(/<style data-correccion="agente">[\s\S]*?<\/style>/, bloque) : html.replace('</head>', `${bloque}\n</head>`);
+    await fs.writeFile(archivo, nuevo, 'utf8');
+    return true;
+  } catch (err) {
+    console.error('[agente revisión] corrección', o.letra, err.message);
+    return false;
+  }
+}
+
+/**
+ * Revisa y corrige las opciones antes de mandarlas. Devuelve {pasan:[opciones], revision:[...]}.
+ * Sin servicio de capturas configurado no bloquea el envío (devuelve todas).
+ */
+export async function revisarYCorregir(opciones, { referencia = null, pedido = '', rondas = 2, presupuestoMs = 6 * 60000 } = {}) {
+  if (!config.renderUrl) return { pasan: opciones, revision: [], sin_revision: true };
+  const t0 = Date.now();
+  let revision = await revisarOpciones(opciones, { referencia, pedido });
+  for (let k = 0; k < rondas && Date.now() - t0 < presupuestoMs; k++) {
+    const malas = revision.filter((x) => !x.ok && !x.error && !x.sin_capturas);
+    if (!malas.length) break;
+    const corregidas = [];
+    for (const m of malas) {
+      const o = opciones.find((x) => x.letra === m.letra);
+      if (o && await corregirUna(o, m.problemas || [], (m.capturas || []).map((url, i) => ({ url, vista: ['computadora', 'celular', 'galería'][i] || 'captura' })))) corregidas.push(o);
+    }
+    if (!corregidas.length) break;
+    const nueva = await revisarOpciones(corregidas, { referencia, pedido });
+    revision = revision.map((x) => nueva.find((n) => n.letra === x.letra) || x);
+  }
+  const pasan = opciones.filter((o) => revision.find((x) => x.letra === o.letra)?.ok !== false);
+  return { pasan, revision };
+}

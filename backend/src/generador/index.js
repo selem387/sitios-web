@@ -4,6 +4,7 @@
 //   GET  /entrevista/v1/sitios/:id                                                 → estado + reporte
 // Mismo X-API-Key que la entrevista.
 import crypto from 'node:crypto';
+import { revisarYCorregir } from './revision_visual.js';
 import { config } from '../config.js';
 import { HttpError } from '../util.js';
 import * as db from '../entrevista/db.js';
@@ -414,10 +415,13 @@ export function registerGeneradorRoutes(app, wrap) {
     const textos = await textosPropuestas(e.brief || {}, mat);
     // token opcional: regenerar sobre las mismas ligas que ya tiene el cliente.
     const r = await crearPropuestasHTML(e.brief || {}, mat, textos, /^[A-Za-z0-9]{8,40}$/.test(b.token || '') ? { token: b.token } : {});
-    const opciones = r.opciones.map((o) => ({ etiqueta: o.letra, letra: o.letra, layout: o.layout, nombre: o.nombre, url: o.url, estilo: o.fuentes.estilo, tipografia: { titulos: o.fuentes.titulos, cuerpo: o.fuentes.cuerpo }, paleta: o.paleta }));
+    const todas = r.opciones.map((o) => ({ etiqueta: o.letra, letra: o.letra, layout: o.layout, nombre: o.nombre, url: o.url, estilo: o.fuentes.estilo, tipografia: { titulos: o.fuentes.titulos, cuerpo: o.fuentes.cuerpo }, paleta: o.paleta }));
+    // Agente de revisión y corrección antes de guardarlas como mostradas ({revisar:false} para saltarlo).
+    const rev = b.revisar === false ? { pasan: todas, revision: [] } : await revisarYCorregir(todas, { referencia: (e.brief?.marca?.referencias_sitios || [])[0] || null });
+    const opciones = rev.pasan.length >= 2 ? rev.pasan : todas;
     const brief = { ...e.brief, marca: { ...e.brief.marca, propuestas: { estado: 'mostradas', token: r.token, opciones, textos, usados: [r.token] } } };
     await db.guardar(e.id, { brief });
-    return { token: r.token, opciones: opciones.map((o) => ({ letra: o.letra, nombre: o.nombre, url: o.url, fuentes: o.tipografia })) };
+    return { token: r.token, opciones: opciones.map((o) => ({ letra: o.letra, nombre: o.nombre, url: o.url, fuentes: o.tipografia })), revision: (rev.revision || []).map(({ letra, ok, problemas }) => ({ letra, ok, problemas })) };
   }));
 
   // Conectar el dominio del cliente a su sitio en vivo (opción elegida): {dominio, sesion_id}. Sin elección → 409.

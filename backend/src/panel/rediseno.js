@@ -11,7 +11,7 @@ import { estudiarReferencias } from '../entrevista/referencias.js';
 import { procesarMateriales } from '../generador/materiales.js';
 import { crearPropuestasHTML } from '../generador/propuestas_html.js';
 import { construirDireccion, PRESETS, LISTA_PRESETS } from '../generador/estilo_ref.js';
-import { revisarOpciones } from '../generador/revision_visual.js';
+import { revisarYCorregir } from '../generador/revision_visual.js';
 import { aplicarContenido, porEntrevista } from './sitios.js';
 
 const ESTILOS = ['minimalista', 'fresco', 'calido', 'elegante', 'tecnologico', 'tradicional', 'lujo', 'divertido'];
@@ -83,8 +83,8 @@ export async function prepararOpcionesNuevas(entrevistaId, { comentario = '', re
       const ronda = baseRonda + intento;
       const r = await crearPropuestasHTML(brief, mat, textos, { ronda });
       const opciones = r.opciones.map((o) => ({ etiqueta: o.letra, letra: o.letra, layout: o.layout, nombre: o.nombre, url: o.url, estilo: o.fuentes.estilo, tipografia: { titulos: o.fuentes.titulos, cuerpo: o.fuentes.cuerpo }, paleta: o.paleta }));
-      const revision = await revisarOpciones(opciones, { referencia: ligas[0] || null, pedido: comentario });
-      const pasan = opciones.filter((o) => revision.find((x) => x.letra === o.letra)?.ok);
+      // Agente de revisión: revisa, corrige con CSS las que fallan y vuelve a revisar (10-nov-2026).
+      const { revision, pasan } = await revisarYCorregir(opciones, { referencia: ligas[0] || null, pedido: comentario });
       await db.evento(e.id, 'revision_opciones', { intento, token: r.token, pasan: pasan.map((o) => o.letra), revision: revision.map(({ capturas, ...x }) => ({ ...x, capturas })) });
       ultima = { r, opciones, pasan, revision, aj, ronda };
       if (!mejor || pasan.length > mejor.pasan.length) mejor = ultima;

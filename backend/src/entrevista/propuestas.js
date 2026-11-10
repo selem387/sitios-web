@@ -6,6 +6,7 @@
 import { procesarMateriales } from '../generador/materiales.js';
 import { interpretarEleccion } from '../generador/opciones.js';
 import { crearPropuestasHTML, textosPropuestas } from '../generador/propuestas_html.js';
+import { revisarYCorregir } from '../generador/revision_visual.js';
 import { coloresDePalabras } from '../generador/materiales.js';
 import * as db from './db.js';
 import { pedirJSON } from './claude.js';
@@ -50,10 +51,10 @@ function mensajeOpciones(op, brief, mat, ronda = 0) {
   const nota = h ? `Una nota sobre tus colores: ${h.mensaje_cliente}${conF ? ' La *F* ya trae ese ajuste para que compares; las demás usan tus colores tal cual.' : ''}` : null;
   return {
     textos: [
-      `${ronda ? 'Aquí van 6 propuestas nuevas, con otros colores, letras y acomodo' : 'Te preparé 6 propuestas de tu página'}, con ${queIncluye(brief, mat)}. Ábrelas en tu celular y recórrelas completas 👇`,
+      `${ronda ? `Aquí van ${op.opciones.length} propuestas nuevas, con otros colores, letras y acomodo` : `Te preparé ${op.opciones.length} propuestas de tu página`}, con ${queIncluye(brief, mat)}. Ábrelas en tu celular y recórrelas completas 👇`,
       lista,
       ...(nota ? [nota] : []),
-      '¿Cuál te gusta más? Respóndeme con la letra (*A* a *F*). También puedes pedir mezclas, por ejemplo _la B con los colores de la E_. Si ninguna te convence, dime *ninguna* y qué te gustaría distinto.',
+      `¿Cuál te gusta más? Respóndeme con la letra (${op.opciones.map((o) => `*${o.letra}*`).join(', ')}). También puedes pedir mezclas, por ejemplo _la B con los colores de la E_. Si ninguna te convence, dime *ninguna* y qué te gustaría distinto.`,
     ],
     media: [],
   };
@@ -128,10 +129,21 @@ async function aplicarRechazo(brief, d, comentarios) {
 
 export async function mostrar(e, brief, mat, { ronda = 0 } = {}) {
   const textos = await textosPropuestas(brief, mat);
-  const r = await crearPropuestasHTML(brief, mat, textos, { ronda });
   const prev = brief.marca?.propuestas || {};
-  const opciones = r.opciones.map((o) => ({ etiqueta: o.letra, letra: o.letra, layout: o.layout, nombre: o.nombre, url: o.url, estilo: o.fuentes.estilo, tipografia: { titulos: o.fuentes.titulos, cuerpo: o.fuentes.cuerpo }, paleta: o.paleta }));
-  return { propuestas: { ...prev, estado: 'mostradas', token: r.token, opciones, textos, ronda, asesor_color: r.asesor?.hallazgos || [], usados: [...(prev.usados || []), r.token] }, salida: mensajeOpciones({ opciones, asesor: r.asesor }, brief, mat, ronda) };
+  // Agente de revisión visual y corrección (10-nov-2026): antes de mandarlas, cada opción se revisa (código + IA) y las
+  // que fallan se corrigen y se vuelven a revisar. Solo se mandan las que pasan; con menos de 4, se intenta otra ronda.
+  let mejor = null;
+  for (let intento = 0; intento < 2; intento++) {
+    const r = await crearPropuestasHTML(brief, mat, textos, { ronda: ronda + intento });
+    const opciones = r.opciones.map((o) => ({ etiqueta: o.letra, letra: o.letra, layout: o.layout, nombre: o.nombre, url: o.url, estilo: o.fuentes.estilo, tipografia: { titulos: o.fuentes.titulos, cuerpo: o.fuentes.cuerpo }, paleta: o.paleta }));
+    const rev = await revisarYCorregir(opciones, { referencia: (brief.marca?.referencias_sitios || [])[0] || null }).catch((err) => { console.error('[propuestas] revisión', err.message); return { pasan: opciones, revision: [] }; });
+    if (e?.id) await db.evento(e.id, 'revision_opciones', { intento, token: r.token, pasan: rev.pasan.map((o) => o.letra), revision: (rev.revision || []).map(({ letra, ok, problemas }) => ({ letra, ok, problemas })) }).catch(() => {});
+    if (!mejor || rev.pasan.length > mejor.pasan.length) mejor = { r, pasan: rev.pasan, ronda: ronda + intento };
+    if (rev.pasan.length >= 4) break;
+  }
+  const { r, pasan } = mejor;
+  const opciones = pasan.length >= 2 ? pasan : r.opciones.map((o) => ({ etiqueta: o.letra, letra: o.letra, layout: o.layout, nombre: o.nombre, url: o.url, estilo: o.fuentes.estilo, tipografia: { titulos: o.fuentes.titulos, cuerpo: o.fuentes.cuerpo }, paleta: o.paleta }));
+  return { propuestas: { ...prev, estado: 'mostradas', token: r.token, opciones, textos, ronda: mejor.ronda, asesor_color: r.asesor?.hallazgos || [], usados: [...(prev.usados || []), r.token] }, salida: mensajeOpciones({ opciones, asesor: r.asesor }, brief, mat, mejor.ronda) };
 }
 
 /**
