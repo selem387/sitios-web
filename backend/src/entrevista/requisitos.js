@@ -17,6 +17,11 @@ export const logoRecibido = (assets = []) => assets.some((a) => a.tipo === 'logo
 // id · bloque · cumple(brief, assets) · pedir (texto para el cliente si hay que volver a pedirlo) · puedeNoTener
 export const REQUISITOS = [
   { id: 'nombre_cliente', bloque: 'B0', cumple: (b) => !vacio(b.cliente?.nombre), pedir: '¿Cómo te llamas?' },
+  // WhatsApp del negocio (10-nov-2026, pedido de Sebastián): se pide ANTES de las redes, porque todos los botones de la
+  // página ("Escríbenos", "+ info", el botón flotante) abren ese WhatsApp. Si dice que no lo tiene o no lo sabe, se
+  // intenta sacar de sus redes (la extracción llena contacto.whatsapp/telefono); no se vuelve a preguntar en B9.
+  { id: 'whatsapp_negocio', bloque: 'B0', puedeNoTener: true, cumple: (b) => !vacio(b.contacto?.whatsapp) || !vacio(b.contacto?.telefono),
+    pedir: '¿A qué número de WhatsApp quieres que te escriban tus clientes desde tu página? Si no lo tienes a la mano, dime y lo busco en tus redes.' },
   // Ligas de Facebook/Instagram justo después del nombre: de ahí salen nombre, giro, ciudad, servicios, logo y fotos.
   { id: 'redes', bloque: 'B0', puedeNoTener: true, cumple: (b) => !!b.redes_extraccion || !vacio(b.contacto?.redes?.facebook) || !vacio(b.contacto?.redes?.instagram),
     pedir: '¿Tu negocio tiene página de Facebook o Instagram? Mándame las ligas (o tu @usuario) y de ahí tomo tu logo, tus fotos y tus datos para hacerte menos preguntas. Si no tienes, dime y seguimos.' },
@@ -38,7 +43,7 @@ export const REQUISITOS = [
   // Una pregunta sin respuesta no se publica (la sección no sale): cuentan solo las que traen respuesta, y se pide la que falte.
   { id: 'faq', bloque: 'B8', puedeNoTener: true, cumple: (b) => faqConRespuesta(b) >= 3 && !faqSinRespuesta(b).length,
     pedir: (b) => { const sin = faqSinRespuesta(b); return sin.length ? `¿Cómo le contestas a tus clientes cuando te preguntan "${String(sin[0].pregunta).trim()}"? Escríbemelo tal cual quieres que aparezca en tu página.` : '¿Qué te preguntan SIEMPRE tus clientes antes de contratar? Dime 3 o 4, con cómo las contestas tú.'; } },
-  { id: 'whatsapp', bloque: 'B9', cumple: (b) => !vacio(b.contacto?.whatsapp) || !vacio(b.contacto?.telefono), pedir: '¿A qué número de WhatsApp quieres que te escriban desde la página? ¿Es el mismo que este?' },
+  { id: 'whatsapp', bloque: 'B9', cumple: (b) => !vacio(b.contacto?.whatsapp) || !vacio(b.contacto?.telefono) || noTiene(b, 'whatsapp_negocio'), pedir: '¿A qué número de WhatsApp quieres que te escriban desde la página? ¿Es el mismo que este?' },
   { id: 'horarios', bloque: 'B9', puedeNoTener: true, cumple: (b) => !vacio(b.contacto?.horarios), pedir: '¿Cuáles son tus horarios de atención?' },
 ];
 
@@ -100,7 +105,7 @@ const TEMA = {
 };
 // Temas opcionales (no son requisitos): si dijo que no los tiene, tampoco se vuelven a preguntar.
 export const OPCIONALES = { certificaciones: 'certificaciones, premios o reconocimientos', cifras: 'cifras o números (años, clientes, trámites)', garantias: 'garantías', historia: 'historia del negocio', equipo: 'equipo', otro_dato_confianza: 'otro dato de confianza' };
-const ETIQUETA = { redes: 'página de Facebook o Instagram', testimonios: 'reseñas o testimonios', faq: 'preguntas frecuentes', diferenciador: 'diferenciador', horarios: 'horarios', logo: 'logotipo', ...OPCIONALES };
+const ETIQUETA = { whatsapp_negocio: 'número de WhatsApp', redes: 'página de Facebook o Instagram', testimonios: 'reseñas o testimonios', faq: 'preguntas frecuentes', diferenciador: 'diferenciador', horarios: 'horarios', logo: 'logotipo', ...OPCIONALES };
 const norm = (x) => String(x || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-zñ0-9 ]+/g, ' ').replace(/\s+/g, ' ').trim();
 const NEG = /^(no+|nop|nel|nada|ningun[oa]?s?|aun no|todavia no|por ahora no|no por (ahora|el momento)|sin \w+|de momento no)( (no|tengo|tenemos|hay|cuento|contamos|con|ninguna?o?s?|las|los|la|lo|ahorita|aun|todavia|por ahora|resenas|testimonios|comentarios|logo|redes|redes sociales|facebook|instagram|face|insta|ni|horarios?|nada|gracias|la verdad|realmente|fijo|todavia no))*$/;
 
