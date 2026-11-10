@@ -263,7 +263,7 @@ export function esVersionLogo(r = {}) {
 export async function analizarAsset(a, { negocio = '' } = {}) {
   // Logos recortados con la caja justa del modelo (antes de 10-nov-2026) salían con las letras cortadas: esos análisis
   // se rehacen una vez (solo los que tienen logo) para recortarlo con margen.
-  if (a.analisis?.version === VERSION && !(a.analisis.logo && !a.analisis.logo_caja)) {
+  if (a.analisis?.version === VERSION && !(a.analisis.logo && a.analisis.logo_v !== 3)) {
     if (!a.analisis.huella) {
       a.analisis.huella = await descargar(a.analisis.contenido?.url || a.url).then(huella).catch(() => null);
       if (a.analisis.huella) await db.q(`UPDATE assets SET analisis = analisis || jsonb_build_object('huella', $2::text) WHERE id=$1`, [a.id, a.analisis.huella]).catch(() => {});
@@ -301,7 +301,7 @@ export async function analizarAsset(a, { negocio = '' } = {}) {
   // un logo dentro de otra imagen se amplía lado por lado hasta topar con una franja de puro fondo (no se cortan letras
   // ni se mete medio lema o el marco decorativo).
   const lb = v.tipo === 'logo' ? { left: 0, top: 0, width: W, height: H } : await ampliarHastaFondo(original, caja(v.logo, W, H, 0.005), W, H).catch(() => caja(v.logo, W, H, 0.02));
-  if (lb) out.logo_caja = { x: lb.left / W, y: lb.top / H, w: lb.width / W, h: lb.height / H };
+  if (lb) { out.logo_caja = { x: lb.left / W, y: lb.top / H, w: lb.width / W, h: lb.height / H }; out.logo_v = 3; }
   if (lb) {
     try {
       let buf = await recortar(original, lb);
