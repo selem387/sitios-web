@@ -187,9 +187,16 @@ function pagina(d) {
   // WhatsApp con mensaje sobre una foto concreta (para "+ info" del carrusel de trabajo).
   const waFoto = (x) => {
     if (!d.wa) return ' href="#contacto"';
-    try { const u = new URL(d.wa); const que = x.alt && x.alt.length < 80 ? ` (${x.alt})` : ''; u.searchParams.set('text', `Hola, quiero más información de esto${que}: ${x.url}`); return ` href="${esc(u.toString())}" target="_blank" rel="noopener"`; } catch { return wa; }
+    try {
+      const u0 = new URL(d.wa), tel = (u0.pathname.match(/\d{8,}/) || [u0.searchParams.get('phone') || ''])[0];
+      const nombre = (x.nombre || (x.alt || '').split(/[,.;]/)[0] || 'este producto').trim();
+      const texto = `Hola, me interesa: ${nombre}. ¿Me das más información?`;
+      // api.whatsapp.com/send con app_absent=0 abre el chat directo (app en celular, WhatsApp Web en computadora).
+      const u = `https://api.whatsapp.com/send/?phone=${tel}&text=${encodeURIComponent(texto)}&type=phone_number&app_absent=0`;
+      return ` href="${esc(u)}" target="_blank" rel="noopener"`;
+    } catch { return wa; }
   };
-  const figTr = (x) => `<figure>${img(x)}<a class="tr-info"${waFoto(x)} aria-label="Más información por WhatsApp">+ info</a></figure>`;
+  const figTr = (x) => `<figure>${img(x)}<a class="tr-info"${waFoto(x)} aria-label="Pedir información de ${esc(x.nombre || 'esta foto')} por WhatsApp">+ info</a></figure>`;
   const logoBarra = logoHTML(mat.logo, p.bg, p.fg, { alt: d.nombre });
   const neg = brief.negocio || {}, conf = brief.confianza || {}, fund = conf.fundador || {};
 
@@ -365,7 +372,7 @@ h1,h2,h3{font-family:var(--ft);font-weight:400;line-height:1.06;letter-spacing:-
 .tr-cab{display:flex;align-items:flex-end;justify-content:space-between;gap:16px}.tr-nav{display:flex;gap:8px;margin-bottom:22px}.tr-b{width:46px;height:46px;border-radius:50%;border:1px solid var(--bor);background:var(--card,#fff);color:var(--fg);font-size:26px;line-height:1;cursor:pointer;display:grid;place-items:center}.tr-b:hover{background:var(--fg);color:var(--bg)}.tr-b[disabled]{opacity:.35;cursor:default}
 .galeria.g-car{display:flex;columns:auto;gap:12px;overflow-x:auto;scroll-snap-type:x mandatory;scroll-behavior:smooth;-webkit-overflow-scrolling:touch;scrollbar-width:thin;padding-bottom:10px;overscroll-behavior-x:contain}
 .galeria.g-car figure{position:relative;flex:0 0 auto;margin:0;scroll-snap-align:start;border-radius:12px;overflow:hidden;break-inside:auto}.galeria.g-car img{display:block;height:clamp(340px,52vw,520px);width:auto;max-width:none;border-radius:12px}
-.tr-info{position:absolute;left:12px;bottom:12px;padding:10px 16px;min-height:44px;display:inline-flex;align-items:center;border-radius:999px;background:rgba(255,255,255,.94);color:#111;text-decoration:none;font-weight:600;box-shadow:0 4px 14px rgba(0,0,0,.22);transition:transform .2s ease}.tr-info:hover{transform:translateY(-2px)}
+.tr-info{position:absolute;left:10px;bottom:10px;padding:4px 10px;min-height:28px;font-size:15px;display:inline-flex;align-items:center;border-radius:999px;background:rgba(255,255,255,.94);color:#111;text-decoration:none;font-weight:600;box-shadow:0 3px 10px rgba(0,0,0,.22);transition:transform .2s ease;line-height:1.2}.tr-info:hover{transform:translateY(-2px)}
 .galeria{columns:2 160px;column-gap:10px}.galeria figure{break-inside:avoid;margin-bottom:10px}.galeria img{width:100%;height:auto;border-radius:12px}
 .g-editorial{columns:2 150px}.g-carta img,.g-dostonos img{border-radius:4px}.g-logo img{border-radius:999px 999px 14px 14px}
 .g-eq{margin-top:20px}

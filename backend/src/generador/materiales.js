@@ -32,6 +32,7 @@ const PROMPT = (negocio) => `Analiza esta imagen que el dueño de "${negocio || 
  "resena": {"nombre":"", "texto":""} | null, // si es captura de reseña: quién la escribió y el texto tal cual
  "colores": ["#RRGGBB"],                    // 3-5 colores dominantes del diseño de la marca
  "calidad": "buena" | "regular" | "mala",
+ "nombre": "",                              // si es foto de producto o trabajo: cómo lo llamaría un cliente, 2 a 5 palabras (p. ej. "Blusa bordada de flores")
  "descripcion": ""                          // una frase en español
 }`;
 
@@ -53,6 +54,37 @@ async function visionJSON(buf, mime, negocio) {
   const t = (j.content || []).filter((b) => b.type === 'text').map((b) => b.text).join('');
   const i = t.indexOf('{'), k = t.lastIndexOf('}');
   return JSON.parse(t.slice(i, k + 1));
+}
+
+/**
+ * Nombre corto de cada foto de producto/trabajo (10-nov-2026): lo usa "+ info" para pedir informes por WhatsApp
+ * llamando al producto por su nombre. Las fotos analizadas antes de existir el campo se nombran en una sola llamada de
+ * texto (con los nombres de productos del cliente como referencia) y se guarda en el análisis para no repetirlo.
+ */
+async function nombrarFotos(analisis, brief = {}) {
+  const faltan = analisis.filter(({ r }) => !r.nombre && r.descripcion && /^foto/.test(r.tipo || ''));
+  if (!faltan.length) return;
+  const productos = (brief.oferta?.items || []).map((x) => x?.nombre).filter(Boolean).slice(0, 30);
+  const lista = faltan.map(({ r }, i) => `${i + 1}. ${r.descripcion}`).join('\n');
+  const res = await fetch(`${config.anthropicBaseUrl}/v1/messages`, {
+    method: 'POST',
+    headers: { 'x-api-key': config.anthropicApiKey, 'anthropic-version': '2023-06-01', 'content-type': 'application/json' },
+    body: JSON.stringify({
+      model: config.anthropicModel, max_tokens: 1500,
+      messages: [{ role: 'user', content: `Da a cada foto un nombre corto de producto (2 a 5 palabras, en español, como lo pediría un cliente; sin "modelo", "mujer" ni "foto"). Si coincide con uno de estos productos del negocio, usa ese término: ${productos.join(', ') || '(sin lista)'}.\n\nFotos:\n${lista}\n\nResponde solo JSON: {"nombres":["...", ...]} en el mismo orden.` }],
+    }),
+    signal: AbortSignal.timeout(60000),
+  });
+  const j = await res.json();
+  if (!res.ok) throw new Error(j?.error?.message || res.status);
+  const t = (j.content || []).filter((b) => b.type === 'text').map((b) => b.text).join('');
+  const nombres = JSON.parse(t.slice(t.indexOf('{'), t.lastIndexOf('}') + 1)).nombres || [];
+  for (let i = 0; i < faltan.length; i++) {
+    const n = String(nombres[i] || '').trim().slice(0, 60);
+    if (!n) continue;
+    faltan[i].r.nombre = n;
+    await db.q(`UPDATE assets SET analisis = analisis || jsonb_build_object('nombre', $2::text) WHERE id=$1`, [faltan[i].a.id, n]).catch(() => {});
+  }
 }
 
 /** Quita el fondo con el servicio render (rembg). Devuelve null si no está disponible. */
@@ -437,7 +469,8 @@ async function procesarMaterialesBase(entrevistaId, brief = {}, { aceptarLoQueHa
     .filter((l, _, arr) => l.propio || (!arr.some((o) => o.propio) && l.ancho >= MIN_LOGO))
     .sort((p, q) => (q.propio - p.propio) || (q.ancho * q.alto - p.ancho * p.alto));
   if (logos[0]) res.logo = logos[0];
-  const ficha = (a, r, extra = {}) => ({ url: r.contenido.url, ancho: r.contenido.ancho, alto: r.contenido.alto, alt: r.descripcion || '', tipo: r.tipo, clave: a.clave, ...extra });
+  await nombrarFotos(analisis, brief).catch((e) => console.warn('[materiales] nombrar fotos:', e.message));
+  const ficha = (a, r, extra = {}) => ({ url: r.contenido.url, ancho: r.contenido.ancho, alto: r.contenido.alto, alt: r.descripcion || '', nombre: r.nombre || '', tipo: r.tipo, clave: a.clave, ...extra });
   const urlsDe = (a, r) => [a.url, r.contenido?.url, r.sin_fondo?.url, r.logo?.url, ...(r.productos || []).map((p) => p.url)].filter(Boolean);
   for (const { a, r } of analisis) {
     const original = copias.get(a.id);

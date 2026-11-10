@@ -59,7 +59,7 @@ export async function revisarPagina(page) {
     const lectura = Array.from(document.querySelectorAll('main p, main li, main span, main dd')).filter((e) => visible(e) && !e.children.length && (e.textContent || '').trim().length > 25 && !e.closest('.sl,.etq,.wa,footer,.kicker,.btn,nav,.info'));
     const visible2 = visible;
     // Piso de 20 px (10-nov-2026) para todo texto del sitio; excepciones: contador del slider y etiqueta "Propuesta X".
-    const todos = Array.from(document.querySelectorAll('body *')).filter((e) => visible(e) && !e.children.length && (e.textContent || '').trim().length > 1 && !e.closest('.sl-pos,.etq,.sl-b,svg,script,style'));
+    const todos = Array.from(document.querySelectorAll('body *')).filter((e) => visible(e) && !e.children.length && (e.textContent || '').trim().length > 1 && !e.closest('.sl-pos,.etq,.sl-b,.tr-info,svg,script,style'));
     const chicos = todos.filter((e) => px(e) < 19.5).concat(lectura.filter((e) => px(e) < cuerpo * 0.86));
     if (chicos.length) prob.push(`texto desproporcionadamente chico: ${Math.round(px(chicos[0]))}px (mínimo 20px; cuerpo ${Math.round(cuerpo)}px) ("${chicos[0].textContent.trim().slice(0, 40)}")`);
     if (W >= 1200) {

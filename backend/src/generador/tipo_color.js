@@ -408,7 +408,7 @@ export const REGLA_TIPO_COLOR = {
  * sube. Excepciones: el contador del slider (1/5) y la etiqueta "Propuesta X" (no son texto del sitio).
  */
 export const PISO_TEXTO_PX = 20;
-const EXCEPCIONES_PISO = /\.sl-pos|\.etq\b|\.sl-b\b|svg|::?marker|\.ico\b/;
+const EXCEPCIONES_PISO = /\.sl-pos|\.etq\b|\.sl-b\b|\.tr-info|svg|::?marker|\.ico\b/; // .tr-info: botón "+ info" reducido 50% a pedido (10-nov-2026)
 export function conPisoTexto(html, piso = PISO_TEXTO_PX) {
   const ajusta = (decl) => decl.replace(/font-size\s*:\s*([^;}!]+)(!important)?/gi, (m, v, imp) => {
     const val = v.trim();
