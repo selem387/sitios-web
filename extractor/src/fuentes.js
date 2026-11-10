@@ -1,6 +1,8 @@
 // Normaliza ligas y convierte lo que devuelven los actores de Apify (o la página pública) a un formato común.
 const limpio = (v) => (typeof v === 'string' ? v.trim() : '');
 const esUrl = (v) => typeof v === 'string' && /^https?:\/\//i.test(v);
+// Ligas que no son un sitio web propio (redes, WhatsApp, mapas, agregadores de enlaces).
+const NO_ES_SITIO = /instagram|facebook|tiktok|youtube|linkedin|wa\.me|whatsapp|maps\.google|google\.[a-z.]+\/maps|goo\.gl\/maps|maps\.app\.goo\.gl|linktr\.ee/i;
 
 /** "@toolatte", "instagram.com/toolatte/", "https://www.instagram.com/toolatte?igsh=x" → URL canónica, o null. */
 export function urlInstagram(v) {
@@ -62,7 +64,7 @@ export function deFacebook(p = {}) {
     else if (/youtube\.com|youtu\.be/i.test(u)) redes.youtube = u;
     else if (/linkedin\.com/i.test(u)) redes.linkedin = u;
   }
-  const sitio = [p.website, ...(p.websites || [])].find((u) => u && !/instagram|facebook|tiktok|youtube|linkedin|wa\.me|whatsapp/i.test(u)) || null;
+  const sitio = [p.website, ...(p.websites || [])].find((u) => esUrl(u) && !NO_ES_SITIO.test(u)) || null;
   const wa = [...(p.websites || []), p.whatsapp, p.whatsappNumber].find((u) => /wa\.me|whatsapp/i.test(String(u || '')));
   return {
     nombre: limpio(p.title || p.pageName || p.name) || null,
@@ -114,7 +116,7 @@ export function deInstagram(p = {}) {
     email: limpio(p.businessEmail || p.publicEmail) || bio.match(/[\w.+-]+@[\w-]+\.[\w.]+/)?.[0] || null,
     direccion: limpio(p.businessAddress?.street_address || p.businessAddressJson?.street_address) || null,
     ciudad: limpio(p.businessAddress?.city_name || p.businessAddressJson?.city_name) || null,
-    sitio_web: esUrl(p.externalUrl) && !/linktr\.ee|wa\.me|whatsapp/i.test(p.externalUrl) ? p.externalUrl : null,
+    sitio_web: esUrl(p.externalUrl) && !NO_ES_SITIO.test(p.externalUrl) ? p.externalUrl : null,
     whatsapp: [p.externalUrl, bio].join(' ').match(/wa\.me\/(\d{10,15})/)?.[1] || null,
     seguidores: p.followersCount || null,
     logo: esUrl(p.profilePicUrlHD) ? p.profilePicUrlHD : (esUrl(p.profilePicUrl) ? p.profilePicUrl : null),
