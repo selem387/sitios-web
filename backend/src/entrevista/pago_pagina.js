@@ -7,7 +7,7 @@ import * as db from './db.js';
 import { avisar } from './avisos.js';
 import { iniciarDominio, dominioEnCurso, atenderDominio, quiereRetomar, retomarDominio } from './dominio.js';
 
-const ENLACE = () => process.env.PAGO_PAGINA_URL || 'https://buy.stripe.com/aFa7sLfma2MS8shgG7gUM0c';
+const ENLACE = () => process.env.PAGO_PAGINA_URL || 'https://buy.stripe.com/4gM7sF7Rz01K7SA9EK8bS03';
 const PREFIJO = 'pag_';
 const PAGUE = /pagu[eé]|ya pag|ya qued[oó] (el )?pago|ya se pag|pago (hecho|listo)/i;
 const LIGA = /\b(liga|link|enlace|pagar)\b/i;
