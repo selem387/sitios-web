@@ -4,13 +4,16 @@
 // se guardan logo, portada y hasta 18 fotos como assets (origen "redes"), y Ari muestra un resumen para confirmar o corregir.
 // Con logo y fotos se activa el atajo: lo no indispensable se difiere hasta que el cliente elige diseño.
 // Estado en brief.redes_extraccion = {id, estado, ligas, aplicada, resumen_mostrado, encontrado[], captura}.
+// Si el extractor no responde al lanzar, queda estado "por_lanzar" con las ligas y se reintenta en cada turno (hasta MAX_INTENTOS).
 import { config } from '../config.js';
 import * as db from './db.js';
 
 const ACTIVOS = new Set(['pendiente', 'procesando']);
+const MAX_INTENTOS = 5;
 // Lo que se difiere con el atajo (vuelve a pedirse después de elegir diseño; ver requisitos.js → diferido()).
 export const DIFERIR_ATAJO = ['cliente_ideal', 'zona', 'diferenciador', 'personalidad'];
 const ESPERA_EN_TURNO_MS = Number(process.env.EXTRACTOR_ESPERA_MS || 20000);
+const NOTA_EN_CURSO = 'Estoy revisando sus redes en segundo plano: NO le pidas todavía datos que suelen venir en Facebook/Instagram (logo, fotos, servicios, teléfono, horarios); sigue con el objetivo de la página.';
 
 const vacio = (v) => v == null || (typeof v === 'string' && !v.trim()) || (Array.isArray(v) && !v.length) || (typeof v === 'object' && !Array.isArray(v) && !Object.values(v).some((x) => !vacio(x)));
 
@@ -113,7 +116,7 @@ async function guardarAssets(e, r) {
 
 /**
  * Se llama en cada turno antes de Ari. Devuelve {brief?, assetsNuevos[], nota?}:
- * - si el cliente mandó ligas y no hay extracción, la lanza;
+ * - si el cliente mandó ligas y no hay extracción, la lanza (si el extractor no responde, la deja pendiente de lanzar);
  * - si hay una en curso, espera unos segundos y si ya está, la aplica;
  * - si ya se aplicó y falta mostrar el resumen, le pasa a Ari la nota para que lo muestre y pida confirmación.
  */
@@ -124,21 +127,29 @@ export async function atenderExtraccion(e, textoTurno, historial = []) {
   const ultimaAri = [...historial].reverse().find((m) => m.rol === 'agente' && m.tipo !== 'imagen')?.contenido;
   const ligas = textoTurno ? detectarLigas(textoTurno, { preguntoRedes: preguntaPorRedes(ultimaAri) }) : null;
 
-  // Ligas nuevas (o distintas a las ya extraídas) → lanzar.
-  if (ligas && (!rx || (ligas.facebook && ligas.facebook !== rx.ligas?.facebook) || (ligas.instagram && ligas.instagram !== rx.ligas?.instagram))) {
-    const unidas = { facebook: ligas.facebook || rx?.ligas?.facebook || null, instagram: ligas.instagram || rx?.ligas?.instagram || null };
+  const ligasNuevas = ligas && (!rx || (ligas.facebook && ligas.facebook !== rx.ligas?.facebook) || (ligas.instagram && ligas.instagram !== rx.ligas?.instagram));
+  const reintentar = !ligasNuevas && rx?.estado === 'por_lanzar' && (rx.intentos || 0) < MAX_INTENTOS;
+
+  // Ligas nuevas (o distintas a las ya extraídas), o un lanzamiento que falló antes → lanzar.
+  if (ligasNuevas || reintentar) {
+    const unidas = { facebook: ligas?.facebook || rx?.ligas?.facebook || null, instagram: ligas?.instagram || rx?.ligas?.instagram || null };
+    brief = { ...brief, contacto: { ...(brief.contacto || {}), redes: { ...(brief.contacto?.redes || {}), ...Object.fromEntries(Object.entries(unidas).filter(([, v]) => v)) } } };
     try {
       const j = await api('/v1/extracciones', { method: 'POST', body: JSON.stringify({ ...unidas, referencia: `entrevista:${e.id}` }) });
       rx = { id: j.id, estado: j.estado, ligas: unidas, aplicada: false, resumen_mostrado: false, lanzada: new Date().toISOString() };
-      brief = { ...brief, redes_extraccion: rx, contacto: { ...(brief.contacto || {}), redes: { ...(brief.contacto?.redes || {}), ...Object.fromEntries(Object.entries(unidas).filter(([, v]) => v)) } } };
+      brief = { ...brief, redes_extraccion: rx };
       await db.guardar(e.id, { brief });
-      await db.evento(e.id, 'redes_extraccion_lanzada', { id: j.id, ...unidas });
+      await db.evento(e.id, 'redes_extraccion_lanzada', { id: j.id, ...unidas, reintento: !!reintentar });
     } catch (err) {
-      await db.evento(e.id, 'redes_extraccion_error', { error: err.message });
-      return {};
+      const intentos = (reintentar ? rx.intentos || 0 : 0) + 1;
+      rx = { estado: 'por_lanzar', ligas: unidas, intentos, aplicada: false, resumen_mostrado: false };
+      brief = { ...brief, redes_extraccion: rx };
+      await db.guardar(e.id, { brief });
+      await db.evento(e.id, 'redes_extraccion_error', { error: err.message, intentos });
+      return { brief, nota: intentos < MAX_INTENTOS ? NOTA_EN_CURSO : null };
     }
   }
-  if (!rx) return {};
+  if (!rx || rx.estado === 'por_lanzar') return { brief };
 
   // En curso → consultar (con una espera corta para no responder antes de tener los datos).
   if (!rx.aplicada && ACTIVOS.has(rx.estado)) {
@@ -153,7 +164,7 @@ export async function atenderExtraccion(e, textoTurno, historial = []) {
     if (ACTIVOS.has(j.estado)) {
       // Más de 6 min sin terminar: se da por perdida y la entrevista sigue normal.
       if (Date.now() - new Date(rx.lanzada).getTime() > 6 * 60e3) { rx = { ...rx, estado: 'error', aplicada: true }; brief = { ...brief, redes_extraccion: rx }; await db.guardar(e.id, { brief }); }
-      return { brief, nota: rx.estado === 'error' ? null : 'Estoy revisando sus redes en segundo plano: NO le pidas todavía datos que suelen venir en Facebook/Instagram (logo, fotos, servicios, teléfono, horarios); sigue con el objetivo de la página.' };
+      return { brief, nota: rx.estado === 'error' ? null : NOTA_EN_CURSO };
     }
     if (j.estado !== 'lista') {
       rx = { ...rx, estado: j.estado, aplicada: true, resumen_mostrado: true };
