@@ -20,7 +20,7 @@ import { limpiarDominio } from '../dominio/registrador.js';
 import { paginaEditable, estadoCambios, registrarPedido, clasificarMensaje } from './cambios.js';
 import { alElegir } from '../panel/rehacer.js';
 import { avisarEquipo } from './avisos.js';
-import { notaRequisitos, primerBloqueIncompleto, faltantes, unirNoTiene, noTieneDelHistorial, preguntaYaNegada } from './requisitos.js';
+import { notaRequisitos, primerBloqueIncompleto, faltantes, unirNoTiene, noTieneDelHistorial, preguntaYaNegada, rellenarDelHistorial } from './requisitos.js';
 import { dominioRespondido, quiereDominio, PREGUNTA_DOMINIO, mensajePago, pagoPendiente, atenderPostCierre } from './pago_pagina.js';
 
 // Tope de seguridad (fotos y audios cuentan como mensajes). Una entrevista real ronda 60–130.
@@ -62,6 +62,11 @@ export function mergeProfundo(base, patch) {
   const out = isObject(base) ? { ...base } : {};
   for (const [k, v] of Object.entries(patch)) {
     if (v === undefined) continue;
+    // Un null, "" o [] del modelo no borra un dato que ya teníamos (caso JIGA, 9-nov-2026: la ciudad y las zonas
+    // se perdían cuando Ari mandaba el bloque completo con campos vacíos y se volvían a preguntar).
+    const vacioV = v === null || (typeof v === 'string' && !v.trim()) || (Array.isArray(v) && !v.length);
+    const lleno = out[k] !== null && out[k] !== undefined && !(typeof out[k] === 'string' && !out[k].trim()) && !(Array.isArray(out[k]) && !out[k].length);
+    if (vacioV && lleno) continue;
     out[k] = isObject(v) && isObject(out[k]) ? mergeProfundo(out[k], v) : v;
   }
   return out;
@@ -495,17 +500,19 @@ export async function procesarMensaje(b) {
 
   // "No tengo" a una pregunta de algo opcional (reseñas, FAQ, horarios…) se registra en código antes de Ari,
   // para que la revisión de requisitos no lo vuelva a pedir aunque el modelo no lo marque.
+  const historial = await db.ultimosMensajes(e.id, 200);
   {
-    const historial = await db.ultimosMensajes(e.id, 200);
     const nt = unirNoTiene(e.brief?.no_tiene, noTieneDelHistorial(historial));
-    if (nt.length !== (e.brief?.no_tiene || []).length) {
-      e.brief = { ...(e.brief || {}), no_tiene: nt };
+    const relleno = rellenarDelHistorial({ ...(e.brief || {}), no_tiene: nt }, historial);
+    if (nt.length !== (e.brief?.no_tiene || []).length || relleno.cambio) {
+      e.brief = relleno.brief;
       await db.guardar(e.id, { brief: e.brief });
     }
   }
   let t = await turnoAri(e, { mensajesRecientes, ultimoTexto: textoTurno, regresaDePausa, arquetipos, assets, notaAri });
   let brief = mergeProfundo(e.brief || {}, t.briefPatch);
   brief.no_tiene = unirNoTiene(e.brief?.no_tiene, t.briefPatch?.no_tiene);
+  brief = rellenarDelHistorial(brief, historial).brief;
   // Revisión antes de cada pregunta: no se avanza (ni se cierra) con algo pendiente de un bloque anterior.
   // Si Ari intentó avanzar, se repite su turno parado en el bloque incompleto; si aun así no lo pide, se pide con el texto fijo.
   {

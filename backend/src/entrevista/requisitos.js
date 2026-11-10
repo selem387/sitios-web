@@ -130,3 +130,33 @@ export function unirNoTiene(anterior, nuevo) {
   const ids = new Set(REQUISITOS.filter((r) => r.puedeNoTener).map((r) => r.id).concat('logo', ...Object.keys(OPCIONALES)));
   return [...new Set([...(anterior || []), ...(nuevo || [])])].filter((x) => ids.has(x));
 }
+
+// Datos que el cliente ya contestó y el modelo no guardó: se toman en código de su respuesta a la pregunta
+// (caso JIGA, 9-nov-2026: preguntó la ciudad tres veces y las zonas dos, con la respuesta ya en el chat).
+const PREG_DATO = {
+  ciudad: /(en que|que) ciudad|donde (esta|estas|queda|se ubica|tienes) (tu|su)? ?(negocio|oficina|local)|oficina principal/,
+  zona: /que zonas?|zonas? (atiendes|cubres|trabajas|das servicio)|donde (atiendes|das servicio|trabajas)/,
+};
+const limpiarLugar = (t) => String(t || '').replace(/^\s*(s?t[aá]|est[aá]n?|estamos|en|la oficina est[aá]|las oficinas est[aá]n)\s+(en\s+)?/i, '').replace(/\s+/g, ' ').trim().replace(/[.!]+$/, '');
+const ciudadDeTexto = (t) => {
+  const m = String(t || '').match(/(?:zona de|en la zona de|ciudad de|en)\s+([A-ZÁÉÍÓÚÑ][^,.;]*(?:,\s*[A-ZÁÉÍÓÚÑ][^,.;]*)?)\s*\.?\s*$/);
+  return limpiarLugar(m ? m[1] : t);
+};
+
+/** Rellena negocio.ciudad y zona.cobertura vacíos con la respuesta del cliente a esa pregunta. { brief, cambio } */
+export function rellenarDelHistorial(brief = {}, mensajes = []) {
+  let b = brief; let cambio = false;
+  const set = (ruta, valor) => { b = { ...b, [ruta[0]]: { ...(b[ruta[0]] || {}), [ruta[1]]: valor } }; cambio = true; };
+  for (let i = mensajes.length - 2; i >= 0; i--) {
+    const m = mensajes[i]; const sig = mensajes[i + 1];
+    if (m.rol !== 'agente' || sig?.rol !== 'cliente') continue;
+    const resp = String(sig.transcripcion || sig.contenido || '').trim();
+    if (!resp || esNegativa(resp) || resp.length > 300) continue;
+    const qs = String(m.contenido || '').match(/¿[^?]*\?/g); const q = norm(qs ? qs[qs.length - 1] : m.contenido);
+    if (PREG_DATO.ciudad.test(q) && vacio(b.negocio?.ciudad)) set(['negocio', 'ciudad'], ciudadDeTexto(resp));
+    else if (PREG_DATO.zona.test(q) && vacio(b.zona?.cobertura)) set(['zona', 'cobertura'], resp.split(/\s*(?:;|\by\b|\n)\s*/).map(limpiarLugar).filter(Boolean));
+  }
+  // La dirección de contacto también dice la ciudad.
+  if (vacio(b.negocio?.ciudad) && !vacio(b.contacto?.direccion?.ciudad)) set(['negocio', 'ciudad'], b.contacto.direccion.ciudad);
+  return { brief: b, cambio };
+}
