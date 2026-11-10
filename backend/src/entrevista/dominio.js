@@ -5,6 +5,7 @@
 //           Incluida en los $1,350 (decidido 9-nov-2026): solo se proponen las que nos cuestan menos de $50 MXN el 1er año
 //           y se registran sin cobrar. Otra que pida el cliente y cueste más se paga aparte (liga de Stripe, como antes).
 // Estado en brief.tecnico.dominio_flujo (escrito de forma atómica con patchFlujo).
+import { ligaCorta } from './ligas.js';
 import * as db from './db.js';
 import { pedirJSON, MODELO_MEMORIA } from './claude.js';
 import { avisar, avisarEquipo } from './avisos.js';
@@ -22,6 +23,8 @@ const TLDS = () => (process.env.DOMINIO_TLDS || 'com,mx,com.mx,xyz,online,site,s
 const MAX_USD = () => Number(process.env.DOMINIO_PRECIO_MAX_USD || 60);
 // Tope de lo que nos cuesta (1er año, con tipo de cambio y tolerancia) un dominio incluido en el pago de la página.
 // Solo se proponen los que están debajo; uno que el cliente pide por nombre y cuesta más se le ofrece pagándolo aparte.
+// Liga corta de Stripe para un dominio que se paga aparte (registro en ligas_pago).
+const corta = (c, url) => (url ? ligaCorta({ entrevistaId: c.entrevista_id, tipo: 'dominio', referencia: String(c.id), destino: url, montoMxn: c.precio?.total_mxn ?? null, descripcion: `Dominio ${c.dominio}` }) : url);
 const TOPE_INCLUIDO = () => Number(process.env.DOMINIO_INCLUIDO_MAX_MXN || process.env.DOMINIO_SUGERIDO_MAX_MXN || 50);
 export const cabeIncluido = (precio) => Number(precio?.neto_mxn) > 0 && Number(precio.neto_mxn) < TOPE_INCLUIDO();
 const MAX_APARTE = 3;
@@ -354,11 +357,11 @@ export async function atenderDominio(e, brief, texto) {
         const ok = await revisarPago(f.compra_id).catch(() => false);
         if (ok) return { textos: ['¡Sí, ya se acreditó tu pago! ✅ Estoy registrando la dirección; te aviso aquí en unos minutos.'], seguirConAri: false };
         const c = await obtenerCompra(f.compra_id);
-        return { textos: [`Todavía no veo el pago. A veces tarda un par de minutos. Si no lo has hecho, aquí está tu liga:\n${c?.stripe_url}`], seguirConAri: false };
+        return { textos: [`Todavía no veo el pago. A veces tarda un par de minutos. Si no lo has hecho, aquí está tu liga:\n${corta(c, c?.stripe_url)}`], seguirConAri: false };
       }
       if (/\b(liga|link|enlace)\b/i.test(t)) {
         const c = await obtenerCompra(f.compra_id);
-        return { textos: [c?.stripe_url ? `Aquí está tu liga para pagar *${pesos(c.precio.total_mxn)}* por *${c.dominio}*:\n${c.stripe_url}` : `*${c?.dominio || f.dominio}* viene incluida en tu pago; no hay nada que pagar. Ya la estoy registrando y te aviso aquí.`], seguirConAri: false };
+        return { textos: [c?.stripe_url ? `Aquí está tu liga para pagar *${pesos(c.precio.total_mxn)}* por *${c.dominio}*:\n${corta(c, c.stripe_url)}` : `*${c?.dominio || f.dominio}* viene incluida en tu pago; no hay nada que pagar. Ya la estoy registrando y te aviso aquí.`], seguirConAri: false };
       }
       return { textos: [], seguirConAri: true };
     }
@@ -424,7 +427,7 @@ async function pasoPagar(e, brief, f) {
     return { textos: [`¡Perfecto! Estoy registrando *${c.dominio}* ✅ En unos minutos te aviso por aquí.`], seguirConAri: false };
   }
   let url;
-  try { url = await ligaDePago(c.id, { email: brief.contacto?.email, agreedAt: new Date().toISOString() }); }
+  try { url = corta(c, await ligaDePago(c.id, { email: brief.contacto?.email, agreedAt: new Date().toISOString() })); }
   catch (err) {
     console.error('liga de pago', err);
     return { textos: ['No pude generar la liga de pago en este momento 😕. Escríbeme *acepto* otra vez en un par de minutos.'], seguirConAri: false };

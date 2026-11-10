@@ -17,6 +17,7 @@ import { verificarWebhook } from '../dominio/stripe.js';
 import { procesarEventoStripe, cronCompras, obtener as obtenerCompra } from '../dominio/compra.js';
 import { cronDominiosPropios } from './dominio.js';
 import { esReferenciaPagina, procesarEventoPagina, confirmarPago } from './pago_pagina.js';
+import { registrarRutasLigas, registrarEventoStripe } from './ligas.js';
 import { cronCambios } from './cambios.js';
 import { investigar } from '../dominio/registrador.js';
 import { actualizarGuia, BASE as GUIAS } from '../dominio/guias.js';
@@ -70,10 +71,13 @@ export function registerEntrevistaRoutes(app, wrap) {
     catch (err) { return c.json({ error: err.message }, 400); }
     try {
       const esPagina = esReferenciaPagina(ev?.data?.object?.client_reference_id);
-      return c.json(await (esPagina ? procesarEventoPagina(ev) : procesarEventoStripe(ev)));
+      const r = await (esPagina ? procesarEventoPagina(ev) : procesarEventoStripe(ev));
+      await registrarEventoStripe(ev);
+      return c.json(r);
     }
     catch (err) { console.error('webhook stripe', err); return c.json({ error: 'error interno' }, 500); } // Stripe reintenta
   });
+  registrarRutasLigas(app, { auth, wrap });
   app.get('/pago/listo', (c) => c.html(paginaPago('Pago recibido ✅', 'Gracias. Ya puedes regresar a la conversación con Ari: en cuanto quede registrada tu dirección te aviso ahí.')));
   app.get('/pago/cancelado', (c) => c.html(paginaPago('Pago no realizado', 'No se hizo ningún cargo. Regresa a la conversación con Ari y escríbele <b>liga</b> si quieres intentarlo de nuevo.')));
 

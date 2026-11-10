@@ -8,11 +8,13 @@ import { avisar } from './avisos.js';
 import { iniciarDominio, dominioEnCurso, atenderDominio, quiereRetomar, retomarDominio } from './dominio.js';
 
 const ENLACE = () => process.env.PAGO_PAGINA_URL || 'https://buy.stripe.com/4gM7sF7Rz01K7SA9EK8bS03';
+import { ligaCorta } from './ligas.js';
 const PREFIJO = 'pag_';
 const PAGUE = /pagu[eé]|ya pag|ya qued[oó] (el )?pago|ya se pag|pago (hecho|listo)/i;
 const LIGA = /\b(liga|link|enlace|pagar)\b/i;
 
-export const ligaPago = (entrevistaId) => `${ENLACE()}?client_reference_id=${PREFIJO}${entrevistaId}`;
+// Liga corta (websites.timewins.ai/pg/…) que redirige a Stripe y deja registro en ligas_pago.
+export const ligaPago = (entrevistaId) => ligaCorta({ entrevistaId, tipo: 'pagina', destino: `${ENLACE()}?client_reference_id=${PREFIJO}${entrevistaId}`, montoMxn: Number(process.env.PAGO_PAGINA_MONTO_MXN || 1350), descripcion: 'Página web' });
 export const esReferenciaPagina = (ref) => String(ref || '').startsWith(PREFIJO);
 
 /** ¿Ya contestó la última pregunta (tiene dirección, dio ideas o no quiere una)? */
