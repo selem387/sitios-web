@@ -363,7 +363,7 @@ export async function procesarMensaje(b) {
     if (u && u.estado === 'completada' && !comando && propuestasPendientes(u.brief) && (texto || entrantes.length)) {
       if (texto) await db.insertarMensaje(u.id, { rol: 'cliente', contenido: texto });
       const md = entrantes.length ? await registrarMediaPostCierre(u, entrantes) : { claves: [] };
-      const r = await atenderPropuestas(u, u.brief || {}, { texto, huboMedia: md.claves.length > 0 });
+      const r = await atenderPropuestas(u, u.brief || {}, { texto, huboMedia: md.claves.length > 0, clavesNuevas: md.claves });
       if (r.brief !== u.brief) { await db.guardar(u.id, { brief: r.brief }); u.brief = r.brief; }
       const rs = [...(r.responder?.textos || [])];
       if (r.brief?.marca?.propuestas?.estado === 'elegida') rs.push(...await alElegir(u.id).catch((err) => { console.error('alElegir', err); return ['Dame un momento, estoy terminando tu página; te mando la liga aquí en cuanto quede 🙏']; }));
@@ -465,7 +465,7 @@ export async function procesarMensaje(b) {
   const prefijo = [];
   if (!nueva && propuestasPendientes(e.brief)) {
     try {
-      const r = await atenderPropuestas(e, e.brief || {}, { texto, huboMedia: nuevosAssets.length > 0 });
+      const r = await atenderPropuestas(e, e.brief || {}, { texto, huboMedia: nuevosAssets.length > 0, clavesNuevas: nuevosAssets.filter((a) => !['documento', 'video'].includes(a.tipo)).map((a) => a.clave) });
       if (r.brief !== e.brief) { await db.guardar(e.id, { brief: r.brief }); e.brief = r.brief; }
       if (!r.seguirConAri) return responderConMedia(r.responder.textos, r.responder.media);
       if (r.responder?.textos) prefijo.push(...r.responder.textos);

@@ -178,6 +178,19 @@ g.addEventListener('scroll',est,{passive:true});addEventListener('resize',est,{p
 // el de la barra aparece cuando el grande sale de la pantalla.
 const JS_LOGO_UNICO = `<script>(()=>{const g=document.querySelector('.h-logo .logo-grande,.h-logo .logo-grande-placa'),b=document.querySelector('.barra');if(!b)return;if(!g||!('IntersectionObserver'in window)){b.classList.add('ver-logo');return;}new IntersectionObserver(([e])=>b.classList.toggle('ver-logo',!e.isIntersecting),{rootMargin:'-70px 0px 0px 0px'}).observe(g);})();</script>`;
 
+/**
+ * Fotos del cliente agrupadas por la sección donde pidió ponerlas (brief.fotos.ubicacion = {clave: sección}).
+ * → {fotos[], portada:Set(url), trabajo:Set(url), galeria:Set(url)}
+ */
+export function urlsPorUbicacion(mat = {}, brief = {}) {
+  const u = brief.fotos?.ubicacion || {};
+  const vistas = new Set();
+  const fotos = [...(mat.trabajos || []), ...(mat.local || []), ...(mat.equipo || []), mat.fundador, ...(mat.otras || []), ...(mat.fotos || []).filter((x) => !x.recorte)]
+    .filter((x) => x?.url && x.clave && u[x.clave] && !vistas.has(x.url) && vistas.add(x.url));
+  const de = (s) => new Set(fotos.filter((x) => u[x.clave] === s).map((x) => x.url));
+  return { fotos, portada: de('portada'), trabajo: de('trabajo'), galeria: de('galeria') };
+}
+
 /* ---------------- Página ---------------- */
 function pagina(d) {
   const { pal: p, f, t, mat, brief } = d;
@@ -203,9 +216,14 @@ function pagina(d) {
 
   // Orden de fotos por propuesta: rota para que cada una abra con una imagen distinta.
   // Capturas de pantalla y fotos regulares nunca abren la página: van después (se muestran igual en la galería).
+  // Dónde pidió el cliente cada foto (brief.fotos.ubicacion = {clave: 'portada'|'trabajo'|'galeria'}): manda sobre
+  // el acomodo automático. Las de 'galeria' no van al slider ni a "Nuestro trabajo"; las de 'portada' entran al slider;
+  // las de 'trabajo' entran a "Nuestro trabajo" aunque sean de otro tipo (equipo, otras).
+  const ub = urlsPorUbicacion(mat, brief);
+  const fueraDeGaleria = (x) => !ub.galeria.has(x?.url);
   const buenaFoto = (x) => !x.captura && x.calidad !== 'regular';
-  const trabajos = [...mat.trabajos, ...mat.local].filter(buenaFoto);
-  const capturasT = [...mat.trabajos, ...mat.local].filter((x) => !buenaFoto(x));
+  const trabajos = [...mat.trabajos, ...mat.local].filter(buenaFoto).filter(fueraDeGaleria);
+  const capturasT = [...mat.trabajos, ...mat.local].filter((x) => !buenaFoto(x)).filter(fueraDeGaleria);
   const rot = (arr, k) => (arr.length ? [...arr.slice(k % arr.length), ...arr.slice(0, k % arr.length)] : []);
   const fotosT = [...rot(trabajos, d.i * 2), ...capturasT];
   // La foto que el cliente eligió para la portada va en las propuestas A y D; las demás abren con su trabajo.
@@ -213,7 +231,8 @@ function pagina(d) {
   // Estilo de referencia: varias opciones son "foto a pantalla completa"; solo la A abre con su foto de portada,
   // las demás con otra foto de su trabajo para que no se vean iguales (si el dueño fijó portada, se respeta en todas).
   const variar = d.dref && d.letra !== 'A' && !brief.fotos?.portada_manual;
-  const heroBase = !variar && (d.layout === 'portada' || d.layout === 'logo' || (brief.fotos?.portada_manual && mat.hero)) ? (mat.hero || fotosT[0]) : (fotosT[0] || mat.hero || mat.fundador);
+  const heroMat = mat.hero && fueraDeGaleria(mat.hero) ? mat.hero : null;
+  const heroBase = !variar && (d.layout === 'portada' || d.layout === 'logo' || (brief.fotos?.portada_manual && heroMat)) ? (heroMat || fotosT[0]) : (fotosT[0] || heroMat || (fueraDeGaleria(mat.fundador) ? mat.fundador : null));
   // Si el titular habla de un producto, abre con la foto de ese producto (la eligió la IA de textos por su descripción).
   const fotoTit = !brief.fotos?.portada_manual && t.foto_url ? [mat.hero, ...trabajos].find((x) => x?.url === t.foto_url) : null;
   const heroFoto = fotoTit || heroBase;
@@ -224,8 +243,10 @@ function pagina(d) {
   // Slider de portada (aprobado 6-nov-2026): foto principal + hasta 4 fotos más, cada una con su texto encima.
   // Solo fotos buenas del cliente (o variaciones IA de su foto si dijo que no tiene más); nunca se repiten en el resto del sitio.
   // Mínimo 5 fotos en el slider (10-nov-2026): si las de trabajo no alcanzan, se suman equipo y otras fotos buenas.
-  const extraSl = [...mat.equipo, ...(mat.otras || [])].filter((x) => buenaFoto(x) && /^(foto|imagen)/.test(x.tipo || 'foto') && !fotosT.some((y) => y.url === x.url));
-  const emp = emparejarFotos({ hero: heroFoto, pool: [...fotosT.filter(buenaFoto), ...extraSl], diapos: diapositivasDe({ diapositivas: t.diapositivas }, brief), items: brief.oferta?.items || [], cta: t.cta });
+  const extraSl = [...mat.equipo, ...(mat.otras || [])].filter((x) => buenaFoto(x) && fueraDeGaleria(x) && /^(foto|imagen)/.test(x.tipo || 'foto') && !fotosT.some((y) => y.url === x.url));
+  const fijasSl = ub.fotos.filter((x) => ub.portada.has(x.url));
+  const poolBase = [...fotosT.filter(buenaFoto), ...extraSl];
+  const emp = emparejarFotos({ hero: heroFoto, pool: [...fijasSl, ...poolBase.filter((x) => !ub.portada.has(x.url))], diapos: diapositivasDe({ diapositivas: t.diapositivas }, brief), items: brief.oferta?.items || [], cta: t.cta, fijas: fijasSl.map((x) => x.url) });
   const poolSl = emp.fotos, diapos = emp.diapos;
   const enPortada = new Set(); // fotos del mosaico de portada: pueden repetirse en "Nuestro trabajo" como las del slider
   const slider = (o) => sliderHTML({ fotos: poolSl, diapos, img, cta: t.cta, href: wa, nombre: d.nombre, ...o }).html;
@@ -251,10 +272,13 @@ function pagina(d) {
   // Solo se excluyen las que ya salieron fuera del slider (filas o mosaicos de la portada) para no duplicarlas.
   const enSlider = new Set(poolSl.map((x) => x.url));
   const secTrabajo = () => {
-    const resto = fotosT.filter((x) => !usadas.has(x.url) || enSlider.has(x.url) || enPortada.has(x.url));
+    const libreT = (x) => !usadas.has(x.url) || enSlider.has(x.url) || enPortada.has(x.url);
+    const resto = fotosT.filter(libreT);
+    // Las que el cliente pidió aquí entran siempre (aunque sean de equipo u otras), al principio del carrusel.
+    for (const x of ub.fotos.filter((y) => ub.trabajo.has(y.url)).reverse()) if (!resto.some((y) => y.url === x.url) && libreT(x)) resto.unshift(x);
     for (const x of [...mat.equipo, ...(mat.otras || []), ...poolSl]) {
       if (resto.length >= 5) break;
-      if (x?.url && /^(foto|imagen)/.test(x.tipo || 'foto') && !resto.some((y) => y.url === x.url) && (!usadas.has(x.url) || enSlider.has(x.url) || enPortada.has(x.url))) resto.push(x);
+      if (x?.url && fueraDeGaleria(x) && /^(foto|imagen)/.test(x.tipo || 'foto') && !resto.some((y) => y.url === x.url) && libreT(x)) resto.push(x);
     }
     if (!resto.length) return '';
     // Carrusel horizontal (10-nov-2026, pedido de Sebastián): todas las fotos una al lado de la otra, misma altura, se
@@ -279,15 +303,16 @@ function pagina(d) {
     return `<section class="sec" id="servicios"><div class="wrap"><h2>${esc(T.servicios)}</h2>${cards ? (conPaquetes ? cards : `<div class="paqs">${cards}</div>`) : ''}${cat ? `<div class="cats">${cat}</div>` : ''}${docs}<div class="centro">${cta()}</div></div></section>`;
   };
   const secSobre = () => {
-    const otra = mat.equipo.find((x) => x.tipo === 'foto_fundador' && !usadas.has(x.url));
+    const otra = mat.equipo.find((x) => x.tipo === 'foto_fundador' && !usadas.has(x.url) && fueraDeGaleria(x));
     // Si su foto ya está en la portada, aquí va otra suya o ninguna (nunca la misma dos veces).
-    const foto = mat.fundador && usadas.has(mat.fundador.url) ? (otra || null) : (mat.fundador || otra || null);
+    const fund0 = mat.fundador && fueraDeGaleria(mat.fundador) ? mat.fundador : null;
+    const foto = fund0 && usadas.has(fund0.url) ? (otra || null) : (fund0 || otra || null);
     if (!foto && !conf.historia_corta) return '';
     const cifras = (conf.cifras || []).slice(0, 3).map((c) => `<li>${esc(c)}</li>`).join('');
     const cred = (fund.credenciales || []).map((c) => esc(c)).join(' · ');
     return `<section class="sec sobre" id="sobre"><div class="wrap s-in${foto ? '' : ' sin-foto'}">${foto ? `<figure class="retrato">${img(foto)}</figure>` : ''}<div><h2>${esc(T.sobre)}</h2>${fund.nombre ? `<p class="firma">${esc(fund.nombre)}${fund.rol ? ` · ${esc(fund.rol)}` : ''}</p>` : ''}<div class="historias">${parrafosHTML(t.sobre || conf.historia_corta || '', 'historia')}</div>${cred ? `<p class="cred">${cred}</p>` : ''}${cifras ? `<ul class="cifras">${cifras}</ul>` : ''}</div></div></section>`;
   };
-  const secEquipo = () => { const eq = mat.equipo.filter((x) => !usadas.has(x.url)); return eq.length ? `<div class="wrap"><div class="galeria g-eq">${eq.map((x) => `<figure>${img(x)}</figure>`).join('')}</div></div>` : ''; };
+  const secEquipo = () => { const eq = mat.equipo.filter((x) => !usadas.has(x.url) && fueraDeGaleria(x) && !ub.trabajo.has(x.url)); return eq.length ? `<div class="wrap"><div class="galeria g-eq">${eq.map((x) => `<figure>${img(x)}</figure>`).join('')}</div></div>` : ''; };
   const secResenas = () => {
     const tes = (conf.testimonios || []).filter((x) => x.texto);
     if (!tes.length && !mat.resenas.length) return '';
@@ -326,7 +351,8 @@ function pagina(d) {
   // se suman a la última sección de fotos que ya existe (fila de fotos o galería de trabajo); solo si no hay ninguna,
   // se arma una fila sin título. Con 3 o más sí lleva su sección.
   let galeria = '', cuerpoFinal = cuerpo, heroFinal = hero;
-  if (pendientes.length >= 3) galeria = `<section class="sec" id="galeria"><div class="wrap"><h2>${esc(T.galeria)}</h2><div class="galeria g-mas">${pendientes.map((x) => `<figure>${img(x)}</figure>`).join('')}</div></div></section>`;
+  // Si el cliente pidió fotos en la galería, la sección va con su título aunque sean 1 o 2.
+  if (pendientes.length >= 3 || pendientes.some((x) => ub.galeria.has(x.url))) galeria = `<section class="sec" id="galeria"><div class="wrap"><h2>${esc(T.galeria)}</h2><div class="galeria g-mas">${pendientes.map((x) => `<figure>${img(x)}</figure>`).join('')}</div></div></section>`;
   else if (pendientes.length) {
     const r = (x) => (x.ancho && x.alto ? Math.min(2.4, Math.max(0.3, x.ancho / x.alto)) : 0.75).toFixed(3);
     const figs = pendientes.map((x) => `<figure style="--r:${r(x)}">${img(x)}</figure>`).join('');

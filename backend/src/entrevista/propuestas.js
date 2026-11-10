@@ -11,6 +11,7 @@ import { coloresDePalabras } from '../generador/materiales.js';
 import * as db from './db.js';
 import { pedirJSON } from './claude.js';
 import { estudiarReferencias } from './referencias.js';
+import { atenderMostradas } from './propuestas_cambios.js';
 import { construirDireccion, PRESETS, LISTA_PRESETS } from '../generador/estilo_ref.js';
 
 const NO_TENGO = /no (las |los )?tengo|no tengo (m[aá]s|otras|mejores)|son (todas|las [uú]nicas)|con esas|as[ií] est[aá] bien|usa(lo)? (esas|lo que hay)|no hay (m[aá]s|otras)/i;
@@ -150,7 +151,7 @@ export async function mostrar(e, brief, mat, { ronda = 0 } = {}) {
  * Se llama ANTES del turno de Ari cuando hay propuestas pendientes. Devuelve
  * {responder:{textos, media}, brief, seguirConAri:boolean}.
  */
-export async function atenderPropuestas(e, brief, { texto = '', huboMedia = false }) {
+export async function atenderPropuestas(e, brief, { texto = '', huboMedia = false, clavesNuevas = [] }) {
   const p = brief.marca?.propuestas || {};
   if (p.estado === 'pendiente_material') {
     const aceptar = NO_TENGO.test(texto) || (p.pedidos || 0) >= 2;
@@ -183,11 +184,23 @@ export async function atenderPropuestas(e, brief, { texto = '', huboMedia = fals
     return { responder: salida, brief: { ...b2, marca: { ...b2.marca, propuestas: { ...m.propuestas, comentario, comentarios_rechazo: [], preguntas_estilo: 0, rechazos_previos: [...(p.rechazos_previos || []), { ronda: p.ronda || 0, comentarios, entendido: d }] } } }, seguirConAri: false };
   }
   if (p.estado === 'mostradas') {
-    const r = interpretarEleccion(texto);
-    if (!r && /reenv|no (me )?llegaron|ligas|links|enlaces|cu[aá]les|d[oó]nde/i.test(texto)) {
-      return { responder: { textos: ['Claro, aquí van otra vez las 6 👇', p.opciones.map((o) => `*${o.letra}* · ${o.nombre}\n${o.url}`).join('\n\n'), '¿Cuál te gusta más? Respóndeme con la letra, de la *A* a la *F*, o dime *ninguna* y qué cambiarías.'] }, brief, seguirConAri: false };
+    const reenviar = () => ({ responder: { textos: ['Claro, aquí van otra vez 👇', p.opciones.map((o) => `*${o.letra}* · ${o.nombre}\n${o.url}`).join('\n\n'), `¿Cuál te gusta más? Respóndeme con la letra (${p.opciones.map((o) => `*${o.letra}*`).join(', ')}), dime *ninguna* y qué cambiarías, o pídeme cualquier ajuste.`] }, brief, seguirConAri: false });
+    // Elección directa ("la B") solo sin fotos nuevas ni preguntas pendientes sobre fotos: con esas, un "a la galería"
+    // se confundía con la opción A. Todo lo demás (agregar fotos, dónde ponerlas, cambios, preguntas) lo entiende la IA.
+    const enEspera = (p.fotos_por_ubicar || []).length > 0 || p.esperando_fotos;
+    let r = !clavesNuevas.length && !enEspera ? interpretarEleccion(texto) : null;
+    // "En la A cambia el título por…", "me gusta la B pero agrega estas fotos": trae una letra pero pide un cambio.
+    if (r?.elegido && /agreg|a[ñn]ad|cambi|\bpon(er|le|las|los|me)?\b|quit|muev|mover|foto|imagen|color|t[ií]tulo|texto|secci[oó]n/i.test(texto)) r = null;
+    if (!r && !clavesNuevas.length && !enEspera && /reenv|no (me )?llegaron|ligas|links|enlaces/i.test(texto) && !/agreg|foto|imagen|cambi|pon/i.test(texto)) return reenviar();
+    if (!r) {
+      const m = await atenderMostradas(e, brief, p, { texto, clavesNuevas });
+      if (m?.responder) return { ...m, seguirConAri: false };
+      if (m?.accion === 'reenviar') return reenviar();
+      if (m?.accion === 'elegir' && (p.opciones || []).some((o) => (o.etiqueta || o.letra) === m.letra)) r = { elegido: m.letra, colores_de: m.colores_de };
+      else if (m?.accion === 'ninguna') r = { ninguna: true };
+      else if (!m) r = interpretarEleccion(texto); // sin IA: como antes
     }
-    if (!r) { const disp = (p.opciones || []).map((o) => o.etiqueta || o.letra); return { responder: { textos: [disp.length === 6 ? '¿Cuál de las 6 te gustó más? Respóndeme con la letra, de la *A* a la *F*. Si ninguna te convence, dime *ninguna* y qué te gustaría distinto.' : `¿Cuál te gustó más? Respóndeme con la letra (${disp.map((l) => `*${l}*`).join(', ')}). Si ninguna te convence, dime *ninguna* y qué te gustaría distinto.`] }, brief, seguirConAri: false }; }
+    if (!r) { const disp = (p.opciones || []).map((o) => o.etiqueta || o.letra); return { responder: { textos: [`No me quedó claro 🙏 Puedes elegir una opción con su letra (${disp.map((l) => `*${l}*`).join(', ')}), decirme *ninguna* y qué te gustaría distinto, o pedirme cualquier cambio: agregar fotos, cambiar textos, colores o dónde va cada cosa.`] }, brief, seguirConAri: false }; }
     if (r.ninguna) {
       const nb = { ...brief, marca: { ...brief.marca, propuestas: { ...p, estado: 'rechazadas', rechazos: [...(p.rechazos || []), texto], comentarios_rechazo: [], preguntas_estilo: 0 } } };
       // Si en el mismo mensaje ya dijo qué no le gustó, se entiende de una vez; si no, se le pregunta exactamente qué.

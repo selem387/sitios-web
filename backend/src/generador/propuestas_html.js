@@ -16,7 +16,7 @@ import { evaluarColoresCliente, asignarFuentes } from './asesor_color.js';
 import { coloresDePalabras, logoTenido } from './materiales.js';
 import { CSS_MOVIMIENTO, JS_MOVIMIENTO, sliderHTML, diapositivasDe, emparejarFotos, efectosDe, conSrcset } from './movimiento.js';
 import { waUrl, formatoTel } from './bloques.js';
-import { paginasGenerales, logoHTML, redes } from './propuestas_general.js';
+import { paginasGenerales, logoHTML, redes, urlsPorUbicacion } from './propuestas_general.js';
 import { completarMaterial } from './validar_material.js';
 
 // Regla dura de tipografía: la escala, el interlineado y la medida se agregan al final del CSS (mandan sobre la plantilla).
@@ -264,8 +264,13 @@ export async function renderPropuestas(brief, mat, textos, { ronda = 0, fijo = n
   const cats = categorias(mat.menu_texto);
   // Fotos reales para el slider (no recortes de producto): local, trabajos, equipo y fotos con fondo.
   const vistas = new Set();
-  const reales = [mat.hero, ...(mat.local || []), ...(mat.trabajos || []), ...(mat.fotos || []).filter((x) => !x.sin_fondo && x.tipo !== 'foto_producto')]
-    .filter((x) => x?.url && !x.captura && x.calidad !== 'regular' && !vistas.has(x.url) && vistas.add(x.url));
+  // Dónde pidió el cliente cada foto: las de 'portada' abren la lista del slider; las de 'galeria' no entran
+  // (quedan para "Más de nosotros", que completarMaterial arma con lo que falta).
+  const ub = urlsPorUbicacion(mat, brief);
+  const reales0 = [mat.hero, ...(mat.local || []), ...(mat.trabajos || []), ...(mat.fotos || []).filter((x) => !x.sin_fondo && x.tipo !== 'foto_producto')]
+    .filter((x) => x?.url && !x.captura && x.calidad !== 'regular' && !ub.galeria.has(x.url) && !vistas.has(x.url) && vistas.add(x.url));
+  const fijasR = ub.fotos.filter((x) => ub.portada.has(x.url) && !reales0.some((y) => y.url === x.url));
+  const reales = [...reales0.slice(0, 1), ...fijasR, ...reales0.slice(1)].sort((x, y) => (ub.portada.has(y.url) ? 1 : 0) - (ub.portada.has(x.url) ? 1 : 0));
   const diapos = diapositivasDe({ diapositivas: textos.diapositivas }, brief);
   const out = [];
   for (const [i, layout] of LAYOUTS.entries()) {

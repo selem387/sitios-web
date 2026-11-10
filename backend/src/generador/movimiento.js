@@ -83,7 +83,7 @@ const coincide = (texto, foto) => { const a = palabras(texto), b = palabras(foto
  * @param {object} o  hero: foto 1 por omisión; fotoTitular: url que eligió la IA para el titular; pool: fotos disponibles; diapos: textos 2-5
  * @returns {{fotos: Array, diapos: Array}} alineados: diapos[k-1] va con fotos[k]
  */
-export function emparejarFotos({ hero, fotoTitular = null, pool = [], diapos = [], items = [], cta = '' }) {
+export function emparejarFotos({ hero, fotoTitular = null, pool = [], diapos = [], items = [], cta = '', fijas = [] }) {
   const vistas = new Set();
   const todas = [hero, ...pool].filter((x) => x?.url && !vistas.has(x.url) && vistas.add(x.url));
   if (!todas.length) return { fotos: [], diapos: [] };
@@ -115,6 +115,19 @@ export function emparejarFotos({ hero, fotoTitular = null, pool = [], diapos = [
       .filter(([x, n]) => n > 0 && x?.nombre && !out.some((d) => d.titular === x.nombre.trim())).sort((a, b) => b[1] - a[1])[0]?.[0];
     usadas.add(f.url); fotos.push(f);
     out.push(it ? { tipo: 'producto', titular: corto(it.nombre.trim(), 60), apoyo: corto(it.descripcion_corta || '', 110), cta } : { tipo: 'foto', titular: '', apoyo: '', sin_texto: true });
+  }
+  // Fotos que el cliente pidió en la portada (10-nov-2026): siempre entran al slider; si ya está lleno,
+  // desplazan a las últimas que no pidió (nunca a la primera).
+  const fijasSet = new Set(fijas);
+  for (const u of fijas) {
+    if (fotos.some((x) => x.url === u)) continue;
+    const f = todas.find((x) => x.url === u);
+    if (!f) continue;
+    const diapo = { tipo: 'foto', titular: '', apoyo: '', sin_texto: true };
+    if (fotos.length < MAX_DIAPOSITIVAS) { fotos.push(f); out.push(diapo); continue; }
+    const k = fotos.map((x, i) => [x, i]).reverse().find(([x, i]) => i > 0 && !fijasSet.has(x.url))?.[1];
+    if (k == null) continue;
+    fotos[k] = f; out[k - 1] = diapo;
   }
   return { fotos, diapos: out };
 }
