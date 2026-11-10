@@ -96,7 +96,7 @@ export async function pasada({ maxPorDominio = 2 } = {}) {
     const pend = (await pdb.q(`
       WITH ult AS (SELECT negocio_id, max(paso) paso, max(creado) ultimo FROM prospeccion.envios WHERE canal='correo' AND estado='enviado' GROUP BY negocio_id)
       SELECT n.*, coalesce(u.paso, -1) + 1 AS siguiente FROM prospeccion.negocios n LEFT JOIN ult u ON u.negocio_id=n.id
-      WHERE n.correo IS NOT NULL AND NOT n.baja AND n.token IS NOT NULL AND n.estado IN ('construido','contactado')
+      WHERE n.correo IS NOT NULL AND NOT n.baja AND n.token IS NOT NULL AND n.estado IN ('construido','contactado') AND n.aprobado_en IS NOT NULL
         AND coalesce(n.dominio_envio, $1) = $1
         AND (u.paso IS NULL OR (u.paso = 0 AND u.ultimo < now() - interval '3 days') OR (u.paso = 1 AND u.ultimo < now() - interval '4 days'))
         AND NOT EXISTS (SELECT 1 FROM prospeccion.clics k WHERE k.negocio_id=n.id AND k.tipo IN ('elige','whatsapp','baja'))
@@ -117,7 +117,39 @@ export async function pasada({ maxPorDominio = 2 } = {}) {
   return { cupo, enviados };
 }
 
+/**
+ * Aviso a Blanca: antes de escribirle a un negocio, ella revisa sus 6 opciones con Ari y autoriza el envío.
+ * Un solo correo por pasada con todos los prospectos nuevos (si se mandaran varios seguidos, el workflow
+ * leería los campos del contacto ya sobrescritos por el siguiente).
+ */
+const REVISORA = () => process.env.PROSPECCION_CORREO_REVISION || '';
+export async function avisarRevision() {
+  if (!REVISORA() || !PIT() || !LOC()) return { apagado: true };
+  await pdb.migrar();
+  const ns = (await pdb.q(`SELECT * FROM prospeccion.negocios WHERE estado='construido' AND token IS NOT NULL AND correo IS NOT NULL AND NOT baja
+    AND aprobado_en IS NULL AND revision_avisada IS NULL ORDER BY resenas DESC LIMIT 30`)).rows;
+  if (!ns.length) return { avisados: 0 };
+  const d = DOMINIOS()[0];
+  const b = `https://${d}`;
+  const filas = ns.map((n) => `<tr><td style="padding:14px 0;border-bottom:1px solid #eee"><b>${esc(n.nombre)}</b> <span style="color:#888">· ${Number(n.resenas || 0).toLocaleString('es-MX')} reseñas · ${esc(n.correo)}</span><br>
+<a href="${b}/prospectos/chat/${n.folio}?revision=1" style="color:#1a56db;font-weight:bold">Revisar con Ari</a> &nbsp;·&nbsp; <a href="${b}/p/${n.folio}" style="color:#1a56db">Ver las 6</a> &nbsp;·&nbsp; <a href="${b}/prospectos/aprobar/${n.folio}" style="color:#15803d;font-weight:bold">Autorizar envío</a></td></tr>`).join('');
+  const asunto = ns.length === 1 ? `Revisar antes de enviar: ${ns[0].nombre}` : `Revisar antes de enviar: ${ns.length} negocios`;
+  const html = `<div style="font-family:Arial,Helvetica,sans-serif;font-size:15px;line-height:1.55;color:#222;max-width:600px">
+<p>Hola Blanca:</p><p>${ns.length === 1 ? 'Ya están listas las 6 opciones de página para este negocio' : `Ya están listas las 6 opciones de página para estos ${ns.length} negocios`}. Antes de mandarles el correo, revísalas: en <b>Revisar con Ari</b> puedes pedirle cambios a cualquier opción. Cuando estén bien, da clic en <b>Autorizar envío</b>.</p>
+<table style="width:100%;border-collapse:collapse">${filas}</table>
+<p style="color:#888;font-size:13px;margin-top:20px">Las ligas funcionan en el celular o computadora donde abriste tu enlace de acceso.</p></div>`;
+  const c = await ghl('/contacts/upsert', { locationId: LOC(), email: REVISORA(), name: 'Blanca Banderas', tags: ['equipo-revision'],
+    customFields: [{ key: 'asunto_prospeccion', field_value: asunto }, { key: 'cuerpo_prospeccion', field_value: html }] });
+  const contactId = c.contact?.id || c.id;
+  await ghlTags(contactId, 'DELETE', [ETIQUETA[d]]).catch(() => {});
+  await ghlTags(contactId, 'POST', [ETIQUETA[d]]);
+  await pdb.q(`UPDATE prospeccion.negocios SET revision_avisada=now() WHERE id = ANY($1)`, [ns.map((n) => n.id)]);
+  return { avisados: ns.length };
+}
+
 export function programarCorreos() {
+  // Avisos de revisión a Blanca: cada 15 minutos de 8:00 a 21:45, todos los días.
+  cron.schedule('7,22,37,52 8-21 * * *', () => avisarRevision().catch((e) => console.error('[prospectos] aviso revision', e.message)), { timezone: 'America/Merida' });
   // Cada 15 minutos, de lunes a sábado de 9:00 a 18:45 (hora de Mérida): reparte el cupo del día.
   cron.schedule('*/15 9-18 * * 1-6', () => pasada().catch((e) => console.error('[prospectos] pasada', e.message)), { timezone: 'America/Merida' });
 }

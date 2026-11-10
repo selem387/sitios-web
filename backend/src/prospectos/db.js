@@ -18,6 +18,10 @@ export async function migrar() {
   await q(`ALTER TABLE prospeccion.negocios ADD COLUMN IF NOT EXISTS error text`);
   await q(`ALTER TABLE prospeccion.negocios ADD COLUMN IF NOT EXISTS baja boolean NOT NULL DEFAULT false`);
   await q(`ALTER TABLE prospeccion.negocios ADD COLUMN IF NOT EXISTS dominio_envio text`);
+  // Revisión de Blanca antes de escribirle al negocio: aviso por correo y aprobación.
+  await q(`ALTER TABLE prospeccion.negocios ADD COLUMN IF NOT EXISTS revision_avisada timestamptz`);
+  await q(`ALTER TABLE prospeccion.negocios ADD COLUMN IF NOT EXISTS aprobado_en timestamptz`);
+  await q(`ALTER TABLE prospeccion.negocios ADD COLUMN IF NOT EXISTS aprobado_por text`);
   await q(`CREATE TABLE IF NOT EXISTS prospeccion.accesos (id serial PRIMARY KEY, token_hash text UNIQUE NOT NULL, nombre text NOT NULL,
     rol text NOT NULL CHECK (rol IN ('admin','atencion')), activo boolean NOT NULL DEFAULT true, creado timestamptz NOT NULL DEFAULT now())`);
   await q(`CREATE TABLE IF NOT EXISTS prospeccion.clics (id serial PRIMARY KEY, negocio_id int NOT NULL, tipo text NOT NULL, opcion int,

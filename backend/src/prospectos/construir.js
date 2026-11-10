@@ -166,7 +166,8 @@ export async function construir(id) {
     const m = await mostrar(e, brief, mat);
     const final = { ...brief, marca: { ...brief.marca, propuestas: m.propuestas } };
     await edb.guardar(e.id, { nombre: n.nombre, bloque_actual: 'B7', brief: final, metadata: { ...(e.metadata || {}), prospecto: { folio: n.folio, negocio_id: n.id } } });
-    await edb.insertarMensaje(e.id, { rol: 'agente', contenido: `Le preparamos a ${n.nombre} 6 opciones de página con sus fotos de Google Maps y sus redes:\n\n${m.propuestas.opciones.map((o) => `*${o.letra}* · ${o.nombre}\n${o.url}`).join('\n\n')}`, bloque: 'B7' });
+    const dom = String(process.env.PROSPECCION_DOMINIOS || 'timewins.site').split(',')[0].trim();
+    await edb.insertarMensaje(e.id, { rol: 'agente', contenido: `Le preparamos a ${n.nombre} 6 opciones de página con sus fotos de Google Maps y sus redes:\n\n${m.propuestas.opciones.map((o, i) => `*Opción ${i + 1}* · ${o.nombre}\nhttps://${dom}/p/${n.folio}/${i + 1}`).join('\n\n')}\n\nRevísalas y dime qué quieres cambiar en cualquiera de ellas (colores, textos, fotos, orden). Cuando estén bien, autoriza el envío del correo al negocio.`, bloque: 'B7' });
     await edb.evento(e.id, 'prospecto_construido', { folio: n.folio, token: m.propuestas.token });
     const opciones = m.propuestas.opciones.map((o) => ({ letra: o.letra, nombre: o.nombre, url: o.url }));
     await pdb.actualizar(id, { estado: 'construido', entrevista_id: e.id, token: m.propuestas.token, opciones, error: null });

@@ -94,7 +94,7 @@ function fichaBlanca(n, s, base, extra) {
 ul{padding-left:18px}`;
   const elegida = n.opcion_elegida;
   return pagina(`Ficha · ${n.nombre}`, `<div class="w"><div class="top"><div><p class="muted">Folio ${esc(n.folio)} · ${esc(n.giro)}</p><h1>${esc(n.nombre)}</h1></div><span class="chip">${esc(n.estado)}${elegida ? ` · eligió la ${elegida}` : ''}</span></div>
-<p style="margin-top:14px;display:flex;gap:10px;flex-wrap:wrap">${n.entrevista_id ? `<a class="btn wa" href="${base}/prospectos/chat/${n.folio}">Continuar en el chat con Ari</a>` : ''}<a class="btn sec" href="${base}/prospectos">Todos los prospectos</a></p>
+<p style="margin-top:14px;display:flex;gap:10px;flex-wrap:wrap">${n.token && !n.aprobado_en ? `<a class="btn wa" href="${base}/prospectos/aprobar/${n.folio}">Autorizar envío del correo</a>` : ''}${n.entrevista_id ? `<a class="btn ${n.token && !n.aprobado_en ? 'sec' : 'wa'}" href="${base}/prospectos/chat/${n.folio}${n.aprobado_en ? '' : '?revision=1'}">${n.aprobado_en ? 'Continuar en el chat con Ari' : 'Revisar con Ari'}</a>` : ''}<a class="btn sec" href="${base}/prospectos">Todos los prospectos</a></p>
 ${(n.opciones || []).length ? `<div class="card"><h2 style="font-size:20px;margin-bottom:12px">Sus 6 opciones</h2><div class="ops">${n.opciones.map((o, i) => `<a class="${elegida === i + 1 ? 'si' : ''}" href="${base}/p/${n.folio}/${i + 1}" target="_blank" rel="noopener"><b>${i + 1} · ${esc(o.nombre)}</b>${elegida === i + 1 ? '<br><span class="muted">La eligió</span>' : ''}</a>`).join('')}</div></div>` : ''}
 <div class="card"><table>
 ${fila('Reseñas en Google', `${(n.resenas || 0).toLocaleString('es-MX')}${n.rating ? ` · ${n.rating} ★` : ''}`)}
@@ -220,12 +220,35 @@ async function atender(c, ruta, base, host) {
       }
       return c.redirect(`${base}/prospectos`, 303);
     }
+    if ((m = ruta.match(/^\/prospectos\/aprobar\/([a-z0-9]{4,12})$/))) {
+      const n = await pdb.porFolio(m[1]);
+      if (!n?.token) return c.text('Este prospecto aún no tiene opciones', 404);
+      if (c.req.method === 'POST') {
+        // Si en la revisión Ari rehízo las propuestas, el correo debe llevar las nuevas.
+        const e = n.entrevista_id ? await edb.obtener(n.entrevista_id) : null;
+        const p = e?.brief?.marca?.propuestas;
+        const cambios = { aprobado_en: new Date(), aprobado_por: s.nombre };
+        if (p?.token && p.token !== n.token && Array.isArray(p.opciones) && p.opciones.length) {
+          cambios.token = p.token;
+          cambios.opciones = p.opciones.map((o) => ({ letra: o.letra, nombre: o.nombre, url: o.url }));
+        }
+        await pdb.actualizar(n.id, cambios);
+        await pdb.q(`INSERT INTO prospeccion.clics (negocio_id, tipo) VALUES ($1,'aprobado')`, [n.id]).catch(() => {});
+        return c.html(pagina('Autorizado', `<div class="w" style="max-width:560px"><h1>Listo, ${esc(n.nombre)} queda autorizado</h1><p class="muted" style="margin:12px 0 20px">Su correo sale en el siguiente turno de envíos (lunes a sábado de 9:00 a 18:45).</p><a class="btn sec" href="${base}/p/${n.folio}">Ver su ficha</a></div>`));
+      }
+      if (n.aprobado_en) return c.html(pagina('Ya autorizado', `<div class="w" style="max-width:560px"><h1>${esc(n.nombre)} ya estaba autorizado</h1><p class="muted" style="margin-top:12px">Por ${esc(n.aprobado_por || '')} el ${new Date(n.aprobado_en).toLocaleString('es-MX', { timeZone: 'America/Merida' })}.</p></div>`));
+      return c.html(pagina('Autorizar envío', `<div class="w" style="max-width:560px"><p class="muted">Folio ${esc(n.folio)}</p><h1>¿Autorizar el correo a ${esc(n.nombre)}?</h1>
+<p class="muted" style="margin:12px 0 20px">Se le mandarán sus 6 opciones a ${esc(n.correo || 'su correo')}. Si aún quieres cambios, primero pídeselos a Ari.</p>
+<form method="post" style="display:flex;gap:10px;flex-wrap:wrap"><button class="btn wa" type="submit">Sí, autorizar envío</button><a class="btn sec" href="${base}/prospectos/chat/${n.folio}?revision=1">Pedir cambios a Ari</a><a class="btn sec" href="${base}/p/${n.folio}">Ver las 6</a></form></div>`), 200, { 'cache-control': 'no-store' });
+    }
     if ((m = ruta.match(/^\/prospectos\/chat\/([a-z0-9]{4,12})$/))) {
       const n = await pdb.porFolio(m[1]);
       if (!n?.entrevista_id) return c.text('Este prospecto aún no tiene sesión', 404);
       const msgs = (await edb.q(`SELECT rol, contenido, transcripcion FROM mensajes WHERE entrevista_id=$1 ORDER BY id DESC LIMIT 120`, [n.entrevista_id])).rows.reverse();
       const hist = msgs.map((x) => ({ de: x.rol === 'cliente' ? 'yo' : 'ari', texto: x.contenido || x.transcripcion || '' })).filter((x) => x.texto);
-      hist.unshift({ tipo: 'sis', texto: `Atendiendo a ${n.nombre} (folio ${n.folio}). Escribe lo que te diga el cliente; Ari continúa desde aquí.` });
+      hist.unshift({ tipo: 'sis', texto: c.req.query('revision')
+        ? `Revisión de ${n.nombre} (folio ${n.folio}). Pídele a Ari los cambios que quieras en sus opciones. Cuando estén bien, autoriza el envío en ${DOMINIOS()[0]}/prospectos/aprobar/${n.folio}`
+        : `Atendiendo a ${n.nombre} (folio ${n.folio}). Escribe lo que te diga el cliente; Ari continúa desde aquí.` });
       const datos = JSON.stringify({ u: usuarioDe(n.folio), c: process.env.CHAT_CODIGO || '', h: hist, n: n.nombre }).replace(/</g, '\\u003c');
       return c.html(`<!doctype html><meta charset="utf-8"><meta name="robots" content="noindex"><script>var d=${datos};try{localStorage.setItem('ari_usuario',d.u);localStorage.setItem('ari_codigo',d.c);localStorage.setItem('ari_historial',JSON.stringify(d.h));localStorage.setItem('ari_nombre',d.n);sessionStorage.setItem('tw_pr','1')}catch(e){}location.replace('/chat')</script>`, 200, { 'cache-control': 'no-store' });
     }
@@ -272,6 +295,11 @@ export function registerProspectosRoutes(app) {
     const dominio = DOMINIOS().includes(b.dominio) ? b.dominio : DOMINIOS()[0];
     if (!b.destino) return c.json(armarCorreo(n, Number(b.paso || 0), dominio));
     return c.json(await enviarCorreo(n, Number(b.paso || 0), dominio, { destino: b.destino }));
+  });
+  app.post('/prospectos/v1/avisar-revision', async (c) => {
+    if (!llave(c)) return c.json({ error: 'no' }, 401);
+    const { avisarRevision } = await import('./correos.js');
+    return c.json(await avisarRevision());
   });
   reanudar();
   import('./correos.js').then((m) => m.programarCorreos()).catch((e) => console.error('[prospectos] cron', e.message));
