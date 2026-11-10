@@ -232,7 +232,9 @@ async function sinBandas(buf) {
   return guardar(sharp(await sharp(buf).rotate().extract(a).jpeg({ quality: 92 }).toBuffer()), 'rec');
 }
 
-/** Amplía una caja (px) hasta que cada lado quede sobre una franja uniforme de fondo; máx. 12% del lado por lado. */
+/** Amplía una caja (px) hasta cubrir todo el logo: avanza cada lado mientras haya dibujo, y cruza huecos de fondo
+ * de hasta 10% del alto (5% del ancho) (el espacio entre el símbolo y el nombre o el lema) si después sigue habiendo dibujo.
+ * 10-nov-2026: la versión anterior se detenía en el primer renglón de fondo y dejaba fuera el nombre del negocio. */
 async function ampliarHastaFondo(original, a, W, H) {
   if (!a) return null;
   const esc = Math.min(1, 900 / Math.max(W, H));
@@ -241,14 +243,28 @@ async function ampliarHastaFondo(original, a, W, H) {
   let x0 = Math.floor(a.left * esc), y0 = Math.floor(a.top * esc), x1 = Math.min(w - 1, Math.ceil((a.left + a.width) * esc)), y1 = Math.min(h - 1, Math.ceil((a.top + a.height) * esc));
   const px = (x, y) => { const k = (y * w + x) * 3; return [data[k], data[k + 1], data[k + 2]]; };
   const ref = px(Math.max(0, x0 - 1), Math.max(0, y0 - 1));
-  const lisa = (pts) => { let ok = 0; for (const [x, y] of pts) { const c = px(x, y); if (Math.abs(c[0] - ref[0]) + Math.abs(c[1] - ref[1]) + Math.abs(c[2] - ref[2]) < 45) ok++; } return ok >= pts.length * 0.97; };
+  const lisa = (pts) => { let ok = 0; for (const [x, y] of pts) { const c = px(x, y); if (Math.abs(c[0] - ref[0]) + Math.abs(c[1] - ref[1]) + Math.abs(c[2] - ref[2]) < 45) ok++; } return ok >= pts.length * 0.985; };
   const fila = (y) => Array.from({ length: x1 - x0 + 1 }, (_, i) => [x0 + i, y]);
   const col = (x) => Array.from({ length: y1 - y0 + 1 }, (_, i) => [x, y0 + i]);
-  const maxX = Math.round(w * 0.12), maxY = Math.round(h * 0.12);
-  for (let k = 0; k < maxY && y0 > 0 && !lisa(fila(y0)); k++) y0--;
-  for (let k = 0; k < maxY && y1 < h - 1 && !lisa(fila(y1)); k++) y1++;
-  for (let k = 0; k < maxX && x0 > 0 && !lisa(col(x0)); k++) x0--;
-  for (let k = 0; k < maxX && x1 < w - 1 && !lisa(col(x1)); k++) x1++;
+  // Avanza un lado: d = -1/+1; devuelve la última línea con dibujo (más un margen de 2 px). Lo que aparezca en el 8%
+  // exterior de la imagen después de un hueco de fondo es un marco decorativo (líneas, grecas, puntos): no se incluye.
+  const lado = (ini, d, n, linea, hueco, max) => {
+    let ult = ini, vacias = 0, fuera = null;
+    const enZona = (v) => (d > 0 ? n - 1 - v : v) < n * 0.08;
+    for (let v = ini + d, k = 0; v >= 0 && v <= n - 1 && k < max; v += d, k++) {
+      if (lisa(linea(v))) { if (++vacias > hueco) break; continue; }
+      if (enZona(v) && vacias > 0 && fuera == null && !enZona(ult)) fuera = ult; // primer dibujo en el borde tras un hueco
+      vacias = 0; ult = v;
+    }
+    if (fuera != null) ult = fuera;
+    return Math.max(0, Math.min(n - 1, ult + d * 2));
+  };
+  for (let vuelta = 0; vuelta < 2; vuelta++) { // dos vueltas: al crecer en alto pueden aparecer dibujos a los lados y al revés
+    y0 = lado(y0, -1, h, fila, Math.round(h * 0.1), Math.round(h * 0.4));
+    y1 = lado(y1, 1, h, fila, Math.round(h * 0.1), Math.round(h * 0.4));
+    x0 = lado(x0, -1, w, col, Math.round(w * 0.05), Math.round(w * 0.3));
+    x1 = lado(x1, 1, w, col, Math.round(w * 0.05), Math.round(w * 0.3));
+  }
   const left = Math.max(0, Math.floor(x0 / esc)), top = Math.max(0, Math.floor(y0 / esc));
   return { left, top, width: Math.min(W - left, Math.ceil((x1 - x0 + 1) / esc)), height: Math.min(H - top, Math.ceil((y1 - y0 + 1) / esc)) };
 }
@@ -263,7 +279,7 @@ export function esVersionLogo(r = {}) {
 export async function analizarAsset(a, { negocio = '' } = {}) {
   // Logos recortados con la caja justa del modelo (antes de 10-nov-2026) salían con las letras cortadas: esos análisis
   // se rehacen una vez (solo los que tienen logo) para recortarlo con margen.
-  if (a.analisis?.version === VERSION && !(a.analisis.logo && a.analisis.logo_v !== 3)) {
+  if (a.analisis?.version === VERSION && !(a.analisis.logo && a.analisis.logo_v !== 4)) {
     if (!a.analisis.huella) {
       a.analisis.huella = await descargar(a.analisis.contenido?.url || a.url).then(huella).catch(() => null);
       if (a.analisis.huella) await db.q(`UPDATE assets SET analisis = analisis || jsonb_build_object('huella', $2::text) WHERE id=$1`, [a.id, a.analisis.huella]).catch(() => {});
@@ -301,7 +317,7 @@ export async function analizarAsset(a, { negocio = '' } = {}) {
   // un logo dentro de otra imagen se amplía lado por lado hasta topar con una franja de puro fondo (no se cortan letras
   // ni se mete medio lema o el marco decorativo).
   const lb = v.tipo === 'logo' ? { left: 0, top: 0, width: W, height: H } : await ampliarHastaFondo(original, caja(v.logo, W, H, 0.005), W, H).catch(() => caja(v.logo, W, H, 0.02));
-  if (lb) { out.logo_caja = { x: lb.left / W, y: lb.top / H, w: lb.width / W, h: lb.height / H }; out.logo_v = 3; }
+  if (lb) { out.logo_caja = { x: lb.left / W, y: lb.top / H, w: lb.width / W, h: lb.height / H }; out.logo_v = 4; }
   if (lb) {
     try {
       let buf = await recortar(original, lb);

@@ -231,7 +231,9 @@ export const CSS_MOVIMIENTO = `
 /* fondo en canvas diminuto (no cuenta para LCP ni pesa) */
 .sl.carrusel .sl-d{opacity:1;visibility:visible;background:none;z-index:2;pointer-events:none}.sl.carrusel .sl-d>img.sl-img,.sl.carrusel .sl-d>canvas.sl-fondo,.sl.carrusel .sl-d>video{display:none}.sl.carrusel .sl-cap{pointer-events:auto}
 .sl.carrusel .sl-prev,.sl.carrusel .sl-sig,.sl.carrusel .sl-pos{display:none}.sl.carrusel .sl-ctrl{z-index:3}
-.sl-car{position:absolute;inset:0;overflow:hidden;z-index:1}.sl-pista{display:flex;gap:10px;height:100%;width:max-content;animation:sl-corre 60s linear infinite;will-change:transform}
+.sl-car{position:absolute;inset:0;overflow:hidden;z-index:1}
+.sl-car::after{content:"";position:absolute;inset:0;pointer-events:none;background:linear-gradient(90deg,rgba(0,0,0,.66) 0%,rgba(0,0,0,.5) 45%,rgba(0,0,0,.18) 80%,rgba(0,0,0,.08)),linear-gradient(0deg,rgba(0,0,0,.45),rgba(0,0,0,0) 55%)}
+.sl.carrusel .sl-cap{text-shadow:0 1px 3px rgba(0,0,0,.55)}.sl-pista{display:flex;gap:10px;height:100%;width:max-content;animation:sl-corre 60s linear infinite;will-change:transform}
 .sl-ci{height:100%;width:auto;max-width:none;flex:0 0 auto;object-fit:cover;display:block}
 .sl.carrusel:hover .sl-pista,.sl.carrusel.quieto .sl-pista{animation-play-state:paused}
 @keyframes sl-corre{from{transform:translate3d(0,0,0)}to{transform:translate3d(calc(-50% - 5px),0,0)}}

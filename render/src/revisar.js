@@ -5,7 +5,7 @@ export async function revisarPagina(page) {
   await page.evaluate(async () => {
     document.querySelectorAll('img[loading=lazy]').forEach((i) => { i.loading = 'eager'; });
     for (let y = 0; y < document.body.scrollHeight; y += window.innerHeight) { window.scrollTo(0, y); await new Promise((r) => setTimeout(r, 120)); }
-    window.scrollTo(0, 0);
+    window.scrollTo(0, 0); await new Promise((r) => setTimeout(r, 700)); // deja terminar transiciones al volver arriba (p. ej. logo de la barra)
     await Promise.all(Array.from(document.images).map((i) => (i.complete ? null : new Promise((r) => { i.onload = i.onerror = r; setTimeout(r, 4000); }))));
   });
   await page.evaluate(() => document.fonts.ready);
