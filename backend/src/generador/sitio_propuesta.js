@@ -2,7 +2,7 @@
 // tienda, genérico). Misma composición (layout A–F), mismo orden de secciones, misma paleta, mismas fuentes, mismos textos y
 // las mismas fotos que en propuestas_general.js, pero como bloques nativos de Gutenberg (editables en wp-admin) + el CSS de la
 // propuesta inyectado en los estilos globales del sitio. Nada se "reinterpreta": si la propuesta lo tenía, el sitio lo tiene.
-import { TITULOS, NOMBRES_GENERAL, agruparOferta, redes } from './propuestas_general.js';
+import { TITULOS, NOMBRES_GENERAL, agruparOferta, redes, pasoHTML } from './propuestas_general.js';
 import { cssTipografia } from './tipo_color.js';
 import { urlFuentes } from './fuentes.js';
 import { waUrl, formatoTel } from './bloques.js';
@@ -66,6 +66,13 @@ const B = {
     const t = ordenada ? 'ol' : 'ul';
     const a = { ...(ordenada ? { ordered: true } : {}), ...(clase ? { className: clase } : {}) };
     return `<!-- wp:list${attrs(a)} -->\n<${t} class="wp-block-list${clase ? ` ${clase}` : ''}">${items.map((x) => `<!-- wp:list-item -->\n<li>${esc(x)}</li>\n<!-- /wp:list-item -->`).join('')}</${t}>\n<!-- /wp:list -->`;
+  },
+  // Igual que lista(), pero los items ya vienen escapados (HTML con <b>/<span>).
+  listaHTML(items, { ordenada = false, clase = '' } = {}) {
+    if (!items.length) return '';
+    const t = ordenada ? 'ol' : 'ul';
+    const a = { ...(ordenada ? { ordered: true } : {}), ...(clase ? { className: clase } : {}) };
+    return `<!-- wp:list${attrs(a)} -->\n<${t} class="wp-block-list${clase ? ` ${clase}` : ''}">${items.map((x) => `<!-- wp:list-item -->\n<li>${x}</li>\n<!-- /wp:list-item -->`).join('')}</${t}>\n<!-- /wp:list -->`;
   },
   cita(texto, autor) {
     return `<!-- wp:quote -->\n<blockquote class="wp-block-quote"><!-- wp:paragraph -->\n<p>${esc(texto)}</p>\n<!-- /wp:paragraph -->${autor ? `<cite>${esc(autor)}</cite>` : ''}</blockquote>\n<!-- /wp:quote -->`;
@@ -142,7 +149,7 @@ html{scroll-behavior:smooth}
 .iap .quotes{display:grid;gap:14px;grid-template-columns:repeat(auto-fill,minmax(260px,1fr))}.iap .wp-block-quote{background:var(--card);border:1px solid var(--bor)!important;border-radius:20px;padding:22px;margin:0}
 .iap .wp-block-quote p{font-family:var(--ft);font-size:20px;line-height:1.3;max-width:none}.iap .wp-block-quote cite{display:block;margin-top:12px;font-style:normal;font-weight:700;font-size:14px;color:var(--soft)}
 .iap .capturas{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:12px;margin-top:18px;align-items:start}.iap .capturas figure{margin:0}.iap .capturas img{width:100%;height:auto;border-radius:14px;border:1px solid var(--bor)}
-.iap .pasos{counter-reset:p;list-style:none;display:grid;gap:12px;padding:0}.iap .pasos li{counter-increment:p;padding-left:52px;position:relative;min-height:40px}.iap .pasos li::before{content:counter(p);position:absolute;left:0;top:-4px;width:38px;height:38px;border-radius:50%;background:var(--p);color:var(--on);display:grid;place-items:center;font-weight:800}
+.iap .pasos{counter-reset:p;list-style:none;display:grid;gap:12px;padding:0}.iap .pasos .paso-t{display:block;font-weight:700}.iap .pasos .paso-d{display:block;opacity:.85}.iap .sec-intro{opacity:.85;max-width:62ch}.iap .sec-cierre{margin-top:26px;font-weight:600}.iap .pasos li{counter-increment:p;padding-left:52px;position:relative;min-height:40px}.iap .pasos li::before{content:counter(p);position:absolute;left:0;top:-4px;width:38px;height:38px;border-radius:50%;background:var(--p);color:var(--on);display:grid;place-items:center;font-weight:800}
 .iap .wp-block-details{border-bottom:1px solid var(--bor);padding:16px 0}.iap .wp-block-details summary{font-size:21px;cursor:pointer;list-style:none}.iap .wp-block-details summary::-webkit-details-marker{display:none}.iap .wp-block-details p{margin-top:10px;color:var(--soft)}
 .iap .video{margin:0}.iap .video video{width:100%;border-radius:18px}
 .iap .datos{display:grid;gap:14px}.iap .datos p{display:flex;flex-direction:column;max-width:none}.iap .datos strong{font-family:var(--ft);font-weight:400;font-size:20px}${CSS_REDES}
@@ -190,7 +197,7 @@ export async function sitioDePropuesta({ brief, mat, prop, elegida, deColores = 
   const f = elegida.tipografia || {};
   const textos = prop.textos || {};
   const v = textos.variantes?.[indice] || textos.variantes?.[0] || {};
-  const t = { titular: v.titular, subtitulo: v.subtitulo, cta: v.cta || 'Escríbeme por WhatsApp', info: (textos.info || []).slice(0, 3), sobre: textos.sobre, proceso: textos.proceso };
+  const t = { titular: v.titular, subtitulo: v.subtitulo, cta: v.cta || 'Escríbeme por WhatsApp', info: (textos.info || []).slice(0, 3), sobre: textos.sobre, proceso: textos.proceso, proceso_intro: textos.proceso_intro, servicios_intro: textos.servicios_intro, servicios_cierre: textos.servicios_cierre, servicios_boton: textos.servicios_boton };
   const arq = TITULOS[brief.negocio?.arquetipo] ? brief.negocio.arquetipo : 'generico';
   const T = { ...TITULOS[arq], ...(textos.secciones || {}) };
   const c = brief.contacto || {};
@@ -247,7 +254,7 @@ export async function sitioDePropuesta({ brief, mat, prop, elegida, deColores = 
       { clase: 'opc' })).join(''), { clase: 'paq' })).join('');
     const cat = mat.catalogos.map((x) => img(x)).join('');
     const docs = mat.documentos.map((x) => { usadas.add(x.url); return B.p(`<a href="${esc(x.url)}" target="_blank" rel="noreferrer noopener">Ver ${esc(/pdf/i.test(x.url) ? 'catálogo (PDF)' : x.alt || 'documento')}</a>`, 'doc'); }).join('');
-    return sec('servicios', B.titulo(T.servicios) + (cards ? B.grupo(cards, { clase: 'paqs' }) : '') + (cat ? B.grupo(cat, { clase: 'cats' }) : '') + docs + B.botones([{ texto: t.cta, url: wa }], 'centro'));
+    return sec('servicios', B.titulo(T.servicios) + (t.servicios_intro ? B.p(esc(t.servicios_intro), 'sec-intro') : '') + (cards ? B.grupo(cards, { clase: 'paqs' }) : '') + (cat ? B.grupo(cat, { clase: 'cats' }) : '') + docs + (t.servicios_cierre ? B.p(esc(t.servicios_cierre), 'sec-cierre centro') : '') + B.botones([{ texto: t.servicios_boton || t.cta, url: wa }], 'centro'));
   };
   const secSobre = () => {
     const otra = mat.equipo.find((x) => x.tipo === 'foto_fundador' && !usadas.has(x.url));
@@ -265,7 +272,9 @@ export async function sitioDePropuesta({ brief, mat, prop, elegida, deColores = 
     const caps = mat.resenas.map((x) => img(x)).join('');
     return sec('resenas', B.titulo(T.resenas) + (cards ? B.grupo(cards, { clase: 'quotes' }) : '') + (caps ? B.grupo(caps, { clase: 'capturas' }) : ''), 'sec resenas');
   };
-  const secProceso = () => { const ps = brief.oferta?.proceso_pasos || []; return ps.length >= 3 ? sec(null, B.titulo(t.proceso || 'Cómo funciona') + B.lista(ps.map(String), { ordenada: true, clase: 'pasos' })) : ''; };
+  const secProceso = () => { const ps = brief.oferta?.proceso_pasos || []; return ps.length >= 3 ? sec(null, B.titulo(t.proceso || 'Cómo funciona') + (t.proceso_intro ? B.p(esc(t.proceso_intro), 'sec-intro') : '') + B.listaHTML(ps.map(pasoHTML), { ordenada: true, clase: 'pasos' })) : ''; };
+  // Si el cliente fijó el título de "Cómo funciona" por chat, la sección aparece en cualquier diseño (10-nov-2026).
+  const procCli = () => (t.proceso ? secProceso() : '');
   const secFaq = () => { const fq = (brief.faq || []).filter((x) => x.pregunta && x.respuesta); return fq.length ? sec('faq', B.titulo(T.faq) + fq.map((x, k) => B.pregunta(x.pregunta, x.respuesta, k === 0)).join(''), 'sec', true) : ''; };
   const secVideo = () => (mat.videos.length ? sec(null, mat.videos.map((x) => { usadas.add(x.url); return B.video(x.url); }).join('')) : '');
   const secContacto = () => {
@@ -283,11 +292,11 @@ export async function sitioDePropuesta({ brief, mat, prop, elegida, deColores = 
 
   const ORDEN = {
     portada: [secTrabajo, secServicios, secSobre, secEquipo, secResenas, secProceso, secFaq, secVideo, secContacto],
-    editorial: [secSobre, secTrabajo, secEquipo, secServicios, secResenas, secFaq, secVideo, secContacto],
+    editorial: [secSobre, secTrabajo, secEquipo, secServicios, secResenas, procCli, secFaq, secVideo, secContacto],
     mosaico: [secServicios, secTrabajo, secResenas, secSobre, secEquipo, secProceso, secFaq, secVideo, secContacto],
-    logo: [secTrabajo, secSobre, secEquipo, secServicios, secResenas, secFaq, secVideo, secContacto],
-    dostonos: [secServicios, secTrabajo, secSobre, secEquipo, secResenas, secFaq, secVideo, secContacto],
-    carta: [secServicios, secSobre, secEquipo, secResenas, secTrabajo, secFaq, secVideo, secContacto],
+    logo: [secTrabajo, secSobre, secEquipo, secServicios, secResenas, procCli, secFaq, secVideo, secContacto],
+    dostonos: [secServicios, secTrabajo, secSobre, secEquipo, secResenas, procCli, secFaq, secVideo, secContacto],
+    carta: [secServicios, secSobre, secEquipo, secResenas, secTrabajo, procCli, secFaq, secVideo, secContacto],
   }[layout];
   const cuerpo = ORDEN.map((fn) => fn()).join('\n');
   // Galería final: todo lo que el cliente mandó y aún no aparece (regla dura).

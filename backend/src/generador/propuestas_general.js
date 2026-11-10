@@ -107,6 +107,12 @@ export function logoHTML(logo, bg, fg, { clase = 'logo', alt = '' } = {}) {
 
 /* ---------------- Datos ---------------- */
 // "Smash Cake (Primer Año) - Paquete #1" → grupo "Smash Cake (Primer Año)", opción "Paquete #1".
+/** Paso del proceso: "Título\nExplicación" (o {titulo, texto}) → título en negritas y explicación debajo. */
+export function pasoHTML(x) {
+  const o = typeof x === 'object' && x ? { a: x.titulo || '', b: x.texto || '' } : (() => { const [a, ...r] = String(x || '').split('\n'); return { a, b: r.join(' ').trim() }; })();
+  return o.b ? `<b class="paso-t">${esc(o.a.trim())}</b><span class="paso-d">${esc(o.b)}</span>` : esc(o.a.trim());
+}
+
 export function agruparOferta(items = []) {
   const grupos = new Map();
   for (const it of items) {
@@ -300,7 +306,9 @@ function pagina(d) {
     const cat = mat.catalogos.map((x) => `<a class="catimg" href="${esc(x.url)}" target="_blank" rel="noopener">${img(x)}</a>`).join('');
     const docs = mat.documentos.map((x) => `<a class="doc" href="${esc(x.url)}" target="_blank" rel="noopener">Ver ${esc(/pdf/i.test(x.url) ? 'catálogo (PDF)' : x.alt || 'documento')}</a>`).join('');
     for (const x of mat.documentos) usadas.add(x.url);
-    return `<section class="sec" id="servicios"><div class="wrap"><h2>${esc(T.servicios)}</h2>${cards ? (conPaquetes ? cards : `<div class="paqs">${cards}</div>`) : ''}${cat ? `<div class="cats">${cat}</div>` : ''}${docs}<div class="centro">${cta()}</div></div></section>`;
+    // Intro, frase de cierre y texto del botón de esta sección los puede fijar el cliente por chat (10-nov-2026).
+    const btnServ = t.servicios_boton ? `<a class="btn"${wa}>${esc(t.servicios_boton)}</a>` : cta();
+    return `<section class="sec" id="servicios"><div class="wrap"><h2>${esc(T.servicios)}</h2>${t.servicios_intro ? `<p class="sec-intro">${esc(t.servicios_intro)}</p>` : ''}${cards ? (conPaquetes ? cards : `<div class="paqs">${cards}</div>`) : ''}${cat ? `<div class="cats">${cat}</div>` : ''}${docs}<div class="centro">${t.servicios_cierre ? `<p class="sec-cierre">${esc(t.servicios_cierre)}</p>` : ''}${btnServ}</div></div></section>`;
   };
   const secSobre = () => {
     const otra = mat.equipo.find((x) => x.tipo === 'foto_fundador' && !usadas.has(x.url) && fueraDeGaleria(x));
@@ -324,7 +332,10 @@ function pagina(d) {
     const fila = `<div class="quotes q${Math.min(n, 4)}">${cards}${caps}</div>`;
     return `<section class="sec resenas" id="resenas"><div class="wrap"><h2>${esc(T.resenas)}</h2>${fila}</div></section>`;
   };
-  const secProceso = () => { const ps = brief.oferta?.proceso_pasos || []; return ps.length >= 3 ? `<section class="sec"><div class="wrap"><h2>${esc(t.proceso || 'Cómo funciona')}</h2><ol class="pasos">${ps.map((x) => `<li>${esc(x)}</li>`).join('')}</ol></div></section>` : ''; };
+  // Cada paso puede traer título y explicación ("Título\nTexto"), como lo escribe el cliente por chat (10-nov-2026).
+  const secProceso = () => { const ps = brief.oferta?.proceso_pasos || []; return ps.length >= 3 ? `<section class="sec" id="proceso"><div class="wrap"><h2>${esc(t.proceso || 'Cómo funciona')}</h2>${t.proceso_intro ? `<p class="sec-intro">${esc(t.proceso_intro)}</p>` : ''}<ol class="pasos">${ps.map((x) => `<li>${pasoHTML(x)}</li>`).join('')}</ol></div></section>` : ''; };
+  // Si el cliente fijó el título de "Cómo funciona" por chat, la sección aparece en cualquier diseño (10-nov-2026).
+  const procCli = () => (t.proceso ? secProceso() : '');
   const secFaq = () => { const fq = (brief.faq || []).filter((x) => x.pregunta && x.respuesta); return fq.length ? `<section class="sec" id="faq"><div class="wrap"><div class="faq-l"><h2>${esc(T.faq)}</h2>${fq.map((x, k) => `<details${k === 0 ? ' open' : ''}><summary>${esc(x.pregunta)}</summary><p>${esc(x.respuesta)}</p></details>`).join('')}</div></div></section>` : ''; };
   const secVideo = () => mat.videos.length ? `<section class="sec"><div class="wrap">${mat.videos.map((v) => { usadas.add(v.url); return `<video class="video" src="${esc(v.url)}" controls playsinline preload="metadata"></video>`; }).join('')}</div></section>` : '';
   const secContacto = () => {
@@ -337,11 +348,11 @@ function pagina(d) {
 
   const ORDEN = {
     portada: [secTrabajo, secServicios, secSobre, secEquipo, secResenas, secProceso, secFaq, secVideo, secContacto],
-    editorial: [secSobre, secTrabajo, secEquipo, secServicios, secResenas, secFaq, secVideo, secContacto],
+    editorial: [secSobre, secTrabajo, secEquipo, secServicios, secResenas, procCli, secFaq, secVideo, secContacto],
     mosaico: [secServicios, secTrabajo, secResenas, secSobre, secEquipo, secProceso, secFaq, secVideo, secContacto],
-    logo: [secTrabajo, secSobre, secEquipo, secServicios, secResenas, secFaq, secVideo, secContacto],
-    dostonos: [secServicios, secTrabajo, secSobre, secEquipo, secResenas, secFaq, secVideo, secContacto],
-    carta: [secServicios, secSobre, secEquipo, secResenas, secTrabajo, secFaq, secVideo, secContacto],
+    logo: [secTrabajo, secSobre, secEquipo, secServicios, secResenas, procCli, secFaq, secVideo, secContacto],
+    dostonos: [secServicios, secTrabajo, secSobre, secEquipo, secResenas, procCli, secFaq, secVideo, secContacto],
+    carta: [secServicios, secSobre, secEquipo, secResenas, secTrabajo, procCli, secFaq, secVideo, secContacto],
   }[d.layout];
   const cuerpo = ORDEN.map((fn) => fn()).join('');
   // Galería final: TODO lo que el cliente mandó y aún no aparece (regla dura). Nada se queda fuera.
@@ -425,7 +436,7 @@ body.l-carta .paq{background:none;border:0;border-top:2px solid var(--fg);border
 .quotes .cap{margin:0}.quotes .cap img{width:100%;height:auto;border-radius:20px;border:1px solid var(--bor);display:block}
 @media (min-width:900px){.quotes.q2{grid-template-columns:repeat(2,minmax(0,1fr))}.quotes.q3{grid-template-columns:repeat(3,minmax(0,1fr))}.quotes.q4{grid-template-columns:repeat(4,minmax(0,1fr))}}
 .capturas{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:12px;margin-top:18px;align-items:start}.capturas img{width:100%;height:auto;border-radius:14px;border:1px solid var(--bor)}
-.pasos{counter-reset:p;list-style:none;display:grid;gap:12px}.pasos li{counter-increment:p;padding-left:52px;position:relative;min-height:40px}.pasos li::before{content:counter(p);position:absolute;left:0;top:-4px;width:38px;height:38px;border-radius:50%;background:var(--acc);color:var(--on-acc);display:grid;place-items:center;font-weight:800}
+.pasos{counter-reset:p;list-style:none;display:grid;gap:12px}.pasos .paso-t{display:block;font-weight:700}.pasos .paso-d{display:block;opacity:.85}.sec-intro{margin:-10px 0 22px;opacity:.85;max-width:62ch}.sec-cierre{margin:26px 0 14px;font-weight:600}.pasos li{counter-increment:p;padding-left:52px;position:relative;min-height:40px}.pasos li::before{content:counter(p);position:absolute;left:0;top:-4px;width:38px;height:38px;border-radius:50%;background:var(--acc);color:var(--on-acc);display:grid;place-items:center;font-weight:800}
 details{border-bottom:1px solid var(--bor);padding:16px 0}summary{font-family:var(--ft);font-size:21px;cursor:pointer;list-style:none}summary::-webkit-details-marker{display:none}details p{margin-top:10px;color:var(--soft)}
 .video{width:100%;border-radius:18px}
 .promo{background:var(--p);color:var(--on);padding:16px 0;text-align:center;font-size:17px}.promo b{margin-right:8px;text-transform:uppercase;letter-spacing:.08em;font-size:13px}
@@ -469,7 +480,7 @@ export function paginasGenerales({ brief, mat, textos, pares, urlFuentes, ronda 
     const d = {
       i: i + ronda * 3, letra, layout, dref, nombre: brief.negocio?.nombre || '', brief, mat, titulos,
       pal: fijo?.paleta || (dref ? paletaRef(dref, i) : { ...corregirPaleta(paletaGeneral(layout, cps[i].colores, pastel, i + ronda * 2, { acento: cps[i].acento, acentoCta: cps[i].acentoCta })).paleta, familia: cps[i].familia, origen: cps[i].origen }), f: par, fuentesUrl: urlFuentes([par]),
-      t: { titular: v.titular, subtitulo: v.subtitulo, foto_url: v.foto_url || null, cta: v.cta || 'Escríbeme por WhatsApp', info: (textos.info || []).slice(0, 3), sobre: textos.sobre, proceso: textos.proceso, diapositivas: textos.diapositivas },
+      t: { titular: v.titular, subtitulo: v.subtitulo, foto_url: v.foto_url || null, cta: v.cta || 'Escríbeme por WhatsApp', info: (textos.info || []).slice(0, 3), sobre: textos.sobre, proceso: textos.proceso, proceso_intro: textos.proceso_intro, servicios_intro: textos.servicios_intro, servicios_cierre: textos.servicios_cierre, servicios_boton: textos.servicios_boton, diapositivas: textos.diapositivas },
       wa: waUrl(c.whatsapp, c.mensaje_whatsapp_inicial), tel: c.whatsapp ? formatoTel(c.whatsapp) : null,
     };
     const nombre = dref?.nombres?.[i] || NOMBRES_GENERAL[layout];

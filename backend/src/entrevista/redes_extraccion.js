@@ -26,15 +26,17 @@ export function detectarLigas(texto, { preguntoRedes = false } = {}) {
   if (preguntoRedes) {
     // "@toolattemid", "en insta toolattemid", "face: ToolatteMerida"
     const conRed = (re) => t.match(re)?.[1] || null;
-    igArroba = !ig ? (conRed(/(?:insta(?:gram)?|ig)\s*(?:es|:|=)?\s*@?([A-Za-z0-9._]{2,30})/i) || conRed(/(?:^|\s)@([A-Za-z0-9._]{2,30})/)) : null;
-    fbNombre = !fb ? conRed(/(?:face(?:book)?|fb)\s*(?:es|:|=)?\s*@?([A-Za-z0-9.]{3,60})/i) : null;
+    // Con límite de palabra: "contigo." se leía como ig="o." y relanzaba la extracción (10-nov-2026).
+    igArroba = !ig ? (conRed(/(?:^|[^\p{L}])(?:insta(?:gram)?|ig)\s*(?:es|:|=)?\s*@?([A-Za-z0-9._]{3,30})/iu) || conRed(/(?:^|\s)@([A-Za-z0-9._]{2,30})/)) : null;
+    fbNombre = !fb ? conRed(/(?:^|[^\p{L}])(?:face(?:book)?|fb)\s*(?:es|:|=)?\s*@?([A-Za-z0-9.]{3,60})/iu) : null;
   }
   const facebook = fb || (fbNombre && !/^(es|no|si|sí|tengo|como|el|la)$/i.test(fbNombre) ? `https://www.facebook.com/${fbNombre}` : null);
   const instagram = ig || (igArroba ? `https://www.instagram.com/${igArroba}/` : null);
   return facebook || instagram ? { facebook, instagram } : null;
 }
 
-export const preguntaPorRedes = (mensaje) => /facebook|instagram|redes sociales|tus redes/i.test(String(mensaje || ''));
+// Solo cuando Ari pidió las ligas o cuentas (no "¿tienes reseñas en Facebook?").
+export const preguntaPorRedes = (mensaje) => { const m = String(mensaje || ''); return /facebook|instagram|redes sociales|tus redes/i.test(m) && !/rese[nñ]a|comentario|opini[oó]n|testimonio/i.test(m); };
 const hayExtractor = () => !!(config.extractorUrl && config.extractorApiKey);
 
 async function api(ruta, opciones = {}) {
@@ -100,11 +102,14 @@ export function aplicarAlBrief(brief, r) {
 async function guardarAssets(e, r) {
   const previos = await db.assetsDe(e.id);
   const urls = new Set(previos.map((a) => a.url));
+  // Una segunda extracción de las mismas redes vuelve a hospedar las fotos con otra URL: se reconocen por su descripción.
+  const firma = (a) => `${a.tipo || ''}|${a.nota || ''}|${a.descripcion_ia || ''}`;
+  const firmas = new Set(previos.filter((a) => a.origen === 'redes').map(firma));
   let n = previos.length;
   const nuevos = [];
   const add = async (a) => {
-    if (!a?.url || urls.has(a.url)) return;
-    urls.add(a.url);
+    if (!a?.url || urls.has(a.url) || firmas.has(firma(a))) return;
+    urls.add(a.url); firmas.add(firma(a));
     nuevos.push(await db.insertarAsset(e.id, { clave: `a${++n}`, origen: 'redes', usar: true, mime: a.mime, ...a }));
   };
   // Si el cliente ya mandó su logo por el chat, el de redes no se agrega (el suyo manda).
@@ -127,7 +132,10 @@ export async function atenderExtraccion(e, textoTurno, historial = []) {
   const ultimaAri = [...historial].reverse().find((m) => m.rol === 'agente' && m.tipo !== 'imagen')?.contenido;
   const ligas = textoTurno ? detectarLigas(textoTurno, { preguntoRedes: preguntaPorRedes(ultimaAri) }) : null;
 
-  const ligasNuevas = ligas && (!rx || (ligas.facebook && ligas.facebook !== rx.ligas?.facebook) || (ligas.instagram && ligas.instagram !== rx.ligas?.instagram));
+  // Ya extraídas: solo una liga real (no un @nombre suelto) puede relanzar la extracción.
+  const ligaReal = /(facebook\.com|fb\.com|fb\.me|instagram\.com)\//i.test(textoTurno || '');
+  const distintas = rx && ((ligas?.facebook && ligas.facebook !== rx.ligas?.facebook) || (ligas?.instagram && ligas.instagram !== rx.ligas?.instagram));
+  const ligasNuevas = !!ligas && (!rx || (distintas && (ligaReal || !rx.aplicada)));
   const reintentar = !ligasNuevas && rx?.estado === 'por_lanzar' && (rx.intentos || 0) < MAX_INTENTOS;
 
   // Ligas nuevas (o distintas a las ya extraídas), o un lanzamiento que falló antes → lanzar.

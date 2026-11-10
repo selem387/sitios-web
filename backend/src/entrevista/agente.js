@@ -11,7 +11,7 @@ import { BLOQUES, TOTAL_BLOQUES, PALABRA_INICIO, INSTRUCCIONES, SISTEMA_ARI, GUI
 import { isObject } from '../util.js';
 import { resolverSubtipo } from './subtipo.js';
 import { estudiarReferencias } from './referencias.js';
-import { propuestasPendientes, tocaPropuestas, atenderPropuestas, iniciarPropuestas } from './propuestas.js';
+import { propuestasPendientes, ajusteElegida, tocaPropuestas, atenderPropuestas, iniciarPropuestas } from './propuestas.js';
 import { verificacionPendiente, atenderVerificacion, enviarVerificacion, correoCambio, faltaCorreo } from './verificacion.js';
 import { normalizarRedes, redesFaltantes, listaNombres } from './redes.js';
 import { redesEnCurso, atenderRedes } from './entrega.js';
@@ -463,7 +463,7 @@ export async function procesarMensaje(b) {
     return r;
   };
   const prefijo = [];
-  if (!nueva && propuestasPendientes(e.brief)) {
+  if (!nueva && (propuestasPendientes(e.brief) || ajusteElegida(e))) {
     try {
       const r = await atenderPropuestas(e, e.brief || {}, { texto, huboMedia: nuevosAssets.length > 0, clavesNuevas: nuevosAssets.filter((a) => !['documento', 'video'].includes(a.tipo)).map((a) => a.clave) });
       if (r.brief !== e.brief) { await db.guardar(e.id, { brief: r.brief }); e.brief = r.brief; }
@@ -584,6 +584,11 @@ export async function procesarMensaje(b) {
   }
   // Pulido final del texto: sin saludos a media plática y una sola pregunta por mensaje.
   t = { ...t, reply: pulirReply(t.reply, regresaDePausa) };
+  // Ari no modifica la página: si aun así dice "ya actualicé/cambié/agregué…", esa frase se quita (10-nov-2026).
+  if (e.brief?.marca?.propuestas?.estado) {
+    const sinFalso = t.reply.replace(/(^|\n)\s*¡?(listo|perfecto|entendido|genial|claro|hecho)?[!,.]?\s*(ya\s+)?(actualic|cambi[eé]|agregu[eé]|a[nñ]ad[ií]|puse|quit[eé]|elimin[eé]|sustitu[ií]|reemplac)[^?\n]*?[.!](?=\s|$)/i, '$1').trim();
+    if (sinFalso !== t.reply.trim() && sinFalso.length > 10) { await db.evento(e.id, 'ari_afirmo_cambio', { reply: t.reply.slice(0, 300) }).catch(() => {}); t = { ...t, reply: sinFalso }; }
+  }
   // El estado de la extracción de redes lo maneja solo redes_extraccion.js.
   if (e.brief?.redes_extraccion) brief.redes_extraccion = e.brief.redes_extraccion; else delete brief.redes_extraccion;
   if (resumenRedes) { const a = asegurarResumen(t.reply, brief, resumenRedes); t = { ...t, reply: a.reply }; brief = a.brief; }

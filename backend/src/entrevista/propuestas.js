@@ -18,6 +18,18 @@ const NO_TENGO = /no (las |los )?tengo|no tengo (m[aá]s|otras|mejores)|son (tod
 const hash = (s) => [...String(s)].reduce((h, c) => (h * 31 + c.charCodeAt(0)) >>> 0, 7);
 
 export const propuestasPendientes = (brief) => ['pendiente_material', 'mostradas', 'rechazadas'].includes(brief?.marca?.propuestas?.estado);
+// Opción ya elegida y la entrevista sigue: los cambios que pida van a su página al momento (10-nov-2026: antes Ari decía
+// "ya actualicé" sin que nada cambiara, porque después de elegir nadie aplicaba los cambios).
+export const ajusteElegida = (e) => e?.brief?.marca?.propuestas?.estado === 'elegida' && ['en_curso', 'pausada'].includes(e?.estado);
+
+/** Última pregunta pendiente de Ari (para retomarla después de aplicar un cambio). */
+async function ultimaPregunta(entrevistaId) {
+  const ms = await db.ultimosMensajes(entrevistaId, 30).catch(() => []);
+  const m = [...ms].reverse().find((x) => x.rol === 'agente' && x.tipo !== 'imagen' && x.contenido?.includes('?') && !/^(Listo ✅|Seguimos 👇)/.test(x.contenido));
+  if (!m) return null;
+  const parrafos = m.contenido.split(/\n\s*\n/).filter((x) => x.includes('?'));
+  return parrafos.at(-1)?.trim() || null;
+}
 // Se disparan al cruzar B6 hacia adelante, aunque Ari se haya saltado B6 (antes, saltar de B5 a B7 nunca mandaba propuestas).
 export const tocaPropuestas = (brief, bloqueAnterior, bloqueNuevo) =>
   !brief?.marca?.propuestas && BLOQUES_ORDEN.indexOf(bloqueNuevo) > BLOQUES_ORDEN.indexOf('B6') && bloqueAnterior !== bloqueNuevo;
@@ -220,6 +232,29 @@ export async function atenderPropuestas(e, brief, { texto = '', huboMedia = fals
     const nb = { ...brief, marca: { ...brief.marca, estilo: elegida.estilo, propuestas: { ...p, estado: 'elegida', elegido: r.elegido, colores_de: colores ? r.colores_de : null, comentario: texto } } };
     const conf = `¡Perfecto! Vamos con la opción *${r.elegido}*${colores ? ` con los colores de la *${r.colores_de}*` : ''}. Tomo en cuenta lo que me dijiste para la página completa.`;
     return { responder: { textos: [conf] }, brief: nb, seguirConAri: true };
+  }
+  if (p.estado === 'elegida' && e && ['en_curso', 'pausada'].includes(e.estado) && (texto || clavesNuevas.length)) {
+    const m = await atenderMostradas(e, brief, p, { texto, clavesNuevas, elegida: p.elegido });
+    if (!m || m.accion === 'seguir') return { responder: null, brief, seguirConAri: true };
+    if (m.accion === 'reenviar') {
+      const o = (p.opciones || []).find((x) => (x.etiqueta || x.letra) === p.elegido);
+      return { responder: { textos: [`Claro, aquí está tu página 👇\n${o?.url || ''}`] }, brief, seguirConAri: true };
+    }
+    if (m.accion === 'elegir' && m.letra !== p.elegido) {
+      const o = (p.opciones || []).find((x) => (x.etiqueta || x.letra) === m.letra);
+      if (o) {
+        const nb = { ...brief, marca: { ...brief.marca, estilo: o.estilo, propuestas: { ...p, elegido: m.letra, colores_de: m.colores_de || null } } };
+        await db.evento(e.id, 'eleccion_cambiada', { antes: p.elegido, ahora: m.letra }).catch(() => {});
+        return { responder: { textos: [`Listo ✅ Cambié tu página a la opción *${m.letra}* · ${o.nombre} 👇\n${o.url}`] }, brief: nb, seguirConAri: true };
+      }
+    }
+    if (m.accion === 'ninguna') return { responder: null, brief, seguirConAri: true };
+    if (m.responder) {
+      const textos = [...(m.responder.textos || [])];
+      if (m.retomar) { const q = await ultimaPregunta(e.id); if (q) textos.push(`Seguimos 👇\n\n${q}`); }
+      return { responder: { textos }, brief: m.brief || brief, seguirConAri: false };
+    }
+    return { responder: null, brief, seguirConAri: true };
   }
   return { responder: null, brief, seguirConAri: true };
 }
