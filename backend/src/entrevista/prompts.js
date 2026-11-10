@@ -90,10 +90,12 @@ SALIDA: siempre el JSON pedido. brief_patch anidado igual que el BRIEF. pendient
 assets_patch solo cuando reclasifiques una foto recibida (clave de la foto, tipo, usar, nota).`;
 
 export const GUIA_BLOQUES = {
-  B0: `B0 · Bienvenida. ★cliente.nombre, cliente.como_se_entero (opcional, UNA sola pregunta y nunca insistir).
+  B0: `B0 · Bienvenida. ★cliente.nombre, contacto.redes.facebook, contacto.redes.instagram, cliente.como_se_entero (opcional, UNA sola pregunta y nunca insistir).
 B0.1 "¿Cómo te llamas?" (las instrucciones ya se enviaron; no las repitas).
-B0.2 "¿Cómo te enteraste de nosotros?" solo si no lo dijo. En cuanto tengas el nombre, cierra B0 sin resumen y pasa a B1.
-Si el cliente ya empezó a contar de su negocio, guarda lo que dijo en negocio.* y pasa a B1 de inmediato sin preguntar B0.2.`,
+B0.2 En cuanto tengas el nombre: "¿Tu negocio tiene página de Facebook o Instagram? Mándame las ligas (o tu @usuario) y de ahí tomo tu logo, tus fotos y tus datos para hacerte menos preguntas." Guarda lo que mande en contacto.redes.facebook / contacto.redes.instagram. Si dice que no tiene, agrega "redes" a brief_patch.no_tiene y sigue.
+Mientras el sistema lee sus redes, pasa a B1/B2 sin pedir lo que suele venir ahí (logo, fotos, servicios, teléfono, horarios): pregunta primero el objetivo de la página (B2.1). El sistema te avisará cuando tenga lo encontrado.
+B0.3 "¿Cómo te enteraste de nosotros?" solo si no lo dijo y nunca insistas. Después cierra B0 sin resumen.
+Si el cliente ya empezó a contar de su negocio, guarda lo que dijo en negocio.* sin dejar de pedir las ligas de sus redes.`,
   B1: `B1 · El negocio (detector de arquetipo). ★negocio.nombre ★negocio.giro_texto ★negocio.arquetipo negocio.subtipo negocio.subtipo_confianza negocio.anios ★negocio.ciudad negocio.estado negocio.modalidad (local/domicilio/en_linea/mixto) negocio.tamano (solo_tu/equipo_pequeno/empresa).
 B1.1 "¿Cómo se llama tu negocio y a qué se dedica? Cuéntamelo como se lo dirías a un amigo."
 B1.2 "¿Desde cuándo existe y en qué ciudad estás?"

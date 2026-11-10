@@ -86,9 +86,9 @@ export async function clientesSinResumir(entrevistaId, desdeId) {
 // ---- assets ----
 export async function insertarAsset(entrevistaId, a) {
   const r = await q(
-    `INSERT INTO assets (entrevista_id, mensaje_id, clave, tipo, url, mime, nota, descripcion_ia, calidad, usar)
-     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10) RETURNING *`,
-    [entrevistaId, a.mensaje_id || null, a.clave, a.tipo || 'foto_otro', a.url, a.mime || null, a.nota || null, a.descripcion_ia || null, a.calidad || null, a.usar !== false],
+    `INSERT INTO assets (entrevista_id, mensaje_id, clave, tipo, url, mime, nota, descripcion_ia, calidad, usar, origen)
+     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11) RETURNING *`,
+    [entrevistaId, a.mensaje_id || null, a.clave, a.tipo || 'foto_otro', a.url, a.mime || null, a.nota || null, a.descripcion_ia || null, a.calidad || null, a.usar !== false, a.origen || null],
   );
   return r.rows[0];
 }

@@ -17,6 +17,9 @@ export const logoRecibido = (assets = []) => assets.some((a) => a.tipo === 'logo
 // id · bloque · cumple(brief, assets) · pedir (texto para el cliente si hay que volver a pedirlo) · puedeNoTener
 export const REQUISITOS = [
   { id: 'nombre_cliente', bloque: 'B0', cumple: (b) => !vacio(b.cliente?.nombre), pedir: '¿Cómo te llamas?' },
+  // Ligas de Facebook/Instagram justo después del nombre: de ahí salen nombre, giro, ciudad, servicios, logo y fotos.
+  { id: 'redes', bloque: 'B0', puedeNoTener: true, cumple: (b) => !!b.redes_extraccion || !vacio(b.contacto?.redes?.facebook) || !vacio(b.contacto?.redes?.instagram),
+    pedir: '¿Tu negocio tiene página de Facebook o Instagram? Mándame las ligas (o tu @usuario) y de ahí tomo tu logo, tus fotos y tus datos para hacerte menos preguntas. Si no tienes, dime y seguimos.' },
   { id: 'nombre_negocio', bloque: 'B1', cumple: (b) => !vacio(b.negocio?.nombre), pedir: '¿Cómo se llama tu negocio?' },
   { id: 'giro', bloque: 'B1', cumple: (b) => !vacio(b.negocio?.giro_texto) && !vacio(b.negocio?.arquetipo), pedir: '¿A qué se dedica tu negocio? Cuéntamelo como se lo dirías a un amigo.' },
   { id: 'ciudad', bloque: 'B1', cumple: (b) => !vacio(b.negocio?.ciudad), pedir: '¿En qué ciudad está tu negocio?' },
@@ -93,12 +96,13 @@ const TEMA = {
   diferenciador: /diferente|diferencia|distingue|que otros no/,
   horarios: /horario/,
   logo: /logo/,
+  redes: /facebook|instagram/,
 };
 // Temas opcionales (no son requisitos): si dijo que no los tiene, tampoco se vuelven a preguntar.
 export const OPCIONALES = { certificaciones: 'certificaciones, premios o reconocimientos', cifras: 'cifras o números (años, clientes, trámites)', garantias: 'garantías', historia: 'historia del negocio', equipo: 'equipo', otro_dato_confianza: 'otro dato de confianza' };
-const ETIQUETA = { testimonios: 'reseñas o testimonios', faq: 'preguntas frecuentes', diferenciador: 'diferenciador', horarios: 'horarios', logo: 'logotipo', ...OPCIONALES };
+const ETIQUETA = { redes: 'página de Facebook o Instagram', testimonios: 'reseñas o testimonios', faq: 'preguntas frecuentes', diferenciador: 'diferenciador', horarios: 'horarios', logo: 'logotipo', ...OPCIONALES };
 const norm = (x) => String(x || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-zñ0-9 ]+/g, ' ').replace(/\s+/g, ' ').trim();
-const NEG = /^(no+|nop|nel|nada|ningun[oa]?s?|aun no|todavia no|por ahora no|no por (ahora|el momento)|sin \w+|de momento no)( (no|tengo|tenemos|hay|cuento|contamos|con|ninguna?o?s?|las|los|la|lo|ahorita|aun|todavia|por ahora|resenas|testimonios|comentarios|logo|horarios?|nada|gracias|la verdad|realmente|fijo|todavia no))*$/;
+const NEG = /^(no+|nop|nel|nada|ningun[oa]?s?|aun no|todavia no|por ahora no|no por (ahora|el momento)|sin \w+|de momento no)( (no|tengo|tenemos|hay|cuento|contamos|con|ninguna?o?s?|las|los|la|lo|ahorita|aun|todavia|por ahora|resenas|testimonios|comentarios|logo|redes|redes sociales|facebook|instagram|face|insta|ni|horarios?|nada|gracias|la verdad|realmente|fijo|todavia no))*$/;
 
 export function esNegativa(respuesta) {
   const r = norm(respuesta);

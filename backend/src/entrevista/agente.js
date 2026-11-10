@@ -21,6 +21,7 @@ import { paginaEditable, estadoCambios, registrarPedido, clasificarMensaje } fro
 import { alElegir } from '../panel/rehacer.js';
 import { avisarEquipo } from './avisos.js';
 import { notaRequisitos, primerBloqueIncompleto, faltantes, unirNoTiene, noTieneDelHistorial, preguntaYaNegada, rellenarDelHistorial, omitidasDelHistorial } from './requisitos.js';
+import { atenderExtraccion, asegurarResumen } from './redes_extraccion.js';
 import { dominioRespondido, quiereDominio, PREGUNTA_DOMINIO, mensajePago, pagoPendiente, atenderPostCierre } from './pago_pagina.js';
 
 // Tope de seguridad (fotos y audios cuentan como mensajes). Una entrevista real ronda 60–130.
@@ -509,6 +510,15 @@ export async function procesarMensaje(b) {
       await db.guardar(e.id, { brief: e.brief });
     }
   }
+  // Facebook/Instagram: lanzar la extracción al recibir las ligas y, cuando llegue, llenar brief + fotos y mostrar el resumen.
+  let resumenRedes = null;
+  {
+    const rx = await atenderExtraccion(e, textoTurno, historial).catch((err) => { console.error('extracción redes', err); return {}; });
+    if (rx.brief) e.brief = rx.brief;
+    if (rx.assetsNuevos?.length) assets.push(...rx.assetsNuevos);
+    if (rx.nota) notaAri = [notaAri, rx.nota].filter(Boolean).join('\n');
+    resumenRedes = rx.resumen || null;
+  }
   let t = await turnoAri(e, { mensajesRecientes, ultimoTexto: textoTurno, regresaDePausa, arquetipos, assets, notaAri });
   let brief = mergeProfundo(e.brief || {}, t.briefPatch);
   brief.no_tiene = unirNoTiene(e.brief?.no_tiene, t.briefPatch?.no_tiene);
@@ -566,6 +576,9 @@ export async function procesarMensaje(b) {
   }
   // Pulido final del texto: sin saludos a media plática y una sola pregunta por mensaje.
   t = { ...t, reply: pulirReply(t.reply, regresaDePausa) };
+  // El estado de la extracción de redes lo maneja solo redes_extraccion.js.
+  if (e.brief?.redes_extraccion) brief.redes_extraccion = e.brief.redes_extraccion; else delete brief.redes_extraccion;
+  if (resumenRedes) { const a = asegurarResumen(t.reply, brief, resumenRedes); t = { ...t, reply: a.reply }; brief = a.brief; }
   // El estado de las propuestas lo maneja solo propuestas.js; Ari no puede tocarlo (antes lo pisaba con "pendiente").
   if (brief.marca) { if (e.brief?.marca?.propuestas) brief.marca.propuestas = e.brief.marca.propuestas; else delete brief.marca.propuestas; }
   if (brief.marca && e.brief?.marca?.vistazo) brief.marca.vistazo = e.brief.marca.vistazo; else if (brief.marca) delete brief.marca.vistazo;

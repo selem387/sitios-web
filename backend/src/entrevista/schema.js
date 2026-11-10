@@ -71,6 +71,7 @@ CREATE TABLE IF NOT EXISTS assets (
 );
 CREATE INDEX IF NOT EXISTS assets_entrevista_idx ON assets (entrevista_id);
 ALTER TABLE assets ADD COLUMN IF NOT EXISTS analisis jsonb;
+ALTER TABLE assets ADD COLUMN IF NOT EXISTS origen text; -- 'redes' = tomado de Facebook/Instagram; null = lo mandó el cliente
 
 CREATE TABLE IF NOT EXISTS memoria_log (
   id             serial PRIMARY KEY,

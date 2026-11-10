@@ -41,6 +41,9 @@ export const config = {
   wpGenUrl: (env.WP_GEN_URL || '').replace(/\/$/, ''),          // sitio principal del Multisite (https://...)
   wpGenKey: env.WP_GEN_KEY || '',                                 // = opción de red iaprop_gen_key
   wpDominioBase: env.WP_DOMINIO_BASE || 'x6jqxs.easypanel.host',  // vista previa: sw-<slug>.<base>
+  // Microservicio extractor-redes (Facebook/Instagram → datos, logo y fotos).
+  extractorUrl: (env.EXTRACTOR_URL || '').replace(/\/$/, ''),
+  extractorApiKey: env.EXTRACTOR_API_KEY || '',
   renderUrl: (env.RENDER_URL || '').replace(/\/$/, ''),
   renderApiKey: env.RENDER_API_KEY || '',
   // Opcional: registrar el dominio de vista previa en Easypanel desde el backend.
