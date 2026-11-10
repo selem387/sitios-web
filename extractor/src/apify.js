@@ -1,4 +1,4 @@
-// Apify (cuenta selem387): actores oficiales para páginas de Facebook, publicaciones de Facebook y perfiles de Instagram.
+// Apify (cuenta selem387): actores oficiales para páginas de Facebook, publicaciones y fotos de Facebook y perfiles de Instagram.
 // El tope mensual (TOPE_USD, por omisión 20) es compartido con el scraper de prospectos de Google Maps:
 // gasto = uso del mes de la cuenta de Apify (todo lo que corre en ella) + gasto de Google registrado en gasto_scrapers.
 const TOKEN = process.env.APIFY_TOKEN || '';
@@ -7,10 +7,12 @@ const API = 'https://api.apify.com/v2';
 export const ACTORES = {
   fbPagina: process.env.APIFY_ACTOR_FB_PAGINA || 'apify~facebook-pages-scraper',
   fbPosts: process.env.APIFY_ACTOR_FB_POSTS || 'apify~facebook-posts-scraper',
+  // Las publicaciones solo traen miniaturas (y nada de los álbumes); este actor trae cada foto en tamaño completo.
+  fbFotos: process.env.APIFY_ACTOR_FB_FOTOS || 'apify~facebook-photos-scraper',
   igPerfil: process.env.APIFY_ACTOR_IG_PERFIL || 'apify~instagram-profile-scraper',
 };
 // Costo estimado por corrida (USD), para no arrancar una extracción que rebasaría el tope.
-export const COSTO_ESTIMADO = { fbPagina: 0.02, fbPosts: 0.08, igPerfil: 0.03 };
+export const COSTO_ESTIMADO = { fbPagina: 0.02, fbPosts: 0.08, fbFotos: 0.05, igPerfil: 0.03 };
 
 export const hayApify = () => !!TOKEN;
 
