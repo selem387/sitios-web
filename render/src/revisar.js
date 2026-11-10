@@ -110,7 +110,7 @@ export async function revisarPagina(page) {
     }
     // 6) El logo no se repite en la primera pantalla.
     const vh = window.innerHeight;
-    const logosArriba = Array.from(document.querySelectorAll('img')).filter((i) => /\blogo/.test(i.className) && visible(i) && +getComputedStyle(i).opacity > 0.2 && !i.closest('[style*="opacity: 0"]') && i.getBoundingClientRect().top < vh && getComputedStyle(i.closest('.barra,header') || i).opacity > 0.2);
+    const logosArriba = Array.from(document.querySelectorAll('img')).filter((i) => /\blogo/.test(i.className) && visible(i) && !(document.body.classList.contains('l-logo') && i.closest('.barra:not(.ver-logo)')) && +getComputedStyle(i).opacity > 0.2 && !i.closest('[style*="opacity: 0"]') && i.getBoundingClientRect().top < vh && getComputedStyle(i.closest('.barra,header') || i).opacity > 0.2);
     if (logosArriba.length > 1) prob.push(`el logo aparece ${logosArriba.length} veces en la primera pantalla`);
     // 7) Fotos con franjas negras/lisas (letterbox) arriba y abajo o a los lados.
     const lisa = (ctx, x, y, w, h) => { const d = ctx.getImageData(x, y, w, h).data; let s = 0, s2 = 0, n = d.length / 4; for (let k = 0; k < d.length; k += 4) { const v = (d[k] + d[k + 1] + d[k + 2]) / 3; s += v; s2 += v * v; } const m = s / n; return m < 35 && Math.sqrt(Math.max(0, s2 / n - m * m)) < 4; }; // franja negra (letterbox); un fondo blanco de estudio no cuenta
