@@ -120,7 +120,7 @@ html{scroll-behavior:smooth}
 .iap .ovalo{width:min(78%,380px);margin:38px auto 0;border-radius:50%;overflow:hidden;aspect-ratio:3/4;border:8px solid var(--mut)}.iap .ovalo img{width:100%;height:100%;object-fit:cover}
 .iap .h-dos{background:var(--banda);color:#fff;padding:42px 0 clamp(32px,4vw,56px);border-radius:0 0 36px 36px}.iap .h-dos .in{display:grid;gap:26px}.iap .h-dos .txt{padding-bottom:clamp(40px,5vw,72px)}.iap .h-dos .sub{color:rgba(255,255,255,.86)}
 .iap .marco{border-radius:24px;overflow:hidden;aspect-ratio:4/5;max-height:560px;border:10px solid rgba(255,255,255,.14)}.iap .marco img{width:100%;height:100%;object-fit:cover}
-.iap .h-carta{padding-top:clamp(56px,8vw,112px);padding-bottom:clamp(28px,4vw,48px)}.iap .h-carta h1{max-width:16ch}.iap .h-carta .sub{max-width:46ch}
+.iap .h-carta{padding-top:36px;padding-bottom:32px}.iap .h-carta h1{max-width:16ch}.iap .h-carta .sub{max-width:46ch}@media (min-width:900px){.iap .h-carta.wrap{display:grid;grid-template-columns:minmax(0,7fr) minmax(0,5fr);column-gap:clamp(40px,5vw,88px);align-items:end;padding-top:56px;padding-bottom:40px}.iap .h-carta .tit{grid-column:1}.iap .h-carta.wrap h1{max-width:none;margin:0;font-size:clamp(52px,5.4vw,88px);line-height:1}.iap .h-carta .lado{grid-column:2}.iap .h-carta .lado .sub{max-width:38ch}}
 .iap .tira{display:flex;flex-wrap:wrap;gap:10px;max-width:1140px;margin:12px auto 0;padding:0 20px}.iap .tira figure{flex:1 1 200px;margin:0;min-width:0}.iap .tira img{width:100%;height:auto;border-radius:8px}
 /* galerías */
 .iap .galeria{columns:2 160px;column-gap:10px}.iap .galeria figure{break-inside:avoid;margin:0 0 10px;display:block}.iap .galeria img{width:100%;height:auto;border-radius:12px}
@@ -228,7 +228,7 @@ export async function sitioDePropuesta({ brief, mat, prop, elegida, deColores = 
     mosaico: () => { const m = fotosT.slice(0, 5); return B.grupo(B.titulo(t.titular, { nivel: 1 }) + B.p(esc(t.subtitulo), 'sub') + cta() + B.grupo(m.map((x) => img(x)).join(''), { clase: `mos m${m.length}` }), { tag: 'section', clase: 'hero h-mos wrap' }); },
     logo: () => B.grupo((mat.logo ? B.logo('logo-grande', 460) : B.p(esc(nombre), 'nombre-grande')) + B.titulo(t.titular, { nivel: 1 }) + B.p(esc(t.subtitulo), 'sub') + cta() + (heroFoto ? img(heroFoto, 'ovalo', 'full') : ''), { tag: 'section', clase: 'hero h-logo wrap' }),
     dostonos: () => B.grupo(B.grupo(B.grupo(B.titulo(t.titular, { nivel: 1 }) + B.p(esc(t.subtitulo), 'sub') + cta('inv'), { clase: 'txt' }) + (heroFoto ? img(heroFoto, 'marco', 'full') : ''), { clase: 'wrap in' }), { tag: 'section', full: true, clase: 'hero h-dos' }),
-    carta: () => B.grupo(B.p(esc(nombre), 'kicker') + B.titulo(t.titular, { nivel: 1 }) + B.p(esc(t.subtitulo), 'sub') + cta(), { tag: 'section', clase: 'hero h-carta wrap' }) + (fotosT.length ? B.grupo(fotosT.slice(0, 8).map((x) => img(x)).join(''), { clase: 'tira' }) : ''),
+    carta: () => B.grupo(B.grupo(B.p(esc(nombre), 'kicker') + B.titulo(t.titular, { nivel: 1 }), { clase: 'tit' }) + B.grupo(B.p(esc(t.subtitulo), 'sub') + cta(), { clase: 'lado' }), { tag: 'section', clase: 'hero h-carta wrap' }) + (fotosT.length ? B.grupo(fotosT.slice(0, 8).map((x) => img(x)).join(''), { clase: 'tira' }) : ''),
   };
   const hero = heros[layout]();
 
