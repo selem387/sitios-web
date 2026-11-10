@@ -204,7 +204,7 @@ function pagina(d) {
       const u0 = new URL(d.wa), tel = (u0.pathname.match(/\d{8,}/) || [u0.searchParams.get('phone') || ''])[0];
       const nombre = (x.nombre || (x.alt || '').split(/[,.;]/)[0] || 'este producto').trim();
       const art = x.articulo || articuloDe(nombre);
-      const texto = `Hola, me interesa ${art} ${nombre.charAt(0).toLowerCase()}${nombre.slice(1)}. ¿Me das más información?`;
+      const texto = `Hola, me interesa ${art} ${nombre.toLowerCase()}. ¿Me das más información?`;
       // api.whatsapp.com/send con app_absent=0 abre el chat directo (app en celular, WhatsApp Web en computadora).
       const u = `https://api.whatsapp.com/send/?phone=${tel}&text=${encodeURIComponent(texto)}&type=phone_number&app_absent=0`;
       return ` href="${esc(u)}" target="_blank" rel="noopener"`;
