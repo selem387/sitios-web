@@ -357,7 +357,7 @@ export async function procesarMensaje(b) {
   const textoTurno = reiniciar ? '' : texto; // la palabra de reinicio no se le pasa a Ari como respuesta
   let nueva = false;
   if (!e) {
-    const u = await db.ultima(usuario_id);
+    const u = await db.ultima(usuario_id, { sinCanceladas: true }); // una cancelada después no debe tapar la página ya cerrada
     // Propuestas mandadas después del cierre (sitio rehecho como app): su respuesta elige el diseño y se arma la página.
     if (u && u.estado === 'completada' && !comando && propuestasPendientes(u.brief) && (texto || entrantes.length)) {
       if (texto) await db.insertarMensaje(u.id, { rol: 'cliente', contenido: texto });

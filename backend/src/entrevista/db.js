@@ -21,8 +21,8 @@ export async function activa(usuarioId) {
   return r.rows[0] || null;
 }
 
-export async function ultima(usuarioId) {
-  const r = await q(`SELECT * FROM entrevistas WHERE usuario_id=$1 ORDER BY creado DESC LIMIT 1`, [usuarioId]);
+export async function ultima(usuarioId, { sinCanceladas = false } = {}) {
+  const r = await q(`SELECT * FROM entrevistas WHERE usuario_id=$1 ${sinCanceladas ? "AND estado <> 'cancelada'" : ''} ORDER BY creado DESC LIMIT 1`, [usuarioId]);
   return r.rows[0] || null;
 }
 
