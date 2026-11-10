@@ -71,7 +71,7 @@ async function nombrarFotos(analisis, brief = {}) {
     headers: { 'x-api-key': config.anthropicApiKey, 'anthropic-version': '2023-06-01', 'content-type': 'application/json' },
     body: JSON.stringify({
       model: config.anthropicModel, max_tokens: 1500,
-      messages: [{ role: 'user', content: `Da a cada foto un nombre corto de producto (2 a 5 palabras, en español, como lo pediría un cliente; sin "modelo", "mujer" ni "foto"). Si coincide con uno de estos productos del negocio, usa ese término: ${productos.join(', ') || '(sin lista)'}.\n\nFotos:\n${lista}\n\nResponde solo JSON: {"nombres":["...", ...]} en el mismo orden.` }],
+      messages: [{ role: 'user', content: `Da a cada foto un nombre corto de producto (2 a 5 palabras, en español, como lo pediría un cliente; sin "modelo", "mujer" ni "foto"). El nombre SIEMPRE empieza con el tipo de producto o servicio (p. ej. "Blusa blanca con flores", "Vestido bordado de venado", "Hamaca de algodón"), nunca con un color o adjetivo suelto. Si coincide con uno de estos productos del negocio, usa ese término: ${productos.join(', ') || '(sin lista)'}.\n\nFotos:\n${lista}\n\nResponde solo JSON: {"nombres":["...", ...]} en el mismo orden.` }],
     }),
     signal: AbortSignal.timeout(60000),
   });
@@ -80,7 +80,13 @@ async function nombrarFotos(analisis, brief = {}) {
   const t = (j.content || []).filter((b) => b.type === 'text').map((b) => b.text).join('');
   const nombres = JSON.parse(t.slice(t.indexOf('{'), t.lastIndexOf('}') + 1)).nombres || [];
   for (let i = 0; i < faltan.length; i++) {
-    const n = String(nombres[i] || '').trim().slice(0, 60);
+    let n = String(nombres[i] || '').trim().slice(0, 60);
+    // Respaldo: un nombre que empieza con color o adjetivo ("blanca con flores") se completa con el producto de la descripción.
+    if (/^(blanc|negr|roj|azul|verd|amarill|morad|rosa|gris|caf|dorad|plat|grande|pequeñ|chic|bonit|nuev|tradicional|artesanal|bordad)/i.test(n)) {
+      const prod = (faltan[i].r.descripcion.match(/\b(blusa|vestido|guayabera|hamaca|huipil|terno|falda|camisa|bolsa|sombrero|miel|rebozo|pantal[oó]n|filipina|jarr[oó]n|plato|collar|aretes?)\b/i) || [])[1];
+      if (prod) n = `${prod} ${n}`;
+    }
+    n = n.charAt(0).toUpperCase() + n.slice(1);
     if (!n) continue;
     faltan[i].r.nombre = n;
     await db.q(`UPDATE assets SET analisis = analisis || jsonb_build_object('nombre', $2::text) WHERE id=$1`, [faltan[i].a.id, n]).catch(() => {});
