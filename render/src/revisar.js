@@ -96,6 +96,11 @@ export async function revisarPagina(page) {
       const pegado = Array.from(sec.querySelectorAll('h1,h2,p,.btn')).filter((e) => visible(e) && !e.closest('.sl')).find((e) => sr.bottom - e.getBoundingClientRect().bottom < 16);
       if (pegado) { prob.push(`texto pegado al borde inferior de su sección: "${(pegado.textContent || '').trim().slice(0, 30)}"`); break; }
     }
+    // 4c) Menú y botones con fuente sans de pantalla (regla dura 10-nov-2026).
+    const SERIF_O_DISPLAY = /serif|bodoni|petrona|spectral|newsreader|gloock|marcellus|italiana|young serif|instrument serif|gluten|grandstander|chango|bagel|syne|unbounded|mono/i;
+    const ui = Array.from(document.querySelectorAll('nav a, .barra a, .btn, button')).filter((e) => visible(e) && (e.textContent || '').trim().length > 2 && !e.closest('.etq,.sl-b'));
+    const malUI = ui.find((e) => { const f = getComputedStyle(e).fontFamily.split(',')[0].replace(/["']/g, '').trim(); return SERIF_O_DISPLAY.test(f) && !/sans/i.test(f); });
+    if (malUI) prob.push(`menú o botón con fuente no apta para interfaz web: ${getComputedStyle(malUI).fontFamily.split(',')[0]} ("${malUI.textContent.trim().slice(0, 25)}")`);
     // 5) Sección con título y una sola imagen (p. ej. "Galería" con el logo).
     for (const sec of document.querySelectorAll('main section')) {
       const h = sec.querySelector('h2'); if (!h || !visible(h)) continue;

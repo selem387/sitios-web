@@ -143,6 +143,22 @@ export function escalaTipografica(estilo = 'calido', { cuerpo } = {}) {
 }
 
 /** CSS que se agrega al final de cada página (manda sobre lo anterior). */
+
+/**
+ * REGLA DURA (10-nov-2026, Sebastián): menús, botones, etiquetas y formularios siempre con una fuente sans pensada para
+ * pantalla (buena legibilidad en tamaños de interfaz). Nunca la serif de texto ni una de exhibición/condensada.
+ * Orden: el cuerpo si es sans de texto → el título si es sans de texto (no expresiva/condensada) → una sans de pantalla
+ * poco común de la misma familia o de la lista. Así casi nunca se agrega una tercera familia.
+ */
+export const UI_WEB = ['Instrument Sans', 'Hanken Grotesk', 'Onest', 'Golos Text', 'Albert Sans', 'Schibsted Grotesk', 'Reddit Sans', 'Geist', 'Atkinson Hyperlegible'];
+const sansTexto = (f) => { const m = METRICAS[f]; return !!m && m.clase === 'sans' && !/condensada|expresiva/.test(m.sub || '') && (m.xh || 0.5) >= 0.47; };
+export function fuenteUI(par = {}) {
+  if (sansTexto(par.cuerpo)) return par.cuerpo;
+  if (sansTexto(par.titulos) || ['Gabarito', 'Bricolage Grotesque'].includes(par.titulos)) return par.titulos;
+  const fam = METRICAS[par.titulos]?.familia;
+  return UI_WEB.find((f) => fam && METRICAS[f]?.familia === fam) || UI_WEB[0];
+}
+
 export function cssTipografia(par = {}, estilo = 'calido') {
   const e = escalaTipografica(estilo, par);
   const T = METRICAS[par.titulos] || {}, C = METRICAS[par.cuerpo] || {};
@@ -162,6 +178,8 @@ small,.hint{font-size:max(13px,${e.chico})}
 body .paq-det span,body .paq-det ul.inc,body .paq ul.inc,body .paq li span,body .paq-op,body .opc .op-d,body .info,body .cred,body .datos p,body .paq li b,body .opc .op-n,body .sl-marco .sl-a{font-size:${e.secundario}}
 body .paq-cab h3,body .paq-cab h4,body .paq h3,body .datos b,body .datos strong{font-size:${e.h3}}
 body .sub{font-size:${fluido(17, 22)}}
+/* Interfaz con fuente sans de pantalla (regla dura 10-nov-2026) */
+body nav a,body .barra a,body .menu a,body .menu-btn,body .btn,body button,body .sl-btn,body .wa,body .kicker,body label,body input,body select,body textarea,body .cifras li,body .chip{font-family:"${fuenteUI(par)}",system-ui,-apple-system,"Segoe UI",sans-serif!important}
 `;
 }
 

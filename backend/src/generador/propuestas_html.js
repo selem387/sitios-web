@@ -10,7 +10,7 @@ import { enlacesRedes, CSS_REDES } from './iconos_redes.js';
 import { config } from '../config.js';
 import { mezclar, contraste } from '../entrevista/tema.js';
 import { paresTipograficos, urlFuentes } from './fuentes.js';
-import { corregirPaleta, auditarPaleta, cssTipografia, textoSobre, conPisoTexto } from './tipo_color.js';
+import { corregirPaleta, auditarPaleta, cssTipografia, textoSobre, conPisoTexto, fuenteUI } from './tipo_color.js';
 import { coloresParaPropuesta, avisosDeGiro } from './paletas_giro.js';
 import { evaluarColoresCliente, asignarFuentes } from './asesor_color.js';
 import { coloresDePalabras, logoTenido } from './materiales.js';
@@ -20,7 +20,13 @@ import { paginasGenerales, logoHTML, redes } from './propuestas_general.js';
 import { completarMaterial } from './validar_material.js';
 
 // Regla dura de tipografía: la escala, el interlineado y la medida se agregan al final del CSS (mandan sobre la plantilla).
-const conReglaTipo = (html, par, estilo) => html.replace('</style>', `${cssTipografia(par, estilo)}</style>`);
+const conReglaTipo = (html, par, estilo) => {
+  let h = html.replace('</style>', `${cssTipografia(par, estilo)}</style>`);
+  // Fuente de interfaz que no viene en el par: se carga aparte (pesos de botón y menú).
+  const ui = fuenteUI(par);
+  if (ui !== par.titulos && ui !== par.cuerpo) h = h.replace('</head>', `<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=${encodeURIComponent(ui).replace(/%20/g, '+')}:wght@400;500;600;700&display=swap"></head>`);
+  return h;
+};
 
 export const DIR_PROPUESTAS = path.join(config.dataDir, 'propuestas');
 const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
