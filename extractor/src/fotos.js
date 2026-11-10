@@ -12,12 +12,25 @@ const UA = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML,
 
 export const carpetaArchivos = () => path.join(DATA, 'files');
 
-async function bajar(url) {
+async function bajarDe(url) {
   const r = await fetch(url, { headers: { 'user-agent': UA, referer: 'https://www.instagram.com/' }, signal: AbortSignal.timeout(30000) });
   if (!r.ok) throw new Error(`descarga ${r.status}`);
   const buf = Buffer.from(await r.arrayBuffer());
   if (buf.length < 2000) throw new Error('archivo vacío');
   return buf;
+}
+
+// Apify entrega ligas de fbcdn con servidores regionales (p. ej. scontent.fcps3-1.fna.fbcdn.net) que a veces no
+// resuelven desde nuestro servidor; la misma liga con el servidor genérico scontent.xx.fbcdn.net sí descarga.
+async function bajar(url) {
+  try {
+    return await bajarDe(url);
+  } catch (err) {
+    let alterna = null;
+    try { const u = new URL(url); if (/\.fbcdn\.net$/i.test(u.hostname) && u.hostname !== 'scontent.xx.fbcdn.net') { u.hostname = 'scontent.xx.fbcdn.net'; alterna = u.toString(); } } catch { /* liga inválida */ }
+    if (!alterna) throw err;
+    return bajarDe(alterna);
+  }
 }
 
 // Huella de 64 bits (promedio de grises 8x8) para no guardar dos veces la misma foto con otro tamaño o recorte leve.
@@ -91,7 +104,8 @@ async function clasificarLote(lote, contexto) {
     contenido,
     schema: ESQUEMA,
   });
-  return (r.fotos || []).filter((x) => Number.isInteger(x.i) && lote[x.i]);
+  const lista = Array.isArray(r.fotos) ? r.fotos : [];
+  return lista.filter((x) => Number.isInteger(x.i) && lote[x.i]);
 }
 
 const PESO = { buena: 3, regular: 1, mala: -5 };
@@ -103,6 +117,7 @@ const PESO = { buena: 3, regular: 1, mala: -5 };
 export async function elegirFotos(trabajoId, candidatas, { max = 18, contexto = '', excluir = [], avisos = [] } = {}) {
   const guardadas = [];
   const huellas = [...excluir];
+  const fallas = {};
   let n = 0;
   for (const c of candidatas.slice(0, Number(process.env.MAX_CANDIDATAS || 45))) {
     try {
@@ -110,8 +125,12 @@ export async function elegirFotos(trabajoId, candidatas, { max = 18, contexto = 
       if (huellas.some((h) => distancia(h, g.huella) <= 5)) continue;
       huellas.push(g.huella);
       guardadas.push({ ...g, fuente: c.fuente, texto: c.texto });
-    } catch { /* foto caída o chica: se ignora */ }
+    } catch (err) {
+      const k = String(err.message).replace(/\(\d+x\d+\)/, '').trim();
+      fallas[k] = (fallas[k] || 0) + 1;
+    }
   }
+  if (Object.keys(fallas).length) avisos.push(`fotos no usadas: ${Object.entries(fallas).map(([k, v]) => `${v} ${k}`).join(', ')}`);
   if (!guardadas.length) return { fotos: [], descartadas: 0 };
   let clasif = [];
   if (hayClaude()) {
