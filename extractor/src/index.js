@@ -103,6 +103,21 @@ async function capturar(url) {
 const solo = (x) => (x == null || x === '' ? null : x);
 const digitos = (t) => { const d = String(t || '').replace(/\D/g, ''); return d.length >= 10 ? d : null; };
 
+/** Actor de fotos de Facebook → candidatas en tamaño completo (incluye las fotos de álbumes). */
+function fotosDeActorFotos(items = []) {
+  const vistas = new Set();
+  const out = [];
+  for (const x of items) {
+    const u = [x?.image, x?.imageUrl, x?.photo_image?.uri].find((v) => typeof v === 'string' && /^https?:\/\//i.test(v));
+    if (!u) continue;
+    const llave = u.split('?')[0];
+    if (vistas.has(llave)) continue;
+    vistas.add(llave);
+    out.push({ url: u, texto: '', fuente: 'facebook' });
+  }
+  return out;
+}
+
 async function procesar(id) {
   const fila = (await q(`UPDATE extracciones SET estado='procesando', actualizado=now() WHERE id=$1 AND estado='pendiente' RETURNING *`, [id])).rows[0];
   if (!fila) return;
@@ -112,7 +127,7 @@ async function procesar(id) {
   let costo = 0;
   try {
     const g = await gasto();
-    const estimado = (facebook ? A.COSTO_ESTIMADO.fbPagina + A.COSTO_ESTIMADO.fbPosts : 0) + (instagram ? A.COSTO_ESTIMADO.igPerfil : 0);
+    const estimado = (facebook ? A.COSTO_ESTIMADO.fbPagina + A.COSTO_ESTIMADO.fbPosts + A.COSTO_ESTIMADO.fbFotos : 0) + (instagram ? A.COSTO_ESTIMADO.igPerfil : 0);
     const conApify = A.hayApify() && g.total_usd + estimado <= TOPE_USD;
     if (A.hayApify() && !conApify) avisos.push(`tope mensual alcanzado (${g.total_usd}/${TOPE_USD} USD): solo página pública`);
 
@@ -120,6 +135,7 @@ async function procesar(id) {
     if (facebook && conApify) {
       tareas.push(A.correr(A.ACTORES.fbPagina, { startUrls: [{ url: facebook }] }, { timeoutS: 120 }).then((r) => ({ k: 'fbPagina', r })));
       tareas.push(A.correr(A.ACTORES.fbPosts, { startUrls: [{ url: facebook }], resultsLimit: 30 }, { timeoutS: 180 }).then((r) => ({ k: 'fbPosts', r })));
+      tareas.push(A.correr(A.ACTORES.fbFotos, { startUrls: [{ url: facebook }], resultsLimit: 40 }, { timeoutS: 180 }).then((r) => ({ k: 'fbFotos', r })));
     }
     if (instagram && conApify) {
       tareas.push(A.correr(A.ACTORES.igPerfil, { usernames: [F.usuarioInstagram(instagram)], resultsLimit: 30 }, { timeoutS: 150 }).then((r) => ({ k: 'igPerfil', r })));
@@ -148,7 +164,9 @@ async function procesar(id) {
     }
     if (fb?.portada) { try { portada = await guardar(id, 'portada', fb.portada, { minLado: 300 }); } catch (err) { avisos.push(`portada: ${err.message}`); } }
 
-    const candidatas = [...F.fotosDePosts(postsIg, 'instagram'), ...F.fotosDePosts(postsFb, 'facebook')];
+    // Primero las fotos en tamaño completo del actor de fotos; las miniaturas de las publicaciones quedan de respaldo
+    // (las repetidas se descartan por huella al descargarlas).
+    const candidatas = [...F.fotosDePosts(postsIg, 'instagram'), ...fotosDeActorFotos(res.fbFotos?.items), ...F.fotosDePosts(postsFb, 'facebook')];
     const nombre = fb?.nombre || ig?.nombre || '';
     const { fotos, descartadas } = await elegirFotos(id, candidatas, {
       max: Math.min(Number(max_fotos) || 18, 30),
