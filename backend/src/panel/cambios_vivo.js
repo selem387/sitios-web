@@ -312,9 +312,20 @@ export async function aplicarCambioVivo(c, e, sv) {
   const k = sv.contenido || {};
   let errores = [], plan, v, nuevo = null, respaldo = null, vista = null, antes = null, briefAntes = null;
 
+  // Elegir una de sus opciones ("D", "la D", "opción D", o la liga …/p/<token>/D): no pasa por el planeador.
+  const letraElegida = (() => {
+    const t = c.pedidos.map((p) => p.texto || '').join(' ').trim();
+    if (c.pedidos.some((p) => p.media?.length) || t.length > 80) return null;
+    const m = t.match(/^(?:quiero\s+|me\s+gusta\s+|elijo\s+|prefiero\s+)?(?:la\s+)?(?:opci[oó]n\s+)?([a-f])\s*[.!]*$/i) || t.match(/\/p\/[A-Za-z0-9]+\/([A-F])\b/);
+    const L = m && m[1].toUpperCase();
+    return L && act.propuestas.some((o) => o.letra === L) && L !== act.propuesta ? L : null;
+  })();
+  const soloPropuesta = (p) => p?.accion === 'editar' && p.propuesta && !p.css && !p.estructura && !Object.keys(p.paleta || {}).length && !p.fuentes && !Object.keys(p.secciones || {}).length;
+
   for (let ronda = 0; ronda < 3; ronda++) {
     // 1) Plan válido (hasta 3 intentos por ronda).
-    for (let i = 0; i < 3; i++) {
+    if (letraElegida) { plan = { accion: 'editar', propuesta: letraElegida, resumen_cliente: `Cambié tu página al diseño ${letraElegida}.` }; v = validar(plan, act, fuentes, ''); errores = v.errores; }
+    for (let i = 0; i < 3 && !letraElegida; i++) {
       plan = await planear(e, act, c.pedidos, conv, errores);
       if (plan.accion === 'no_se_puede' && i < 2) { errores = ['Dijiste no_se_puede, pero cambiar, quitar o agregar textos, datos, colores, fotos, acomodo o secciones SÍ se puede: busca dónde está ese texto en CONTENIDO ACTUAL (p. ej. oferta.items[].grupo o .nombre) y edítalo con accion=editar. Solo usa no_se_puede si de verdad nada de lo pedido es posible.']; v = undefined; continue; }
       if (plan.accion !== 'editar') break;
@@ -340,7 +351,8 @@ export async function aplicarCambioVivo(c, e, sv) {
     const cambiaVista = cssNuevo !== null || estNueva || propNueva || fuentesNuevas || Object.keys(v.paleta).length;
     let selectores = (plan.verificar || []).filter((x) => /^[#.a-z][\w\s#.>:()-]{0,80}$/i.test(x));
     if (cambiaVista && !selectores.length) selectores = ['main'];
-    const revisar = !!cambiaVista;
+    // Un cambio a otra de sus opciones ya pasó su revisión visual al generarse: aquí solo se comprueba que la página se arme.
+    const revisar = !!cambiaVista && !soloPropuesta(plan);
     if (revisar && !antes) antes = await capturas(sv, selectores);
 
     // 3) Respaldo exacto y escritura.
