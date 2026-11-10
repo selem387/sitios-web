@@ -10,7 +10,7 @@ import * as pdb from './db.js';
 const GHL = 'https://services.leadconnectorhq.com';
 const PIT = () => process.env.GHL_PIT_PROSPECTOS || '';
 const LOC = () => process.env.GHL_LOCATION_ID_PROSPECTOS || '';
-const DOMINIOS = () => String(process.env.PROSPECCION_DOMINIOS || 'timewins.site,timewins.online').split(',').map((x) => x.trim()).filter((d) => d && !/(^|\.)timewins\.ai$/i.test(d));
+const DOMINIOS = () => String(process.env.PROSPECCION_DOMINIOS || 'timewins.site').split(',').map((x) => x.trim()).filter((d) => d && !/(^|\.)timewins\.ai$/i.test(d));
 const REMITENTE = (d) => `Sebastián Lemos <sebastian.lemos@${d}>`;
 const PASOS = [0, 3, 7];
 const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -63,12 +63,23 @@ async function ghl(ruta, body, version = '2021-07-28') {
   return j;
 }
 
+// El envío lo hace el workflow de GHL "Prospeccion - correo por timewins.site" (disparador: etiqueta pr-enviar-site),
+// porque en la subcuenta el "Workflow Domain" es timewins.site; la API de conversaciones saldría por timewins.ai.
+const ETIQUETA = { 'timewins.site': 'pr-enviar-site', 'timewins.online': 'pr-enviar-online' };
+async function ghlTags(contactId, method, tags) {
+  const r = await fetch(`${GHL}/contacts/${contactId}/tags`, { method, headers: { Authorization: `Bearer ${PIT()}`, Version: '2021-07-28', 'Content-Type': 'application/json', Accept: 'application/json' }, body: JSON.stringify({ tags }), signal: AbortSignal.timeout(30000) });
+  if (!r.ok) throw new Error(`GHL tags ${method} ${r.status}: ${(await r.text()).slice(0, 300)}`);
+}
 export async function enviarCorreo(n, paso, dominio, { destino = n.correo } = {}) {
+  const etiqueta = ETIQUETA[dominio];
+  if (!etiqueta) throw new Error(`sin workflow para ${dominio}`);
   const { asunto, html } = armarCorreo(n, paso, dominio);
-  const c = await ghl('/contacts/upsert', { locationId: LOC(), email: destino, companyName: n.nombre, name: n.nombre, phone: n.telefono || undefined, tags: ['prospecto-sitio', `giro-${n.giro}`], source: 'prospeccion google maps' });
+  const c = await ghl('/contacts/upsert', { locationId: LOC(), email: destino, companyName: n.nombre, name: n.nombre, phone: n.telefono || undefined, tags: ['prospecto-sitio', `giro-${n.giro}`], source: 'prospeccion google maps',
+    customFields: [{ key: 'asunto_prospeccion', field_value: asunto }, { key: 'cuerpo_prospeccion', field_value: html }] });
   const contactId = c.contact?.id || c.id;
-  const m = await ghl('/conversations/messages', { type: 'Email', contactId, subject: asunto, html, emailFrom: REMITENTE(dominio) }, '2021-04-15');
-  return { contactId, messageId: m.messageId || m.emailMessageId || m.id || null };
+  await ghlTags(contactId, 'DELETE', [etiqueta]).catch(() => {});
+  await ghlTags(contactId, 'POST', [etiqueta]);
+  return { contactId, via: 'workflow', etiqueta };
 }
 
 /** Una pasada: manda lo que toca respetando el cupo diario por dominio. */
