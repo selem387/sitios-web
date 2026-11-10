@@ -6,6 +6,21 @@ export const MODELO_TEXTO = process.env.EXTRACTOR_MODELO_TEXTO || 'claude-haiku-
 
 export const hayClaude = () => !!KEY;
 
+// El gateway de IA a veces entrega arreglos/objetos del esquema como texto JSON ("[{...}]"): se convierten de vuelta.
+function normalizar(v, prof = 0) {
+  if (prof > 6) return v;
+  if (typeof v === 'string') {
+    const t = v.trim();
+    if ((t.startsWith('[') && t.endsWith(']')) || (t.startsWith('{') && t.endsWith('}'))) {
+      try { return normalizar(JSON.parse(t), prof + 1); } catch { return v; }
+    }
+    return v;
+  }
+  if (Array.isArray(v)) return v.map((x) => normalizar(x, prof + 1));
+  if (v && typeof v === 'object') return Object.fromEntries(Object.entries(v).map(([k, x]) => [k, normalizar(x, prof + 1)]));
+  return v;
+}
+
 export async function pedirJSON({ system, contenido, schema, model = MODELO_TEXTO, max_tokens = 2000, timeoutMs = 120000 }) {
   if (!KEY) throw new Error('Falta ANTHROPIC_API_KEY');
   const res = await fetch(`${BASE}/v1/messages`, {
@@ -25,5 +40,5 @@ export async function pedirJSON({ system, contenido, schema, model = MODELO_TEXT
   if (!res.ok) throw new Error(`Claude: ${j?.error?.message || res.status}`);
   const call = (j.content || []).find((b) => b.type === 'tool_use');
   if (!call?.input) throw new Error('Claude no devolvió JSON');
-  return call.input;
+  return normalizar(call.input);
 }
