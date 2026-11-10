@@ -209,11 +209,11 @@ export const CSS_MOVIMIENTO = `
 .sl-t{font-family:var(--ft);font-size:clamp(26px,6vw,50px);line-height:1.06;letter-spacing:-.015em;max-width:18ch;text-wrap:balance;text-shadow:0 1px 18px rgba(0,0,0,.35)}
 .sl-a{color:rgba(255,255,255,.92);margin-top:10px;max-width:42ch;font-size:clamp(15px,3.8vw,19px);text-shadow:0 1px 12px rgba(0,0,0,.4)}
 .sl-btn{margin-top:16px;background:#fff;color:#1A1714}
-.sl-ctrl{position:absolute;z-index:3;left:50%;bottom:12px;transform:translateX(-50%);display:flex;align-items:center;gap:2px;background:rgba(0,0,0,.62);border-radius:999px;padding:3px;color:#fff}
-.sl-b{width:44px;height:44px;border:0;border-radius:50%;background:transparent;color:#fff;cursor:pointer;display:grid;place-items:center;padding:0}
-.sl-b svg{width:20px;height:20px;fill:currentColor}.sl-b:focus-visible{outline:3px solid #fff;outline-offset:-3px}
+/* controles del slider 30% más chicos (10-nov-2026) */.sl-ctrl{position:absolute;z-index:3;left:50%;bottom:10px;transform:translateX(-50%);display:flex;align-items:center;gap:1px;background:rgba(0,0,0,.62);border-radius:999px;padding:2px;color:#fff}
+.sl-b{width:31px;height:31px;border:0;border-radius:50%;background:transparent;color:#fff;cursor:pointer;display:grid;place-items:center;padding:0}
+.sl-b svg{width:14px;height:14px;fill:currentColor}.sl-b:focus-visible{outline:3px solid #fff;outline-offset:-3px}
 .sl-pausa .i-play{display:none}.sl.pausado .sl-pausa .i-play{display:inline}.sl.pausado .sl-pausa .i-pausa{display:none}
-.sl-pos{font:700 13px/1 var(--fc);min-width:3.4em;text-align:center;font-variant-numeric:tabular-nums}
+.sl-pos{font:700 10px/1 var(--fc);min-width:3.4em;text-align:center;font-variant-numeric:tabular-nums}
 .sl-marco .sl-cap{padding:18px 16px 70px}.sl-marco .sl-t{font-size:clamp(22px,5vw,32px)}.sl-marco .sl-a{font-size:15px}.sl-marco .sl-btn{padding:11px 18px;min-height:44px;font-size:15px}
 .ovalo.sl-marco .sl-cap{text-align:center;padding:0 16% 22%}.ovalo.sl-marco .sl-t,.ovalo.sl-marco .sl-a{margin-left:auto;margin-right:auto}.ovalo.sl-marco .sl-ctrl{bottom:6%}
 .sl-carta{aspect-ratio:4/5;border-radius:8px;margin-bottom:12px}
