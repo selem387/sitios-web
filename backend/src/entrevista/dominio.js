@@ -238,19 +238,134 @@ async function pasoBuscar(e, brief, consulta) {
   return mensajeOpciones(r.opciones, r.aparte, r.pedidoNoLibre);
 }
 
-/* ---------------- Interpretación de respuestas libres ---------------- */
-async function interpretar(estado, texto, contexto) {
+/* ---------------- Interpretación con IA (cualquier respuesta fuera del libreto) ---------------- */
+// Cada mensaje que no es una respuesta inequívoca al paso pasa por la IA, que decide qué quiere el cliente:
+// contestar el paso, cambiar de dirección, regresar al paso anterior, preguntar, posponer o hablar de otra cosa.
+// Si no queda claro (p. ej. "listo" en la búsqueda), se le pregunta qué quiso decir con opciones numeradas.
+const PASOS = {
+  buscar: 'dar una idea de nombre para buscar la dirección (dominio) de su página',
+  reembolsada: 'dar una idea de nombre para buscar otra dirección',
+  opciones: 'elegir por número una de las direcciones incluidas en su pago',
+  opciones_aparte: 'elegir por número una dirección que se paga aparte',
+  titularidad: 'decidir a nombre de quién queda la dirección: 1 IAprop, 2 a su nombre (se la pasamos a su cuenta de GoDaddy), 3 IAprop con aviso un mes antes de vencer',
+  traspaso_email: 'dar el correo de su cuenta de GoDaddy o decir que no tiene cuenta',
+  acuerdos: 'escribir "acepto" para aceptar las condiciones del registro',
+};
+const ANTERIOR = { opciones: 'buscar', opciones_aparte: 'opciones', titularidad: 'opciones', traspaso_email: 'titularidad', acuerdos: 'titularidad' };
+const ACCIONES = ['responder', 'cambiar_direccion', 'ver_aparte', 'ver_incluidas', 'regresar', 'posponer', 'aceptar', 'rechazar', 'pregunta', 'aclarar', 'otro_tema'];
+const CORTO = (t) => t.length <= 25; // los atajos por número/palabra clave solo valen en respuestas cortas
+
+async function entender(e, f, texto, brief) {
+  let recientes = '';
+  try {
+    recientes = (await db.ultimosMensajes(e.id, 8))
+      .map((m) => `${m.rol === 'cliente' ? 'CLIENTE' : 'ARI'}: ${String(m.transcripcion || m.contenido || '').replace(/\s+/g, ' ').slice(0, 350)}`).join('\n');
+  } catch { /* sin historial */ }
+  const contexto = [
+    `Negocio: ${brief?.negocio?.nombre || '?'}`,
+    f.dominio ? `Dirección elegida: ${f.dominio}${f.incluido === false ? ' (se paga aparte)' : ' (incluida en su pago)'}` : null,
+    f.opciones?.length ? `Opciones incluidas que se le mostraron: ${f.opciones.map((o, i) => `${i + 1}. ${o.dominio}`).join(' · ')}` : null,
+    f.aparte?.length ? `Opciones de pago aparte: ${f.aparte.map((o, i) => `${i + 1}. ${o.dominio}${o.total_mxn ? ` ${pesos(o.total_mxn)}` : ''}`).join(' · ')}` : null,
+    f.titularidad ? `A nombre de: ${f.titularidad}` : null,
+    f.total_mxn != null ? `Total a pagar por la dirección: ${pesos(f.total_mxn)}` : null,
+  ].filter(Boolean).join('\n');
   try {
     const { data } = await pedirJSON({
       model: MODELO_MEMORIA,
-      max_tokens: 300,
-      system: `Interpretas la respuesta de un cliente en WhatsApp mientras compra la dirección (dominio) de su página. Paso actual: ${estado}.
-Acciones: elegir (escogió una opción; da su número), buscar (propone otro nombre; da la consulta), posponer (no quiere ahora), aceptar (acepta explícitamente las condiciones), rechazar, pregunta (pregunta algo; contéstala en 1–2 frases sencillas, sin tecnicismos, sin inventar precios), otro.`,
-      contenido: `CONTEXTO: ${contexto}\nRESPUESTA DEL CLIENTE: ${texto}`,
-      schema: { type: 'object', properties: { accion: { type: 'string', enum: ['elegir', 'buscar', 'posponer', 'aceptar', 'rechazar', 'pregunta', 'otro'] }, numero: { type: 'integer' }, consulta: { type: 'string' }, respuesta: { type: 'string' } }, required: ['accion'] },
+      max_tokens: 500,
+      system: `Interpretas lo que escribe por WhatsApp un cliente mientras consigue la dirección (dominio) de su página. El cliente no tiene que seguir el libreto: entiende qué quiere y elige la acción que lo cumple.
+Paso actual: ${PASOS[f.estado] || f.estado}.
+Acciones:
+- responder: contesta el paso actual. numero = opción elegida; correo = si dio uno; sin_cuenta = true si dice que no tiene cuenta de GoDaddy; consulta = idea de nombre SOLO si de verdad es un nombre o palabra para su dirección.
+- cambiar_direccion: quiere una dirección distinta a la elegida o a las mostradas. direccion = la dirección completa si la escribió (ej. minegocio.xyz); si no, consulta = su idea de nombre.
+- ver_aparte: quiere .com, .com.mx u otras con costo. ver_incluidas: quiere ver las que no cuestan extra.
+- regresar: quiere volver a la pregunta o paso anterior, o cambiar algo que ya contestó.
+- posponer: no quiere la dirección ahora. aceptar: acepta explícitamente las condiciones. rechazar: no acepta.
+- pregunta: tiene una duda sobre este paso; respuesta = 1 a 3 frases sencillas, sin tecnicismos, sin inventar precios ni prometer lo que no esté en el contexto.
+- aclarar: no queda claro qué quiere, o la palabra no tiene sentido como respuesta a este paso (p. ej. "listo", "ok", "ya", "gracias" cuando se le pidió un nombre). respuesta = una pregunta breve de qué quiso decir; opciones = 2 a 4 interpretaciones posibles, cada una con texto (cómo se le muestra), accion (una de las otras acciones) y, si aplica, numero/direccion/consulta. Nunca uses una palabra así como nombre de dirección sin preguntar.
+- otro_tema: habla de otra cosa (su página, fotos, textos, cambios, el pago de la página, saludos) que no es la dirección.
+Si mezcla una respuesta con otra petición, elige lo que quiere hacer AHORA ("la 2, pero mejor quiero x.com" es cambiar_direccion). Usa los mensajes recientes para entender referencias como "la anterior" o "esa".`,
+      contenido: `${contexto}\n\nMENSAJES RECIENTES:\n${recientes || '(sin historial)'}\n\nMENSAJE NUEVO DEL CLIENTE: ${texto}`,
+      schema: {
+        type: 'object',
+        properties: {
+          accion: { type: 'string', enum: ACCIONES },
+          numero: { type: 'integer' }, correo: { type: 'string' }, sin_cuenta: { type: 'boolean' },
+          direccion: { type: 'string' }, consulta: { type: 'string' }, respuesta: { type: 'string' },
+          opciones: { type: 'array', items: { type: 'object', properties: { texto: { type: 'string' }, accion: { type: 'string', enum: ACCIONES.filter((a) => a !== 'aclarar') }, numero: { type: 'integer' }, direccion: { type: 'string' }, consulta: { type: 'string' } }, required: ['texto', 'accion'] } },
+        },
+        required: ['accion'],
+      },
     });
-    return data;
-  } catch { return { accion: 'otro' }; }
+    return data?.accion ? data : { accion: 'aclarar' };
+  } catch (err) { console.error('dominio entender', err.message); return { accion: 'aclarar' }; }
+}
+
+/** Recordatorio de lo que falta en el paso actual (para cerrar una respuesta o una aclaración). */
+function recordatorio(f) {
+  switch (f.estado) {
+    case 'buscar': case 'reembolsada': return 'Escríbeme una idea de nombre para tu dirección (por ejemplo, el nombre de tu negocio) y busco las que están libres.';
+    case 'opciones': return '¿Cuál te late? Respóndeme con el número, escríbeme otra idea de nombre, o *pagar aparte* si quieres .com o .com.mx.';
+    case 'opciones_aparte': return 'Respóndeme con el número de la que quieres, o escríbeme *incluidas* para ver las que no tienen costo extra.';
+    case 'titularidad': return `Para *${f.dominio}*: ¿a nombre de quién queda? *1* IAprop, *2* a tu nombre, *3* IAprop con aviso antes de vencer. Si prefieres otra dirección, escríbemela.`;
+    case 'traspaso_email': return 'Pásame el correo de tu cuenta de GoDaddy, o escribe *no tengo* si aún no tienes cuenta.';
+    case 'acuerdos': return 'Si estás de acuerdo, escríbeme *acepto*. Si prefieres otra dirección, escríbeme el nombre.';
+    default: return '';
+  }
+}
+
+/** Cambia la dirección elegida por otra: si la escribió completa y está libre, la toma; si no, busca opciones. */
+async function cambiarDireccion(e, brief, f, consulta) {
+  const exacta = /\.[a-z]{2,}/i.test(String(consulta || '')) ? candidatosExactos(consulta, brief)[0] : null;
+  if (!exacta) { await patchFlujo(e.id, { estado: 'buscar' }); return { textos: await pasoBuscar(e, brief, consulta), seguirConAri: false }; }
+  let r;
+  try { r = await buscarOpciones(exacta, brief); }
+  catch (err) { console.error('buscarOpciones', err); return { textos: ['No pude revisar esa dirección en este momento 😕. Escríbemela de nuevo en un par de minutos.'], seguirConAri: false }; }
+  const inc = r.opciones.find((o) => o.dominio === exacta);
+  const ap = r.aparte.find((o) => o.dominio === exacta);
+  const base = { opciones: r.opciones, aparte: r.aparte, consulta: exacta, titularidad: null, traspaso_email: null, compra_id: null, total_mxn: null };
+  if (inc) {
+    await patchFlujo(e.id, { ...base, estado: 'titularidad', dominio: exacta, incluido: true });
+    return { textos: [`Va, cambiamos a *${exacta}* ✅ Está libre y viene incluida en tu pago.`, MENSAJE_TITULARIDAD], seguirConAri: false };
+  }
+  if (ap) {
+    await patchFlujo(e.id, { ...base, estado: 'titularidad', dominio: exacta, incluido: false });
+    return { textos: [`*${exacta}* está libre, pero no entra en tu pago: cuesta ${pesos(ap.total_mxn)} por 1 año y te mando la liga para pagarla aparte. Si mejor quieres una incluida, escríbeme *incluidas*.`, MENSAJE_TITULARIDAD], seguirConAri: false };
+  }
+  if (!r.opciones.length && !r.aparte.length) { await patchFlujo(e.id, { estado: 'buscar' }); return { textos: await pasoBuscar(e, brief, exacta), seguirConAri: false }; }
+  await patchFlujo(e.id, { ...base, estado: 'opciones' });
+  return { textos: mensajeOpciones(r.opciones, r.aparte, r.pedidoNoLibre.length ? r.pedidoNoLibre : [exacta]), seguirConAri: false };
+}
+
+/** Vuelve al paso anterior y le repite esa pregunta. */
+async function regresar(e, brief, f) {
+  const ant = ANTERIOR[f.estado];
+  if (ant === 'opciones' && f.opciones?.length) { await patchFlujo(e.id, { estado: 'opciones' }); return { textos: ['Claro, regresamos 👇', ...mensajeOpciones(f.opciones, f.aparte || [])], seguirConAri: false }; }
+  if (ant === 'titularidad') { await patchFlujo(e.id, { estado: 'titularidad', compra_id: null, total_mxn: null }); return { textos: ['Claro, regresamos 👇', MENSAJE_TITULARIDAD], seguirConAri: false }; }
+  await patchFlujo(e.id, { estado: 'buscar' });
+  return { textos: ['Claro, regresamos. Escríbeme la idea de nombre que quieres para tu dirección y busco las que están libres.'], seguirConAri: false };
+}
+
+/** Aplica lo que entendió la IA cuando el mensaje no es una respuesta directa al paso. → resultado o null si es "responder". */
+async function desvio(e, brief, f, ia, t) {
+  switch (ia.accion) {
+    case 'posponer': return posponer(e);
+    case 'rechazar': return ['acuerdos', 'opciones_aparte'].includes(f.estado) ? posponer(e) : { textos: [recordatorio(f)], seguirConAri: false };
+    case 'cambiar_direccion': return cambiarDireccion(e, brief, f, ia.direccion || ia.consulta || t);
+    case 'ver_aparte': return { textos: await pasoAparte(e, brief, f.consulta || brief?.tecnico?.dominio_deseado || brief?.negocio?.nombre), seguirConAri: false };
+    case 'ver_incluidas': await patchFlujo(e.id, { estado: 'buscar' }); return { textos: await pasoBuscar(e, brief, f.consulta || brief?.tecnico?.dominio_deseado || brief?.negocio?.nombre), seguirConAri: false };
+    case 'regresar': return regresar(e, brief, f);
+    case 'pregunta': return { textos: [[ia.respuesta, recordatorio(f)].filter(Boolean).join('\n\n')], seguirConAri: false };
+    case 'otro_tema':
+      return { textos: [], seguirConAri: true, notaAri: `El cliente escribió de otra cosa mientras estaba en el paso de la dirección (${PASOS[f.estado] || f.estado}). Atiende lo que pide con normalidad y al final recuérdale en una frase lo que falta: ${recordatorio(f)}` };
+    case 'responder': case 'aceptar': return null;
+    default: { // aclarar (o no se entendió): preguntar qué quiso decir, con opciones numeradas
+      const ops = (Array.isArray(ia.opciones) ? ia.opciones : []).filter((o) => o?.texto && o.accion && o.accion !== 'aclarar').slice(0, 4);
+      if (!ops.length) return { textos: [`No estoy seguro de qué quisiste decir con "${t.slice(0, 60)}" 🤔\n\n${recordatorio(f)}`], seguirConAri: false };
+      await patchFlujo(e.id, { aclaracion: { opciones: ops, estado: f.estado } });
+      return { textos: [`${ia.respuesta || `¿Qué quisiste decir con "${t.slice(0, 60)}"?`}\n\n${ops.map((o, i) => `${i + 1}. ${o.texto}`).join('\n')}\n\nRespóndeme con el número o escríbemelo con tus palabras.`], seguirConAri: false };
+    }
+  }
 }
 
 const posponer = async (e) => {
@@ -259,75 +374,80 @@ const posponer = async (e) => {
 };
 
 /* ---------------- Atender mensaje mientras hay flujo ---------------- */
-export async function atenderDominio(e, brief, texto) {
-  const f = flujoDe(brief);
-  const t = String(texto || '').trim();
+const PASOS_IA = new Set(['buscar', 'reembolsada', 'opciones', 'opciones_aparte', 'titularidad', 'traspaso_email', 'acuerdos']);
+const NUM_SOLO = /^\D{0,12}?([1-9])\D{0,12}$/;
+const tieneDominio = (t) => /[a-z0-9][a-z0-9-]*\.[a-z]{2,}(\.[a-z]{2,})?\b/i.test(t);
+const indicePorNombre = (lista, t) => (lista || []).findIndex((o) => t.toLowerCase().includes(o.dominio));
+
+/** Respuestas inequívocas que no necesitan IA (cortas y sin ambigüedad). → intención o null. */
+function atajoDelPaso(f, t) {
+  const n = tieneDominio(t) ? NaN : Number((t.match(NUM_SOLO) || [])[1]); // "listo2.shop" no es la opción 2
   switch (f.estado) {
-    case 'buscar':
-    case 'reembolsada': {
-      if (DESPUES.test(t)) return posponer(e);
-      return { textos: await pasoBuscar(e, brief, t), seguirConAri: false };
+    case 'buscar': case 'reembolsada':
+      if (CORTO(t) && tieneDominio(t)) return { accion: 'responder', consulta: t };
+      return null; // una palabra suelta ("listo", "ok") la evalúa la IA antes de buscarla
+    case 'opciones': {
+      const i = indicePorNombre(f.opciones, t);
+      if (i >= 0 && CORTO(t)) return { accion: 'responder', numero: i + 1 };
+      if (indicePorNombre(f.aparte, t) >= 0 && CORTO(t)) return { accion: 'cambiar_direccion', direccion: f.aparte[indicePorNombre(f.aparte, t)].dominio };
+      if (CORTO(t) && n >= 1 && n <= (f.opciones || []).length) return { accion: 'responder', numero: n };
+      if (CORTO(t) && /^(pagar )?aparte$/i.test(t.trim())) return { accion: 'ver_aparte' };
+      return null;
+    }
+    case 'opciones_aparte': {
+      const i = indicePorNombre(f.aparte, t);
+      if (i >= 0 && CORTO(t)) return { accion: 'responder', numero: i + 1 };
+      if (CORTO(t) && n >= 1 && n <= (f.aparte || []).length) return { accion: 'responder', numero: n };
+      if (/^\s*incluidas?\s*$/i.test(t)) return { accion: 'ver_incluidas' };
+      return null;
+    }
+    case 'titularidad':
+      if (CORTO(t) && [1, 2, 3].includes(n)) return { accion: 'responder', numero: n };
+      return null;
+    case 'traspaso_email': {
+      const correo = (t.match(/[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/i) || [])[0];
+      if (correo && t.length <= 80) return { accion: 'responder', correo };
+      if (CORTO(t) && /^\s*no (la )?tengo( cuenta)?\s*\.?$/i.test(t)) return { accion: 'responder', sin_cuenta: true };
+      return null;
+    }
+    case 'acuerdos':
+      if (CORTO(t) && ACEPTO.test(t) && !/no acepto|no estoy de acuerdo/i.test(t)) return { accion: 'aceptar' };
+      return null;
+    default: return null;
+  }
+}
+
+/** Ejecuta la respuesta al paso actual con la intención ya entendida. */
+async function responderPaso(e, brief, f, ia, t) {
+  switch (f.estado) {
+    case 'buscar': case 'reembolsada': {
+      const consulta = ia.direccion || ia.consulta;
+      if (!consulta) return { textos: [recordatorio(f)], seguirConAri: false };
+      return { textos: await pasoBuscar(e, brief, consulta), seguirConAri: false };
     }
     case 'opciones': {
       const ops = f.opciones || [];
-      const aparte = f.aparte || [];
-      if (DESPUES.test(t) && !/\d/.test(t)) return posponer(e);
-      // Eligió por nombre una de las que se pagan aparte.
-      const cara = aparte.find((o) => t.toLowerCase().includes(o.dominio));
-      if (!cara && PIDE_APARTE.test(t) && !/^\D{0,12}?[1-9]\b/.test(t)) return { textos: await pasoAparte(e, brief, (t.match(/[a-z0-9-]+\.[a-z.]{2,10}/i) || [])[0] || f.consulta || brief?.tecnico?.dominio_deseado || brief?.tecnico?.dominio || brief?.negocio?.nombre), seguirConAri: false };
-      if (cara) {
-        await patchFlujo(e.id, { estado: 'titularidad', dominio: cara.dominio, incluido: false });
-        return { textos: [`Va: *${cara.dominio}* ✅ Esta no entra en tu pago; cuesta ${pesos(cara.total_mxn)} por 1 año y te mando la liga para pagarla aparte.`, MENSAJE_TITULARIDAD], seguirConAri: false };
+      if (ia.numero >= 1 && ia.numero <= ops.length) {
+        const elegido = ops[ia.numero - 1].dominio;
+        await patchFlujo(e.id, { estado: 'titularidad', dominio: elegido, incluido: true });
+        return { textos: [`Buena elección: *${elegido}* ✅`, MENSAJE_TITULARIDAD], seguirConAri: false };
       }
-      let n = Number((t.match(/^\D{0,12}?([1-9])\b/) || [])[1]);
-      const porNombre = ops.findIndex((o) => t.toLowerCase().includes(o.dominio));
-      if (porNombre >= 0) n = porNombre + 1;
-      let consulta = null;
-      if (!(n >= 1 && n <= ops.length)) {
-        const ia = await interpretar('elegir una de las opciones', t, `Opciones: ${ops.map((o, i) => `${i + 1}. ${o.dominio}`).join(' ')}`);
-        if (ia.accion === 'elegir' && ia.numero >= 1 && ia.numero <= ops.length) n = ia.numero;
-        else if (ia.accion === 'posponer') return posponer(e);
-        else if (ia.accion === 'buscar') consulta = ia.consulta || t;
-        else if (ia.accion === 'pregunta' && ia.respuesta) return { textos: [`${ia.respuesta}\n\n¿Cuál eliges? Respóndeme con el número, o escríbeme otra idea de nombre.`], seguirConAri: false };
-        else consulta = t;
-      }
-      if (consulta) return { textos: await pasoBuscar(e, brief, consulta), seguirConAri: false };
-      const elegido = ops[n - 1].dominio;
-      await patchFlujo(e.id, { estado: 'titularidad', dominio: elegido, incluido: true });
-      return { textos: [`Buena elección: *${elegido}* ✅`, MENSAJE_TITULARIDAD], seguirConAri: false };
+      if (ia.direccion || ia.consulta) return cambiarDireccion(e, brief, f, ia.direccion || ia.consulta);
+      return { textos: [recordatorio(f)], seguirConAri: false };
     }
     case 'opciones_aparte': {
       const lista = f.aparte || [];
-      if (DESPUES.test(t) && !/\d/.test(t)) return posponer(e);
-      if (/inclu/i.test(t)) { await patchFlujo(e.id, { estado: 'buscar' }); return { textos: await pasoBuscar(e, brief, f.consulta || brief?.tecnico?.dominio_deseado || brief?.negocio?.nombre), seguirConAri: false }; }
-      let n = Number((t.match(/^\D{0,12}?([1-9])\b/) || [])[1]);
-      const porNombre = lista.findIndex((o) => t.toLowerCase().includes(o.dominio));
-      if (porNombre >= 0) n = porNombre + 1;
-      if (!(n >= 1 && n <= lista.length)) {
-        const ia = await interpretar('elegir una dirección de pago aparte', t, `Opciones: ${lista.map((o, i) => `${i + 1}. ${o.dominio} ${pesos(o.total_mxn)}`).join(' ')}`);
-        if (ia.accion === 'elegir' && ia.numero >= 1 && ia.numero <= lista.length) n = ia.numero;
-        else if (ia.accion === 'posponer' || ia.accion === 'rechazar') return posponer(e);
-        else if (ia.accion === 'buscar') return { textos: await pasoAparte(e, brief, ia.consulta || t), seguirConAri: false };
-        else return { textos: [`${ia.accion === 'pregunta' && ia.respuesta ? `${ia.respuesta}\n\n` : ''}Respóndeme con el número de la que quieres, o escríbeme *incluidas* para ver las que no tienen costo extra.`], seguirConAri: false };
+      if (ia.numero >= 1 && ia.numero <= lista.length) {
+        const o = lista[ia.numero - 1];
+        await patchFlujo(e.id, { estado: 'titularidad', dominio: o.dominio, incluido: false });
+        return { textos: [`Va: *${o.dominio}* ✅ Cuesta ${pesos(o.total_mxn)} por 1 año; después te mando la liga para pagarla.`, MENSAJE_TITULARIDAD], seguirConAri: false };
       }
-      const o = lista[n - 1];
-      await patchFlujo(e.id, { estado: 'titularidad', dominio: o.dominio, incluido: false });
-      return { textos: [`Va: *${o.dominio}* ✅ Cuesta ${pesos(o.total_mxn)} por 1 año; después te mando la liga para pagarla.`, MENSAJE_TITULARIDAD], seguirConAri: false };
+      if (ia.direccion || ia.consulta) return { textos: await pasoAparte(e, brief, ia.direccion || ia.consulta), seguirConAri: false };
+      return { textos: [recordatorio(f)], seguirConAri: false };
     }
     case 'titularidad': {
-      let op = Number((t.match(/\b([123])\b/) || [])[1]);
-      if (!op) {
-        if (/mi nombre|a mi nombre|m[ií]a|mi cuenta/i.test(t)) op = 2;
-        else if (/avis/i.test(t)) op = 3;
-        else if (/iaprop|ustedes|su nombre|de ustedes/i.test(t)) op = 1;
-      }
-      if (!op) {
-        const ia = await interpretar('elegir a nombre de quién queda: 1 IAprop, 2 a su nombre (traspaso), 3 IAprop con aviso antes de vencer', t, 'Opciones 1, 2, 3');
-        if (ia.accion === 'elegir' && [1, 2, 3].includes(ia.numero)) op = ia.numero;
-        else if (ia.accion === 'posponer') return posponer(e);
-        else return { textos: [`${ia.accion === 'pregunta' && ia.respuesta ? `${ia.respuesta}\n\n` : ''}Respóndeme *1*, *2* o *3*, según cómo quieres que quede la dirección.`], seguirConAri: false };
-      }
-      const titularidad = { 1: 'iaprop', 2: 'traspaso', 3: 'aviso_vencimiento' }[op];
+      const titularidad = { 1: 'iaprop', 2: 'traspaso', 3: 'aviso_vencimiento' }[ia.numero];
+      if (!titularidad) return { textos: [recordatorio(f)], seguirConAri: false };
       if (titularidad === 'traspaso') {
         await patchFlujo(e.id, { estado: 'traspaso_email', titularidad });
         return { textos: ['Perfecto, queda a tu nombre. ¿Cuál es el correo de tu cuenta de GoDaddy? Si no tienes cuenta, escribe *no tengo* y te ayudamos a abrirla cuando ya esté comprada.'], seguirConAri: false };
@@ -336,22 +456,40 @@ export async function atenderDominio(e, brief, texto) {
       return pasoCotizar(e, brief);
     }
     case 'traspaso_email': {
-      const correo = (t.match(/[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/i) || [])[0] || null;
-      if (!correo && !/no tengo|no la tengo|ninguna|no tengo cuenta/i.test(t)) return { textos: ['Pásame el correo de tu cuenta de GoDaddy, o escribe *no tengo* si aún no tienes cuenta.'], seguirConAri: false };
+      const correo = (String(ia.correo || '').match(/[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/i) || [])[0] || null;
+      if (!correo && !ia.sin_cuenta) return { textos: [recordatorio(f)], seguirConAri: false };
       await patchFlujo(e.id, { estado: 'cotizar', traspaso_email: correo ? correo.toLowerCase() : null });
       return pasoCotizar(e, brief);
     }
+    case 'acuerdos':
+      if (ia.accion === 'aceptar' && ACEPTO.test(t) && !/no acepto|no estoy de acuerdo/i.test(t)) return pasoPagar(e, brief, f);
+      return { textos: ['Para dejar constancia de que aceptas las condiciones del registro, escríbeme la palabra *acepto*. Si prefieres otra dirección, escríbeme el nombre.'], seguirConAri: false };
+    default: return { textos: [recordatorio(f)], seguirConAri: false };
+  }
+}
+
+export async function atenderDominio(e, brief, texto) {
+  const f = flujoDe(brief);
+  const t = String(texto || '').trim();
+  if (PASOS_IA.has(f.estado)) {
+    let ia = null;
+    // Respuesta a una aclaración ("¿qué quisiste decir?"): el número elige la interpretación.
+    if (f.aclaracion) {
+      const ops = f.aclaracion.estado === f.estado ? (f.aclaracion.opciones || []) : [];
+      await patchFlujo(e.id, { aclaracion: null });
+      const n = Number((t.match(NUM_SOLO) || [])[1]);
+      if (CORTO(t) && n >= 1 && n <= ops.length) ia = ops[n - 1];
+    }
+    if (!ia) ia = atajoDelPaso(f, t);
+    if (!ia && CORTO(t) && DESPUES.test(t) && !/\d/.test(t)) ia = { accion: 'posponer' };
+    if (!ia) ia = await entender(e, f, t, brief);
+    const r = await desvio(e, brief, f, ia, t);
+    if (r) return r;
+    return responderPaso(e, brief, f, ia, t);
+  }
+  switch (f.estado) {
     case 'cotizar':
       return pasoCotizar(e, brief);
-    case 'acuerdos': {
-      if (ACEPTO.test(t) && !/no acepto|no estoy de acuerdo/i.test(t)) return pasoPagar(e, brief, f);
-      if (SI_SUELTO.test(t)) return { textos: ['Para dejar constancia de que aceptas las condiciones del registro, escríbeme la palabra *acepto*.'], seguirConAri: false };
-      if (DESPUES.test(t)) return posponer(e);
-      const ia = await interpretar('aceptar las condiciones del registro y el total para pasar a pagar', t, `Dominio ${f.dominio}, total ${pesos(f.total_mxn)}`);
-      if (ia.accion === 'posponer' || ia.accion === 'rechazar') return posponer(e);
-      if (ia.accion === 'buscar') { await patchFlujo(e.id, { estado: 'buscar' }); return { textos: await pasoBuscar(e, brief, ia.consulta || t), seguirConAri: false }; }
-      return { textos: [`${ia.respuesta ? `${ia.respuesta}\n\n` : ''}Si estás de acuerdo, escríbeme *acepto* y te mando la liga para pagar. Si prefieres otra dirección, escríbeme el nombre.`], seguirConAri: false };
-    }
     case 'pago_pendiente': {
       if (PAGUE.test(t)) {
         const ok = await revisarPago(f.compra_id).catch(() => false);
