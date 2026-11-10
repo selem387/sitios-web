@@ -94,6 +94,9 @@ export async function revisarPagina(page) {
       const conFondo = cs.backgroundColor !== 'rgba(0, 0, 0, 0)' && cs.backgroundColor !== 'transparent' && cs.backgroundColor !== getComputedStyle(document.body).backgroundColor;
       if (!conFondo) continue;
       const pegado = Array.from(sec.querySelectorAll('h1,h2,p,.btn')).filter((e) => visible(e) && !e.closest('.sl')).find((e) => sr.bottom - e.getBoundingClientRect().bottom < 16);
+      // Regla dura (10-nov-2026): slider, foto o marco tampoco pegados al borde inferior de una sección con fondo propio.
+      const fotoPegada = Array.from(sec.querySelectorAll('.sl, figure, .marco, .galeria')).filter(visible).find((e) => { const r = e.getBoundingClientRect(); return r.bottom <= sr.bottom + 1 && sr.bottom - r.bottom < 16; });
+      if (fotoPegada) { prob.push(`foto o slider pegado al borde inferior de su sección (${String(fotoPegada.className).split(' ')[0] || fotoPegada.tagName.toLowerCase()})`); break; }
       if (pegado) { prob.push(`texto pegado al borde inferior de su sección: "${(pegado.textContent || '').trim().slice(0, 30)}"`); break; }
     }
     // 4c) Menú y botones con fuente sans de pantalla (regla dura 10-nov-2026).
