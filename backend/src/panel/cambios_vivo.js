@@ -314,7 +314,8 @@ export async function aplicarCambioVivo(c, e, sv) {
 
   // Elegir una de sus opciones ("D", "la D", "opción D", o la liga …/p/<token>/D): no pasa por el planeador.
   const letraElegida = (() => {
-    const t = c.pedidos.map((p) => p.texto || '').join(' ').trim();
+    // Solo lo que escribió el cliente: se ignora el "(Ari preguntó: …)" que se agrega cuando contesta una pregunta.
+    const t = c.pedidos.filter((p) => !/^\(Ari pregunt[oó]:/.test(p.texto || '')).map((p) => p.texto || '').join(' ').trim();
     if (c.pedidos.some((p) => p.media?.length) || t.length > 80) return null;
     const m = t.match(/^(?:quiero\s+|me\s+gusta\s+|elijo\s+|prefiero\s+)?(?:la\s+)?(?:opci[oó]n\s+)?([a-f])\s*[.!]*$/i) || t.match(/\/p\/[A-Za-z0-9]+\/([A-F])\b/);
     const L = m && m[1].toUpperCase();
