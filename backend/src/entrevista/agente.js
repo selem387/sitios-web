@@ -20,7 +20,7 @@ import { limpiarDominio } from '../dominio/registrador.js';
 import { paginaEditable, estadoCambios, registrarPedido, clasificarMensaje } from './cambios.js';
 import { alElegir } from '../panel/rehacer.js';
 import { avisarEquipo } from './avisos.js';
-import { notaRequisitos, primerBloqueIncompleto, faltantes, unirNoTiene, noTieneDelHistorial, preguntaYaNegada, rellenarDelHistorial } from './requisitos.js';
+import { notaRequisitos, primerBloqueIncompleto, faltantes, unirNoTiene, noTieneDelHistorial, preguntaYaNegada, rellenarDelHistorial, omitidasDelHistorial } from './requisitos.js';
 import { dominioRespondido, quiereDominio, PREGUNTA_DOMINIO, mensajePago, pagoPendiente, atenderPostCierre } from './pago_pagina.js';
 
 // Tope de seguridad (fotos y audios cuentan como mensajes). Una entrevista real ronda 60–130.
@@ -503,8 +503,8 @@ export async function procesarMensaje(b) {
   const historial = await db.ultimosMensajes(e.id, 200);
   {
     const nt = unirNoTiene(e.brief?.no_tiene, noTieneDelHistorial(historial));
-    const relleno = rellenarDelHistorial({ ...(e.brief || {}), no_tiene: nt }, historial);
-    if (nt.length !== (e.brief?.no_tiene || []).length || relleno.cambio) {
+    const relleno = rellenarDelHistorial(omitidasDelHistorial({ ...(e.brief || {}), no_tiene: nt }, historial), historial);
+    if (JSON.stringify(relleno.brief) !== JSON.stringify(e.brief || {})) {
       e.brief = relleno.brief;
       await db.guardar(e.id, { brief: e.brief });
     }
@@ -513,6 +513,7 @@ export async function procesarMensaje(b) {
   let brief = mergeProfundo(e.brief || {}, t.briefPatch);
   brief.no_tiene = unirNoTiene(e.brief?.no_tiene, t.briefPatch?.no_tiene);
   brief = rellenarDelHistorial(brief, historial).brief;
+  brief.omitidas = e.brief?.omitidas || []; brief.diferir = [...new Set([...(e.brief?.diferir || []), ...(brief.diferir || [])])];
   // Revisión antes de cada pregunta: no se avanza (ni se cierra) con algo pendiente de un bloque anterior.
   // Si Ari intentó avanzar, se repite su turno parado en el bloque incompleto; si aun así no lo pide, se pide con el texto fijo.
   {

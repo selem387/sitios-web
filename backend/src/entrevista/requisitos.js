@@ -71,6 +71,10 @@ export function notaRequisitos(brief, assets, bloque) {
   if (actuales.length) lineas.push(`FALTA EN ESTE BLOQUE (no lo cierres sin esto; pídelo de uno en uno, una cosa por mensaje):\n${actuales.map((f) => `- ${f.id}${f.puedeNoTener ? ' (si dice que no lo tiene, agrega "' + f.id + '" a brief_patch.no_tiene)' : ''}`).join('\n')}`);
   const nt = (brief?.no_tiene || []).filter((x) => ETIQUETA[x]);
   if (nt.length) lineas.push(`EL CLIENTE YA DIJO QUE NO TIENE (no lo vuelvas a preguntar, ni con otras palabras, ni repitas "ya anoté…" de turnos anteriores): ${nt.map((x) => ETIQUETA[x]).join('; ')}. Si de este bloque ya no queda nada que no esté aquí, ciérralo y pasa al siguiente.`);
+  const ya = yaTiene(brief);
+  if (ya.length) lineas.push(`YA TIENES ESTOS DATOS (no los vuelvas a preguntar, ni a pedir que los confirme, ni a pedir más detalle; si el cliente los corrige, actualízalos): ${ya.join('; ')}.`);
+  const om = (brief?.omitidas || []).slice(-12);
+  if (om.length) lineas.push(`EL CLIENTE PIDIÓ OMITIR ESTAS PREGUNTAS (no las vuelvas a hacer ni con otras palabras; sigue con lo siguiente): ${om.map((x) => `"${x}"`).join('; ')}.`);
   return lineas.length ? `REVISIÓN DE REQUISITOS (la hace el sistema; es la verdad):\n${lineas.join('\n')}` : 'REVISIÓN DE REQUISITOS: todo lo de los bloques anteriores está completo.';
 }
 
@@ -86,7 +90,7 @@ const TEMA = {
   historia: /como empezo|historia del (negocio|equipo)|como nacio/,
   equipo: /tu equipo|quien(es)? (esta|estan|trabaja)/,
   otro_dato_confianza: /otro dato de confianza|algun otro dato|algo mas que (quieras|te gustaria) (incluir|agregar|mostrar)/,
-  diferenciador: /diferente|diferencia|distingue/,
+  diferenciador: /diferente|diferencia|distingue|que otros no/,
   horarios: /horario/,
   logo: /logo/,
 };
@@ -159,4 +163,36 @@ export function rellenarDelHistorial(brief = {}, mensajes = []) {
   // La dirección de contacto también dice la ciudad.
   if (vacio(b.negocio?.ciudad) && !vacio(b.contacto?.direccion?.ciudad)) set(['negocio', 'ciudad'], b.contacto.direccion.ciudad);
   return { brief: b, cambio };
+}
+
+// Datos ya capturados que Ari no debe volver a preguntar ni "confirmar" (caso JIGA: ciudad 3 veces, zonas en 3 variantes).
+const CAMPOS_YA = [
+  ['ciudad', (b) => b.negocio?.ciudad], ['zonas que atiende', (b) => b.zona?.cobertura], ['años', (b) => b.negocio?.anios],
+  ['modalidad', (b) => b.negocio?.modalidad], ['tamaño del equipo', (b) => b.negocio?.tamano], ['objetivo', (b) => b.objetivo?.principal],
+  ['cliente ideal', (b) => b.cliente_ideal?.descripcion], ['qué le preocupa / problema que resuelve', (b) => b.cliente_ideal?.problema_que_resuelves],
+  ['idiomas', (b) => (Array.isArray(b.zona?.idiomas) && b.zona.idiomas.length > 1 ? b.zona.idiomas : null)],
+  ['servicios', (b) => (Array.isArray(b.oferta?.items) ? b.oferta.items.map((x) => (typeof x === 'string' ? x : x?.nombre)).filter(Boolean) : null)],
+  ['diferenciador', (b) => b.oferta?.diferenciador],
+];
+function yaTiene(b = {}) {
+  return CAMPOS_YA.map(([et, f]) => { const v = f(b); return vacio(v) ? null : `${et}: ${Array.isArray(v) ? v.join(', ') : String(v).slice(0, 120)}`; }).filter(Boolean);
+}
+
+// "Omite esa pregunta", "sáltala", "luego te digo"…: no se vuelve a preguntar. Si era un requisito, se difiere
+// (opcional → no_tiene; obligatorio → diferir hasta elegir diseño) para que la revisión no lo exija de nuevo.
+const OMITIR = /\b(omit[ea]|omitir|omitela|omitamos|salta(la|te)?|saltemos|pasa(le)? a la siguiente|siguiente pregunta|despues te (digo|lo digo|paso)|luego te (digo|lo digo|paso)|no quiero (contestar|responder)( eso)?|prefiero no (contestar|responder|decir))\b/;
+export const esOmitir = (t) => { const r = norm(t); return !!r && r.length <= 80 && OMITIR.test(r); };
+const ID_PREGUNTA = (q) => Object.keys(PREG_DATO).find((id) => PREG_DATO[id].test(q)) || Object.keys(TEMA).find((id) => TEMA[id].test(q)) || null;
+
+export function omitidasDelHistorial(brief = {}, mensajes = []) {
+  const preguntas = new Set(brief.omitidas || []); const noT = new Set(brief.no_tiene || []); const dif = new Set(brief.diferir || []);
+  for (let i = 0; i < mensajes.length - 1; i++) {
+    const m = mensajes[i]; const sig = mensajes[i + 1];
+    if (m.rol !== 'agente' || sig?.rol !== 'cliente' || !esOmitir(sig.transcripcion || sig.contenido)) continue;
+    const qs = String(m.contenido || '').match(/¿[^?]*\?/g); if (!qs) continue;
+    const pregunta = qs[qs.length - 1].trim(); preguntas.add(pregunta);
+    const id = ID_PREGUNTA(norm(pregunta)); const r = REQUISITOS.find((x) => x.id === id);
+    if (r?.puedeNoTener || (id && OPCIONALES[id])) noT.add(id); else if (r) dif.add(id);
+  }
+  return { ...brief, omitidas: [...preguntas].slice(-20), no_tiene: unirNoTiene([...noT]), diferir: [...dif] };
 }
