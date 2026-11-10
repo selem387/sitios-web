@@ -229,6 +229,13 @@ export const CSS_MOVIMIENTO = `
 .sl:not([data-sl]) .km{animation-duration:9s;animation-iteration-count:infinite;animation-direction:alternate}
 /* foto entera: si la proporción no cabe en el marco, se muestra completa sobre un fondo difuminado de la misma foto */
 /* fondo en canvas diminuto (no cuenta para LCP ni pesa) */
+.sl.carrusel .sl-d{opacity:1;visibility:visible;background:none;z-index:2;pointer-events:none}.sl.carrusel .sl-d>img.sl-img,.sl.carrusel .sl-d>canvas.sl-fondo,.sl.carrusel .sl-d>video{display:none}.sl.carrusel .sl-cap{pointer-events:auto}
+.sl.carrusel .sl-prev,.sl.carrusel .sl-sig,.sl.carrusel .sl-pos{display:none}.sl.carrusel .sl-ctrl{z-index:3}
+.sl-car{position:absolute;inset:0;overflow:hidden;z-index:1}.sl-pista{display:flex;gap:10px;height:100%;width:max-content;animation:sl-corre 60s linear infinite;will-change:transform}
+.sl-ci{height:100%;width:auto;max-width:none;flex:0 0 auto;object-fit:cover;display:block}
+.sl.carrusel:hover .sl-pista,.sl.carrusel.quieto .sl-pista{animation-play-state:paused}
+@keyframes sl-corre{from{transform:translate3d(0,0,0)}to{transform:translate3d(calc(-50% - 5px),0,0)}}
+@media (prefers-reduced-motion:reduce){.sl-pista{animation:none}.sl-car{overflow-x:auto}}
 .sl-d>canvas.sl-fondo{position:absolute;inset:0;width:100%;height:100%;filter:blur(18px) brightness(.7);transform:scale(1.2)}
 .sl-d.entera>img.sl-img{object-fit:contain}
 .sl-d.entera .km{animation-name:kme}
@@ -262,7 +269,7 @@ export const CSS_MOVIMIENTO = `
 .fx-grano .sl::before{content:"";position:absolute;inset:-50%;z-index:2;pointer-events:none;opacity:.08;mix-blend-mode:overlay;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='g'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23g)'/%3E%3C/svg%3E");animation:grano 1.2s steps(5) infinite}
 @keyframes grano{0%{transform:translate3d(0,0,0)}20%{transform:translate3d(-3%,2%,0)}40%{transform:translate3d(2%,-3%,0)}60%{transform:translate3d(-2%,-1%,0)}80%{transform:translate3d(3%,3%,0)}100%{transform:translate3d(0,0,0)}}
 @media (hover:hover){.fx-color main figure:not(.sl) img{filter:saturate(.72);transition:filter .6s ease}.fx-color main figure:not(.sl):hover img{filter:none}}
-@media (hover:hover){.fx-hover main img.mv{transition:scale .6s cubic-bezier(.2,.7,.2,1)}.fx-hover main :is(figure,div):hover>img.mv{scale:1.06}}
+@media (hover:hover){.fx-hover main img.mv{transition:scale .6s cubic-bezier(.2,.7,.2,1)}.fx-hover main :is(figure,div):hover>img.mv{scale:1.09}}
 @keyframes subir{from{opacity:0;transform:translate3d(0,18px,0)}to{opacity:1;transform:none}}
 .fx-texto .sl-d.activa:not(:first-child) .sl-cap .sl-t,.fx-texto .sl-d.activa:not(:first-child) .sl-cap .sl-a,.fx-texto .sl-d.activa:not(:first-child) .sl-cap .sl-btn{animation:subir .9s cubic-bezier(.2,.7,.2,1) both}
 .fx-texto .sl-d.activa .sl-a{animation-delay:.12s!important}.fx-texto .sl-d.activa .sl-btn{animation-delay:.24s!important}
@@ -282,7 +289,19 @@ document.querySelectorAll('.sl').forEach(sl=>{const ds=[...sl.querySelectorAll('
 const enteras=()=>ds.forEach(d=>{const im=d.querySelector('img.sl-img'),w=+im.getAttribute('width'),h=+im.getAttribute('height');if(!w||!h||!sl.clientWidth)return;
 const r=(w/h)/(sl.clientWidth/sl.clientHeight),ent=r>1.25||r<.8;d.classList.toggle('entera',ent);
 if(ent&&!d.querySelector('.sl-fondo')){const c=document.createElement('canvas');c.className='sl-fondo';c.width=24;c.height=Math.max(8,Math.round(24*h/w));c.setAttribute('aria-hidden','true');im.before(c);const pinta=()=>{try{c.getContext('2d').drawImage(im,0,0,c.width,c.height)}catch(e){}};im.complete&&im.naturalWidth?pinta():im.addEventListener('load',pinta,{once:true})}});
-enteras();addEventListener('resize',enteras,{passive:true})});
+enteras();addEventListener('resize',enteras,{passive:true});
+/* Carrusel (10-nov-2026): si NINGUNA foto llena el ancho del slider (todas verticales con relleno desenfocado a los
+   lados), las fotos van una al lado de la otra y corren de derecha a izquierda a ritmo suave, en bucle continuo.
+   Queda fijo el texto de la primera diapositiva. Se detiene con el botón de pausa, al pasar el mouse y con
+   "reducir movimiento" (ahí se puede deslizar a mano). */
+const rs=ds.map(d=>{const im=d.querySelector('img.sl-img'),w=+im.getAttribute('width'),h=+im.getAttribute('height');return w&&h&&sl.clientWidth?(w/h)/(sl.clientWidth/sl.clientHeight):1});
+if(ds.length>1&&rs.every(r=>r<.8)){sl.classList.add('carrusel');sl.removeAttribute('data-sl');
+const car=document.createElement('div');car.className='sl-car';car.setAttribute('aria-hidden','true');const pista=document.createElement('div');pista.className='sl-pista';car.append(pista);
+const ims=ds.map(d=>d.querySelector('img.sl-img'));for(let v=0;v<2;v++)ims.forEach(im=>{const c=im.cloneNode(true);c.className='sl-ci';c.removeAttribute('fetchpriority');c.loading='eager';pista.append(c)});
+sl.prepend(car);ds.forEach((d,k)=>{if(k){d.remove()}else{d.classList.add('activa');d.inert=false;d.removeAttribute('aria-hidden')}});
+const vel=()=>{const w=pista.scrollWidth/2;if(w)pista.style.animationDuration=Math.max(18,w/45)+'s'};vel();addEventListener('load',vel,{once:true});addEventListener('resize',vel,{passive:true});
+const bp=sl.querySelector('.sl-pausa');if(bp)bp.addEventListener('click',()=>{const p=!sl.classList.contains('quieto');sl.classList.toggle('quieto',p);bp.setAttribute('aria-pressed',p);bp.setAttribute('aria-label',p?'Reanudar fotos':'Pausar fotos')})}
+});
 document.querySelectorAll('[data-sl]').forEach(sl=>{
 const ds=[...sl.querySelectorAll('.sl-d')];if(ds.length<2)return;
 const pos=sl.querySelector('.sl-pos'),bp=sl.querySelector('.sl-pausa');

@@ -10,7 +10,7 @@ import { enlacesRedes, CSS_REDES } from './iconos_redes.js';
 import { config } from '../config.js';
 import { mezclar, contraste } from '../entrevista/tema.js';
 import { paresTipograficos, urlFuentes } from './fuentes.js';
-import { corregirPaleta, auditarPaleta, cssTipografia, textoSobre } from './tipo_color.js';
+import { corregirPaleta, auditarPaleta, cssTipografia, textoSobre, conPisoTexto } from './tipo_color.js';
 import { coloresParaPropuesta, avisosDeGiro } from './paletas_giro.js';
 import { evaluarColoresCliente, asignarFuentes } from './asesor_color.js';
 import { coloresDePalabras, logoTenido } from './materiales.js';
@@ -245,7 +245,7 @@ export async function renderPropuestas(brief, mat, textos, { ronda = 0, fijo = n
       faltanTodas.push(...faltan);
       if (faltan.length && !fijo) throw new Error(`Propuesta ${pg.letra} sin material del cliente: ${faltan.map((f) => f.clave).join(', ')}`);
       if (repetidas.length && !fijo) throw new Error(`Propuesta ${pg.letra} con fotos repetidas: ${repetidas.map((f) => f.url.split('/').pop()).join(', ')}`);
-      out.push({ letra: pg.letra, layout: pg.layout, nombre: pg.nombre, html: await conImagenesOptimizadas(conContacto(conMenuMovil(html), brief)), fuentes: pg.fuentes, paleta: pg.paleta });
+      out.push({ letra: pg.letra, layout: pg.layout, nombre: pg.nombre, html: conPisoTexto(await conImagenesOptimizadas(conContacto(conMenuMovil(html), brief))), fuentes: pg.fuentes, paleta: pg.paleta });
     }
     return { paginas: out, faltan: faltanTodas, avisos_color: avisosDeGiro({ arquetipo: brief.negocio?.arquetipo, subtipo: brief.negocio?.subtipo_resuelto || brief.negocio?.subtipo, colores: coloresCliente }), asesor };
   }
@@ -285,7 +285,7 @@ export async function renderPropuestas(brief, mat, textos, { ronda = 0, fijo = n
     const { html, faltan } = completarMaterial(conReglaTipo(pagina(d), d.f, fijo?.fuentes?.estilo || estilo), mat, { titulo: 'Más de nosotros' });
     faltanTodas.push(...faltan);
     if (faltan.length && !fijo) throw new Error(`Propuesta ${letra} sin material del cliente: ${faltan.map((f) => f.clave).join(', ')}`);
-    out.push({ letra, layout, nombre: NOMBRES[layout], html: await conImagenesOptimizadas(conContacto(conMenuMovil(html), brief)), fuentes: d.f, paleta: fijo?.paleta || { ...d.pal, familia: cp.familia, origen: cp.origen } });
+    out.push({ letra, layout, nombre: NOMBRES[layout], html: conPisoTexto(await conImagenesOptimizadas(conContacto(conMenuMovil(html), brief))), fuentes: d.f, paleta: fijo?.paleta || { ...d.pal, familia: cp.familia, origen: cp.origen } });
   }
   return { paginas: out, faltan: faltanTodas, avisos_color: avisosDeGiro({ arquetipo: brief.negocio?.arquetipo, subtipo: brief.negocio?.subtipo_resuelto || brief.negocio?.subtipo, colores }), asesor };
 }

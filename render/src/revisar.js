@@ -57,8 +57,11 @@ export async function revisarPagina(page) {
     const cuerpo = px(document.body) || (tams.length ? tams[Math.floor(tams.length / 2)] : 16);
     // 1) Texto de lectura (descripciones, datos) desproporcionadamente chico frente al cuerpo.
     const lectura = Array.from(document.querySelectorAll('main p, main li, main span, main dd')).filter((e) => visible(e) && !e.children.length && (e.textContent || '').trim().length > 25 && !e.closest('.sl,.etq,.wa,footer,.kicker,.btn,nav,.info'));
-    const chicos = lectura.filter((e) => px(e) < Math.max(14.5, cuerpo * 0.86));
-    if (chicos.length) prob.push(`texto desproporcionadamente chico: ${Math.round(px(chicos[0]))}px frente a ${Math.round(cuerpo)}px del cuerpo ("${chicos[0].textContent.trim().slice(0, 40)}")`);
+    const visible2 = visible;
+    // Piso de 20 px (10-nov-2026) para todo texto del sitio; excepciones: contador del slider y etiqueta "Propuesta X".
+    const todos = Array.from(document.querySelectorAll('body *')).filter((e) => visible(e) && !e.children.length && (e.textContent || '').trim().length > 1 && !e.closest('.sl-pos,.etq,.sl-b,svg,script,style'));
+    const chicos = todos.filter((e) => px(e) < 19.5).concat(lectura.filter((e) => px(e) < cuerpo * 0.86));
+    if (chicos.length) prob.push(`texto desproporcionadamente chico: ${Math.round(px(chicos[0]))}px (mínimo 20px; cuerpo ${Math.round(cuerpo)}px) ("${chicos[0].textContent.trim().slice(0, 40)}")`);
     if (W >= 1200) {
       // 2) Titular de portada chico para el ancho de la página.
       const h1 = Array.from(document.querySelectorAll('h1')).find(visible);

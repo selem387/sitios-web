@@ -382,3 +382,23 @@ export const REGLA_TIPO_COLOR = {
     'Radix Colors: Understanding the scale',
   ],
 };
+
+/**
+ * Piso de tamaño de letra (10-nov-2026, pedido de Sebastián): ningún texto del sitio por debajo de 20 px
+ * (30% arriba de los 15 px del menú, que eran los textos chicos de la propuesta A). Se aplica al HTML final de propuestas
+ * y sitios vivos: cada font-size de las hojas de estilo pasa a max(20px, valor), así lo más grande no cambia y lo chico
+ * sube. Excepciones: el contador del slider (1/5) y la etiqueta "Propuesta X" (no son texto del sitio).
+ */
+export const PISO_TEXTO_PX = 20;
+const EXCEPCIONES_PISO = /\.sl-pos|\.etq\b|\.sl-b\b|svg|::?marker|\.ico\b/;
+export function conPisoTexto(html, piso = PISO_TEXTO_PX) {
+  const ajusta = (decl) => decl.replace(/font-size\s*:\s*([^;}!]+)(!important)?/gi, (m, v, imp) => {
+    const val = v.trim();
+    if (/^(0|0px|inherit|initial|unset|revert)$/i.test(val) || new RegExp(`^max\\(${piso}px`).test(val)) return m;
+    return `font-size:max(${piso}px, ${val})${imp || ''}`;
+  });
+  return String(html).replace(/<style([^>]*)>([\s\S]*?)<\/style>/gi, (m, attrs, css) => {
+    const nuevo = css.replace(/([^{}]+)\{([^{}]*)\}/g, (r, sel, decl) => (/font-size/i.test(decl) && !EXCEPCIONES_PISO.test(sel) && !/^\s*@/.test(sel) ? `${sel}{${ajusta(decl)}}` : r));
+    return `<style${attrs}>${nuevo}</style>`;
+  });
+}
