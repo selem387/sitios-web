@@ -252,10 +252,10 @@ const PASOS = {
   acuerdos: 'escribir "acepto" para aceptar las condiciones del registro',
 };
 const ANTERIOR = { opciones: 'buscar', opciones_aparte: 'opciones', titularidad: 'opciones', traspaso_email: 'titularidad', acuerdos: 'titularidad' };
-const ACCIONES = ['responder', 'cambiar_direccion', 'ver_aparte', 'ver_incluidas', 'regresar', 'posponer', 'aceptar', 'rechazar', 'pregunta', 'aclarar', 'otro_tema'];
+const ACCIONES = ['responder', 'cambiar_direccion', 'ver_aparte', 'ver_incluidas', 'regresar', 'posponer', 'aceptar', 'rechazar', 'pregunta', 'aclarar', 'otro_tema', 'fuera_de_alcance'];
 const CORTO = (t) => t.length <= 25; // los atajos por número/palabra clave solo valen en respuestas cortas
 
-async function entender(e, f, texto, brief) {
+async function entender(e, f, texto, brief, literal = null, aclaracion = null) {
   let recientes = '';
   try {
     recientes = (await db.ultimosMensajes(e.id, 8))
@@ -268,6 +268,8 @@ async function entender(e, f, texto, brief) {
     f.aparte?.length ? `Opciones de pago aparte: ${f.aparte.map((o, i) => `${i + 1}. ${o.dominio}${o.total_mxn ? ` ${pesos(o.total_mxn)}` : ''}`).join(' · ')}` : null,
     f.titularidad ? `A nombre de: ${f.titularidad}` : null,
     f.total_mxn != null ? `Total a pagar por la dirección: ${pesos(f.total_mxn)}` : null,
+    aclaracion?.length ? `Justo antes se le preguntó qué quiso decir, con estas opciones: ${aclaracion.map((o, i) => `${i + 1}. ${o.texto} → ${JSON.stringify(o)}`).join(' · ')}. Si contesta con un número o lo describe, devuelve la intención de esa opción.` : null,
+    literal ? `Lectura literal del sistema (úsala solo si coincide con lo que el cliente quiere): ${JSON.stringify(literal)}` : null,
   ].filter(Boolean).join('\n');
   try {
     const { data } = await pedirJSON({
@@ -283,7 +285,8 @@ Acciones:
 - posponer: no quiere la dirección ahora. aceptar: acepta explícitamente las condiciones. rechazar: no acepta.
 - pregunta: tiene una duda sobre este paso; respuesta = 1 a 3 frases sencillas, sin tecnicismos, sin inventar precios ni prometer lo que no esté en el contexto.
 - aclarar: no queda claro qué quiere, o la palabra no tiene sentido como respuesta a este paso (p. ej. "listo", "ok", "ya", "gracias" cuando se le pidió un nombre). respuesta = una pregunta breve de qué quiso decir; opciones = 2 a 4 interpretaciones posibles, cada una con texto (cómo se le muestra), accion (una de las otras acciones) y, si aplica, numero/direccion/consulta. Nunca uses una palabra así como nombre de dirección sin preguntar.
-- otro_tema: habla de otra cosa (su página, fotos, textos, cambios, el pago de la página, saludos) que no es la dirección.
+- otro_tema: habla de otra cosa del proceso de su página (fotos, textos, diseño, cambios, una respuesta anterior de la entrevista, el pago de la página, un saludo) que no es la dirección.
+- fuera_de_alcance: pide o pregunta algo que no tiene que ver con crear su página web ni con este proceso (tareas, temas generales, otros servicios, chistes, etc.). respuesta = una frase amable diciendo que solo puedes ayudarle con la creación de su página.
 Si mezcla una respuesta con otra petición, elige lo que quiere hacer AHORA ("la 2, pero mejor quiero x.com" es cambiar_direccion). Usa los mensajes recientes para entender referencias como "la anterior" o "esa".`,
       contenido: `${contexto}\n\nMENSAJES RECIENTES:\n${recientes || '(sin historial)'}\n\nMENSAJE NUEVO DEL CLIENTE: ${texto}`,
       schema: {
@@ -297,8 +300,8 @@ Si mezcla una respuesta con otra petición, elige lo que quiere hacer AHORA ("la
         required: ['accion'],
       },
     });
-    return data?.accion ? data : { accion: 'aclarar' };
-  } catch (err) { console.error('dominio entender', err.message); return { accion: 'aclarar' }; }
+    return data?.accion ? data : { accion: 'aclarar', fallo: true };
+  } catch (err) { console.error('dominio entender', err.message); return { accion: 'aclarar', fallo: true }; }
 }
 
 /** Recordatorio de lo que falta en el paso actual (para cerrar una respuesta o una aclaración). */
@@ -358,6 +361,8 @@ async function desvio(e, brief, f, ia, t) {
     case 'pregunta': return { textos: [[ia.respuesta, recordatorio(f)].filter(Boolean).join('\n\n')], seguirConAri: false };
     case 'otro_tema':
       return { textos: [], seguirConAri: true, notaAri: `El cliente escribió de otra cosa mientras estaba en el paso de la dirección (${PASOS[f.estado] || f.estado}). Atiende lo que pide con normalidad y al final recuérdale en una frase lo que falta: ${recordatorio(f)}` };
+    case 'fuera_de_alcance':
+      return { textos: [`${ia.respuesta || 'Eso se sale de lo que puedo hacer: yo solo te ayudo con la creación de tu página web 🙂'}\n\n${recordatorio(f)}`], seguirConAri: false };
     case 'responder': case 'aceptar': return null;
     default: { // aclarar (o no se entendió): preguntar qué quiso decir, con opciones numeradas
       const ops = (Array.isArray(ia.opciones) ? ia.opciones : []).filter((o) => o?.texto && o.accion && o.accion !== 'aclarar').slice(0, 4);
@@ -472,17 +477,17 @@ export async function atenderDominio(e, brief, texto) {
   const f = flujoDe(brief);
   const t = String(texto || '').trim();
   if (PASOS_IA.has(f.estado)) {
-    let ia = null;
-    // Respuesta a una aclaración ("¿qué quisiste decir?"): el número elige la interpretación.
-    if (f.aclaracion) {
-      const ops = f.aclaracion.estado === f.estado ? (f.aclaracion.opciones || []) : [];
-      await patchFlujo(e.id, { aclaracion: null });
-      const n = Number((t.match(NUM_SOLO) || [])[1]);
-      if (CORTO(t) && n >= 1 && n <= ops.length) ia = ops[n - 1];
-    }
-    if (!ia) ia = atajoDelPaso(f, t);
-    if (!ia && CORTO(t) && DESPUES.test(t) && !/\d/.test(t)) ia = { accion: 'posponer' };
-    if (!ia) ia = await entender(e, f, t, brief);
+    // La IA recibe SIEMPRE el mensaje; la lectura literal (número, dirección escrita, "acepto") va como pista
+    // y solo se usa sola si la IA falla.
+    let literal = null;
+    const ops = f.aclaracion && f.aclaracion.estado === f.estado ? (f.aclaracion.opciones || []) : [];
+    if (f.aclaracion) await patchFlujo(e.id, { aclaracion: null });
+    const n = Number((t.match(NUM_SOLO) || [])[1]);
+    if (ops.length && CORTO(t) && n >= 1 && n <= ops.length) literal = ops[n - 1];
+    if (!literal) literal = atajoDelPaso(f, t);
+    if (!literal && CORTO(t) && DESPUES.test(t) && !/\d/.test(t)) literal = { accion: 'posponer' };
+    let ia = await entender(e, f, t, brief, literal, ops);
+    if (ia.fallo && literal) ia = literal;
     const r = await desvio(e, brief, f, ia, t);
     if (r) return r;
     return responderPaso(e, brief, f, ia, t);
