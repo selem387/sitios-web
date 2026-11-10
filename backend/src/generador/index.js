@@ -418,8 +418,12 @@ export function registerGeneradorRoutes(app, wrap) {
     const todas = r.opciones.map((o) => ({ etiqueta: o.letra, letra: o.letra, layout: o.layout, nombre: o.nombre, url: o.url, estilo: o.fuentes.estilo, tipografia: { titulos: o.fuentes.titulos, cuerpo: o.fuentes.cuerpo }, paleta: o.paleta }));
     // Agente de revisión y corrección antes de guardarlas como mostradas ({revisar:false} para saltarlo).
     const rev = b.revisar === false ? { pasan: todas, revision: [] } : await revisarYCorregir(todas, { referencia: (e.brief?.marca?.referencias_sitios || [])[0] || null });
-    const opciones = rev.pasan.length >= 2 ? rev.pasan : todas;
-    const brief = { ...e.brief, marca: { ...e.brief.marca, propuestas: { estado: 'mostradas', token: r.token, opciones, textos, usados: [r.token] } } };
+    // Regenerar sobre las MISMAS ligas que ya tiene el cliente (10-nov-2026): nunca se quitan letras del brief, porque el
+    // cliente ya recibió las 6 ligas y puede elegir cualquiera (si se quitaban, elegir la B tronaba y el bot se ciclaba).
+    // La revisión solo corrige las páginas; con token nuevo, se guardan solo las que pasan (como en mostrar()).
+    const mismasLigas = !!b.token && b.token === r.token;
+    const opciones = mismasLigas || rev.pasan.length < 2 ? todas : rev.pasan;
+    const brief = { ...e.brief, marca: { ...e.brief.marca, propuestas: { ...(mismasLigas ? (e.brief?.marca?.propuestas || {}) : {}), estado: 'mostradas', token: r.token, opciones, textos, usados: [...new Set([...(mismasLigas ? (e.brief?.marca?.propuestas?.usados || []) : []), r.token])] } } };
     await db.guardar(e.id, { brief });
     return { token: r.token, opciones: opciones.map((o) => ({ letra: o.letra, nombre: o.nombre, url: o.url, fuentes: o.tipografia })), revision: (rev.revision || []).map(({ letra, ok, problemas }) => ({ letra, ok, problemas })) };
   }));

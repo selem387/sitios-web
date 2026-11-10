@@ -187,16 +187,24 @@ export async function atenderPropuestas(e, brief, { texto = '', huboMedia = fals
     if (!r && /reenv|no (me )?llegaron|ligas|links|enlaces|cu[aá]les|d[oó]nde/i.test(texto)) {
       return { responder: { textos: ['Claro, aquí van otra vez las 6 👇', p.opciones.map((o) => `*${o.letra}* · ${o.nombre}\n${o.url}`).join('\n\n'), '¿Cuál te gusta más? Respóndeme con la letra, de la *A* a la *F*, o dime *ninguna* y qué cambiarías.'] }, brief, seguirConAri: false };
     }
-    if (!r) return { responder: { textos: ['¿Cuál de las 6 te gustó más? Respóndeme con la letra, de la *A* a la *F*. Si ninguna te convence, dime *ninguna* y qué te gustaría distinto.'] }, brief, seguirConAri: false };
+    if (!r) { const disp = (p.opciones || []).map((o) => o.etiqueta || o.letra); return { responder: { textos: [disp.length === 6 ? '¿Cuál de las 6 te gustó más? Respóndeme con la letra, de la *A* a la *F*. Si ninguna te convence, dime *ninguna* y qué te gustaría distinto.' : `¿Cuál te gustó más? Respóndeme con la letra (${disp.map((l) => `*${l}*`).join(', ')}). Si ninguna te convence, dime *ninguna* y qué te gustaría distinto.`] }, brief, seguirConAri: false }; }
     if (r.ninguna) {
       const nb = { ...brief, marca: { ...brief.marca, propuestas: { ...p, estado: 'rechazadas', rechazos: [...(p.rechazos || []), texto], comentarios_rechazo: [], preguntas_estilo: 0 } } };
       // Si en el mismo mensaje ya dijo qué no le gustó, se entiende de una vez; si no, se le pregunta exactamente qué.
       if (huboMedia || texto.replace(/ningun[ao]?|no me gust\w*|no me convenc\w*|otras?|opciones|quiero|porfa(vor)?/gi, '').trim().split(/\s+/).filter((w) => w.length > 2).length >= 3) return atenderPropuestas(e, nb, { texto, huboMedia });
       return { responder: { textos: [PREGUNTA_RECHAZO] }, brief: { ...nb, marca: { ...nb.marca, propuestas: { ...nb.marca.propuestas, preguntas_estilo: 1, comentarios_rechazo: [texto] } } }, seguirConAri: false };
     }
-    const elegida = p.opciones.find((o) => o.etiqueta === r.elegido);
-    const colores = r.colores_de ? p.opciones.find((o) => o.etiqueta === r.colores_de) : null;
-    const nb = { ...brief, marca: { ...brief.marca, estilo: elegida.estilo, propuestas: { ...p, estado: 'elegida', elegido: r.elegido, colores_de: r.colores_de, comentario: texto } } };
+    const deLetra = (l) => (p.opciones || []).find((o) => (o.etiqueta || o.letra) === l) || null;
+    const elegida = deLetra(r.elegido);
+    // Letra que no está entre las opciones guardadas (p. ej. una que no pasó la revisión): no se truena ni se cicla;
+    // se le dice cuáles tiene disponibles, con sus ligas.
+    if (!elegida) {
+      const disp = (p.opciones || []).map((o) => o.etiqueta || o.letra);
+      await db.evento(e.id, 'eleccion_no_disponible', { elegido: r.elegido, disponibles: disp, token: p.token }).catch(() => {});
+      return { responder: { textos: [`La opción *${r.elegido}* ya no está disponible. Estas son las que tienes para elegir 👇`, (p.opciones || []).map((o) => `*${o.etiqueta || o.letra}* · ${o.nombre}\n${o.url}`).join('\n\n'), `¿Cuál te gusta más? Respóndeme con la letra (${disp.map((l) => `*${l}*`).join(', ')}), o dime *ninguna* y qué cambiarías.`] }, brief, seguirConAri: false };
+    }
+    const colores = r.colores_de ? deLetra(r.colores_de) : null;
+    const nb = { ...brief, marca: { ...brief.marca, estilo: elegida.estilo, propuestas: { ...p, estado: 'elegida', elegido: r.elegido, colores_de: colores ? r.colores_de : null, comentario: texto } } };
     const conf = `¡Perfecto! Vamos con la opción *${r.elegido}*${colores ? ` con los colores de la *${r.colores_de}*` : ''}. Tomo en cuenta lo que me dijiste para la página completa.`;
     return { responder: { textos: [conf] }, brief: nb, seguirConAri: true };
   }

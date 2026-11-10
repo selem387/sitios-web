@@ -470,8 +470,9 @@ export async function procesarMensaje(b) {
       if (!r.seguirConAri) return responderConMedia(r.responder.textos, r.responder.media);
       if (r.responder?.textos) prefijo.push(...r.responder.textos);
     } catch (err) {
+      // Un error aquí no debe dejar al cliente en un ciclo de "dame un momento" (10-nov-2026): se registra y sigue Ari.
       console.error('propuestas', err);
-      return responder(['Dame un momento, estoy terminando de preparar tus propuestas. Escríbeme de nuevo en un par de minutos 🙏'], 'texto');
+      await db.evento(e.id, 'propuestas_error', { error: String(err?.message || err).slice(0, 500), texto: String(texto || '').slice(0, 200) }).catch(() => {});
     }
   }
 
