@@ -245,11 +245,12 @@ async function abrir(u, nueva = false){
   pendientes = []; $('#adj').style.display = 'none';
   $('#estado').textContent = 'Tu página web en una conversación';
   ponerNombre(mem.get('ari_nombre_' + u) || '');
+  let existe = false;
   if (!nueva && !historial().length) {
     // Sin copia en este navegador: traerla del servidor.
-    try { const d = await api('/chat/v1/historial?usuario_id=' + encodeURIComponent(u)); if (d.items?.length) { mem.set('ari_historial_' + u, JSON.stringify(d.items)); if (d.items.some((x) => x.tipo === 'sitio')) mem.set('ari_sitio_' + u, '1'); } } catch {}
+    try { const d = await api('/chat/v1/historial?usuario_id=' + encodeURIComponent(u)); existe = Boolean(d.existe); if (d.items?.length) { mem.set('ari_historial_' + u, JSON.stringify(d.items)); if (d.items.some((x) => x.tipo === 'sitio')) mem.set('ari_sitio_' + u, '1'); } } catch {}
   }
-  arrancar();
+  arrancar(existe);
 }
 $('#paginas').onclick = abrirLista;
 $('#cerrar').onclick = cerrarLista;
@@ -261,11 +262,12 @@ $('#fp').addEventListener('submit', async (e) => {
   try { await api('/chat/v1/sitio?usuario_id=' + encodeURIComponent(usuario)); mem.set('ari_codigo', codigo); $('#puerta').hidden = true; abrir(usuario); }
   catch (err) { $('#perr').textContent = err.message === 'codigo' ? 'Código incorrecto' : err.message; $('#puerta').hidden = false; }
 });
-function arrancar(){
+function arrancar(existe = false){
   chat.innerHTML=''; const h = historial(); h.forEach(pintar);
-  if (!h.length) enviar('pagina', [], {}, true);
+  // Saludo solo en conversaciones nuevas; una que ya existe en el servidor (aunque sin mensajes) no se reinicia.
+  if (!h.length && !existe) enviar('pagina', [], {}, true);
   else api('/chat/v1/sitio?usuario_id=' + encodeURIComponent(usuario)).then((s) => { if (s.id) iniciarSondeo(); }).catch(() => {});
-  if (h.length) iniciarAvisos();
+  if (h.length || existe) iniciarAvisos();
   t.focus();
 }
 if (!codigo) $('#puerta').hidden = false; else abrir(usuario);

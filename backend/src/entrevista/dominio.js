@@ -105,7 +105,7 @@ export async function buscarOpciones(consulta, brief) {
       if (!p) continue;
       if (cabeIncluido(p)) incluidas.push({ dominio: d, incluido: true, exacto: true });
       else aparte.push({ dominio: d, incluido: false, total_mxn: p.total_mxn });
-    } else pedidoNoLibre.push(d);
+    } else if (r && r.disponible === false) pedidoNoLibre.push(d); // solo si de verdad está ocupada (no por precio ni por error)
   }
   // Mismo nombre con terminaciones baratas (.online, .site, …): lo más parecido a lo que pidió.
   const bases = basesDe(consulta, brief);

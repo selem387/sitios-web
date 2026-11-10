@@ -168,7 +168,8 @@ export function registerChatRoutes(app, wrap) {
     }
     const s = await sitioDe(u).catch(() => null);
     if (s?.estado === 'listo' && s.url_publica) items.push({ tipo: 'sitio', url: s.url_publica, captura: s.captura || null });
-    return { items: items.slice(-200) };
+    const existe = (await db.q(`SELECT 1 FROM entrevistas WHERE usuario_id=$1 AND estado <> 'cancelada' LIMIT 1`, [u])).rows.length > 0;
+    return { items: items.slice(-200), existe };
   }));
 
   app.get('/chat/v1/sitio', wrap(async (c) => {
