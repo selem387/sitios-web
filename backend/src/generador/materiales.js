@@ -215,7 +215,7 @@ async function huella(buf) {
   const { data: rgb } = await sharp(buf).rotate().removeAlpha().resize(3, 3, { fit: 'fill' }).raw().toBuffer({ resolveWithObject: true });
   const { data: gris } = await sharp(buf).rotate().greyscale().resize(16, 16, { fit: 'fill' }).raw().toBuffer({ resolveWithObject: true });
   const hex = (d) => [...d].map((v) => v.toString(16).padStart(2, '0')).join('');
-  return `${bits}|${hex(rgb)}|${hex(gris)}`;
+  return `${bits}|${hex(rgb)}|${hex(gris)}|o`; // 'o': calculada sobre el original
 }
 const bytes = (h) => { const v = []; for (let i = 0; i < h.length; i += 2) v.push(parseInt(h.slice(i, i + 2), 16)); return v; };
 const MISMO_COLOR = 25; // diferencia máxima por celda de color (0-255): arriba de esto ya son fotos distintas
@@ -360,8 +360,8 @@ export async function analizarAsset(a, { negocio = '' } = {}) {
   // Logos recortados con la caja justa del modelo (antes de 10-nov-2026) salían con las letras cortadas: esos análisis
   // se rehacen una vez (solo los que tienen logo) para recortarlo con margen.
   if (a.analisis?.version === VERSION && !(a.analisis.logo && a.analisis.logo_v !== 5)) {
-    if (!a.analisis.huella || String(a.analisis.huella).split('|').length < 3) { // huella vieja (sin color/detalle): se recalcula
-      a.analisis.huella = await descargar(a.analisis.contenido?.url || a.url).then(huella).catch(() => null);
+    if (!a.analisis.huella || String(a.analisis.huella).split('|').length < 4) { // huella vieja (sin color/detalle o del recorte): se recalcula
+      a.analisis.huella = await descargar(a.url).then(huella).catch(() => null); // del original: dos recortes distintos de la misma foto deben coincidir
       if (a.analisis.huella) await db.q(`UPDATE assets SET analisis = analisis || jsonb_build_object('huella', $2::text) WHERE id=$1`, [a.id, a.analisis.huella]).catch(() => {});
     }
     if (!a.analisis.bandas_ok && a.analisis.tipo !== 'logo' && a.analisis.contenido?.url) {
@@ -423,7 +423,7 @@ export async function analizarAsset(a, { negocio = '' } = {}) {
   }
   // Producto suelto (un objeto, sin personas): sin fondo para usarlo en portada. Nunca a retratos ni fotos de trabajo.
   if (v.tipo === 'foto_producto' && out.aislable) { const sf = await sinFondo(out.contenido.url); if (sf) out.sin_fondo = sf; }
-  out.huella = await huella(out.contenido.url === a.url ? original : await descargar(out.contenido.url)).catch(() => null);
+  out.huella = await huella(original).catch(() => null); // del original, no del recorte
   await db.q(`UPDATE assets SET analisis=$2, tipo=COALESCE(NULLIF($3,''), tipo), calidad=COALESCE($4, calidad), descripcion_ia=COALESCE(descripcion_ia,$5) WHERE id=$1`,
     [a.id, JSON.stringify(out), mapaTipo(v.tipo), ['buena', 'regular', 'mala'].includes(v.calidad) ? v.calidad : null, v.descripcion || null]).catch(() => {});
   return out;
