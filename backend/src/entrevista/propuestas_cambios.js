@@ -175,7 +175,7 @@ export function aplicarCambios(brief, p, c = {}, texto = '') {
       const nm = norm(pr?.nombre);
       if (!desc || !nm) continue;
       const it = nuevos.find((x) => norm(x.nombre) === nm) || nuevos.find((x) => norm(x.nombre).includes(nm) || nm.includes(norm(x.nombre)));
-      if (it) { it.descripcion_corta = desc; n++; }
+      if (it) { it.descripcion_corta = desc; if (literal(pr.nombre)) it.nombre = literal(pr.nombre); n++; } // el nombre como lo escribió ("Guayaberas", no "guayaberas")
     }
     if (n) { b = { ...b, oferta: { ...(b.oferta || {}), items: nuevos } }; hechos.push('productos'); }
   }
