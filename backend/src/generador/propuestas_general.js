@@ -26,6 +26,8 @@ const conContraste = (c, bg, min = 4.5, hacia = '#000000') => { let x = c; for (
 // G (11-nov-2026): opción adicional "Collage en movimiento" (generador/collage.js). Siempre va como séptima.
 export const LAYOUTS_GENERAL = ['portada', 'editorial', 'mosaico', 'logo', 'dostonos', 'carta', 'collage'];
 export const LETRAS = 'ABCDEFG';
+// La G sale para todos solo con OPCION_G=1 en el servicio api (11-nov-2026: primero se prueba cliente por cliente).
+export const conOpcionG = () => process.env.OPCION_G === '1';
 export const NOMBRES_GENERAL = { portada: 'Foto a pantalla completa', editorial: 'Editorial', mosaico: 'Mosaico de tu trabajo', logo: 'Tu logo al centro', dostonos: 'Dos tonos', carta: 'Minimalista', collage: 'Collage en movimiento' };
 
 // Títulos por arquetipo (Claude puede reemplazarlos con textos.secciones).
@@ -476,7 +478,7 @@ ${CSS_MOVIMIENTO}${d.layout === 'collage' ? CSS_COLLAGE : ''}
 }
 
 /** Datos de las 6 páginas generales. */
-export function paginasGenerales({ brief, mat, textos, pares, urlFuentes, ronda = 0, cps: cpsDados = null, fijo = null }) {
+export function paginasGenerales({ brief, mat, textos, pares, urlFuentes, ronda = 0, cps: cpsDados = null, fijo = null, solo = null }) {
   const arq = TITULOS[brief.negocio?.arquetipo] ? brief.negocio.arquetipo : 'generico';
   const titulos = { ...TITULOS[arq], ...(textos.secciones || {}) };
   const colores = [...new Set([...(mat.colores || [])])];
@@ -487,7 +489,9 @@ export function paginasGenerales({ brief, mat, textos, pares, urlFuentes, ronda 
   // Estilo de referencia del cliente: 6 variaciones de ese estilo (acomodos, letras y paletas propias).
   const dref = esDireccionRef(brief.marca?.direccion_ref) ? brief.marca.direccion_ref : null;
   // La G (collage) va siempre, también con estilo de referencia (que define solo las 6 primeras).
-  const todas = [...(dref ? dref.layouts : LAYOUTS_GENERAL.slice(0, 6)), 'collage'].map((layout, i) => ({ layout, i })).filter(({ i }) => !fijo || LETRAS[i] === fijo.letra);
+  const conG = conOpcionG() || fijo?.letra === 'G' || !!solo?.includes('G');
+  const todas = [...(dref ? dref.layouts : LAYOUTS_GENERAL.slice(0, 6)), ...(conG ? ['collage'] : [])].map((layout, i) => ({ layout, i }))
+    .filter(({ i }) => (!fijo || LETRAS[i] === fijo.letra) && (!solo || solo.includes(LETRAS[i])));
   return todas.map(({ layout, i }) => {
     const letra = LETRAS[i];
     const v = textos.variantes?.[i] || textos.variantes?.[0] || {};

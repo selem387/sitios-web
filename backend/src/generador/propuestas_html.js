@@ -16,7 +16,7 @@ import { evaluarColoresCliente, asignarFuentes } from './asesor_color.js';
 import { coloresDePalabras, logoTenido } from './materiales.js';
 import { CSS_MOVIMIENTO, JS_MOVIMIENTO, sliderHTML, diapositivasDe, emparejarFotos, efectosDe, conSrcset } from './movimiento.js';
 import { waUrl, formatoTel } from './bloques.js';
-import { paginasGenerales, logoHTML, redes, urlsPorUbicacion } from './propuestas_general.js';
+import { paginasGenerales, logoHTML, redes, urlsPorUbicacion, conOpcionG } from './propuestas_general.js';
 import { completarMaterial } from './validar_material.js';
 
 // Regla dura de tipografía: la escala, el interlineado y la medida se agregan al final del CSS (mandan sobre la plantilla).
@@ -219,7 +219,7 @@ export async function crearPropuestasHTML(brief, mat, textos, { token = crypto.r
  * tipografía y paleta que el cliente eligió (sitio en vivo): no valida material ni color para no tumbar el sitio.
  * → {paginas:[{letra, layout, nombre, html, fuentes, paleta}], avisos_color, asesor, faltan}
  */
-export async function renderPropuestas(brief, mat, textos, { ronda = 0, fijo = null } = {}) {
+export async function renderPropuestas(brief, mat, textos, { ronda = 0, fijo = null, solo = null } = {}) {
   const faltanTodas = [];
   // Cada ronda ("ninguna me gustó") usa otras tipografías y otro orden de color/fotos.
   const estilo = brief.marca?.estilo || 'calido';
@@ -236,12 +236,12 @@ export async function renderPropuestas(brief, mat, textos, { ronda = 0, fijo = n
   const pares = asignarFuentes(cps.map((c) => c.colores), candidatos);
   if (brief.negocio?.arquetipo !== 'restaurante') {
     // Logo de un color: versión pintada con la tinta de cada propuesta (contraste garantizado sobre fondos claros u oscuros).
-    let pags = paginasGenerales({ brief, mat, textos, pares, urlFuentes, ronda, cps, fijo });
+    let pags = paginasGenerales({ brief, mat, textos, pares, urlFuentes, ronda, cps, fijo, solo });
     if (mat.logo?.url && mat.logo.mono !== false) {
       const tenidos = {};
       for (const pg of pags) for (const hex of [pg.paleta.fg, '#FFFFFF']) if (!tenidos[hex]) tenidos[hex] = await logoTenido(mat.logo, hex).catch(() => null);
       mat = { ...mat, logo: { ...mat.logo, tenidos: Object.fromEntries(Object.entries(tenidos).filter(([, v]) => v)) } };
-      pags = paginasGenerales({ brief, mat, textos, pares, urlFuentes, ronda, cps, fijo });
+      pags = paginasGenerales({ brief, mat, textos, pares, urlFuentes, ronda, cps, fijo, solo });
     }
     const out = [];
     for (const pg of pags) {
@@ -315,7 +315,7 @@ export async function textosPropuestas(brief, mat) {
   const cat = catalogoFotos(mat);
   const enfoques = menu ? 'producto, antojo, rapidez/pickup, ubicación, variedad del menú, experiencia'
     : 'el resultado que se lleva el cliente, la especialidad más fuerte, la experiencia/años, la zona, la variedad de servicios o paquetes, el trato personal';
-  const nVar = menu ? 6 : 7; // G (collage) solo en la plantilla general
+  const nVar = menu || !conOpcionG() ? 6 : 7; // G (collage) solo en la plantilla general
   const prompt = `Escribe los textos de ${nVar} propuestas de página de inicio para este negocio mexicano (giro: ${brief.negocio?.giro_texto || brief.negocio?.arquetipo || ''}). Español de México, trato "${brief?.marca?.tono_textos === 'usted' ? 'usted' : 'tú'}", ${brief.negocio?.tamano === 'solo_tu' ? 'en primera persona del singular (es una sola persona), ' : ''}sin emojis, sin frases genéricas de IA, sin inventar datos (nada de años, clientes, premios ni promociones que no estén abajo). Cada titular con un enfoque distinto (${enfoques}).
 Además, "diapositivas": los textos que van encima de las fotos 2 a 5 del slider de la portada (la foto 1 usa el titular de cada propuesta). En este orden y solo si el brief trae el dato real: diferenciador (oferta.diferenciador: lo que lo distingue de la competencia o su ventaja injusta), oferta (servicio o producto estrella, o la promoción vigente), prueba (cifra, años, certificación o reseña real del brief), vision (su historia o visión). Si un dato no está en el brief, omite esa diapositiva; nunca inventes. Cada una: una sola idea, beneficio antes que característica, titular de 3 a 8 palabras.
 Fotos del cliente (cada una con su descripción hecha por IA): ${JSON.stringify(cat.map(({ id, descripcion, tipo }) => ({ id, descripcion, tipo })))}

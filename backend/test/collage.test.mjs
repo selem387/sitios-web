@@ -24,7 +24,7 @@ test('la G (collage) sale como séptima opción y la foto de fondo no entra al p
   const foto = (n) => ({ url: `https://x/${n}.jpg`, ancho: 1200, alto: 800, alt: `foto ${n}`, tipo: 'foto_trabajo', clave: `a${n}` });
   const mat = { logo: null, logos_extra: [], hero: foto(1), fundador: null, fotos: [], trabajos: [2, 3, 4, 5, 6].map(foto), equipo: [], local: [], resenas: [], catalogos: [], menus: [], otras: [], documentos: [], videos: [] };
   const textos = { variantes: Array(7).fill({ titular: 'Hola', subtitulo: 'Sub', cta: 'Escríbeme' }), info: [], diapositivas: [] };
-  const pags = paginasGenerales({ brief: { negocio: { nombre: 'X', arquetipo: 'generico' }, contacto: {} }, mat, textos, pares: [{ titulos: 'Fraunces', cuerpo: 'Inter', estilo: 'calido' }], urlFuentes: () => '' });
+  const pags = paginasGenerales({ brief: { negocio: { nombre: 'X', arquetipo: 'generico' }, contacto: {} }, mat, textos, pares: [{ titulos: 'Fraunces', cuerpo: 'Inter', estilo: 'calido' }], urlFuentes: () => '', solo: 'ABCDEFG' });
   assert.deepEqual(pags.map((p) => p.letra).join(''), 'ABCDEFG');
   const g = pags[6].html;
   const panel = g.slice(g.indexOf('<div class="col'), g.indexOf('</section>'));
