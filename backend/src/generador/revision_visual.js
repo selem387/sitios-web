@@ -5,7 +5,7 @@
 import { config } from '../config.js';
 import { pedirJSON } from '../entrevista/claude.js';
 
-async function captura(url, { ancho = 1366, selector = null } = {}) {
+export async function captura(url, { ancho = 1366, selector = null } = {}) {
   if (!config.renderUrl || !url) return null;
   const r = await fetch(`${config.renderUrl}/v1/captura`, {
     method: 'POST', headers: { 'content-type': 'application/json', 'x-api-key': config.renderApiKey },

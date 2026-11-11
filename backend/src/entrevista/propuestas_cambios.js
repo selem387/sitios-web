@@ -8,6 +8,7 @@ import { procesarMateriales, coloresDePalabras } from '../generador/materiales.j
 import { crearPropuestasHTML, textosPropuestas } from '../generador/propuestas_html.js';
 import { revisarYCorregir } from '../generador/revision_visual.js';
 import { TITULOS } from '../generador/propuestas_general.js';
+import { editarElegida } from './editor_html.js';
 
 const SECCIONES = ['portada', 'trabajo', 'galeria'];
 const ESTILOS = ['minimalista', 'fresco', 'calido', 'elegante', 'tecnologico', 'tradicional', 'lujo', 'divertido'];
@@ -52,7 +53,27 @@ export function mencionaOpcion(texto, letra, nombreOpcion = '') {
 }
 
 const listaOpciones = (p) => p.opciones.map((o) => `*${o.letra}* · ${o.nombre}\n${o.url}`).join('\n\n');
-const cierre = (p) => `¿Cuál te gusta más? Respóndeme con la letra (${p.opciones.map((o) => `*${o.letra}*`).join(', ')}). Si quieres cambiar algo más —fotos, textos, colores o dónde va cada cosa— dímelo y lo ajusto.`;
+const letrasDe = (p) => (p.opciones || []).map((o) => o.etiqueta || o.letra);
+const enumerar = (ls) => (ls.length > 1 ? `${ls.slice(0, -1).map((l) => `*${l}*`).join(', ')} o *${ls.at(-1)}*` : `*${ls[0] || ''}*`);
+const cierre = (p) => `¿Cuál te gusta más? Respóndeme con la letra (${letrasDe(p).map((l) => `*${l}*`).join(', ')}). Ya que elijas una, puedes pedirme cualquier cambio —fotos, textos, colores o dónde va cada cosa— y se lo aplico.`;
+
+/** Regla (10-nov-2026): para pedir cambios primero se elige una opción. Si pide un cambio antes, se le pregunta a cuál. */
+export const preguntaQueOpcion = (p) => `¡Con gusto te aplico esos cambios! 😊 ¿A qué opción se los aplico: ${enumerar(letrasDe(p))}? Necesitas elegir una para empezar a modificarla.`;
+
+/** Letra que el cliente nombró sin lugar a dudas al pedir un cambio ("en la opción B", "la *C*", "la segunda opción"). Una sola o null. */
+export function opcionNombrada(texto, opciones = []) {
+  const t = String(texto || '');
+  const ords = ['primera', 'segunda', 'tercera', 'cuarta', 'quinta', 'sexta'];
+  const hits = opciones.map((o) => String(o.etiqueta || o.letra || '').toUpperCase()).filter((l) => /^[A-F]$/.test(l)).filter((l) => {
+    const ord = ords[l.charCodeAt(0) - 65];
+    return new RegExp(`(^|[^\\p{L}])([Oo]pci[oó]n|OPCI[OÓ]N|[Ll]etra)\\s+\\*?(${l}|${l.toLowerCase()})\\*?([^\\p{L}]|$)`, 'u').test(t)
+      || new RegExp(`(^|[^\\p{L}])([Dd]ise[nñ]o|[Pp]ropuesta)\\s+\\*?${l}\\*?([^\\p{L}]|$)`, 'u').test(t)
+      || new RegExp(`(^|[^\\p{L}])([Ll]a|[Ee]l)\\s+\\*?${l}\\*?([^\\p{L}]|$)`, 'u').test(t)
+      || new RegExp(`\\*${l}\\*`).test(t)
+      || new RegExp(`(^|[^\\p{L}])${ord}\\s+(opci[oó]n|propuesta)|(opci[oó]n|propuesta)\\s+${ord}([^\\p{L}]|$)`, 'iu').test(t);
+  });
+  return hits.length === 1 ? hits[0] : null;
+}
 
 /** Entiende con IA qué quiere el cliente con su mensaje mientras ve las opciones. */
 async function entender(e, brief, p, { texto, nuevas, fotos, secciones, elegida = null }) {
@@ -213,6 +234,18 @@ export async function atenderMostradas(e, brief, p, { texto = '', clavesNuevas =
   if (d.intencion === 'ninguna') return { accion: 'ninguna' };
   if (d.intencion === 'reenviar') return { accion: 'reenviar' };
 
+  // Antes de elegir no se modifica ninguna opción (10-nov-2026): el pedido se guarda y se aplica a la que elija.
+  const CAMBIOS = ['agregar_fotos', 'ubicar_fotos', 'mover_fotos', 'cambio'];
+  if (!elegida && (CAMBIOS.includes(d.intencion) || nuevas.length || clavesNuevas.length)) {
+    const prev = p.cambio_pendiente || {};
+    const pendiente = { texto: [prev.texto, texto].filter((x) => x && x.trim()).join('\n'), claves: [...new Set([...(prev.claves || []), ...clavesNuevas])] };
+    const letra = opcionNombrada(texto, p.opciones);
+    await db.evento(e.id, 'cambio_antes_de_elegir', { texto: texto.slice(0, 300), letra, pendiente }).catch(() => {});
+    if (letra) return { accion: 'elegir', letra, colores_de: null, pendiente };
+    const np = { ...p, cambio_pendiente: pendiente, esperando_fotos: false, fotos_por_ubicar: [], seccion_nuevas: null };
+    return { responder: { textos: [preguntaQueOpcion(p)] }, brief: { ...brief, marca: { ...brief.marca, propuestas: np } } };
+  }
+
   const valida = (s) => s === 'auto' || s === 'quitar' || (SECCIONES.includes(s) && secciones[s]);
   const seccionNuevas = valida(d.seccion_nuevas) && d.seccion_nuevas !== 'quitar' ? d.seccion_nuevas : (p.seccion_nuevas || null);
 
@@ -233,6 +266,27 @@ export async function atenderMostradas(e, brief, p, { texto = '', clavesNuevas =
   if (porUbicar.length && !previo.hechos.length && !ubic.size) {
     const np = { ...p, fotos_por_ubicar: porUbicar, esperando_fotos: false };
     return { responder: { textos: [preguntaUbicacion(brief, p.textos, porUbicar.length)] }, brief: { ...brief, marca: { ...brief.marca, propuestas: np } } };
+  }
+
+  // Opción ya elegida: el cambio va DIRECTO al HTML de su página (10-nov-2026), nunca regenerándola con el generador.
+  if (elegida) {
+    const desc = [...ubic.entries()].map(([k, s]) => (s === 'quitar' ? `Quitar de la página la foto ${k}.` : `Poner la foto ${k} en ${s === 'auto' ? 'la sección de fotos donde mejor quede' : `la sección «${secciones[s] || s}»`}.`)).join(' ');
+    const pedido = [texto, desc].filter((x) => x && x.trim()).join('\n');
+    const claves = [...new Set([...nuevas, ...ubic.keys()])];
+    if (ubic.size) await db.actualizarAssets(e.id, [...ubic.entries()].map(([k, s]) => ({ clave: k, usar: s !== 'quitar' }))).catch(() => {});
+    const datos = aplicarCambios(brief, p, d.cambios, texto).brief; // datos de contacto, horario, etc. también quedan en el brief
+    let r = null;
+    try { r = await editarElegida(e, p, { texto: pedido, claves }); }
+    catch (err) { console.error('[propuestas_cambios] editor html', err); }
+    const np = { ...p, fotos_por_ubicar: porUbicar, esperando_fotos: false, seccion_nuevas: null, ...(r?.ok ? { cambios_aplicados: [...(p.cambios_aplicados || []), { texto: pedido.slice(0, 500), hechos: r.hecho, directo_html: true }] } : {}) };
+    const nb = { ...datos, marca: { ...datos.marca, propuestas: np } };
+    if (r?.pregunta) return { responder: { textos: [r.pregunta] }, brief: nb };
+    if (!r?.ok) return { responder: { textos: ['No pude aplicar ese cambio a tu página 😔 ¿Me lo explicas de otra forma? Por ejemplo, dime en qué parte de la página está y cómo quieres que quede.'] }, brief: nb };
+    const lista = (r.hecho || []).map((h) => `• ${h}`).join('\n');
+    const textos = [`Listo ✅ ${lista ? `Esto quedó en tu página:\n${lista}` : 'Ya quedó.'}\n\nRecarga tu página para verlo 👇\n${r.url || urlElegida}`];
+    if (r.no_pude?.length) textos.push(`Esto no lo pude hacer:\n${r.no_pude.map((x) => `• ${x}`).join('\n')}\n¿Me lo explicas de otra forma?`);
+    if (porUbicar.length) textos.push(preguntaUbicacion(brief, p.textos, porUbicar.length).replace(/^¡Recibí[^?]*\?/, porUbicar.length === 1 ? 'Me falta una foto: ¿dónde la pongo?' : `Me faltan ${porUbicar.length} fotos: ¿dónde las pongo?`));
+    return { responder: { textos }, brief: nb, retomar: !porUbicar.length && !r.no_pude?.length };
   }
 
   let b = brief;

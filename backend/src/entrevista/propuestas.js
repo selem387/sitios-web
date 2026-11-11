@@ -12,6 +12,7 @@ import * as db from './db.js';
 import { pedirJSON } from './claude.js';
 import { estudiarReferencias } from './referencias.js';
 import { atenderMostradas } from './propuestas_cambios.js';
+import { editarElegida } from './editor_html.js';
 import { construirDireccion, PRESETS, LISTA_PRESETS } from '../generador/estilo_ref.js';
 
 const NO_TENGO = /no (las |los )?tengo|no tengo (m[aá]s|otras|mejores)|son (todas|las [uú]nicas)|con esas|as[ií] est[aá] bien|usa(lo)? (esas|lo que hay)|no hay (m[aá]s|otras)/i;
@@ -196,7 +197,7 @@ export async function atenderPropuestas(e, brief, { texto = '', huboMedia = fals
     return { responder: salida, brief: { ...b2, marca: { ...b2.marca, propuestas: { ...m.propuestas, comentario, comentarios_rechazo: [], preguntas_estilo: 0, rechazos_previos: [...(p.rechazos_previos || []), { ronda: p.ronda || 0, comentarios, entendido: d }] } } }, seguirConAri: false };
   }
   if (p.estado === 'mostradas') {
-    const reenviar = () => ({ responder: { textos: ['Claro, aquí van otra vez 👇', p.opciones.map((o) => `*${o.letra}* · ${o.nombre}\n${o.url}`).join('\n\n'), `¿Cuál te gusta más? Respóndeme con la letra (${p.opciones.map((o) => `*${o.letra}*`).join(', ')}), dime *ninguna* y qué cambiarías, o pídeme cualquier ajuste.`] }, brief, seguirConAri: false });
+    const reenviar = () => ({ responder: { textos: ['Claro, aquí van otra vez 👇', p.opciones.map((o) => `*${o.letra}* · ${o.nombre}\n${o.url}`).join('\n\n'), `¿Cuál te gusta más? Respóndeme con la letra (${p.opciones.map((o) => `*${o.letra}*`).join(', ')}) o dime *ninguna* y qué cambiarías. Ya que elijas una, puedes pedirme cualquier ajuste.`] }, brief, seguirConAri: false });
     // Elección directa ("la B") solo sin fotos nuevas ni preguntas pendientes sobre fotos: con esas, un "a la galería"
     // se confundía con la opción A. Todo lo demás (agregar fotos, dónde ponerlas, cambios, preguntas) lo entiende la IA.
     const enEspera = (p.fotos_por_ubicar || []).length > 0 || p.esperando_fotos;
@@ -208,11 +209,11 @@ export async function atenderPropuestas(e, brief, { texto = '', huboMedia = fals
       const m = await atenderMostradas(e, brief, p, { texto, clavesNuevas });
       if (m?.responder) return { ...m, seguirConAri: false };
       if (m?.accion === 'reenviar') return reenviar();
-      if (m?.accion === 'elegir' && (p.opciones || []).some((o) => (o.etiqueta || o.letra) === m.letra)) r = { elegido: m.letra, colores_de: m.colores_de };
+      if (m?.accion === 'elegir' && (p.opciones || []).some((o) => (o.etiqueta || o.letra) === m.letra)) r = { elegido: m.letra, colores_de: m.colores_de, pendiente: m.pendiente || null };
       else if (m?.accion === 'ninguna') r = { ninguna: true };
       else if (!m) r = interpretarEleccion(texto); // sin IA: como antes
     }
-    if (!r) { const disp = (p.opciones || []).map((o) => o.etiqueta || o.letra); return { responder: { textos: [`No me quedó claro 🙏 Puedes elegir una opción con su letra (${disp.map((l) => `*${l}*`).join(', ')}), decirme *ninguna* y qué te gustaría distinto, o pedirme cualquier cambio: agregar fotos, cambiar textos, colores o dónde va cada cosa.`] }, brief, seguirConAri: false }; }
+    if (!r) { const disp = (p.opciones || []).map((o) => o.etiqueta || o.letra); return { responder: { textos: [`No me quedó claro 🙏 Puedes elegir una opción con su letra (${disp.map((l) => `*${l}*`).join(', ')}), o decirme *ninguna* y qué te gustaría distinto. Ya que elijas una, puedes pedirme cualquier cambio: agregar fotos, cambiar textos, colores o dónde va cada cosa.`] }, brief, seguirConAri: false }; }
     if (r.ninguna) {
       const nb = { ...brief, marca: { ...brief.marca, propuestas: { ...p, estado: 'rechazadas', rechazos: [...(p.rechazos || []), texto], comentarios_rechazo: [], preguntas_estilo: 0 } } };
       // Si en el mismo mensaje ya dijo qué no le gustó, se entiende de una vez; si no, se le pregunta exactamente qué.
@@ -229,7 +230,26 @@ export async function atenderPropuestas(e, brief, { texto = '', huboMedia = fals
       return { responder: { textos: [`La opción *${r.elegido}* ya no está disponible. Estas son las que tienes para elegir 👇`, (p.opciones || []).map((o) => `*${o.etiqueta || o.letra}* · ${o.nombre}\n${o.url}`).join('\n\n'), `¿Cuál te gusta más? Respóndeme con la letra (${disp.map((l) => `*${l}*`).join(', ')}), o dime *ninguna* y qué cambiarías.`] }, brief, seguirConAri: false };
     }
     const colores = r.colores_de ? deLetra(r.colores_de) : null;
-    const nb = { ...brief, marca: { ...brief.marca, estilo: elegida.estilo, propuestas: { ...p, estado: 'elegida', elegido: r.elegido, colores_de: colores ? r.colores_de : null, comentario: texto } } };
+    let pendiente = r.pendiente || p.cambio_pendiente || null;
+    // Mezcla ("la B con los colores de la E"): con edición directa, los colores de la otra opción se aplican al HTML de la elegida.
+    if (colores && colores.paleta) pendiente = { texto: [`Cambia los colores de toda la página por los de esta paleta (los de la opción ${r.colores_de}), conservando todo lo demás: ${JSON.stringify(colores.paleta)}`, pendiente?.texto].filter(Boolean).join('\n'), claves: pendiente?.claves || [] };
+    const props = { ...p, estado: 'elegida', elegido: r.elegido, colores_de: colores ? r.colores_de : null, comentario: texto, cambio_pendiente: null };
+    const nb = { ...brief, marca: { ...brief.marca, estilo: elegida.estilo, propuestas: props } };
+    if (pendiente?.texto || pendiente?.claves?.length) {
+      // Lo que pidió antes de elegir se aplica ahora, directo al HTML de la opción elegida (10-nov-2026).
+      const conf = `¡Perfecto! Vamos con la opción *${r.elegido}*. Ahora le aplico los cambios que me pediste.`;
+      let ed = null;
+      try { ed = await editarElegida(e, props, { texto: pendiente.texto || '', claves: pendiente.claves || [] }); }
+      catch (err) { console.error('[propuestas] cambio pendiente', err); }
+      const props2 = ed?.ok ? { ...props, cambios_aplicados: [...(props.cambios_aplicados || []), { texto: String(pendiente.texto || '').slice(0, 500), hechos: ed.hecho, directo_html: true }] } : props;
+      const nb2 = { ...nb, marca: { ...nb.marca, propuestas: props2 } };
+      if (ed?.pregunta) return { responder: { textos: [conf, ed.pregunta] }, brief: nb2, seguirConAri: false };
+      if (!ed?.ok) return { responder: { textos: [conf, 'No pude aplicar ese cambio a tu página 😔 ¿Me lo explicas de otra forma? Por ejemplo, dime en qué parte de la página está y cómo quieres que quede.'] }, brief: nb2, seguirConAri: false };
+      const lista = (ed.hecho || []).map((h) => `• ${h}`).join('\n');
+      const textos = [conf, `Listo ✅ ${lista ? `Esto quedó en tu página:\n${lista}` : 'Ya quedó.'}\n\nRecarga tu página para verlo 👇\n${ed.url || elegida.url}`];
+      if (ed.no_pude?.length) { textos.push(`Esto no lo pude hacer:\n${ed.no_pude.map((x) => `• ${x}`).join('\n')}\n¿Me lo explicas de otra forma?`); return { responder: { textos }, brief: nb2, seguirConAri: false }; }
+      return { responder: { textos }, brief: nb2, seguirConAri: true };
+    }
     const conf = `¡Perfecto! Vamos con la opción *${r.elegido}*${colores ? ` con los colores de la *${r.colores_de}*` : ''}. Tomo en cuenta lo que me dijiste para la página completa.`;
     return { responder: { textos: [conf] }, brief: nb, seguirConAri: true };
   }
