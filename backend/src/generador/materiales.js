@@ -210,19 +210,28 @@ async function huella(buf) {
   const { data } = await sharp(buf).rotate().greyscale().resize(17, 16, { fit: 'fill' }).raw().toBuffer({ resolveWithObject: true });
   let bits = '';
   for (let r = 0; r < 16; r++) for (let c = 0; c < 16; c++) bits += data[r * 17 + c] > data[r * 17 + c + 1] ? '1' : '0';
-  // Color en 3x3 (10-nov-2026): el dHash es en grises y juntaba como "la misma foto" guayaberas de distinto color con la
-  // misma pose y fondo (El Rincón del Mayab: de 9 fotos solo quedaban 3). Ahora también tiene que coincidir el color.
+  // Color 3x3 y grises 16x16 (10-nov-2026): el dHash solo juntaba como "la misma foto" guayaberas distintas con la misma
+  // pose y fondo (El Rincón del Mayab: de 9 fotos quedaban 3). Ahora una copia también debe coincidir en color y en detalle.
   const { data: rgb } = await sharp(buf).rotate().removeAlpha().resize(3, 3, { fit: 'fill' }).raw().toBuffer({ resolveWithObject: true });
-  return `${bits}|${[...rgb].map((v) => v.toString(16).padStart(2, '0')).join('')}`;
+  const { data: gris } = await sharp(buf).rotate().greyscale().resize(16, 16, { fit: 'fill' }).raw().toBuffer({ resolveWithObject: true });
+  const hex = (d) => [...d].map((v) => v.toString(16).padStart(2, '0')).join('');
+  return `${bits}|${hex(rgb)}|${hex(gris)}`;
 }
-const MISMO_COLOR = 40; // diferencia media por canal (0-255) a partir de la cual ya son fotos distintas
+const bytes = (h) => { const v = []; for (let i = 0; i < h.length; i += 2) v.push(parseInt(h.slice(i, i + 2), 16)); return v; };
+const MISMO_COLOR = 25; // diferencia máxima por celda de color (0-255): arriba de esto ya son fotos distintas
+const MISMO_DETALLE = 6; // diferencia media en grises 16x16: una copia real (aunque cambie tamaño) da ~0-2
 export const distanciaHuella = (a, b) => {
   if (!a || !b) return 1;
-  const [ba, ca] = String(a).split('|'), [bb, cb] = String(b).split('|');
+  const [ba, ca, ga] = String(a).split('|'), [bb, cb, gb] = String(b).split('|');
   if (ba.length !== bb.length) return 1;
   if (ca && cb && ca.length === cb.length) {
-    let dc = 0; for (let i = 0; i < ca.length; i += 2) dc += Math.abs(parseInt(ca.slice(i, i + 2), 16) - parseInt(cb.slice(i, i + 2), 16));
-    if (dc / (ca.length / 2) > MISMO_COLOR) return 1;
+    const x = bytes(ca), y = bytes(cb);
+    for (let k = 0; k < x.length; k += 3) if ((Math.abs(x[k] - y[k]) + Math.abs(x[k + 1] - y[k + 1]) + Math.abs(x[k + 2] - y[k + 2])) / 3 > MISMO_COLOR) return 1;
+  }
+  if (ga && gb && ga.length === gb.length) {
+    const x = bytes(ga), y = bytes(gb);
+    let m = 0; for (let k = 0; k < x.length; k++) m += Math.abs(x[k] - y[k]);
+    if (m / x.length > MISMO_DETALLE) return 1;
   }
   let d = 0; for (let i = 0; i < ba.length; i++) if (ba[i] !== bb[i]) d++;
   return d / ba.length;
@@ -351,7 +360,7 @@ export async function analizarAsset(a, { negocio = '' } = {}) {
   // Logos recortados con la caja justa del modelo (antes de 10-nov-2026) salían con las letras cortadas: esos análisis
   // se rehacen una vez (solo los que tienen logo) para recortarlo con margen.
   if (a.analisis?.version === VERSION && !(a.analisis.logo && a.analisis.logo_v !== 5)) {
-    if (!a.analisis.huella || !String(a.analisis.huella).includes('|')) { // sin color: huella vieja, se recalcula
+    if (!a.analisis.huella || String(a.analisis.huella).split('|').length < 3) { // huella vieja (sin color/detalle): se recalcula
       a.analisis.huella = await descargar(a.analisis.contenido?.url || a.url).then(huella).catch(() => null);
       if (a.analisis.huella) await db.q(`UPDATE assets SET analisis = analisis || jsonb_build_object('huella', $2::text) WHERE id=$1`, [a.id, a.analisis.huella]).catch(() => {});
     }
