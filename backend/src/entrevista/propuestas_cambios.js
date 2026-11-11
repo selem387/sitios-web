@@ -3,12 +3,11 @@
 // moverlas o quitarlas, y cambios de textos, colores y datos. Se aplican de inmediato a las MISMAS 6 opciones
 // (mismas ligas, mismo diseño) y se le pide recargar. Nada de "anotado": o se hace, o se le pide explicarlo de otra forma.
 import * as db from './db.js';
-import { pedirJSON } from './claude.js';
+import { pedirJSON, interpretarImagenCambio } from './claude.js';
 import { procesarMateriales, coloresDePalabras } from '../generador/materiales.js';
 import { crearPropuestasHTML, textosPropuestas } from '../generador/propuestas_html.js';
 import { revisarYCorregir } from '../generador/revision_visual.js';
 import { TITULOS } from '../generador/propuestas_general.js';
-import { editarElegida } from './editor_html.js';
 
 const SECCIONES = ['portada', 'trabajo', 'galeria'];
 const ESTILOS = ['minimalista', 'fresco', 'calido', 'elegante', 'tecnologico', 'tradicional', 'lujo', 'divertido'];
@@ -246,6 +245,10 @@ export async function atenderMostradas(e, brief, p, { texto = '', clavesNuevas =
     return { responder: { textos: [preguntaQueOpcion(p)] }, brief: { ...brief, marca: { ...brief.marca, propuestas: np } } };
   }
 
+  // Opción ya elegida (11-nov-2026): los datos van a la base y lo visual lo ajusta la IA sobre el sitio que se arma
+  // desde la base (panel/cambios_vivo.js). Aquí no se aplica nada: se encola.
+  if (elegida && (CAMBIOS.includes(d.intencion) || nuevas.length || clavesNuevas.length)) return { accion: 'encolar' };
+
   const valida = (s) => s === 'auto' || s === 'quitar' || (SECCIONES.includes(s) && secciones[s]);
   const seccionNuevas = valida(d.seccion_nuevas) && d.seccion_nuevas !== 'quitar' ? d.seccion_nuevas : (p.seccion_nuevas || null);
 
@@ -266,27 +269,6 @@ export async function atenderMostradas(e, brief, p, { texto = '', clavesNuevas =
   if (porUbicar.length && !previo.hechos.length && !ubic.size) {
     const np = { ...p, fotos_por_ubicar: porUbicar, esperando_fotos: false };
     return { responder: { textos: [preguntaUbicacion(brief, p.textos, porUbicar.length)] }, brief: { ...brief, marca: { ...brief.marca, propuestas: np } } };
-  }
-
-  // Opción ya elegida: el cambio va DIRECTO al HTML de su página (10-nov-2026), nunca regenerándola con el generador.
-  if (elegida) {
-    const desc = [...ubic.entries()].map(([k, s]) => (s === 'quitar' ? `Quitar de la página la foto ${k}.` : `Poner la foto ${k} en ${s === 'auto' ? 'la sección de fotos donde mejor quede' : `la sección «${secciones[s] || s}»`}.`)).join(' ');
-    const pedido = [texto, desc].filter((x) => x && x.trim()).join('\n');
-    const claves = [...new Set([...nuevas, ...ubic.keys()])];
-    if (ubic.size) await db.actualizarAssets(e.id, [...ubic.entries()].map(([k, s]) => ({ clave: k, usar: s !== 'quitar' }))).catch(() => {});
-    const datos = aplicarCambios(brief, p, d.cambios, texto).brief; // datos de contacto, horario, etc. también quedan en el brief
-    let r = null;
-    try { r = await editarElegida(e, p, { texto: pedido, claves }); }
-    catch (err) { console.error('[propuestas_cambios] editor html', err); }
-    const np = { ...p, fotos_por_ubicar: porUbicar, esperando_fotos: false, seccion_nuevas: null, ...(r?.ok ? { cambios_aplicados: [...(p.cambios_aplicados || []), { texto: pedido.slice(0, 500), hechos: r.hecho, directo_html: true }] } : {}) };
-    const nb = { ...datos, marca: { ...datos.marca, propuestas: np } };
-    if (r?.pregunta) return { responder: { textos: [r.pregunta] }, brief: nb };
-    if (!r?.ok) return { responder: { textos: ['No pude aplicar ese cambio a tu página 😔 ¿Me lo explicas de otra forma? Por ejemplo, dime en qué parte de la página está y cómo quieres que quede.'] }, brief: nb };
-    const lista = (r.hecho || []).map((h) => `• ${h}`).join('\n');
-    const textos = [`Listo ✅ ${lista ? `Esto quedó en tu página:\n${lista}` : 'Ya quedó.'}\n\nRecarga tu página para verlo 👇\n${r.url || urlElegida}`];
-    if (r.no_pude?.length) textos.push(`Esto no lo pude hacer:\n${r.no_pude.map((x) => `• ${x}`).join('\n')}\n¿Me lo explicas de otra forma?`);
-    if (porUbicar.length) textos.push(preguntaUbicacion(brief, p.textos, porUbicar.length).replace(/^¡Recibí[^?]*\?/, porUbicar.length === 1 ? 'Me falta una foto: ¿dónde la pongo?' : `Me faltan ${porUbicar.length} fotos: ¿dónde las pongo?`));
-    return { responder: { textos }, brief: nb, retomar: !porUbicar.length && !r.no_pude?.length };
   }
 
   let b = brief;
@@ -327,4 +309,21 @@ export async function atenderMostradas(e, brief, p, { texto = '', clavesNuevas =
   if (porUbicar.length) textos.push(preguntaUbicacion(b, np.textos, porUbicar.length).replace(/^¡Recibí[^?]*\?/, porUbicar.length === 1 ? 'Me falta una foto: ¿dónde la pongo?' : `Me faltan ${porUbicar.length} fotos: ¿dónde las pongo?`));
   else if (!elegida) textos.push(cierreM(np));
   return { responder: { textos }, brief: nb, retomar: !!elegida && !porUbicar.length };
+}
+
+/**
+ * Imágenes que llegan con un pedido de cambio: ¿foto para la página o captura/referencia para entender el pedido?
+ * Las referencias nunca se publican (tipo "referencia", usar=false). Caso JIGA (10-nov-2026): una captura se publicó como foto.
+ */
+export async function clasificarImagenesPedido(e, claves, { texto = '', urlPagina = '' } = {}) {
+  if (!claves?.length) return;
+  const assets = (await db.assetsDe(e.id).catch(() => [])).filter((a) => claves.includes(a.clave) && esImagen(a) && a.tipo !== 'referencia');
+  const historial = (await db.ultimosMensajes(e.id, 6).catch(() => [])).map((m) => `${m.rol === 'cliente' ? 'Cliente' : 'Ari'}: ${String(m.transcripcion || m.contenido || '').slice(0, 300)}`).join('\n');
+  for (const a of assets) {
+    const it = await interpretarImagenCambio(a.url, { texto, mismoMensaje: !!texto, historial, urlPagina });
+    if (!it || it.uso === 'foto') continue;
+    const desc = [`[${it.uso}]`, it.descripcion, it.senala, it.transcripcion ? `Texto: ${it.transcripcion}` : ''].filter(Boolean).join(' ').slice(0, 2000);
+    await db.q(`UPDATE assets SET tipo='referencia', usar=false, descripcion_ia=$3 WHERE entrevista_id=$1 AND clave=$2`, [e.id, a.clave, desc]);
+    await db.evento(e.id, 'imagen_interpretada', { clave: a.clave, uso: it.uso, razon: it.razon || null }).catch(() => {});
+  }
 }

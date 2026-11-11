@@ -357,10 +357,12 @@ export async function encolar(entrevista, { slug, forzarWordpress }) {
   // Plataforma "app": sitio en vivo desde la base, administrado por el dueño en su panel propio.
   // Con WordPress suspendido (config.wordpressActivo=false) todo cae aquí, aunque se pida forzar_wordpress.
   if (!config.wordpressActivo || (plat === 'app' && !forzarWordpress)) {
-    const habia = (await q(`SELECT 1 FROM sitios_vivos WHERE entrevista_id=$1`, [entrevista.id]).catch(() => ({ rows: [] }))).rows.length > 0;
+    // Un sitio creado al elegir la opción (marcado _previo_cierre) todavía no se le ha entregado: cuenta como nuevo.
+    const habia = (await q(`SELECT 1 FROM sitios_vivos WHERE entrevista_id=$1 AND NOT (contenido ? '_previo_cierre')`, [entrevista.id]).catch(() => ({ rows: [] }))).rows.length > 0;
     const sv = await crearSitioVivo(entrevista, { slug }).catch((x) => { throw new HttpError(x.status || 500, x.message); });
     const previa = `${config.publicUrl}/s/${sv.slug}`;
     // Sitio nuevo: Ari le manda la liga por su chat (WhatsApp o web), como prometió al cerrar.
+    if (!habia) await q(`UPDATE sitios_vivos SET contenido = contenido - '_previo_cierre' WHERE id=$1`, [sv.id]).catch(() => {});
     if (!habia) await avisar(entrevista.id, [`Tu página ya quedó 🎉: ${previa}`, 'Ábrela desde tu celular y dime qué quieres ajustar; los cambios los aplico aquí mismo.'], { evento: 'sitio_vivo_listo', datos: { sitio_vivo_id: sv.id } }).catch((err) => console.error('aviso sitio vivo', err.message));
     return { sitio_vivo_id: sv.id, slug: sv.slug, estado: 'vivo', previa };
   }

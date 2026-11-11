@@ -66,6 +66,15 @@ export function registerChatRoutes(app, wrap) {
   app.get('/p/:token/:letra', async (c) => {
     const { token, letra } = c.req.param();
     if (!/^[A-Za-z0-9]{8,40}$/.test(token) || !/^[A-F]$/.test(letra)) return c.text('no', 404);
+    // Opción ya elegida (11-nov-2026): su liga muestra el sitio armado desde la base con sus ajustes visuales.
+    try {
+      const sv = (await db.q(`SELECT sv.*, e.brief#>>'{marca,propuestas,elegido}' AS _elegido FROM sitios_vivos sv JOIN entrevistas e ON e.id = sv.entrevista_id
+                              WHERE e.brief#>>'{marca,propuestas,token}' = $1 AND sv.estado='activo' ORDER BY sv.id DESC LIMIT 1`, [token])).rows[0];
+      if (sv && (sv.contenido?.diseno?.propuesta || sv._elegido) === letra) {
+        const { renderSitio } = await import('../panel/sitios.js');
+        return c.html(await renderSitio(sv, { previa: true }), 200, { 'cache-control': 'no-store', 'x-robots-tag': 'noindex' });
+      }
+    } catch (err) { console.error('[p] sitio vivo', token, err.message); }
     try { return c.html(await fs.readFile(path.join(DIR_PROPUESTAS, token, `${letra}.html`), 'utf8'), 200, { 'cache-control': 'no-store', 'x-robots-tag': 'noindex' }); }
     catch { return c.text('Propuesta no encontrada', 404); }
   });
@@ -117,7 +126,7 @@ export function registerChatRoutes(app, wrap) {
     const res = await enSerie(b.usuario_id, () => procesarMensaje({ usuario_id: b.usuario_id, texto: b.texto, media, canal: 'web', reiniciar: b.reiniciar === true }));
     // Cierre de la entrevista: lanzar el generador una sola vez (los sitios WordPress retirados no cuentan).
     if (res.estado === 'completada') {
-      const ya = await db.q(`SELECT 1 FROM sitios WHERE entrevista_id=$1 AND estado<>'reemplazado' UNION ALL SELECT 1 FROM sitios_vivos WHERE entrevista_id=$1 LIMIT 1`, [res.sesion_id]).catch(() => ({ rows: [] }));
+      const ya = await db.q(`SELECT 1 FROM sitios WHERE entrevista_id=$1 AND estado<>'reemplazado' UNION ALL SELECT 1 FROM sitios_vivos WHERE entrevista_id=$1 AND NOT (contenido ? '_previo_cierre') LIMIT 1`, [res.sesion_id]).catch(() => ({ rows: [] }));
       if (!ya.rows.length) {
         const e = await db.obtener(res.sesion_id);
         await encolar(e, {}).catch((err) => console.error('chat generar', err));

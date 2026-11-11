@@ -48,6 +48,7 @@ const esquema = () => ({
     css: { type: 'string', description: 'Ajustes de diseño: la hoja COMPLETA de reglas CSS propias del sitio como debe quedar (incluye las de CSS PROPIO ACTUAL que sigan vigentes). Vacío si no cambia el diseño.' },
     verificar: { type: 'array', items: { type: 'string' }, description: 'Selectores CSS de las secciones que cambian visualmente (p. ej. "#servicios", "#resenas") para revisarlas con capturas.' },
     no_pude: { type: 'array', items: { type: 'string' }, description: 'Partes del pedido que no se pueden hacer, dichas al cliente en palabras sencillas (sin ids ni términos técnicos), p. ej. "mover las preguntas frecuentes: tu página todavía no tiene esa sección".' },
+    aceptado_por_cliente: { type: 'array', items: { type: 'string' }, description: 'Reglas de diseño que el cliente eligió romper después de que le advertiste (p. ej. "letras amarillo claro sobre fondo blanco").' },
     resumen_cliente: { type: 'string', description: 'Qué cambiaste, 1–2 frases simples en primera persona ("Cambié…").' },
   },
   required: ['accion', 'resumen_cliente'],
@@ -78,18 +79,27 @@ QUÉ PUEDES HACER
 - Elige la herramienta más simple que cumpla exactamente lo pedido: secciones (contenido) → CSS (aspecto) → estructura (agregar, quitar, reordenar, rehacer).
 - Si de verdad no hay forma (p. ej. cobrar en línea, una página aparte con su propia dirección, una sección que no existe): esa parte va en no_pude.
 - SIEMPRE haz todo lo que sí se pueda del pedido (accion=editar) y deja en no_pude solo lo que no. accion=no_se_puede únicamente si NADA de lo pedido es posible.
-- resumen_cliente: simple y cálido, sin tecnicismos.`;
+- resumen_cliente: simple y cálido, sin tecnicismos.
+
+REGLAS DE DISEÑO DEL SITIO (11-nov-2026)
+- Reglas: el texto siempre se lee sobre su fondo (buen contraste), ningún texto queda más chico que el mínimo actual del tema, las fotos nunca se deforman ni se repiten, la letra siempre es una fuente para web, y nada queda encimado o cortado en celular.
+- Si lo que pide el cliente rompe alguna de esas reglas (p. ej. letras amarillo claro sobre fondo blanco, texto más chico que el mínimo, estirar una foto): NO lo apliques todavía. accion=preguntar; en "pregunta" explícale en palabras sencillas por qué no se va a ver bien, proponle una alternativa concreta y cercana a lo que pidió (p. ej. "un amarillo más oscuro") y pregúntale si lo quiere como lo pidió o con tu sugerencia.
+- Si en la CONVERSACIÓN ya le hiciste esa pregunta y contestó, haz exactamente lo que eligió (aunque rompa la regla, si eligió su versión). En ese caso pon en "aceptado_por_cliente" qué regla aceptó romper.
+
+AJUSTE AUTOMÁTICO DE SECCIONES NUEVAS
+- Si el pedido empieza con "(ajuste automático)", no lo pidió el cliente: solo ajusta con CSS el aspecto de las secciones que se indican para que combinen con los cambios visuales que el cliente ya pidió para el resto (CSS PROPIO ACTUAL). No toques contenido, ni otras secciones, ni preguntes: si no hace falta nada, devuelve el mismo CSS.`;
 
 async function guardar(id, cambios) {
   const cols = Object.keys(cambios);
   const vals = cols.map((k) => (cambios[k] !== null && typeof cambios[k] === 'object' ? JSON.stringify(cambios[k]) : cambios[k]));
   await q(`UPDATE cambios_sitio SET ${cols.map((k, i) => `${k}=$${i + 2}`).join(', ')}, actualizado=now() WHERE id=$1`, [id, ...vals]);
 }
-async function noPude(c, e, resultado) {
+async function noPude(c, e, resultado, { silencioso = false } = {}) {
   // Si se sabe qué parte no se pudo, se le dice al cliente cuál; si no, el mensaje general. Siempre pide explicarlo de otra forma.
   const partes = (resultado?.no_pude || []).filter(Boolean);
   const texto = partes.length ? `No pude hacer esto en tu página 😔: ${partes.join('; ')}.\n¿Me lo explicas de otra forma o me dices qué prefieres?` : NO_PUDE;
   // Se conserva el plan que se intentó (para revisar después) y se agrega la pregunta.
+  if (silencioso) { await q(`UPDATE cambios_sitio SET estado='auto_fallo', resultado=$2, actualizado=now() WHERE id=$1`, [c.id, JSON.stringify(resultado)]); return null; }
   await q(`UPDATE cambios_sitio SET estado='preguntar', plan = COALESCE(plan,'{}'::jsonb) || $2::jsonb, resultado=$3, actualizado=now() WHERE id=$1`, [c.id, JSON.stringify({ pregunta: texto }), JSON.stringify(resultado)]);
   return avisar(e.id, texto, { evento: 'cambios_sitio', datos: { cambio_id: c.id } });
 }
@@ -239,7 +249,7 @@ async function escribir(sv, e, { secciones = {}, quitar = [], diseno, fotos, usa
 }
 
 async function revertir(c, e, sv) {
-  const ult = (await q(`SELECT * FROM cambios_sitio WHERE entrevista_id=$1 AND estado='aplicado' AND respaldo ? 'vivo' AND id<>$2 ORDER BY id DESC LIMIT 1`, [e.id, c.id])).rows[0];
+  const ult = (await q(`SELECT * FROM cambios_sitio WHERE entrevista_id=$1 AND estado='aplicado' AND respaldo ? 'vivo' AND id<>$2 AND NOT (pedidos @> '[{"auto": true}]'::jsonb) ORDER BY id DESC LIMIT 1`, [e.id, c.id])).rows[0];
   if (!ult) {
     await guardar(c.id, { estado: 'aplicado', resultado: { revertir: 'sin cambios previos' } });
     return avisar(e.id, 'Todavía no he hecho cambios a tu página, así que sigue como la viste la primera vez. ¿Qué te gustaría ajustar?', { evento: 'cambios_sitio' });
@@ -281,7 +291,7 @@ const ESQUEMA_VISTA = {
 };
 
 /** Compara capturas antes/después contra el pedido. Devuelve {ok, problemas}. Sin servicio de capturas, no bloquea. */
-async function revisarVista(pedidos, antes, despues, noPudo = []) {
+async function revisarVista(pedidos, antes, despues, noPudo = [], aceptado = []) {
   if (!despues.some((d) => d.url)) return { ok: true, problemas: [], sin_capturas: true };
   const contenido = [{ type: 'text', text: `PEDIDO DEL CLIENTE:\n${pedidos.map((p) => `- ${p.texto}`).join('\n')}\n\nCompara ANTES y DESPUÉS de cada sección (computadora 1366 px y celular 390 px). "No existe" significa que esa sección no está en la página (correcto si el cliente pidió quitarla).` }];
   for (const d of despues) {
@@ -291,6 +301,7 @@ async function revisarVista(pedidos, antes, despues, noPudo = []) {
     contenido.push({ type: 'text', text: `DESPUÉS · ${d.sel} · ${d.ancho}px${d.url ? '' : ': no existe'}` });
     if (d.url) contenido.push({ type: 'image', source: { type: 'url', url: d.url } });
   }
+  if (aceptado.length) contenido.push({ type: 'text', text: `EL CLIENTE ELIGIÓ ESTO A PESAR DE LA ADVERTENCIA (no lo cuentes como falla): ${aceptado.join('; ')}` });
   if (noPudo.length) contenido.push({ type: 'text', text: `PARTES QUE NO SE PUEDEN HACER (se le avisará al cliente; no las cuentes como falla): ${noPudo.join('; ')}` });
   // El menú se revisa siempre (secciones quitadas, agregadas o reordenadas).
   const nav = (despues[0]?.menu || '').trim();
@@ -305,6 +316,10 @@ async function revisarVista(pedidos, antes, despues, noPudo = []) {
 }
 
 export async function aplicarCambioVivo(c, e, sv) {
+  // Ajuste automático de secciones nuevas (11-nov-2026): no lo pidió el cliente, así que no se le escribe nada.
+  const auto = (c.pedidos || []).length > 0 && c.pedidos.every((p) => p.auto);
+  const decir = auto ? async () => null : avisar;
+  const fallo = (cc, ee, res) => noPude(cc, ee, res, { silencioso: auto });
   await guardar(c.id, { sitio_id: sv.id });
   const act = await estadoActual(e, sv);
   const conv = await conversacion(e, sv);
@@ -337,16 +352,17 @@ export async function aplicarCambioVivo(c, e, sv) {
     await guardar(c.id, { plan });
     if (plan.accion === 'preguntar') {
       await guardar(c.id, { estado: 'preguntar' });
-      return avisar(e.id, plan.pregunta || '¿Me dices un poco más de lo que quieres cambiar?', { evento: 'cambios_sitio', datos: { cambio_id: c.id } });
+      if (auto) return fallo(c, e, { pregunta: plan.pregunta });
+      return decir(e.id, plan.pregunta || '¿Me dices un poco más de lo que quieres cambiar?', { evento: 'cambios_sitio', datos: { cambio_id: c.id } });
     }
-    if (plan.accion === 'revertir') return revertir(c, e, sv);
-    if (plan.accion !== 'editar' || !v) return noPude(c, e, { errores, no_pude: plan.no_pude || [] });
+    if (plan.accion === 'revertir') return auto ? fallo(c, e, { revertir: true }) : revertir(c, e, sv);
+    if (plan.accion !== 'editar' || !v) return fallo(c, e, { errores, no_pude: plan.no_pude || [] });
     const cssNuevo = typeof plan.css === 'string' && plan.css.trim() !== (act.css || '').trim() ? plan.css.trim() : null;
     const estNueva = v.estructura && JSON.stringify(v.estructura) !== JSON.stringify(act.estructura || null) ? v.estructura : null;
     const propNueva = plan.propuesta && plan.propuesta !== act.propuesta ? plan.propuesta : null;
     const fuentesNuevas = plan.fuentes?.titulos && plan.fuentes?.cuerpo && JSON.stringify(plan.fuentes) !== JSON.stringify(act.fuentes || null) ? { titulos: plan.fuentes.titulos, cuerpo: plan.fuentes.cuerpo } : null;
     const hay = plan.accion === 'editar' && (Object.keys(v.secciones).length || Object.keys(v.paleta).length || cssNuevo !== null || estNueva || propNueva || fuentesNuevas || plan.portada_foto || plan.fotos_quitar?.length || plan.fotos_poner?.length);
-    if (!hay || errores.length) return noPude(c, e, { errores, no_pude: plan.no_pude || [] });
+    if (!hay || errores.length) return fallo(c, e, { errores, no_pude: plan.no_pude || [] });
 
     // 2) Capturas de ANTES de las secciones que cambian de diseño (una sola vez).
     const cambiaVista = cssNuevo !== null || estNueva || propNueva || fuentesNuevas || Object.keys(v.paleta).length;
@@ -384,24 +400,65 @@ export async function aplicarCambioVivo(c, e, sv) {
       await escribir(nuevo, e, respaldo);
       await restaurarBrief(e, briefAntes); briefAntes = null;
       console.error('[cambios vivo] restaurado', c.id, err);
-      return noPude(c, e, { error: String(err.message || err).slice(0, 500) });
+      return fallo(c, e, { error: String(err.message || err).slice(0, 500) });
     }
 
     // 5) Ajustes de diseño: revisión visual contra lo pedido; si no cumple, se deshace y se vuelve a intentar.
     if (!revisar) { vista = null; break; }
     const despues = await capturas(nuevo, selectores);
     try { const h = await renderSitio(await porId(nuevo.id), { previa: true }); const nav = (h.match(/<nav>([\s\S]*?)<\/nav>/) || [])[1] || ''; if (despues[0]) despues[0].menu = nav.replace(/<[^>]+>/g, ' · ').replace(/(\s·\s)+/g, ' · '); } catch { /* sin menú */ }
-    vista = await revisarVista(c.pedidos, antes || [], despues, (plan.no_pude || []).filter(Boolean));
+    vista = await revisarVista(c.pedidos, antes || [], despues, (plan.no_pude || []).filter(Boolean), (plan.aceptado_por_cliente || []).filter(Boolean));
     if (vista.ok) break;
     await escribir(nuevo, e, respaldo);
     await restaurarBrief(e, briefAntes); briefAntes = null;
     errores = [`La revisión visual con capturas encontró: ${vista.problemas.join('; ') || 'no cumple lo pedido'}. Corrige el plan (CSS, estructura o secciones). Lo que de verdad no se puede va en no_pude.`];
     nuevo = null;
   }
-  if (!nuevo) return noPude(c, e, { errores, vista });
+  if (!nuevo) return fallo(c, e, { errores, vista });
 
   const pendientes = (plan.no_pude || []).filter(Boolean);
   await guardar(c.id, { estado: 'aplicado', resultado: { secciones: Object.keys(v.secciones), paleta: v.paleta, css: !!plan.css, vista, pendientes } });
   const extra = pendientes.length ? `\n\nLo que no pude hacer: ${pendientes.join('; ')}. ¿Me lo explicas de otra forma o me dices qué prefieres?` : '';
-  return avisar(e.id, `${plan.resumen_cliente}\nYa quedó ✅ Recarga tu página para verlo:\n${urlSitio(nuevo)}${extra}\n¿Hay algo más que quieras ajustar?`, { evento: 'cambios_sitio', datos: { cambio_id: c.id } });
+  await registrarSeccionesVistas(nuevo).catch(() => {});
+  return decir(e.id, `${plan.resumen_cliente}\nYa quedó ✅ Recarga tu página para verlo:\n${urlSitio(nuevo)}${extra}\n¿Hay algo más que quieras ajustar?`, { evento: 'cambios_sitio', datos: { cambio_id: c.id } });
+}
+
+/* ---------------- Secciones nuevas: la IA las ajusta para que combinen (11-nov-2026) ---------------- */
+const idsSecciones = (html) => [...String(html || '').matchAll(/<section\b[^>]*\sid="([^"]+)"/g)].map((m) => m[1]);
+const personalizado = (sv) => { const dz = sv?.contenido?.diseno || {}; return !!(String(dz.css || '').trim() || dz.estructura); };
+
+/** Guarda qué secciones tenía la página cuando se hizo el último ajuste de diseño. */
+const revisando = new Set();
+export async function registrarSeccionesVistas(sv) {
+  revisando.add(sv.id);
+  try {
+    const html = await renderSitio(await porId(sv.id), { previa: true });
+    await q(`UPDATE sitios_vivos SET contenido = jsonb_set(contenido, '{_secciones_vistas}', $2::jsonb) WHERE id=$1`, [sv.id, JSON.stringify(idsSecciones(html))]);
+  } finally { revisando.delete(sv.id); }
+}
+
+/**
+ * Lo llama renderSitio. Si el diseño tiene ajustes del cliente y aparece una sección que no existía cuando se hicieron
+ * (contenido nuevo desde el panel, la entrevista o el chat), se encola un ajuste automático y silencioso para esa sección.
+ */
+export async function revisarSeccionesNuevas(sv, html) {
+  if (!sv?.id || revisando.has(sv.id) || !personalizado(sv)) return;
+  revisando.add(sv.id);
+  try {
+    const ids = idsSecciones(html);
+    const vistas = (await q(`SELECT contenido->'_secciones_vistas' AS v FROM sitios_vivos WHERE id=$1`, [sv.id])).rows[0]?.v;
+    // Sitios con ajustes de antes de esta regla: se toma la foto actual como punto de partida.
+    if (!Array.isArray(vistas)) { await q(`UPDATE sitios_vivos SET contenido = jsonb_set(contenido, '{_secciones_vistas}', $2::jsonb) WHERE id=$1`, [sv.id, JSON.stringify(ids)]); return; }
+    const nuevas = ids.filter((x) => !vistas.includes(x));
+    if (!nuevas.length) return;
+    const ocupado = (await q(`SELECT 1 FROM cambios_sitio WHERE entrevista_id=$1 AND estado IN ('pendiente','aplicando') LIMIT 1`, [sv.entrevista_id])).rowCount;
+    if (ocupado) return; // se revisa en el siguiente armado de la página
+    await q(`UPDATE sitios_vivos SET contenido = jsonb_set(contenido, '{_secciones_vistas}', $2::jsonb) WHERE id=$1`, [sv.id, JSON.stringify([...new Set([...vistas, ...nuevas])])]);
+    const texto = `(ajuste automático) Aparecieron secciones nuevas en la página: ${nuevas.map((x) => `#${x}`).join(', ')}. Ajusta solo su aspecto con CSS para que combinen con los cambios visuales que el cliente ya pidió en el resto del sitio.`;
+    await q(`INSERT INTO cambios_sitio (entrevista_id, sitio_id, pedidos, aplicar_en) VALUES ($1, $2, $3::jsonb, now() + interval '5 seconds')`, [sv.entrevista_id, sv.id, JSON.stringify([{ texto, media: [], auto: true, t: new Date().toISOString() }])]);
+    await db.evento(sv.entrevista_id, 'ajuste_automatico_encolado', { secciones: nuevas }).catch(() => {});
+    const { cronCambios } = await import('../entrevista/cambios.js');
+    setTimeout(() => cronCambios().catch((err) => console.error('ajuste automático', err)), 8000).unref?.();
+  } catch (err) { console.error('[secciones nuevas]', sv.id, err.message); }
+  finally { revisando.delete(sv.id); }
 }

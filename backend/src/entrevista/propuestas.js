@@ -11,8 +11,7 @@ import { coloresDePalabras } from '../generador/materiales.js';
 import * as db from './db.js';
 import { pedirJSON } from './claude.js';
 import { estudiarReferencias } from './referencias.js';
-import { atenderMostradas } from './propuestas_cambios.js';
-import { editarElegida } from './editor_html.js';
+import { atenderMostradas, clasificarImagenesPedido } from './propuestas_cambios.js';
 import { construirDireccion, PRESETS, LISTA_PRESETS } from '../generador/estilo_ref.js';
 
 const NO_TENGO = /no (las |los )?tengo|no tengo (m[aá]s|otras|mejores)|son (todas|las [uú]nicas)|con esas|as[ií] est[aá] bien|usa(lo)? (esas|lo que hay)|no hay (m[aá]s|otras)/i;
@@ -230,25 +229,17 @@ export async function atenderPropuestas(e, brief, { texto = '', huboMedia = fals
       return { responder: { textos: [`La opción *${r.elegido}* ya no está disponible. Estas son las que tienes para elegir 👇`, (p.opciones || []).map((o) => `*${o.etiqueta || o.letra}* · ${o.nombre}\n${o.url}`).join('\n\n'), `¿Cuál te gusta más? Respóndeme con la letra (${disp.map((l) => `*${l}*`).join(', ')}), o dime *ninguna* y qué cambiarías.`] }, brief, seguirConAri: false };
     }
     const colores = r.colores_de ? deLetra(r.colores_de) : null;
-    let pendiente = r.pendiente || p.cambio_pendiente || null;
-    // Mezcla ("la B con los colores de la E"): con edición directa, los colores de la otra opción se aplican al HTML de la elegida.
-    if (colores && colores.paleta) pendiente = { texto: [`Cambia los colores de toda la página por los de esta paleta (los de la opción ${r.colores_de}), conservando todo lo demás: ${JSON.stringify(colores.paleta)}`, pendiente?.texto].filter(Boolean).join('\n'), claves: pendiente?.claves || [] };
-    const props = { ...p, estado: 'elegida', elegido: r.elegido, colores_de: colores ? r.colores_de : null, comentario: texto, cambio_pendiente: null };
-    const nb = { ...brief, marca: { ...brief.marca, estilo: elegida.estilo, propuestas: props } };
-    if (pendiente?.texto || pendiente?.claves?.length) {
-      // Lo que pidió antes de elegir se aplica ahora, directo al HTML de la opción elegida (10-nov-2026).
-      const conf = `¡Perfecto! Vamos con la opción *${r.elegido}*. Ahora le aplico los cambios que me pediste.`;
-      let ed = null;
-      try { ed = await editarElegida(e, props, { texto: pendiente.texto || '', claves: pendiente.claves || [] }); }
-      catch (err) { console.error('[propuestas] cambio pendiente', err); }
-      const props2 = ed?.ok ? { ...props, cambios_aplicados: [...(props.cambios_aplicados || []), { texto: String(pendiente.texto || '').slice(0, 500), hechos: ed.hecho, directo_html: true }] } : props;
-      const nb2 = { ...nb, marca: { ...nb.marca, propuestas: props2 } };
-      if (ed?.pregunta) return { responder: { textos: [conf, ed.pregunta] }, brief: nb2, seguirConAri: false };
-      if (!ed?.ok) return { responder: { textos: [conf, 'No pude aplicar ese cambio a tu página 😔 ¿Me lo explicas de otra forma? Por ejemplo, dime en qué parte de la página está y cómo quieres que quede.'] }, brief: nb2, seguirConAri: false };
-      const lista = (ed.hecho || []).map((h) => `• ${h}`).join('\n');
-      const textos = [conf, `Listo ✅ ${lista ? `Esto quedó en tu página:\n${lista}` : 'Ya quedó.'}\n\nRecarga tu página para verlo 👇\n${ed.url || elegida.url}`];
-      if (ed.no_pude?.length) { textos.push(`Esto no lo pude hacer:\n${ed.no_pude.map((x) => `• ${x}`).join('\n')}\n¿Me lo explicas de otra forma?`); return { responder: { textos }, brief: nb2, seguirConAri: false }; }
-      return { responder: { textos }, brief: nb2, seguirConAri: true };
+    const pendiente = r.pendiente || p.cambio_pendiente || null;
+    const nb = { ...brief, marca: { ...brief.marca, estilo: elegida.estilo, propuestas: { ...p, estado: 'elegida', elegido: r.elegido, colores_de: colores ? r.colores_de : null, comentario: texto, cambio_pendiente: null } } };
+    // Desde que elige, su página se arma desde la base (datos) con el diseño de su opción, y lo visual lo ajusta la IA.
+    const sv = await asegurarSitioVivo(e, nb);
+    if (sv && (pendiente?.texto || pendiente?.claves?.length)) {
+      // Lo que pidió antes de elegir se aplica ahora a la opción elegida.
+      await clasificarImagenesPedido(e, pendiente.claves || [], { texto: pendiente.texto || '', urlPagina: elegida.url });
+      const { registrarPedido } = await import('./cambios.js');
+      await registrarPedido(e.id, { texto: pendiente.texto || '', media: pendiente.claves || [] });
+      await db.evento(e.id, 'cambio_pendiente_encolado', { letra: r.elegido, pendiente }).catch(() => {});
+      return { responder: { textos: [`¡Perfecto! Vamos con la opción *${r.elegido}*. Ya le estoy aplicando los cambios que me pediste; en 1 o 2 minutos te mando aquí la liga para que los veas 👍`] }, brief: nb, seguirConAri: true };
     }
     const conf = `¡Perfecto! Vamos con la opción *${r.elegido}*${colores ? ` con los colores de la *${r.colores_de}*` : ''}. Tomo en cuenta lo que me dijiste para la página completa.`;
     return { responder: { textos: [conf] }, brief: nb, seguirConAri: true };
@@ -256,6 +247,19 @@ export async function atenderPropuestas(e, brief, { texto = '', huboMedia = fals
   if (p.estado === 'elegida' && e && ['en_curso', 'pausada'].includes(e.estado) && (texto || clavesNuevas.length)) {
     const m = await atenderMostradas(e, brief, p, { texto, clavesNuevas, elegida: p.elegido });
     if (!m || m.accion === 'seguir') return { responder: null, brief, seguirConAri: true };
+    if (m.accion === 'encolar' || (m.accion === 'elegir' && m.letra !== p.elegido)) {
+      // Cambios con la opción ya elegida (11-nov-2026): datos → base, visual → IA sobre el sitio armado desde la base.
+      const sv = await asegurarSitioVivo(e, brief);
+      if (sv) {
+        const { registrarPedido } = await import('./cambios.js');
+        const o = (p.opciones || []).find((x) => (x.etiqueta || x.letra) === p.elegido);
+        if (m.accion === 'encolar') await clasificarImagenesPedido(e, clavesNuevas, { texto, urlPagina: o?.url || '' });
+        const rp = await registrarPedido(e.id, m.accion === 'encolar' ? { texto, media: clavesNuevas } : { texto: `la ${m.letra}`, media: [] });
+        const aviso = rp.enCurso ? 'Estoy terminando el cambio anterior 👍 enseguida hago este y te aviso aquí.' : !rp.nuevo ? 'Lo sumo al cambio que estoy haciendo 👍' : 'Ya lo estoy haciendo 👍 En 1 o 2 minutos te mando aquí la liga para que lo veas.';
+        const q = await ultimaPregunta(e.id);
+        return { responder: { textos: q ? [aviso, `Mientras, seguimos 👇\n\n${q}`] : [aviso] }, brief, seguirConAri: false };
+      }
+    }
     if (m.accion === 'reenviar') {
       const o = (p.opciones || []).find((x) => (x.etiqueta || x.letra) === p.elegido);
       return { responder: { textos: [`Claro, aquí está tu página 👇\n${o?.url || ''}`] }, brief, seguirConAri: true };
@@ -288,4 +292,17 @@ export async function iniciarPropuestas(e, brief) {
   }
   const m = await mostrar(e, brief, mat);
   return { responder: m.salida, brief: { ...brief, marca: { ...brief.marca, propuestas: m.propuestas } } };
+}
+
+/** Sitio que se arma desde la base con el diseño elegido. Se crea al elegir; marcado para que el aviso de "tu página ya quedó" salga al terminar la entrevista. */
+async function asegurarSitioVivo(e, brief) {
+  try {
+    const { crearSitioVivo } = await import('../panel/sitios.js');
+    const sv = await crearSitioVivo({ ...e, brief });
+    if (!sv.contenido?._previo_cierre && e.estado !== 'completada') {
+      const r = await db.q(`UPDATE sitios_vivos SET contenido = contenido || '{"_previo_cierre": true}'::jsonb WHERE id=$1 AND NOT EXISTS (SELECT 1 FROM eventos WHERE entrevista_id=$2 AND tipo='sitio_vivo_listo') RETURNING *`, [sv.id, e.id]);
+      return r.rows[0] || sv;
+    }
+    return sv;
+  } catch (err) { console.error('[propuestas] sitio vivo', e.id, err.message); return null; }
 }

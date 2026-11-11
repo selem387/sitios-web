@@ -252,6 +252,8 @@ export async function renderSitio(sv, { previa = false } = {}) {
   if (css) html = html.replace('</head>', () => `<style id="ajustes">${String(css).replace(/<\/style/gi, '')}</style></head>`);
   for (const k of cache.keys()) if (k.startsWith(`${sv.id}:`) && !k.startsWith(`${sv.id}:${sv.version}:`)) cache.delete(k);
   cache.set(clave, html);
+  // Secciones que aparecen después de los ajustes de diseño del cliente: la IA las ajusta sola (11-nov-2026).
+  import('./cambios_vivo.js').then((m) => m.revisarSeccionesNuevas(sv, html)).catch(() => {});
   return html;
 }
 
