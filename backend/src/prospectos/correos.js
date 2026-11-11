@@ -29,28 +29,29 @@ export function armarCorreo(n, paso, dominio) {
   const pie = `<p style="margin-top:28px;color:#888;font-size:12px">Si no quieres recibir más correos sobre esto: <a href="${b}/baja/${n.folio}" style="color:#888">${b.replace('https://', '')}/baja/${n.folio}</a></p>`;
   const firma = '<p style="margin-top:20px">Saludos,<br>Sebastián Lemos<br><span style="color:#666">timewins · Mérida</span></p>';
   const marco = (h) => `<div style="font-family:Arial,Helvetica,sans-serif;font-size:15px;line-height:1.55;color:#222;max-width:560px">${h}${firma}${pie}</div>`;
+  const N = (n.opciones || []).length || 6; // 7 con la G (collage); restaurantes 6
   if (paso === 0) {
     const resenas = n.resenas ? `tienen ${Number(n.resenas).toLocaleString('es-MX')} reseñas en Google pero ` : '';
     return {
-      asunto: `${n.nombre}: les hicimos 6 opciones de página web`,
+      asunto: `${n.nombre}: les hicimos ${N} opciones de página web`,
       html: marco(`<p>Hola, equipo de ${nombre}:</p>
-<p>Vi que ${resenas}todavía no tienen página web propia, así que les armamos <b>6 opciones</b> con sus fotos de Google Maps y sus redes. Son suyas para verlas, sin compromiso:</p>
+<p>Vi que ${resenas}todavía no tienen página web propia, así que les armamos <b>${N} opciones</b> con sus fotos de Google Maps y sus redes. Son suyas para verlas, sin compromiso:</p>
 <table style="width:100%;border-collapse:collapse">${ops}</table>
 <p>Si alguna les gusta, con un clic nos escriben por WhatsApp y Blanca les ayuda a terminarla con su información (menú, horarios, logo).</p>
-<p>Las 6 juntas: <a href="${b}/p/${n.folio}" style="color:#1a56db">${dominio}/p/${n.folio}</a></p>`),
+<p>Las ${N} juntas: <a href="${b}/p/${n.folio}" style="color:#1a56db">${dominio}/p/${n.folio}</a></p>`),
     };
   }
   if (paso === 1) {
     return {
       asunto: `¿Pudieron ver las opciones de ${n.nombre}?`,
-      html: marco(`<p>Hola de nuevo:</p><p>Les escribí hace unos días con 6 opciones de página web para ${nombre}. Aquí están otra vez, por si se perdió el correo:</p>
+      html: marco(`<p>Hola de nuevo:</p><p>Les escribí hace unos días con ${N} opciones de página web para ${nombre}. Aquí están otra vez, por si se perdió el correo:</p>
 <p><a href="${b}/p/${n.folio}" style="color:#1a56db;font-weight:bold">${dominio}/p/${n.folio}</a></p>
 <p>Si alguna les late, en cada una hay un botón para elegirla y escribirnos por WhatsApp.</p>`),
     };
   }
   return {
     asunto: `Último correo sobre la página de ${n.nombre}`,
-    html: marco(`<p>Hola:</p><p>Este es mi último correo sobre las 6 opciones de página que hicimos para ${nombre}. Si en algún momento quieren tener su página, aquí siguen:</p>
+    html: marco(`<p>Hola:</p><p>Este es mi último correo sobre las ${N} opciones de página que hicimos para ${nombre}. Si en algún momento quieren tener su página, aquí siguen:</p>
 <table style="width:100%;border-collapse:collapse">${ops}</table>
 <p>Gracias por su tiempo.</p>`),
   };
@@ -135,7 +136,7 @@ export async function avisarRevision() {
 <a href="${b}/prospectos/chat/${n.folio}?revision=1" style="color:#1a56db;font-weight:bold">Revisar con Ari</a> &nbsp;·&nbsp; <a href="${b}/p/${n.folio}" style="color:#1a56db">Ver las 6</a> &nbsp;·&nbsp; <a href="${b}/prospectos/aprobar/${n.folio}" style="color:#15803d;font-weight:bold">Autorizar envío</a></td></tr>`).join('');
   const asunto = ns.length === 1 ? `Revisar antes de enviar: ${ns[0].nombre}` : `Revisar antes de enviar: ${ns.length} negocios`;
   const html = `<div style="font-family:Arial,Helvetica,sans-serif;font-size:15px;line-height:1.55;color:#222;max-width:600px">
-<p>Hola Blanca:</p><p>${ns.length === 1 ? 'Ya están listas las 6 opciones de página para este negocio' : `Ya están listas las 6 opciones de página para estos ${ns.length} negocios`}. Antes de mandarles el correo, revísalas: en <b>Revisar con Ari</b> puedes pedirle cambios a cualquier opción. Cuando estén bien, da clic en <b>Autorizar envío</b>.</p>
+<p>Hola Blanca:</p><p>${ns.length === 1 ? 'Ya están listas las opciones de página para este negocio' : `Ya están listas las opciones de página para estos ${ns.length} negocios`}. Antes de mandarles el correo, revísalas: en <b>Revisar con Ari</b> puedes pedirle cambios a cualquier opción. Cuando estén bien, da clic en <b>Autorizar envío</b>.</p>
 <table style="width:100%;border-collapse:collapse">${filas}</table>
 <p style="color:#888;font-size:13px;margin-top:20px">Las ligas funcionan en el celular o computadora donde abriste tu enlace de acceso.</p></div>`;
   const c = await ghl('/contacts/upsert', { locationId: LOC(), email: REVISORA(), name: 'Blanca Banderas', tags: ['equipo-revision'],

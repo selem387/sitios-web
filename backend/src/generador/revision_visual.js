@@ -127,7 +127,7 @@ const ESQUEMA_CORRECCION = {
   required: ['css'],
 };
 
-const archivoDe = (url) => { const m = String(url || '').match(/\/p\/([A-Za-z0-9]{8,40})\/([A-F])\b/); return m ? path.join(DIR_PROPUESTAS, m[1], `${m[2]}.html`) : null; };
+const archivoDe = (url) => { const m = String(url || '').match(/\/p\/([A-Za-z0-9]{8,40})\/([A-G])\b/); return m ? path.join(DIR_PROPUESTAS, m[1], `${m[2]}.html`) : null; };
 
 // CSS seguro: fuera @import/url()/expression y cualquier regla que oculte imágenes, el logo o textos.
 function cssSeguro(css) {

@@ -11,6 +11,7 @@ import { esPastel, coloresDePalabras, articuloDe } from './materiales.js';
 import { waUrl, formatoTel } from './bloques.js';
 import { sliderHTML, diapositivasDe, emparejarFotos, CSS_MOVIMIENTO, JS_MOVIMIENTO, efectosDe, filaJustificada, CSS_JUSTIFICADA } from './movimiento.js';
 import { enlacesRedes, CSS_REDES } from './iconos_redes.js';
+import { collageHTML, CSS_COLLAGE, JS_COLLAGE } from './collage.js';
 
 const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const lum = (h) => { const n = parseInt(h.slice(1), 16); const c = [(n >> 16) & 255, (n >> 8) & 255, n & 255].map((v) => v / 255).map((v) => (v <= 0.03928 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4)); return 0.2126 * c[0] + 0.7152 * c[1] + 0.0722 * c[2]; };
@@ -22,8 +23,10 @@ const deHsl = (H, S, L) => { const f = (n) => { const k = (n + H * 12) % 12, a =
 const tono = (h, L, Smin = 0.32, Smax = 1) => { const [H, S] = hsl(h); return deHsl(H, Math.min(Smax, Math.max(S, Smin)), L); };
 const conContraste = (c, bg, min = 4.5, hacia = '#000000') => { let x = c; for (let i = 0; i < 12 && contraste(x, bg) < min; i++) x = mezclar(x, hacia, 0.15); return x; };
 
-export const LAYOUTS_GENERAL = ['portada', 'editorial', 'mosaico', 'logo', 'dostonos', 'carta'];
-export const NOMBRES_GENERAL = { portada: 'Foto a pantalla completa', editorial: 'Editorial', mosaico: 'Mosaico de tu trabajo', logo: 'Tu logo al centro', dostonos: 'Dos tonos', carta: 'Minimalista' };
+// G (11-nov-2026): opción adicional "Collage en movimiento" (generador/collage.js). Siempre va como séptima.
+export const LAYOUTS_GENERAL = ['portada', 'editorial', 'mosaico', 'logo', 'dostonos', 'carta', 'collage'];
+export const LETRAS = 'ABCDEFG';
+export const NOMBRES_GENERAL = { portada: 'Foto a pantalla completa', editorial: 'Editorial', mosaico: 'Mosaico de tu trabajo', logo: 'Tu logo al centro', dostonos: 'Dos tonos', carta: 'Minimalista', collage: 'Collage en movimiento' };
 
 // Títulos por arquetipo (Claude puede reemplazarlos con textos.secciones).
 export const TITULOS = {
@@ -70,6 +73,7 @@ function paletaGeneral(layout, colores, pastel, i, { acento = null, acentoCta = 
     logo: { bg: mezclar(tinte, '#FFFFFF', 0.45), fg: tinta, primary: base, muted: '#FFFFFF' },
     dostonos: { bg: '#FFFFFF', fg: tinta, primary: base, muted: papel, banda: conContraste(tono(base, 0.3, 0.2, 0.32), '#FFFFFF', 7) },
     carta: { bg: mezclar(papel, '#FFFFFF', 0.65), fg: tinta, primary: base, muted: mezclar(tinte, '#FFFFFF', 0.5) },
+    collage: { bg: '#FFFFFF', fg: tinta, primary: base, muted: mezclar(tinte, '#FFFFFF', 0.6), banda: conContraste(tono(base, 0.24, 0.2, 0.32), '#FFFFFF', 8) },
   }[layout];
   p.primary = conContraste(p.primary, p.bg, 4.5);
   p.onPrimary = sobre(p.primary);
@@ -238,7 +242,7 @@ function pagina(d) {
   // las demás con otra foto de su trabajo para que no se vean iguales (si el dueño fijó portada, se respeta en todas).
   const variar = d.dref && d.letra !== 'A' && !brief.fotos?.portada_manual;
   const heroMat = mat.hero && fueraDeGaleria(mat.hero) ? mat.hero : null;
-  const heroBase = !variar && (d.layout === 'portada' || d.layout === 'logo' || (brief.fotos?.portada_manual && heroMat)) ? (heroMat || fotosT[0]) : (fotosT[0] || heroMat || (fueraDeGaleria(mat.fundador) ? mat.fundador : null));
+  const heroBase = !variar && (d.layout === 'portada' || d.layout === 'logo' || d.layout === 'collage' || (brief.fotos?.portada_manual && heroMat)) ? (heroMat || fotosT[0]) : (fotosT[0] || heroMat || (fueraDeGaleria(mat.fundador) ? mat.fundador : null));
   // Si el titular habla de un producto, abre con la foto de ese producto (la eligió la IA de textos por su descripción).
   const fotoTit = !brief.fotos?.portada_manual && t.foto_url ? [mat.hero, ...trabajos].find((x) => x?.url === t.foto_url) : null;
   const heroFoto = fotoTit || heroBase;
@@ -266,6 +270,15 @@ function pagina(d) {
     mosaico: () => { const s = poolSl.length ? slider({ tag: 'div', clase: 'mos-sl sl-marco' }) : ''; const m = fotosT.filter((x) => !usadas.has(x.url)).slice(0, s ? 4 : 5); return `<section class="hero h-mos wrap"><h1>${esc(t.titular)}</h1><p class="sub">${esc(t.subtitulo)}</p>${cta()}<div class="mos m${m.length + (s ? 1 : 0)}${s && m.length < 2 ? ' solo' : ''}">${s}${m.map((x, k) => { enPortada.add(x.url); return img(x, { eager: k < 1, cls: 'rep-ok' }); }).join('')}</div></section>`; },
     logo: () => `<section class="hero h-logo wrap">${mat.logo ? logoHTML(mat.logo, p.bg, p.fg, { clase: 'logo-grande', alt: d.nombre }) : `<p class="nombre-grande">${esc(d.nombre)}</p>`}<h1>${esc(t.titular)}</h1><p class="sub">${esc(t.subtitulo)}</p>${cta()}${heroFoto ? slider({ tag: 'figure', clase: 'ovalo sl-marco' }) : ''}</section>`,
     dostonos: () => `<section class="hero h-dos"><div class="wrap in"><div class="txt"><h1>${esc(t.titular)}</h1><p class="sub">${esc(t.subtitulo)}</p>${cta('inv')}</div>${heroFoto ? slider({ tag: 'figure', clase: 'marco sl-marco' }) : ''}</div></section>`,
+    // G: foto de fondo + texto a la izquierda + panel que cambia de acomodo (sin la foto de fondo; hasta 9 fotos).
+    collage: () => {
+      const vistas = new Set(heroFoto ? [heroFoto.url] : []);
+      const panelF = [...fijasSl, ...poolBase].filter((x) => x?.url && !vistas.has(x.url) && vistas.add(x.url));
+      const col = collageHTML({ fotos: panelF, img, nombre: d.nombre });
+      col.urls.forEach((u) => enPortada.add(u));
+      const fondo = heroFoto ? img(heroFoto, { cls: 'col-fondo rep-ok', eager: true, extra: ' fetchpriority="high" sizes="100vw"' }) + '<div class="col-velo"></div>' : '';
+      return `<section class="hero h-col${heroFoto ? '' : ' sin-fondo'}">${fondo}<div class="wrap col-in"><div class="txt">${textoPortada}${info ? `<ul class="info">${info}</ul>` : ''}</div>${col.html}</div></section>`;
+    },
     carta: () => { const s = poolSl.length ? `<div class="wrap">${slider({ tag: 'figure', clase: 'sl-carta sl-marco' })}</div>` : ''; const resto = s ? [] : fotosT.filter((x) => !usadas.has(x.url)).slice(0, 8); return `<section class="hero h-carta wrap"><div class="tit"><p class="kicker">${esc(d.nombre)}</p><h1>${esc(t.titular)}</h1></div><div class="lado"><p class="sub">${esc(t.subtitulo)}</p>${cta()}</div></section>${s}${resto.length ? `<div class="wrap">${filaJustificada(resto, img)}</div>` : ''}`; },
   };
   const promo = brief.oferta?.promocion_actual ? `<section class="promo" id="promocion"><div class="wrap"><p><b>Promoción</b> ${esc(brief.oferta.promocion_actual)}</p></div></section>` : '';
@@ -353,6 +366,7 @@ function pagina(d) {
     logo: [secTrabajo, secSobre, secEquipo, secServicios, secResenas, procCli, secFaq, secVideo, secContacto],
     dostonos: [secServicios, secTrabajo, secSobre, secEquipo, secResenas, procCli, secFaq, secVideo, secContacto],
     carta: [secServicios, secSobre, secEquipo, secResenas, secTrabajo, procCli, secFaq, secVideo, secContacto],
+    collage: [secServicios, secTrabajo, secSobre, secEquipo, secResenas, procCli, secFaq, secVideo, secContacto],
   }[d.layout];
   const cuerpo = ORDEN.map((fn) => fn()).join('');
   // Galería final: TODO lo que el cliente mandó y aún no aparece (regla dura). Nada se queda fuera.
@@ -449,13 +463,13 @@ a:focus-visible,summary:focus-visible{outline:3px solid var(--p);outline-offset:
 @media (min-width:900px){.h-portada .velo{background:linear-gradient(90deg,rgba(0,0,0,.6),rgba(0,0,0,.15) 70%)}.h-edit{grid-template-columns:1.1fr .9fr;align-items:center;padding-top:64px}.h-dos .in{grid-template-columns:1.1fr .9fr;align-items:end}.mos{grid-template-columns:repeat(4,1fr)}.mos>:first-child{grid-column:span 2;grid-row:span 2;aspect-ratio:auto}.mos-sl{min-height:380px}.mos.solo>.mos-sl{aspect-ratio:16/8!important;min-height:0}.h-portada .sl-d.con-txt::after{background:linear-gradient(90deg,rgba(0,0,0,.66),rgba(0,0,0,.18) 72%)}
 .s-in{grid-template-columns:.8fr 1.2fr}.galeria{columns:3 220px}.g-editorial{columns:4 220px}.contacto .datos{grid-template-columns:repeat(3,1fr)}}
 @media (prefers-reduced-motion:reduce){html{scroll-behavior:auto}}
-${CSS_MOVIMIENTO}
+${CSS_MOVIMIENTO}${d.layout === 'collage' ? CSS_COLLAGE : ''}
 </style></head>
 <body class="l-${d.layout}">
 <header class="barra"><div class="wrap in">${logoBarra}<nav>${navs.map(([id, n]) => `<a href="#${id}">${esc(n)}</a>`).join('')}</nav></div></header>
 <main>${heroFinal}${cuerpoFinal}${galeria}</main>
 <footer>${marcaPie ? `<div class="pie-marcas">${marcaPie}</div>` : ''}© ${new Date().getFullYear()} ${esc(d.nombre)} · Propuesta ${d.letra}: ${esc(NOMBRES_GENERAL[d.layout])}</footer>
-<span class="etq">Propuesta ${d.letra}</span>${JS_MOVIMIENTO}${JS_CAR_TRABAJO}${d.layout === 'logo' ? JS_LOGO_UNICO : ''}
+<span class="etq">Propuesta ${d.letra}</span>${JS_MOVIMIENTO}${JS_CAR_TRABAJO}${d.layout === 'logo' ? JS_LOGO_UNICO : ''}${d.layout === 'collage' ? JS_COLLAGE : ''}
 <a class="wa"${wa} aria-label="Escríbeme por WhatsApp"><svg viewBox="0 0 32 32" aria-hidden="true"><path d="M16 3a13 13 0 0 0-11.2 19.6L3 29l6.6-1.7A13 13 0 1 0 16 3Zm0 23.7c-2 0-4-.6-5.7-1.6l-.4-.2-3.9 1 1-3.8-.3-.4A10.7 10.7 0 1 1 16 26.7Zm5.9-8c-.3-.2-1.9-1-2.2-1-.3-.1-.5-.2-.7.1l-1 1.3c-.2.2-.4.2-.7.1a8.8 8.8 0 0 1-4.4-3.8c-.3-.6.3-.5.9-1.7.1-.2 0-.4 0-.6l-1-2.4c-.3-.6-.5-.5-.7-.5h-.6c-.2 0-.6.1-.9.4-.3.3-1.2 1.1-1.2 2.8s1.2 3.2 1.4 3.5c.2.2 2.4 3.6 5.7 5 2.1.9 3 1 4 .8.7-.1 1.9-.8 2.2-1.5.3-.8.3-1.4.2-1.5l-.6-.3Z"/></svg></a>
 </body></html>`;
   return html;
@@ -472,14 +486,15 @@ export function paginasGenerales({ brief, mat, textos, pares, urlFuentes, ronda 
   const c = brief.contacto || {};
   // Estilo de referencia del cliente: 6 variaciones de ese estilo (acomodos, letras y paletas propias).
   const dref = esDireccionRef(brief.marca?.direccion_ref) ? brief.marca.direccion_ref : null;
-  const todas = (dref ? dref.layouts : LAYOUTS_GENERAL).map((layout, i) => ({ layout, i })).filter(({ i }) => !fijo || 'ABCDEF'[i] === fijo.letra);
+  // La G (collage) va siempre, también con estilo de referencia (que define solo las 6 primeras).
+  const todas = [...(dref ? dref.layouts : LAYOUTS_GENERAL.slice(0, 6)), 'collage'].map((layout, i) => ({ layout, i })).filter(({ i }) => !fijo || LETRAS[i] === fijo.letra);
   return todas.map(({ layout, i }) => {
-    const letra = 'ABCDEF'[i];
+    const letra = LETRAS[i];
     const v = textos.variantes?.[i] || textos.variantes?.[0] || {};
-    const par = fijo?.fuentes || (dref ? parPorNombres(dref.pares[i]) : pares[i % pares.length]);
+    const par = fijo?.fuentes || (dref ? parPorNombres(dref.pares[i] || dref.pares[i % dref.pares.length]) : pares[i % pares.length]);
     const d = {
       i: i + ronda * 3, letra, layout, dref, nombre: brief.negocio?.nombre || '', brief, mat, titulos,
-      pal: fijo?.paleta || (dref ? paletaRef(dref, i) : { ...corregirPaleta(paletaGeneral(layout, cps[i].colores, pastel, i + ronda * 2, { acento: cps[i].acento, acentoCta: cps[i].acentoCta })).paleta, familia: cps[i].familia, origen: cps[i].origen }), f: par, fuentesUrl: urlFuentes([par]),
+      pal: fijo?.paleta || (dref ? paletaRef(dref, dref.paletas?.[i] ? i : 0) : { ...corregirPaleta(paletaGeneral(layout, cps[i % cps.length].colores, pastel, i + ronda * 2, { acento: cps[i % cps.length].acento, acentoCta: cps[i % cps.length].acentoCta })).paleta, familia: cps[i % cps.length].familia, origen: cps[i % cps.length].origen }), f: par, fuentesUrl: urlFuentes([par]),
       t: { titular: v.titular, subtitulo: v.subtitulo, foto_url: v.foto_url || null, cta: v.cta || 'Escríbeme por WhatsApp', info: (textos.info || []).slice(0, 3), sobre: textos.sobre, proceso: textos.proceso, proceso_intro: textos.proceso_intro, servicios_intro: textos.servicios_intro, servicios_cierre: textos.servicios_cierre, servicios_boton: textos.servicios_boton, diapositivas: textos.diapositivas },
       wa: waUrl(c.whatsapp, c.mensaje_whatsapp_inicial), tel: c.whatsapp ? formatoTel(c.whatsapp) : null,
     };

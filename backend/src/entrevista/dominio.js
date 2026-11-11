@@ -603,7 +603,7 @@ async function revisarYConectar(e, f, { desdeChat }) {
     if (err.status === 425) {
       // Sin diseño elegido no se monta nada en su dominio; el cron conecta en cuanto elija.
       await patchFlujo(e.id, { estado: 'apuntado' });
-      const t = [`¡Ya veo *${f.dominio}* apuntando a nuestro servidor! ✅ En cuanto elijas una de tus 6 opciones, la pongo en tu dirección.`];
+      const t = [`¡Ya veo *${f.dominio}* apuntando a nuestro servidor! ✅ En cuanto elijas una de tus opciones, la pongo en tu dirección.`];
       if (desdeChat) return { textos: t, seguirConAri: false };
       return null;
     }

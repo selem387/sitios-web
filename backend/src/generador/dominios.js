@@ -78,11 +78,11 @@ export function middlewareDominios() {
     }
     const ruta = c.req.path.replace(/\/+$/, '') || '/';
     if (ruta === '/') return c.html(selector(host, reg), 200, { 'cache-control': 'no-cache' });
-    const letra = ruta.match(/^\/([a-f])$/i)?.[1]?.toUpperCase();
+    const letra = ruta.match(/^\/([a-g])$/i)?.[1]?.toUpperCase();
     if (letra) {
       try {
         const html = (await fs.readFile(path.join(DIR_PROPUESTAS, reg.token, `${letra}.html`), 'utf8'))
-          .replace(/<span class="etq">([^<]*)<\/span>/, '<a class="etq" href="/" style="text-decoration:none">‹ Ver las 6 · $1</a>');
+          .replace(/<span class="etq">([^<]*)<\/span>/, '<a class="etq" href="/" style="text-decoration:none">‹ Ver todas · $1</a>');
         return c.html(html, 200, { 'cache-control': 'no-cache' });
       }
       catch { return c.text('No encontrada', 404); }

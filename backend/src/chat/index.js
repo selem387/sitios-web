@@ -62,10 +62,10 @@ async function sitioDe(usuarioId) {
 export function registerChatRoutes(app, wrap) {
   app.get('/chat', (c) => c.html(paginaChat()));
 
-  // Propuestas de diseño navegables (6 por cliente): /p/<token>/<A-F>
+  // Propuestas de diseño navegables (7 por cliente; la G solo fuera de restaurantes): /p/<token>/<A-G>
   app.get('/p/:token/:letra', async (c) => {
     const { token, letra } = c.req.param();
-    if (!/^[A-Za-z0-9]{8,40}$/.test(token) || !/^[A-F]$/.test(letra)) return c.text('no', 404);
+    if (!/^[A-Za-z0-9]{8,40}$/.test(token) || !/^[A-G]$/.test(letra)) return c.text('no', 404);
     // Opción ya elegida (11-nov-2026): su liga muestra el sitio armado desde la base con sus ajustes visuales.
     try {
       const sv = (await db.q(`SELECT sv.*, e.brief#>>'{marca,propuestas,elegido}' AS _elegido FROM sitios_vivos sv JOIN entrevistas e ON e.id = sv.entrevista_id

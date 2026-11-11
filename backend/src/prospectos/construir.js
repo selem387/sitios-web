@@ -133,7 +133,7 @@ export async function construir(id) {
       contacto: { whatsapp: tel || null, horarios: horarios(g), direccion: direccion(g, n), redes, email: n.correo || null, mensaje_whatsapp_inicial: `Hola, vi su página y quiero hacer un pedido en ${n.nombre}` },
       modulos: { servicio: ia.servicio || (g.delivery ? 'mixto' : 'comer_aqui'), restaurante: { reservaciones: Boolean(g.reservable), entregas_domicilio: Boolean(g.delivery) } },
       fotos: { acepta_lo_que_hay: true, origen: 'google_maps_y_redes' },
-      prospeccion: { folio: n.folio, place_id: n.place_id, maps_url: n.maps_url, nota_para_ari: 'Al cliente sus 6 opciones se le mostraron NUMERADAS del 1 al 6 (A=1, B=2, C=3, D=4, E=5, F=6). Refiérete a ellas siempre por número, nunca por letra. Llegó por un correo con su página ya hecha; no le vuelvas a preguntar datos que ya están en el brief.' },
+      prospeccion: { folio: n.folio, place_id: n.place_id, maps_url: n.maps_url, nota_para_ari: 'Al cliente sus opciones se le mostraron NUMERADAS (A=1, B=2, C=3, D=4, E=5, F=6, G=7). Refiérete a ellas siempre por número, nunca por letra. Llegó por un correo con su página ya hecha; no le vuelvas a preguntar datos que ya están en el brief.' },
     };
     // Entrevista nueva (o la que ya tenía si se reconstruye).
     let e = n.entrevista_id ? await edb.obtener(n.entrevista_id) : null;
@@ -167,7 +167,7 @@ export async function construir(id) {
     const final = { ...brief, marca: { ...brief.marca, propuestas: m.propuestas } };
     await edb.guardar(e.id, { nombre: n.nombre, bloque_actual: 'B7', brief: final, metadata: { ...(e.metadata || {}), prospecto: { folio: n.folio, negocio_id: n.id } } });
     const dom = String(process.env.PROSPECCION_DOMINIOS || 'timewins.site').split(',')[0].trim();
-    await edb.insertarMensaje(e.id, { rol: 'agente', contenido: `Le preparamos a ${n.nombre} 6 opciones de página con sus fotos de Google Maps y sus redes:\n\n${m.propuestas.opciones.map((o, i) => `*Opción ${i + 1}* · ${o.nombre}\nhttps://${dom}/p/${n.folio}/${i + 1}`).join('\n\n')}\n\nRevísalas y dime qué quieres cambiar en cualquiera de ellas (colores, textos, fotos, orden). Cuando estén bien, autoriza el envío del correo al negocio.`, bloque: 'B7' });
+    await edb.insertarMensaje(e.id, { rol: 'agente', contenido: `Le preparamos a ${n.nombre} ${m.propuestas.opciones.length} opciones de página con sus fotos de Google Maps y sus redes:\n\n${m.propuestas.opciones.map((o, i) => `*Opción ${i + 1}* · ${o.nombre}\nhttps://${dom}/p/${n.folio}/${i + 1}`).join('\n\n')}\n\nRevísalas y dime qué quieres cambiar en cualquiera de ellas (colores, textos, fotos, orden). Cuando estén bien, autoriza el envío del correo al negocio.`, bloque: 'B7' });
     await edb.evento(e.id, 'prospecto_construido', { folio: n.folio, token: m.propuestas.token });
     const opciones = m.propuestas.opciones.map((o) => ({ letra: o.letra, nombre: o.nombre, url: o.url }));
     await pdb.actualizar(id, { estado: 'construido', entrevista_id: e.id, token: m.propuestas.token, opciones, error: null });

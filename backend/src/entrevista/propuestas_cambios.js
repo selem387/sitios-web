@@ -31,7 +31,7 @@ export function preguntaUbicacion(brief, textos, n) {
   return `${n === 1 ? '¡Recibí tu foto! 📸 ¿Dónde quieres que la ponga?' : `¡Recibí tus ${n} fotos! 📸 ¿Dónde quieres que las ponga?`}\n\n${lineas}\n\n${n > 1 ? `Puedes repartirlas, por ejemplo ${ej}. ` : ''}Si prefieres que yo ${n === 1 ? 'la acomode' : 'las acomode'}, dime *tú decide*.`;
 }
 
-function pedirFotos(brief, textos, seccion, dondeVan = 'en tus 6 opciones') {
+function pedirFotos(brief, textos, seccion, dondeVan = 'en tus opciones') {
   const s = seccionesFotos(brief, textos);
   if (seccion && s[seccion]) return `¡Claro! Mándame por aquí las fotos que quieras agregar en *${s[seccion]}* (hasta 18 por envío) y las pongo ${dondeVan}.`;
   const nombres = Object.values(s).map((v) => `*${v}*`);
@@ -41,7 +41,7 @@ function pedirFotos(brief, textos, seccion, dondeVan = 'en tus 6 opciones') {
 /** ¿El texto nombra la opción? ("la A", "opción B", "B", "la primera"…) */
 export function mencionaOpcion(texto, letra, nombreOpcion = '') {
   const l = String(letra || '').toUpperCase();
-  if (!/^[A-F]$/.test(l)) return false;
+  if (!/^[A-G]$/.test(l)) return false;
   const t = String(texto || '');
   const ord = ['primera', 'segunda', 'tercera', 'cuarta', 'quinta', 'sexta'][l.charCodeAt(0) - 65];
   if (new RegExp(`(^|[^\\p{L}])\\*?${l}\\*?([^\\p{L}]|$)`, 'u').test(t)) return true; // "B", "la B", "*B*" (mayúscula sola)
@@ -63,7 +63,7 @@ export const preguntaQueOpcion = (p) => `¡Con gusto te aplico esos cambios! �
 export function opcionNombrada(texto, opciones = []) {
   const t = String(texto || '');
   const ords = ['primera', 'segunda', 'tercera', 'cuarta', 'quinta', 'sexta'];
-  const hits = opciones.map((o) => String(o.etiqueta || o.letra || '').toUpperCase()).filter((l) => /^[A-F]$/.test(l)).filter((l) => {
+  const hits = opciones.map((o) => String(o.etiqueta || o.letra || '').toUpperCase()).filter((l) => /^[A-G]$/.test(l)).filter((l) => {
     const ord = ords[l.charCodeAt(0) - 65];
     return new RegExp(`(^|[^\\p{L}])([Oo]pci[oó]n|OPCI[OÓ]N|[Ll]etra)\\s+\\*?(${l}|${l.toLowerCase()})\\*?([^\\p{L}]|$)`, 'u').test(t)
       || new RegExp(`(^|[^\\p{L}])([Dd]ise[nñ]o|[Pp]ropuesta)\\s+\\*?${l}\\*?([^\\p{L}]|$)`, 'u').test(t)
@@ -229,7 +229,7 @@ export async function atenderMostradas(e, brief, p, { texto = '', clavesNuevas =
   // Una letra solo cuenta si el cliente la nombró: un "hola" llegó a tomarse como elegir la B (10-nov-2026).
   if (d.intencion === 'elegir' && !mencionaOpcion(texto, d.letra, (p.opciones || []).find((o) => (o.etiqueta || o.letra) === String(d.letra || '').toUpperCase())?.nombre)) { d.intencion = elegida ? 'respuesta' : 'pregunta'; d.respuesta = ''; } // en opciones: solo se le recuerda elegir
   if (elegida && d.intencion === 'respuesta' && !nuevas.length) return { accion: 'seguir' };
-  if (d.intencion === 'elegir' && /^[A-F]$/i.test(d.letra || '')) return { accion: 'elegir', letra: d.letra.toUpperCase(), colores_de: /^[A-F]$/i.test(d.colores_de || '') ? d.colores_de.toUpperCase() : null };
+  if (d.intencion === 'elegir' && /^[A-G]$/i.test(d.letra || '')) return { accion: 'elegir', letra: d.letra.toUpperCase(), colores_de: /^[A-G]$/i.test(d.colores_de || '') ? d.colores_de.toUpperCase() : null };
   if (d.intencion === 'ninguna') return { accion: 'ninguna' };
   if (d.intencion === 'reenviar') return { accion: 'reenviar' };
 

@@ -28,6 +28,19 @@ const hash = (s) => crypto.createHash('sha1').update(s).digest('hex').slice(0, 2
 export const nombreClip = (fotoUrl, tipo) => `${hash(`${fotoUrl}|${tipo}|v1`)}.mp4`;
 export const urlClip = (fotoUrl, tipo) => `${config.publicUrl}/clips/${nombreClip(fotoUrl, tipo)}`;
 
+// Collage de la opción G (generador/collage.js): MP4 de respaldo del panel que cambia de acomodo.
+export const nombreCollage = (estados) => `${hash(`${JSON.stringify(estados)}|collage|v1`)}.mp4`;
+export const urlCollage = (estados) => `${config.publicUrl}/clips/${nombreCollage(estados)}`;
+/** Pide el MP4 de respaldo de un collage. estados: [{tipo, urls}]. No espera. */
+export function encolarCollage(estados = []) {
+  if (!ACTIVOS || estados.length < 2) return;
+  const nombre = nombreCollage(estados);
+  if (enCurso.has(nombre)) return;
+  enCurso.add(nombre);
+  cola.push({ tipo: 'collage', nombre, estados });
+  if (!trabajando) trabajar().catch((e) => console.warn('[clips]', e.message));
+}
+
 /** Qué lleva cada posición del slider (0 = primera foto). */
 export const tipoClip = (k) => (k === 0 ? null : k % 2 === 1 ? 'hf' : 'ff');
 
@@ -81,6 +94,7 @@ async function trabajar() {
 
 async function generar(c, destino) {
   const tmp = `${destino}.tmp.mp4`;
+  if (c.tipo === 'collage') { await collageFfmpeg(c, tmp); await fs.rename(tmp, destino); return; }
   if (c.tipo === 'hf' && HF_ID && HF_SECRET && Date.now() > sinCreditosHasta) {
     try {
       const url = await higgsfieldVideo(c);
@@ -138,6 +152,61 @@ async function clipFfmpeg(c, tmp) {
     await correr(['-loop', '1', '-i', img, '-vf', vf, '-t', '4', ...salida, tmp]);
   } finally {
     await fs.rm(img, { force: true });
+  }
+}
+
+/*
+ * MP4 del collage (respaldo de la opción G cuando el JS no corre). Lienzo 1280×880 (16:11, igual que el panel en
+ * escritorio). Cada acomodo es una imagen fija armada con FFmpeg (fotos recortadas al centro, nunca deformadas) que dura
+ * SEG_ACOMODO; entre acomodos, transiciones suaves (xfade). Sin acercamientos: el zoompan de FFmpeg redondea a píxeles
+ * enteros y la foto "salta" (fue la queja del 6-nov-2026). Termina en el primer acomodo para que el bucle no se note.
+ */
+const COL_W = 1280, COL_H = 880, COL_G = 10, COL_SEG = 3.6, COL_TR = 0.9;
+const TRANSICIONES = ['wipeleft', 'slideup', 'fade', 'wiperight', 'slideleft', 'wipeup'];
+async function collageFfmpeg(c, tmp) {
+  const { rectsAcomodo } = await import('./collage.js');
+  const dir = `${tmp}.d`;
+  await fs.mkdir(dir, { recursive: true });
+  try {
+    const urls = [...new Set(c.estados.flatMap((e) => e.urls))];
+    const local = new Map();
+    for (const [k, u] of urls.entries()) {
+      const f = path.join(dir, `f${k}`);
+      await bajar(/^https?:/i.test(u) ? u : `${config.publicUrl}${u}`, f);
+      local.set(u, f);
+    }
+    const pngs = [];
+    for (const [s, e] of c.estados.entries()) {
+      const rs = rectsAcomodo(e.tipo, e.urls.length, COL_W, COL_H, COL_G);
+      const ins = ['-f', 'lavfi', '-i', `color=c=0x111111:s=${COL_W}x${COL_H}:d=1`];
+      const fil = [];
+      let prev = '0:v';
+      e.urls.forEach((u, j) => {
+        const r = rs[j];
+        ins.push('-i', local.get(u));
+        fil.push(`[${j + 1}:v]scale=${r.w}:${r.h}:force_original_aspect_ratio=increase:flags=lanczos,crop=${r.w}:${r.h}[t${j}]`);
+        fil.push(`[${prev}][t${j}]overlay=${r.x}:${r.y}[o${j}]`);
+        prev = `o${j}`;
+      });
+      const png = path.join(dir, `e${s}.png`);
+      await correr([...ins, '-filter_complex', fil.join(';'), '-map', `[${prev}]`, '-frames:v', '1', png]);
+      pngs.push(png);
+    }
+    pngs.push(pngs[0]); // cierre en el primer acomodo: bucle sin corte
+    const ins = [], fil = [];
+    pngs.forEach((p, k) => {
+      ins.push('-loop', '1', '-framerate', '30', '-t', String(COL_SEG + COL_TR), '-i', p);
+      fil.push(`[${k}:v]fps=30,format=yuv420p,settb=AVTB[v${k}]`);
+    });
+    let acc = 'v0', largo = COL_SEG + COL_TR, fin = 0;
+    for (let k = 1; k < pngs.length; k++) {
+      const off = +(largo - COL_TR).toFixed(3);
+      fil.push(`[${acc}][v${k}]xfade=transition=${TRANSICIONES[(k - 1) % TRANSICIONES.length]}:duration=${COL_TR}:offset=${off}[x${k}]`);
+      acc = `x${k}`; largo = off + COL_SEG + COL_TR; fin = off + COL_TR;
+    }
+    await correr([...ins, '-filter_complex', fil.join(';'), '-map', `[${acc}]`, '-t', String(fin.toFixed(3)), '-r', '30', ...salida, tmp], 300000);
+  } finally {
+    await fs.rm(dir, { recursive: true, force: true });
   }
 }
 

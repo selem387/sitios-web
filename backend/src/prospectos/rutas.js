@@ -20,7 +20,7 @@ import * as pdb from './db.js';
 import { encolar, enCola, usuarioDe, reanudar } from './construir.js';
 
 const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
-const LETRAS = 'ABCDEF';
+const LETRAS = 'ABCDEFG';
 const WA_BLANCA = () => (process.env.PROSPECCION_WA_ATENCION || '529992632568').replace(/\D/g, '');
 const DOMINIOS = () => String(process.env.PROSPECCION_DOMINIOS || 'timewins.site,timewins.online').split(',').map((x) => x.trim()).filter(Boolean);
 const COOKIE = 'tw_pr';
@@ -68,7 +68,7 @@ footer{text-align:center;margin-top:36px;font-size:14px}`;
   const cards = ops.map((o, i) => `<article class="op"><a class="vista" href="${base}/p/${n.folio}/${i + 1}" aria-label="Ver la opción ${i + 1} completa"><iframe src="${base}/p/${n.folio}/${i + 1}?vista=1" loading="lazy" tabindex="-1" title="Vista previa de la opción ${i + 1}"></iframe></a>
 <div class="pie"><b>Opción ${i + 1} · ${esc(o.nombre)}</b><div class="acc"><a class="btn sec" href="${base}/p/${n.folio}/${i + 1}">Verla completa</a><a class="btn wa" href="${base}/w/${n.folio}/${i + 1}">¿Te gusta? Elígela</a></div></div></article>`).join('');
   const js = `<script>function ajustar(){document.querySelectorAll('.vista').forEach(function(v){var f=v.querySelector('iframe');f.style.transform='scale('+(v.clientWidth/390)+')'})}addEventListener('resize',ajustar);ajustar();</script>`;
-  return pagina(`${n.nombre} · 6 opciones de página`, `<div class="w"><header><p class="muted">Hecho para ${esc(n.nombre)}</p><h1>Te hicimos 6 opciones de página web</h1><p>Las armamos con tus fotos de Google Maps y tus redes. Ábrelas en tu celular y, si alguna te gusta, elígela: te atendemos por WhatsApp para terminarla con tu información.</p></header><div class="g">${cards}</div>
+  return pagina(`${n.nombre} · ${ops.length} opciones de página`, `<div class="w"><header><p class="muted">Hecho para ${esc(n.nombre)}</p><h1>Te hicimos ${ops.length} opciones de página web</h1><p>Las armamos con tus fotos de Google Maps y tus redes. Ábrelas en tu celular y, si alguna te gusta, elígela: te atendemos por WhatsApp para terminarla con tu información.</p></header><div class="g">${cards}</div>
 <footer class="muted">¿Dudas? <a href="${base}/w/${n.folio}">Escríbenos por WhatsApp</a> · <a href="${base}/baja/${n.folio}">No quiero recibir más correos</a></footer></div>${js}`, css);
 }
 
@@ -95,7 +95,7 @@ ul{padding-left:18px}`;
   const elegida = n.opcion_elegida;
   return pagina(`Ficha · ${n.nombre}`, `<div class="w"><div class="top"><div><p class="muted">Folio ${esc(n.folio)} · ${esc(n.giro)}</p><h1>${esc(n.nombre)}</h1></div><span class="chip">${esc(n.estado)}${elegida ? ` · eligió la ${elegida}` : ''}</span></div>
 <p style="margin-top:14px;display:flex;gap:10px;flex-wrap:wrap">${n.token && !n.aprobado_en ? `<a class="btn wa" href="${base}/prospectos/aprobar/${n.folio}">Autorizar envío del correo</a>` : ''}${n.entrevista_id ? `<a class="btn ${n.token && !n.aprobado_en ? 'sec' : 'wa'}" href="${base}/prospectos/chat/${n.folio}${n.aprobado_en ? '' : '?revision=1'}">${n.aprobado_en ? 'Continuar en el chat con Ari' : 'Revisar con Ari'}</a>` : ''}<a class="btn sec" href="${base}/prospectos">Todos los prospectos</a></p>
-${(n.opciones || []).length ? `<div class="card"><h2 style="font-size:20px;margin-bottom:12px">Sus 6 opciones</h2><div class="ops">${n.opciones.map((o, i) => `<a class="${elegida === i + 1 ? 'si' : ''}" href="${base}/p/${n.folio}/${i + 1}" target="_blank" rel="noopener"><b>${i + 1} · ${esc(o.nombre)}</b>${elegida === i + 1 ? '<br><span class="muted">La eligió</span>' : ''}</a>`).join('')}</div></div>` : ''}
+${(n.opciones || []).length ? `<div class="card"><h2 style="font-size:20px;margin-bottom:12px">Sus ${n.opciones.length} opciones</h2><div class="ops">${n.opciones.map((o, i) => `<a class="${elegida === i + 1 ? 'si' : ''}" href="${base}/p/${n.folio}/${i + 1}" target="_blank" rel="noopener"><b>${i + 1} · ${esc(o.nombre)}</b>${elegida === i + 1 ? '<br><span class="muted">La eligió</span>' : ''}</a>`).join('')}</div></div>` : ''}
 <div class="card"><table>
 ${fila('Reseñas en Google', `${(n.resenas || 0).toLocaleString('es-MX')}${n.rating ? ` · ${n.rating} ★` : ''}`)}
 ${fila('Tipo', esc(n.tipo))}${fila('Teléfono', n.telefono ? `<a href="tel:${esc(n.telefono.replace(/\s/g, ''))}">${esc(n.telefono)}</a>` : '')}${fila('Celular en redes', esc(n.celular))}
@@ -238,7 +238,7 @@ async function atender(c, ruta, base, host) {
       }
       if (n.aprobado_en) return c.html(pagina('Ya autorizado', `<div class="w" style="max-width:560px"><h1>${esc(n.nombre)} ya estaba autorizado</h1><p class="muted" style="margin-top:12px">Por ${esc(n.aprobado_por || '')} el ${new Date(n.aprobado_en).toLocaleString('es-MX', { timeZone: 'America/Merida' })}.</p></div>`));
       return c.html(pagina('Autorizar envío', `<div class="w" style="max-width:560px"><p class="muted">Folio ${esc(n.folio)}</p><h1>¿Autorizar el correo a ${esc(n.nombre)}?</h1>
-<p class="muted" style="margin:12px 0 20px">Se le mandarán sus 6 opciones a ${esc(n.correo || 'su correo')}. Si aún quieres cambios, primero pídeselos a Ari.</p>
+<p class="muted" style="margin:12px 0 20px">Se le mandarán sus opciones a ${esc(n.correo || 'su correo')}. Si aún quieres cambios, primero pídeselos a Ari.</p>
 <form method="post" style="display:flex;gap:10px;flex-wrap:wrap"><button class="btn wa" type="submit">Sí, autorizar envío</button><a class="btn sec" href="${base}/prospectos/chat/${n.folio}?revision=1">Pedir cambios a Ari</a><a class="btn sec" href="${base}/p/${n.folio}">Ver las 6</a></form></div>`), 200, { 'cache-control': 'no-store' });
     }
     if ((m = ruta.match(/^\/prospectos\/chat\/([a-z0-9]{4,12})$/))) {
