@@ -210,9 +210,23 @@ async function huella(buf) {
   const { data } = await sharp(buf).rotate().greyscale().resize(17, 16, { fit: 'fill' }).raw().toBuffer({ resolveWithObject: true });
   let bits = '';
   for (let r = 0; r < 16; r++) for (let c = 0; c < 16; c++) bits += data[r * 17 + c] > data[r * 17 + c + 1] ? '1' : '0';
-  return bits;
+  // Color en 3x3 (10-nov-2026): el dHash es en grises y juntaba como "la misma foto" guayaberas de distinto color con la
+  // misma pose y fondo (El Rincón del Mayab: de 9 fotos solo quedaban 3). Ahora también tiene que coincidir el color.
+  const { data: rgb } = await sharp(buf).rotate().removeAlpha().resize(3, 3, { fit: 'fill' }).raw().toBuffer({ resolveWithObject: true });
+  return `${bits}|${[...rgb].map((v) => v.toString(16).padStart(2, '0')).join('')}`;
 }
-export const distanciaHuella = (a, b) => { if (!a || !b || a.length !== b.length) return 1; let d = 0; for (let i = 0; i < a.length; i++) if (a[i] !== b[i]) d++; return d / a.length; };
+const MISMO_COLOR = 40; // diferencia media por canal (0-255) a partir de la cual ya son fotos distintas
+export const distanciaHuella = (a, b) => {
+  if (!a || !b) return 1;
+  const [ba, ca] = String(a).split('|'), [bb, cb] = String(b).split('|');
+  if (ba.length !== bb.length) return 1;
+  if (ca && cb && ca.length === cb.length) {
+    let dc = 0; for (let i = 0; i < ca.length; i += 2) dc += Math.abs(parseInt(ca.slice(i, i + 2), 16) - parseInt(cb.slice(i, i + 2), 16));
+    if (dc / (ca.length / 2) > MISMO_COLOR) return 1;
+  }
+  let d = 0; for (let i = 0; i < ba.length; i++) if (ba[i] !== bb[i]) d++;
+  return d / ba.length;
+};
 const MISMA_FOTO = 0.32;
 
 /** Tono del logo (pixeles visibles): claro/oscuro y si es de un solo color. Decide si necesita placa o inversión. */
@@ -337,7 +351,7 @@ export async function analizarAsset(a, { negocio = '' } = {}) {
   // Logos recortados con la caja justa del modelo (antes de 10-nov-2026) salían con las letras cortadas: esos análisis
   // se rehacen una vez (solo los que tienen logo) para recortarlo con margen.
   if (a.analisis?.version === VERSION && !(a.analisis.logo && a.analisis.logo_v !== 5)) {
-    if (!a.analisis.huella) {
+    if (!a.analisis.huella || !String(a.analisis.huella).includes('|')) { // sin color: huella vieja, se recalcula
       a.analisis.huella = await descargar(a.analisis.contenido?.url || a.url).then(huella).catch(() => null);
       if (a.analisis.huella) await db.q(`UPDATE assets SET analisis = analisis || jsonb_build_object('huella', $2::text) WHERE id=$1`, [a.id, a.analisis.huella]).catch(() => {});
     }
