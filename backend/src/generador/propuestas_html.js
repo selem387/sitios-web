@@ -129,10 +129,10 @@ function pagina(d) {
       primera: `${txtH}${ctasH()}`,
     }).html,
     menu: `<section class="hero hs hs-lado"><div class="txt">${txtH}${ctasH()}${infoH()}</div>${marco('hs-f')}</section>`,
-    fresco: `<section class="hero hs hs-caja"><div class="caja"><div class="txt">${txtH}${ctasH()}</div>${marco('hs-f')}</div></section>`,
+    fresco: `<section class="hero hs hs-caja"><div class="caja"><div class="txt" style="text-align:center">${txtH}${ctasH()}</div>${marco('hs-f')}</div></section>`,
     mascota: `<section class="hero hs hs-arco h-logo">${d.logo ? `<img class="logo-grande" src="${esc(d.logo)}" alt="${esc(d.nombre)}">` : ''}${txtH}${marco('hs-f')}${ctasH()}${infoH('centro')}</section>`,
     dostonos: `<section class="hero hs hs-banda"><div class="banda"><div class="txt">${txtH}${ctasH('inv')}</div></div>${marco('hs-f')}</section>`,
-    lista: `<section class="hero hs hs-carta">${marco('hs-f')}<div class="c-a"><p class="kicker">${esc(d.brief?.negocio?.giro_texto || '')}</p><h1>${esc(d.textos.titular)}</h1></div><div class="c-b"><p class="sub">${esc(d.textos.subtitulo)}</p>${ctasH()}${infoH()}</div></section>`,
+    lista: `<section class="hero hs hs-carta">${marco('hs-f')}<div class="c-a"><p class="kicker">${esc(d.brief?.negocio?.giro_texto || '')}</p>${txtH}</div><div class="c-b">${ctasH()}${infoH()}</div></section>`,
   };
   const heroSl = herosSl[d.layout] || '';
   // "Lo más pedido": fotos que no están ya en el slider (ninguna foto se repite); si no alcanzan, las que haya.
@@ -213,7 +213,7 @@ ${CSS_MOVIMIENTO}
 /* portadas con slider, una distinta por opción (12-nov-2026) */
 .hs .ctas{display:flex;flex-wrap:wrap;align-items:center;gap:0 18px}.hs .lnk{margin:20px 0 0;white-space:nowrap}.hs h1{max-width:16ch}
 .hs-f{display:block;width:100%;margin:22px 0 0;border-radius:24px;aspect-ratio:4/3}
-.hs-caja .caja{background:var(--mut);border-radius:28px;padding:28px 20px 20px}.hs-caja .txt{text-align:center}.hs-caja h1{max-width:20ch}.hs-caja h1,.hs-caja .sub{margin-left:auto;margin-right:auto}.hs-caja .ctas{justify-content:center}.hs-caja .hs-f{border-radius:20px}
+.hs-caja .caja{background:var(--mut);border-radius:28px;padding:28px 20px 20px}.hs-caja .txt,.hs-caja .txt h1,.hs-caja .txt .sub{text-align:center}.hs-caja h1{max-width:20ch}.hs-caja h1,.hs-caja .sub{margin-left:auto;margin-right:auto}.hs-caja .ctas{justify-content:center}.hs-caja .hs-f{border-radius:20px}
 .hs-arco{text-align:center}.hs-arco h1,.hs-arco .sub{margin-left:auto;margin-right:auto}.hs-arco .logo-grande{width:min(56%,210px);margin-bottom:16px}.hs-arco .hs-f{max-width:560px;margin:26px auto 0;aspect-ratio:4/5;border-radius:999px 999px 28px 28px}.hs-arco .ctas{justify-content:center}
 body.dostonos{overflow-x:clip}.hero.hs-banda{padding-top:0}.hs-banda .banda{background:${mezclar(p.primary, '#000000', 0.15)};color:${sobre(mezclar(p.primary, '#000000', 0.15))};margin:0 -20px;padding:32px 20px 116px;border-radius:0 0 32px 32px}.hs-banda .banda .sub{color:inherit;opacity:.9}.hs-banda .banda .lnk{color:inherit}.hs-banda .hs-f{margin-top:-92px;box-shadow:0 24px 50px rgba(0,0,0,.25)}
 body.l-logo .barra .logo,body.l-logo .barra [class$="-placa"]{transition:opacity .3s ease}body.l-logo .barra:not(.ver-logo) .logo,body.l-logo .barra:not(.ver-logo) [class$="-placa"]{opacity:0;pointer-events:none}
@@ -223,7 +223,7 @@ body.l-logo .barra .logo,body.l-logo .barra [class$="-placa"]{transition:opacity
 .hs-caja .caja{padding:56px 48px 48px}.hs-caja .hs-f{aspect-ratio:21/9;margin-top:36px;border-radius:24px}
 .hs-arco .hs-f{max-width:620px;aspect-ratio:1/1}
 .hs-banda .banda{margin:0 calc(50% - 50vw);border-radius:0;padding:64px calc(50vw - 50%) 210px}.hs-banda .hs-f{margin:-170px 0 0;aspect-ratio:21/9}
-.hs-carta{display:grid;grid-template-columns:1.25fr 1fr;column-gap:56px;align-items:end}.hs-carta .hs-f{grid-column:1/-1;aspect-ratio:21/8;margin-bottom:8px}.hs-carta .c-b .sub{margin-top:0}.hs-carta h1{max-width:14ch}
+.hs-carta{display:grid;grid-template-columns:1.25fr 1fr;column-gap:56px;align-items:end}.hs-carta .hs-f{grid-column:1/-1;aspect-ratio:21/8;margin-bottom:8px}.hs-carta .c-b{justify-self:end;text-align:right}.hs-carta .c-b .ctas,.hs-carta .c-b .info{justify-content:flex-end}.hs-carta h1{max-width:16ch}.hs-carta .sub{max-width:44ch}
 }
 /* "Lo más pedido" con la foto entera del platillo */
 .prod .ph.foto{height:auto;aspect-ratio:4/3;display:block;overflow:hidden;border-radius:14px}.prod .ph.foto img{width:100%;height:100%;max-height:none;object-fit:cover}

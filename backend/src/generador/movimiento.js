@@ -215,6 +215,8 @@ export const CSS_JUSTIFICADA = `.just{display:flex;flex-wrap:wrap;gap:10px;margi
 
 export const CSS_MOVIMIENTO = `
 /* slider de portada (generador/movimiento.js) */
+/* Los efectos de entrada mueven bloques de lado: nunca deben provocar barra horizontal (la revisión medía 1506 px en 1366). */
+html,body{overflow-x:clip}
 .sl{position:relative;overflow:hidden;isolation:isolate}
 .sl-d{position:absolute;inset:0;opacity:0;visibility:hidden;transition:opacity 1.1s ease,visibility 0s linear 1.1s}
 .sl-d.activa{opacity:1;visibility:visible;z-index:1;transition:opacity 1.1s ease,visibility 0s}
