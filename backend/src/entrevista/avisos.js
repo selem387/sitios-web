@@ -34,6 +34,21 @@ export async function pendientesChat(usuarioId) {
   return r.rows.sort((a, b) => a.id - b.id).map((x) => ({ ...x, texto: repararTexto(x.texto) }));
 }
 
+/** Id del último aviso de un usuario (0 si no hay). */
+export async function ultimoAviso(usuarioId) {
+  const r = await db.q('SELECT COALESCE(MAX(id), 0)::int AS id FROM avisos WHERE usuario_id=$1', [usuarioId]);
+  return r.rows[0].id;
+}
+
+/** Avisos posteriores a `desde` (y hasta `hasta`). Cada navegador lleva su propio cursor: con la conversación abierta en
+ * dos navegadores (12-nov-2026: Sebastián y Blanca), el primero que preguntaba se quedaba los avisos y al otro no le
+ * llegaban hasta recargar. */
+export async function desdeChat(usuarioId, desde, hasta) {
+  const r = await db.q('SELECT id, texto, evento FROM avisos WHERE usuario_id=$1 AND id > $2 AND id <= $3 ORDER BY id LIMIT 50', [usuarioId, desde, hasta]);
+  if (r.rows.length) await db.q('UPDATE avisos SET entregado=now() WHERE usuario_id=$1 AND id <= $2 AND entregado IS NULL', [usuarioId, r.rows.at(-1).id]).catch(() => {});
+  return r.rows.map((x) => ({ ...x, texto: repararTexto(x.texto) }));
+}
+
 /** Arregla mensajes y avisos guardados con doble codificación (idempotente; corre al arrancar). */
 export async function repararGuardados() {
   let n = 0;

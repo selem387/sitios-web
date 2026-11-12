@@ -17,7 +17,7 @@ import { encolar } from '../generador/index.js';
 import { paginaChat } from './pagina.js';
 import { DIR_PROPUESTAS } from '../generador/propuestas_html.js';
 import { servirClip } from '../generador/clips.js';
-import { pendientesChat } from '../entrevista/avisos.js';
+import { pendientesChat, desdeChat, ultimoAviso } from '../entrevista/avisos.js';
 import { urlSitio } from '../panel/cambios_vivo.js';
 
 const DIR = path.join(config.dataDir, 'chat');
@@ -141,7 +141,12 @@ export function registerChatRoutes(app, wrap) {
     auth(c);
     const u = c.req.query('usuario_id');
     if (!usuarioValido(u)) throw new HttpError(400, 'usuario_id inválido');
-    return { avisos: (await pendientesChat(u)).map((x) => ({ texto: x.texto, evento: x.evento })) };
+    // Con cursor (?desde=<id>): lo posterior a lo que ese navegador ya vio. Sin cursor (primera vez): lo no entregado.
+    const ultimo = await ultimoAviso(u);
+    const q = c.req.query('desde');
+    const desde = q !== undefined && /^\d{1,12}$/.test(q) ? Number(q) : null;
+    const lista = desde === null ? await pendientesChat(u) : await desdeChat(u, desde, ultimo);
+    return { avisos: lista.map((x) => ({ id: x.id, texto: x.texto, evento: x.evento })), ultimo: lista.length && lista.length >= 50 ? lista.at(-1).id : ultimo };
   }));
 
   // "Mis páginas": resumen de las conversaciones que este navegador conoce (ids web-<uuid>, imposibles de adivinar).

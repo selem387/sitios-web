@@ -177,12 +177,22 @@ async function enviar(texto, media = [], opciones = {}, oculto = false) {
 
 // Avisos de Ari que llegan sin que el cliente escriba (pago recibido, dirección conectada).
 let sondeoAvisos = null;
+// Cada navegador guarda hasta qué aviso vio (ari_aviso_<conversación>), así dos personas con la misma conversación
+// abierta reciben los mismos mensajes sin recargar. silencio=true solo pone el cursor al día (historial recién bajado).
+async function revisarAvisos(silencio = false){
+  if (!codigo || !usuario || ocupado) return;
+  const u = usuario, k = 'ari_aviso_' + u, c = mem.get(k);
+  try {
+    const d = await api('/chat/v1/avisos?usuario_id=' + encodeURIComponent(u) + (silencio ? '&desde=999999999999' : c !== null ? '&desde=' + encodeURIComponent(c) : ''));
+    if (u !== usuario) return;
+    if (!silencio) for (const a of d.avisos || []) agregar({ de:'ari', texto: a.texto });
+    if (typeof d.ultimo === 'number') mem.set(k, String(Math.max(Number(c) || 0, d.ultimo)));
+  } catch {}
+}
 function iniciarAvisos(){
   if (sondeoAvisos) return;
-  sondeoAvisos = setInterval(async () => {
-    if (!codigo || !usuario || ocupado || document.hidden) return;
-    try { const d = await api('/chat/v1/avisos?usuario_id=' + encodeURIComponent(usuario)); for (const a of d.avisos || []) agregar({ de:'ari', texto: a.texto }); } catch {}
-  }, 20000);
+  sondeoAvisos = setInterval(() => { if (!document.hidden) revisarAvisos(); }, 6000);
+  document.addEventListener('visibilitychange', () => { if (!document.hidden) revisarAvisos(); });
 }
 function iniciarSondeo(){
   if (sondeo || mem.get('ari_sitio_'+usuario)) return;
@@ -320,7 +330,7 @@ async function abrir(u, nueva = false){
   let existe = false;
   if (!nueva && !historial().length) {
     // Sin copia en este navegador: traerla del servidor.
-    try { const d = await api('/chat/v1/historial?usuario_id=' + encodeURIComponent(u)); existe = Boolean(d.existe); if (d.items?.length) { mem.set('ari_historial_' + u, JSON.stringify(d.items)); if (d.items.some((x) => x.tipo === 'sitio')) mem.set('ari_sitio_' + u, '1'); } } catch {}
+    try { const d = await api('/chat/v1/historial?usuario_id=' + encodeURIComponent(u)); existe = Boolean(d.existe); if (d.items?.length) { await revisarAvisos(true); mem.set('ari_historial_' + u, JSON.stringify(d.items)); if (d.items.some((x) => x.tipo === 'sitio')) mem.set('ari_sitio_' + u, '1'); } } catch {}
   }
   arrancar(existe);
 }
@@ -340,7 +350,7 @@ function arrancar(existe = false){
   // Saludo solo en conversaciones nuevas; una que ya existe en el servidor (aunque sin mensajes) no se reinicia.
   if (!h.length && !existe) enviar('pagina', [], {}, true);
   else api('/chat/v1/sitio?usuario_id=' + encodeURIComponent(usuario)).then((s) => { if (s.id) iniciarSondeo(); }).catch(() => {});
-  if (h.length || existe) iniciarAvisos();
+  if (h.length || existe) { iniciarAvisos(); revisarAvisos(); }
   t.focus();
 }
 if (!codigo) $('#puerta').hidden = false; else abrir(usuario);
