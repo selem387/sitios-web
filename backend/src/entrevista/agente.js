@@ -643,6 +643,11 @@ export async function procesarMensaje(b) {
       t.reply = PREGUNTA_DOMINIO;
     }
   }
+  // No se cierra ni se pide el pago sin diseño elegido (12-nov-2026, caso La Fondita de Celestún: las 6 opciones tronaron
+  // al salir de B6, el error solo quedó en la consola y Ari llegó al pago sin haberlas mandado; además la página no se
+  // podía armar porque el generador exige una opción elegida). Aquí se mandan las opciones; la respuesta va más abajo.
+  const sinDiseno = t.completado && e.brief?.marca?.propuestas?.estado !== 'elegida';
+  if (sinDiseno) { t.completado = false; t.bloque = 'B12'; }
   // Cierre: tras la dirección, el enlace de pago para alojarla en su dominio y el aviso de que se arma la página.
   if (t.completado) {
     const cierre = 'Mientras tanto ya estoy armando tu página: en unos minutos te mando la liga para que la veas desde tu celular. Después me dices qué ajustar; los primeros cambios van incluidos.';
@@ -659,12 +664,22 @@ export async function procesarMensaje(b) {
   await db.guardar(e.id, cambios);
   Object.assign(e, cambios);
   // Al salir de B6 (fotos): revisar materiales y mandar las 3 propuestas, o pedir mejores imágenes.
-  if (!t.completado && tocaPropuestas(e.brief, bloqueAnterior, t.bloque)) {
+  if (!t.completado && (tocaPropuestas(e.brief, bloqueAnterior, t.bloque) || (sinDiseno && !e.brief?.marca?.propuestas))) {
     try {
       const r = await iniciarPropuestas(e, e.brief);
       await db.guardar(e.id, { brief: r.brief }); e.brief = r.brief;
       return responderConMedia([...mensajes, ...r.responder.textos], r.responder.media);
-    } catch (err) { console.error('iniciarPropuestas', err); }
+    } catch (err) {
+      // El error queda registrado en la entrevista (antes solo iba a la consola y nadie se enteraba).
+      console.error('iniciarPropuestas', err);
+      await db.evento(e.id, 'propuestas_error', { error: String(err?.message || err).slice(0, 500), bloque: t.bloque, al_cierre: sinDiseno }).catch(() => {});
+    }
+  }
+  if (sinDiseno) {
+    const p = e.brief?.marca?.propuestas;
+    t = { ...t, reply: p?.opciones?.length
+      ? `Antes de armar tu página necesito que elijas tu diseño 👇\n\n${p.opciones.map((o) => `*${o.etiqueta || o.letra}* · ${o.nombre}\n${o.url}`).join('\n\n')}\n\n¿Cuál te gusta más? Respóndeme con la letra.`
+      : 'Antes de armar tu página me falta mostrarte las opciones de diseño para que elijas la que más te guste. Las estoy preparando; escríbeme *opciones* en un par de minutos y te las mando por aquí 🙏' };
   }
   // La dirección ya no arranca aquí: es la última pregunta y su flujo empieza al confirmarse el pago de la página (pago_pagina.js).
   const demasiado = !t.completado && e.mensajes_cliente + 1 >= MAX_MSGS_CLIENTE;

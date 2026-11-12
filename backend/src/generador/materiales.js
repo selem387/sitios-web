@@ -237,6 +237,14 @@ export const distanciaHuella = (a, b) => {
   return d / ba.length;
 };
 const MISMA_FOTO = 0.32;
+/** Dos archivos del mismo logotipo (uno bajado de sus redes, recomprimido, y el original): basta la forma; el color y el
+ * detalle fino cambian con la compresión y el tamaño, así que no se exigen como en las fotos. */
+export const mismoLogo = (a, b) => {
+  const fa = String(a || '').split('|')[0], fb = String(b || '').split('|')[0];
+  if (!fa || fa.length !== fb.length) return false;
+  let d = 0; for (let i = 0; i < fa.length; i++) if (fa[i] !== fb[i]) d++;
+  return d / fa.length < 0.2;
+};
 
 /** Tono del logo (pixeles visibles): claro/oscuro y si es de un solo color. Decide si necesita placa o inversión. */
 async function tonoLogo(buf) {
@@ -509,6 +517,11 @@ async function procesarMaterialesBase(entrevistaId, brief = {}, { aceptarLoQueHa
     .filter((l, _, arr) => l.propio || (!arr.some((o) => o.propio) && l.ancho >= MIN_LOGO))
     .sort((p, q) => (q.propio - p.propio) || (q.ancho * q.alto - p.ancho * p.alto));
   if (logos[0]) res.logo = logos[0];
+  // Mismo logo mandado dos veces (12-nov-2026, caso La Fondita de Celestún: el de su Facebook y el que subió en el chat):
+  // es una copia del logo elegido, no "otra versión". Cuenta como usado a través del logo y no se repite en el pie.
+  // Sin esto, el validador lo daba por material sin usar y las 6 opciones tronaban.
+  const origenLogo = res.logo ? analisis.find((x) => x.r.logo?.url === res.logo.url) : null;
+  const copiaDelLogo = (a, r) => !!origenLogo && a.id !== origenLogo.a.id && r.tipo === 'logo' && mismoLogo(r.huella, origenLogo.r.huella);
   await nombrarFotos(analisis, brief).catch((e) => console.warn('[materiales] nombrar fotos:', e.message));
   const ficha = (a, r, extra = {}) => ({ url: r.contenido.url, ancho: r.contenido.ancho, alto: r.contenido.alto, alt: r.descripcion || '', nombre: r.nombre || '', articulo: r.articulo || '', tipo: r.tipo, clave: a.clave, ...extra });
   const urlsDe = (a, r) => [a.url, r.contenido?.url, r.sin_fondo?.url, r.logo?.url, ...(r.productos || []).map((p) => p.url)].filter(Boolean);
@@ -522,6 +535,7 @@ async function procesarMaterialesBase(entrevistaId, brief = {}, { aceptarLoQueHa
     // una "Galería"). Un archivo que ES un logo distinto al elegido, o una imagen sin personas donde el logo ocupa casi
     // todo, no es una foto de trabajo: va como marca en el pie de página, nunca en galerías ni en el slider.
     if (r.tipo === 'logo' || esVersionLogo(r)) {
+      if (copiaDelLogo(a, r)) { res.usables[res.usables.length - 1].urls.push(res.logo.url); res.duplicadas.push({ copia: a.clave, se_queda: origenLogo.a.clave }); continue; }
       if (f.url !== res.logo?.url && !res.logos_extra.some((x) => x.url === f.url)) res.logos_extra.push({ ...f, tipo: 'logo_extra' });
       continue;
     }

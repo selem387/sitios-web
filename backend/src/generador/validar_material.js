@@ -10,7 +10,7 @@ export function validarMaterial(html, mat) {
   if (mat.logo?.url && !logoUrls.some((u) => contiene(html, u))) faltan.push({ clave: 'logo', tipo: 'logo', url: mat.logo.url });
   for (const u of mat.usables || []) {
     if (mat.logo?.url && u.urls.includes(mat.logo.url) && logoUrls.some((x) => contiene(html, x))) continue;
-    if (!u.urls.some((x) => contiene(html, x))) faltan.push({ clave: u.clave, tipo: u.tipo, url: u.urls[1] || u.urls[0] });
+    if (!u.urls.some((x) => contiene(html, x))) faltan.push({ clave: u.clave, tipo: u.tipo, url: u.urls[1] || u.urls[0], marca: u.tipo === 'logo' ? u.urls.find((x) => /\/logo-[^/]+$/.test(x)) || null : null });
   }
   return faltan;
 }
@@ -26,7 +26,16 @@ export function fotosRepetidas(html, mat) {
 
 /** Inserta antes de </main> una galería con lo que falte (imágenes, video, documentos). Devuelve {html, faltan}. */
 export function completarMaterial(html, mat, { titulo = 'Más de nuestro trabajo' } = {}) {
-  const faltan = validarMaterial(html, mat).filter((f) => f.tipo !== 'logo');
+  const pend = validarMaterial(html, mat);
+  // Otra versión del logo que la plantilla no colocó (12-nov-2026, caso La Fondita de Celestún: la plantilla de
+  // restaurantes no pinta logos_extra y las 6 opciones tronaban por "material sin usar"): va como marca en el pie,
+  // nunca en la galería ni en el slider.
+  const marcas = pend.filter((f) => f.tipo === 'logo' && f.clave !== 'logo');
+  if (marcas.length) {
+    const pie = `<div class="pie-marcas" style="display:flex;justify-content:center;flex-wrap:wrap;gap:16px;margin-bottom:18px">${marcas.map((f) => `<img class="pie-marca" src="${esc(f.marca || f.url)}" alt="" loading="lazy" style="height:auto;width:auto;max-height:140px;max-width:min(80vw,360px);border-radius:12px;object-fit:contain">`).join('')}</div>`;
+    html = /<footer[^>]*>/.test(html) ? html.replace(/<footer[^>]*>/, (m) => `${m}${pie}`) : html.replace('</body>', `${pie}</body>`);
+  }
+  const faltan = pend.filter((f) => f.tipo !== 'logo');
   if (faltan.length) {
     const items = faltan.map((f) => {
       if (/\.(mp4|mov|webm|m4v)(\?|$)/i.test(f.url)) return `<figure><video src="${esc(f.url)}" controls playsinline preload="metadata" style="width:100%;border-radius:12px"></video></figure>`;
