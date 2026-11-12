@@ -323,7 +323,9 @@ addEventListener('load',()=>{cargada=true;listos.forEach(f=>f())},{once:true});
 const alCargar=f=>cargada?f():listos.push(f);
 document.querySelectorAll('.sl').forEach(sl=>{const ds=[...sl.querySelectorAll('.sl-d')];
 const enteras=()=>ds.forEach(d=>{const im=d.querySelector('img.sl-img'),w=+im.getAttribute('width'),h=+im.getAttribute('height');if(!w||!h||!sl.clientWidth)return;
-const r=(w/h)/(sl.clientWidth/sl.clientHeight),ent=r>1.25||r<.8;d.classList.toggle('entera',ent);
+/* Regla (12-nov-2026, Sebastian): si la foto no llena el ancho o el alto del slider y su resolucion lo permite (no hay que
+   agrandarla mas de 1.3 veces), se le hace zoom central y llena todo el slider. Solo si es muy chica se muestra entera. */
+const r=(w/h)/(sl.clientWidth/sl.clientHeight),zoom=Math.max(sl.clientWidth/w,sl.clientHeight/h),ent=(r>1.25||r<.8)&&zoom>1.3;d.classList.toggle('entera',ent);
 if(ent&&!d.querySelector('.sl-fondo')){const c=document.createElement('canvas');c.className='sl-fondo';c.width=24;c.height=Math.max(8,Math.round(24*h/w));c.setAttribute('aria-hidden','true');im.before(c);const pinta=()=>{try{c.getContext('2d').drawImage(im,0,0,c.width,c.height)}catch(e){}};im.complete&&im.naturalWidth?pinta():im.addEventListener('load',pinta,{once:true})}});
 enteras();addEventListener('resize',enteras,{passive:true});
 /* Carrusel (10-nov-2026): si NINGUNA foto llena el ancho del slider (todas verticales con relleno desenfocado a los
