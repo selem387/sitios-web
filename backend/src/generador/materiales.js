@@ -237,9 +237,16 @@ export const distanciaHuella = (a, b) => {
   return d / ba.length;
 };
 const MISMA_FOTO = 0.32;
-/** Foto de comida servida (plato, molcajete, tabla…): se usa entera, sin quitarle el fondo. */
-export const esPlatilloServido = (r) => r?.tipo === 'foto_producto'
-  && /\b(platos?|platillos?|platones?|molcajetes?|cazuelas?|sart[eé]n(es)?|taz[oó]n(es)?|bowls?|charolas?|guarnici[oó]n|servid[oa]s?)\b/i.test(String(r.descripcion || ''));
+/** Foto de comida servida: se usa entera, sin quitarle el fondo (12-nov-2026). En restaurantes y cafeterías toda foto de
+ * producto es un platillo servido salvo que su nombre diga que es una bebida o algo envasado (vaso, botella, frasco…);
+ * en los demás giros, solo si la descripción habla de plato, molcajete, tazón, etc. */
+const BEBIDA_O_ENVASE = /\b(caf[eé]s?|frapp[eé]s?|lattes?|capuchinos?|cappuccinos?|espressos?|americanos?|mocas?|mochas?|chai|matcha|t[eé]|tisanas?|smoothies?|malteadas?|licuados?|jugos?|aguas?|refrescos?|sodas?|limonadas?|naranjadas?|cervezas?|micheladas?|bebidas?|vasos?|botellas?|frascos?|latas?|cajas?|bolsas?|paquetes?|empaques?)\b/i;
+const PLATO = /\b(platos?|platillos?|platones?|molcajetes?|cazuelas?|sart[eé]n(es)?|taz[oó]n(es)?|bowls?|charolas?|guarnici[oó]n|servid[oa]s?)\b/i;
+export const esPlatilloServido = (r, arquetipo = '') => {
+  if (r?.tipo !== 'foto_producto') return false;
+  if (arquetipo === 'restaurante') return !BEBIDA_O_ENVASE.test(String(r.nombre || r.descripcion || ''));
+  return PLATO.test(String(r.descripcion || ''));
+};
 /** Dos archivos del mismo logotipo (uno bajado de sus redes, recomprimido, y el original): basta la forma; el color y el
  * detalle fino cambian con la compresión y el tamaño, así que no se exigen como en las fotos. */
 export const mismoLogo = (a, b) => {
@@ -531,7 +538,7 @@ async function procesarMaterialesBase(entrevistaId, brief = {}, { aceptarLoQueHa
   for (const { a, r: r0 } of analisis) {
     // Platillos servidos: nunca se les quita el fondo (12-nov-2026, decisión de Sebastián). El recorte queda solo para
     // bebidas y productos envasados (vasos, botellas, frascos, cajas), como en Toolatte.
-    const r = esPlatilloServido(r0) ? { ...r0, aislable: false, sin_fondo: null } : r0;
+    const r = esPlatilloServido(r0, brief.negocio?.arquetipo) ? { ...r0, aislable: false, sin_fondo: null } : r0;
     const original = copias.get(a.id);
     // Copia de otra foto: no se muestra; cuenta como usada a través de la foto que se queda.
     res.usables.push({ id: a.id, clave: a.clave, tipo: r.tipo, urls: original ? [...urlsDe(a, r), ...urlsDe(original.a, original.r)] : urlsDe(a, r) });

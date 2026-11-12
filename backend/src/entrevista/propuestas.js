@@ -155,7 +155,9 @@ export async function mostrar(e, brief, mat, { ronda = 0 } = {}) {
   const INTENTOS = 3;
   const aOpcion = (o) => ({ etiqueta: o.letra, letra: o.letra, layout: o.layout, nombre: o.nombre, url: o.url, estilo: o.fuentes.estilo, tipografia: { titulos: o.fuentes.titulos, cuerpo: o.fuentes.cuerpo }, paleta: o.paleta });
   let mejor = null;
-  for (let intento = 0; intento < INTENTOS; intento++) {
+  // Tope de tiempo: el cliente está esperando en el chat. Pasado el tope no se empieza otro intento.
+  const t0 = Date.now(), TOPE_MS = 9 * 60000;
+  for (let intento = 0; intento < INTENTOS && (intento === 0 || Date.now() - t0 < TOPE_MS); intento++) {
     const r = await crearPropuestasHTML(brief, mat, textos, { ronda: ronda + intento });
     const opciones = r.opciones.map(aOpcion);
     const rev = await revisarYCorregir(opciones, { referencia: (brief.marca?.referencias_sitios || [])[0] || null }).catch((err) => { console.error('[propuestas] revisión', err.message); return { pasan: opciones, revision: [] }; });

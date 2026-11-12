@@ -16,7 +16,7 @@ import { evaluarColoresCliente, asignarFuentes } from './asesor_color.js';
 import { coloresDePalabras, logoTenido } from './materiales.js';
 import { CSS_MOVIMIENTO, JS_MOVIMIENTO, sliderHTML, diapositivasDe, emparejarFotos, efectosDe, conSrcset } from './movimiento.js';
 import { waUrl, formatoTel } from './bloques.js';
-import { logoLleno, paginasGenerales, logoHTML, redes, urlsPorUbicacion, conOpcionG } from './propuestas_general.js';
+import { logoLleno, JS_LOGO_UNICO, paginasGenerales, logoHTML, redes, urlsPorUbicacion, conOpcionG } from './propuestas_general.js';
 import { completarMaterial } from './validar_material.js';
 import { direccionTexto, testimoniosValidos } from './datos_brief.js';
 
@@ -130,9 +130,9 @@ function pagina(d) {
     }).html,
     menu: `<section class="hero hs hs-lado"><div class="txt">${txtH}${ctasH()}${infoH()}</div>${marco('hs-f')}</section>`,
     fresco: `<section class="hero hs hs-caja"><div class="caja"><div class="txt">${txtH}${ctasH()}</div>${marco('hs-f')}</div></section>`,
-    mascota: `<section class="hero hs hs-arco">${d.logo ? `<img class="logo-grande" src="${esc(d.logo)}" alt="${esc(d.nombre)}">` : ''}${txtH}${marco('hs-f')}${ctasH()}${infoH('centro')}</section>`,
+    mascota: `<section class="hero hs hs-arco h-logo">${d.logo ? `<img class="logo-grande" src="${esc(d.logo)}" alt="${esc(d.nombre)}">` : ''}${txtH}${marco('hs-f')}${ctasH()}${infoH('centro')}</section>`,
     dostonos: `<section class="hero hs hs-banda"><div class="banda"><div class="txt">${txtH}${ctasH('inv')}</div></div>${marco('hs-f')}</section>`,
-    lista: `<section class="hero hs hs-carta">${marco('hs-f')}<p class="kicker">${esc(d.brief?.negocio?.giro_texto || '')}</p>${txtH}${ctasH()}${infoH()}</section>`,
+    lista: `<section class="hero hs hs-carta">${marco('hs-f')}<div class="c-a"><p class="kicker">${esc(d.brief?.negocio?.giro_texto || '')}</p><h1>${esc(d.textos.titular)}</h1></div><div class="c-b"><p class="sub">${esc(d.textos.subtitulo)}</p>${ctasH()}${infoH()}</div></section>`,
   };
   const heroSl = herosSl[d.layout] || '';
   // "Lo más pedido": fotos que no están ya en el slider (ninguna foto se repite); si no alcanzan, las que haya.
@@ -215,14 +215,15 @@ ${CSS_MOVIMIENTO}
 .hs-f{display:block;width:100%;margin:22px 0 0;border-radius:24px;aspect-ratio:4/3}
 .hs-caja .caja{background:var(--mut);border-radius:28px;padding:28px 20px 20px}.hs-caja .txt{text-align:center}.hs-caja h1{max-width:20ch}.hs-caja h1,.hs-caja .sub{margin-left:auto;margin-right:auto}.hs-caja .ctas{justify-content:center}.hs-caja .hs-f{border-radius:20px}
 .hs-arco{text-align:center}.hs-arco h1,.hs-arco .sub{margin-left:auto;margin-right:auto}.hs-arco .logo-grande{width:min(56%,210px);margin-bottom:16px}.hs-arco .hs-f{max-width:560px;margin:26px auto 0;aspect-ratio:4/5;border-radius:999px 999px 28px 28px}.hs-arco .ctas{justify-content:center}
-.hero.hs-banda{padding-top:0}.hs-banda .banda{background:${mezclar(p.primary, '#000000', 0.15)};color:${sobre(mezclar(p.primary, '#000000', 0.15))};margin:0 -20px;padding:32px 20px 116px;border-radius:0 0 32px 32px}.hs-banda .banda .sub{color:inherit;opacity:.9}.hs-banda .banda .lnk{color:inherit}.hs-banda .hs-f{margin-top:-92px;box-shadow:0 24px 50px rgba(0,0,0,.25)}
+body.dostonos{overflow-x:clip}.hero.hs-banda{padding-top:0}.hs-banda .banda{background:${mezclar(p.primary, '#000000', 0.15)};color:${sobre(mezclar(p.primary, '#000000', 0.15))};margin:0 -20px;padding:32px 20px 116px;border-radius:0 0 32px 32px}.hs-banda .banda .sub{color:inherit;opacity:.9}.hs-banda .banda .lnk{color:inherit}.hs-banda .hs-f{margin-top:-92px;box-shadow:0 24px 50px rgba(0,0,0,.25)}
+body.l-logo .barra .logo,body.l-logo .barra [class$="-placa"]{transition:opacity .3s ease}body.l-logo .barra:not(.ver-logo) .logo,body.l-logo .barra:not(.ver-logo) [class$="-placa"]{opacity:0;pointer-events:none}
 .hs-carta{border-top:2px solid var(--fg);margin-top:20px;padding-top:24px}.hs-carta .kicker{font-family:var(--fc);font-weight:700;font-size:20px;line-height:1.2;letter-spacing:.1em;text-transform:uppercase;color:var(--acc);margin:22px 0 12px}.hs-carta .hs-f{margin-top:0;border-radius:6px;aspect-ratio:5/4}
 @media (min-width:900px){
 .hs-lado{display:grid;grid-template-columns:1fr 1.05fr;gap:48px;align-items:center}.hs-lado .hs-f{margin:0;aspect-ratio:4/5;max-height:calc(100svh - 170px);border-radius:32px}
 .hs-caja .caja{padding:56px 48px 48px}.hs-caja .hs-f{aspect-ratio:21/9;margin-top:36px;border-radius:24px}
 .hs-arco .hs-f{max-width:620px;aspect-ratio:1/1}
-.hs-banda .banda{margin:0;border-radius:32px;padding:64px 56px 210px}.hs-banda .hs-f{margin:-170px 56px 0;width:auto;aspect-ratio:21/9}
-.hs-carta{display:grid;grid-template-columns:1.05fr 1fr;column-gap:48px;align-items:start;align-content:center}.hs-carta .hs-f{grid-column:1;grid-row:1/span 5}.hs-carta>:not(.hs-f){grid-column:2}.hs-carta .kicker{margin-top:8px}
+.hs-banda .banda{margin:0 calc(50% - 50vw);border-radius:0;padding:64px calc(50vw - 50%) 210px}.hs-banda .hs-f{margin:-170px 0 0;aspect-ratio:21/9}
+.hs-carta{display:grid;grid-template-columns:1.25fr 1fr;column-gap:56px;align-items:end}.hs-carta .hs-f{grid-column:1/-1;aspect-ratio:21/8;margin-bottom:8px}.hs-carta .c-b .sub{margin-top:0}.hs-carta h1{max-width:14ch}
 }
 /* "Lo más pedido" con la foto entera del platillo */
 .prod .ph.foto{height:auto;aspect-ratio:4/3;display:block;overflow:hidden;border-radius:14px}.prod .ph.foto img{width:100%;height:100%;max-height:none;object-fit:cover}
@@ -235,7 +236,7 @@ ${CSS_MOVIMIENTO}
 .hero.h-sl{padding:0;margin-top:12px;min-height:68vh;min-height:calc(100svh - 200px);border-radius:18px;color:#fff}.h-sl h1{color:#fff;max-width:16ch;text-shadow:0 1px 18px rgba(0,0,0,.35)}.h-sl .sub{color:rgba(255,255,255,.92);max-width:44ch}.h-sl .lnk{color:#fff;margin:20px 0 0;white-space:nowrap}.h-sl .ctas{display:flex;flex-wrap:wrap;align-items:center;column-gap:18px}.h-sl .sl-t{font-weight:700}.h-sl .sl-cap{padding-left:24px;padding-right:24px}
 @media (min-width:900px){.hero.h-sl{margin-top:20px;min-height:calc(100svh - 200px);border-radius:24px}.h-sl .sl-cap{padding:40px 48px 88px}.h-sl .sl-d.con-txt::after{background:linear-gradient(90deg,rgba(0,0,0,.78),rgba(0,0,0,.5) 48%,rgba(0,0,0,.12) 82%)}}
 </style></head>
-<body class="${d.layout}">
+<body class="${d.layout}${conSl && d.layout === 'mascota' && d.logo ? ' l-logo' : ''}">
 <header class="barra"><div class="in">${logo}<nav><a href="#destacados">${esc(d.textos.destacados || 'Lo más pedido')}</a><a href="#menu">Menú</a><a href="#contacto">Contacto</a></nav></div></header>
 <main class="wrap">${heroSl || heros[d.layout]}${d.promo ? `<section class="promo" id="promocion"><p><b>Promoción</b> ${esc(d.promo)}</p></section>` : ''}${orden.join('')}</main>
 <footer>© ${new Date().getFullYear()} ${esc(d.nombre)} · Propuesta ${d.letra}: ${esc(NOMBRES[d.layout])}</footer>
@@ -247,7 +248,7 @@ function idx(){var x=p.scrollLeft,m=0,best=1e9;s.forEach(function(el,i){var dd=M
 function ir(i){i=Math.max(0,Math.min(s.length-1,i));p.scrollTo({left:s[i].offsetLeft-p.offsetLeft-20,behavior:matchMedia('(prefers-reduced-motion: reduce)').matches?'auto':'smooth'})}
 function upd(){var i=idx();d.forEach(function(el,k){el.setAttribute('aria-current',k===i?'true':'false')});a.disabled=i===0;b.disabled=p.scrollLeft+p.clientWidth>=p.scrollWidth-4}
 a.onclick=function(){ir(idx()-1)};b.onclick=function(){ir(idx()+1)};d.forEach(function(el,k){el.onclick=function(){ir(k)}});p.addEventListener('scroll',function(){clearTimeout(p._t);p._t=setTimeout(upd,60)},{passive:true});upd()});
-</script>${JS_MOVIMIENTO}
+</script>${JS_MOVIMIENTO}${conSl && d.layout === 'mascota' && d.logo ? JS_LOGO_UNICO : ''}
 </body></html>`;
 }
 

@@ -159,7 +159,8 @@ export function sliderHTML({ fotos = [], diapos = [], img, primera = '', cta = '
     const tipo = CLIPS_SLIDER && n > 1 ? tipoClip(k) : null;
     if (tipo) clips.push({ url: f.url, tipo, ancho: f.ancho, alto: f.alto, k });
     const extra = `${k === 0 ? ' fetchpriority="high"' : ''}${tipo ? ` data-clip="${esc(urlClip(f.url, tipo))}"` : ''}`;
-    const foto = img(f, { cls: `sl-img km km-${k % 4}`, eager: k === 0, extra });
+    // Con personas, el acercamiento se ancla arriba para no cortar cabezas.
+    const foto = img(f, { cls: `sl-img km km-${k % 4}${f.personas ? ' pers' : ''}`, eager: k === 0, extra });
     let txt = '';
     if (k === 0) txt = primera;
     else {
@@ -220,6 +221,7 @@ export const CSS_MOVIMIENTO = `
 /* Hasta el evento load solo existe la foto 1: las demás no se descargan ni compiten con la carga (LCP). */
 .sl[data-sl]:not(.vivo) .sl-d:not(.activa){display:none}
 .sl-d>img,.sl-d>video{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;max-width:none}
+.sl-d>img.pers{object-position:50% 18%}
 .sl-d>video{opacity:0;transition:opacity .9s ease}.sl-d>video.listo{opacity:1}
 .sl-d.con-txt::after{content:"";position:absolute;inset:0;z-index:1;pointer-events:none;background:linear-gradient(180deg,rgba(0,0,0,0) 22%,rgba(0,0,0,.42) 52%,rgba(0,0,0,.78))}
 .sl-cap{position:absolute;left:0;right:0;bottom:0;z-index:2;padding:22px 20px 76px;color:#fff}
@@ -333,7 +335,7 @@ enteras();addEventListener('resize',enteras,{passive:true});
    Queda fijo el texto de la primera diapositiva. Se detiene con el botón de pausa, al pasar el mouse y con
    "reducir movimiento" (ahí se puede deslizar a mano). */
 const rs=ds.map(d=>{const im=d.querySelector('img.sl-img'),w=+im.getAttribute('width'),h=+im.getAttribute('height');return w&&h&&sl.clientWidth?(w/h)/(sl.clientWidth/sl.clientHeight):1});
-if(ds.length>1&&rs.every(r=>r<.8)){sl.classList.add('carrusel');sl.removeAttribute('data-sl');
+if(ds.length>1&&rs.every(r=>r<.8)&&ds.every(d=>d.classList.contains('entera'))){sl.classList.add('carrusel');sl.removeAttribute('data-sl');
 const car=document.createElement('div');car.className='sl-car';car.setAttribute('aria-hidden','true');const pista=document.createElement('div');pista.className='sl-pista';car.append(pista);
 const ims=ds.map(d=>d.querySelector('img.sl-img'));for(let v=0;v<2;v++)ims.forEach(im=>{const c=im.cloneNode(true);c.className='sl-ci';c.removeAttribute('fetchpriority');c.loading='eager';pista.append(c)});
 sl.prepend(car);ds.forEach((d,k)=>{if(k){d.remove()}else{d.classList.add('activa');d.inert=false;d.removeAttribute('aria-hidden')}});
