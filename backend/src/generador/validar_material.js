@@ -39,11 +39,13 @@ export function completarMaterial(html, mat, { titulo = 'Más de nuestro trabajo
   if (faltan.length) {
     const items = faltan.map((f) => {
       if (/\.(mp4|mov|webm|m4v)(\?|$)/i.test(f.url)) return `<figure><video src="${esc(f.url)}" controls playsinline preload="metadata" style="width:100%;border-radius:12px"></video></figure>`;
-      if (/\.(pdf|docx?|xlsx?)(\?|$)/i.test(f.url)) return `<p><a href="${esc(f.url)}" target="_blank" rel="noopener" style="font-weight:700">Ver documento</a></p>`;
+      if (/\.(pdf|docx?|xlsx?)(\?|$)/i.test(f.url)) return `<p><a class="btn" href="${esc(f.url)}" target="_blank" rel="noopener">Ver documento</a></p>`;
       return `<figure style="break-inside:avoid;margin:0 0 10px"><img src="${esc(f.url)}" alt="" loading="lazy" style="width:100%;height:auto;border-radius:12px"></figure>`;
     }).join('');
     const sec = `<section class="sec" id="mas"><div class="wrap"><h2>${esc(titulo)}</h2><div style="columns:2 160px;column-gap:10px">${items}</div></div></section>`;
-    html = html.includes('</main>') ? html.replace('</main>', `${sec}</main>`) : html.replace('</body>', `${sec}</body>`);
+    // Antes de Contacto (que cierra la página con el mapa); si no hay, al final del contenido.
+    const contacto = html.match(/<section[^>]*\bid="contacto"/);
+    html = contacto ? html.replace(contacto[0], `${sec}${contacto[0]}`) : html.includes('</main>') ? html.replace('</main>', `${sec}</main>`) : html.replace('</body>', `${sec}</body>`);
   }
   return { html, faltan: validarMaterial(html, mat), repetidas: fotosRepetidas(html, mat) };
 }

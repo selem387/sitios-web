@@ -2,6 +2,7 @@
 //  - Menú en celular: botón ☰ (44 px, aria-expanded) que abre las ligas de la barra; antes en ≤760 px el menú desaparecía.
 //  - Teléfono: renglón "Teléfono" con liga tel:+52… en Contacto y, si no hay WhatsApp, el botón flotante llama.
 //  - Cómo llegar: liga a Google Maps (la del cliente o una búsqueda con su dirección) en Contacto.
+import { direccionTexto, mapaHTML } from './datos_brief.js';
 const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 
 export function telefonoE164(t) {
@@ -12,13 +13,6 @@ export function telefonoE164(t) {
   return d.length >= 8 ? `+${d}` : '';
 }
 const bonito = (e164) => { const d = e164.replace(/^\+52/, ''); return d.length === 10 ? `${d.slice(0, 3)} ${d.slice(3, 6)} ${d.slice(6)}` : e164; };
-
-function direccionTexto(brief) {
-  const d = brief.contacto?.direccion; const n = brief.negocio || {};
-  if (typeof d === 'string') return d.trim();
-  if (d && typeof d === 'object') return [d.calle, d.colonia, d.cp, d.ciudad || n.ciudad, d.estado || n.estado].filter(Boolean).join(', ');
-  return '';
-}
 
 const CSS = `<style id="movil">
 .menu-btn{display:none;width:44px;height:44px;border:0;background:transparent;color:inherit;border-radius:12px;align-items:center;justify-content:center;cursor:pointer}
@@ -62,7 +56,12 @@ export function conContacto(html, brief = {}) {
   let extra = '';
   if (tel && !html.includes(`href="tel:${tel}"`)) extra += `<p><b>Teléfono</b><a href="tel:${tel}">${esc(bonito(tel))}</a></p>`;
   if (maps && !html.includes('class="como-llegar"')) extra += `<p><b>Cómo llegar</b><a class="como-llegar" href="${esc(maps)}" target="_blank" rel="noopener">Abrir en Google Maps</a></p>`;
+  // La dirección siempre se ve en Contacto (12-nov-2026): si la plantilla no la pintó, se agrega aquí.
+  if (dir && !/<b>Dónde<\/b>/.test((html.match(/<section[^>]*id="contacto"[\s\S]*?<\/section>/) || [''])[0])) extra = `<p><b>Dónde</b>${esc(dir)}</p>` + extra;
   let out = extra ? html.replace(/(<section[^>]*id="contacto"[^>]*>[\s\S]*?<div class="(?:datos|vis)">)/, (m) => m + extra) : html;
+  // Mapa de Google con la dirección, al final de Contacto (pedido de Sebastián).
+  const mapa = dir && !out.includes('class="mapa"') ? mapaHTML(brief) : '';
+  if (mapa) out = out.replace(/(<section[^>]*id="contacto"[^>]*>[\s\S]*?)(<\/section>)/, (m, a, b) => `${a}${mapa}${b}`);
   // Sin WhatsApp: el botón flotante se vuelve "Llamar" (antes quedaba sin liga o mandaba a #contacto).
   if (!c.whatsapp && tel) {
     out = out.replace(/<a class="wa"([^>]*)>[\s\S]*?<\/a>/, (m, at) => `<a class="wa"${at.replace(/\shref="[^"]*"/, '').replace(/\saria-label="[^"]*"/, '')} href="tel:${tel}" aria-label="Llamar">${TEL_ICONO}</a>`);

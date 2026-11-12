@@ -26,7 +26,7 @@ const PROMPT = (negocio) => `Analiza esta imagen que el dueño de "${negocio || 
  "contenido": {"x":0,"y":0,"w":1,"h":1},    // caja del contenido útil SIN barras del sistema/navegador/app ni márgenes vacíos, en fracciones 0-1 de ancho y alto
  "logo": {"x":..,"y":..,"w":..,"h":..} | null, // caja ajustada SOLO del logotipo DE ESTE NEGOCIO (símbolo + nombre "${negocio || ''}"); null si no aparece. Fotos de perfil, avatares o logos de otras personas o empresas NO cuentan
  "personas": boolean,                      // hay personas como tema de la imagen
- "aislable": boolean,                      // un solo objeto (bebida, platillo, producto) sin personas, que se vería bien recortado sin fondo
+ "aislable": boolean,                      // un solo producto EN SU ENVASE o para llevar (bebida en vaso o botella, frasco, caja, bolsa, artículo), sin personas, que se vería bien recortado sin fondo. NUNCA comida servida en plato, molcajete, tabla o mesa: un platillo servido se muestra con su fondo (false)
  "productos": [{"nombre":"", "x":..,"y":..,"w":..,"h":..}], // SOLO en menús/flyers: fotos de producto individuales (máx 6). Producto COMPLETO a lo ancho con margen; en vasos solo se corta por abajo. Nombre como aparece en el menú
  "menu": [{"seccion":"", "items":[{"nombre":"", "descripcion":"", "precio":""}]}] | null, // si es menú, catálogo o lista de precios: transcribe TODO tal cual, precios con $
  "resena": {"nombre":"", "texto":""} | null, // si es captura de reseña: quién la escribió y el texto tal cual
@@ -237,6 +237,9 @@ export const distanciaHuella = (a, b) => {
   return d / ba.length;
 };
 const MISMA_FOTO = 0.32;
+/** Foto de comida servida (plato, molcajete, tabla…): se usa entera, sin quitarle el fondo. */
+export const esPlatilloServido = (r) => r?.tipo === 'foto_producto'
+  && /\b(platos?|platillos?|platones?|molcajetes?|cazuelas?|sart[eé]n(es)?|taz[oó]n(es)?|bowls?|charolas?|guarnici[oó]n|servid[oa]s?)\b/i.test(String(r.descripcion || ''));
 /** Dos archivos del mismo logotipo (uno bajado de sus redes, recomprimido, y el original): basta la forma; el color y el
  * detalle fino cambian con la compresión y el tamaño, así que no se exigen como en las fotos. */
 export const mismoLogo = (a, b) => {
@@ -525,7 +528,10 @@ async function procesarMaterialesBase(entrevistaId, brief = {}, { aceptarLoQueHa
   await nombrarFotos(analisis, brief).catch((e) => console.warn('[materiales] nombrar fotos:', e.message));
   const ficha = (a, r, extra = {}) => ({ url: r.contenido.url, ancho: r.contenido.ancho, alto: r.contenido.alto, alt: r.descripcion || '', nombre: r.nombre || '', articulo: r.articulo || '', tipo: r.tipo, clave: a.clave, ...extra });
   const urlsDe = (a, r) => [a.url, r.contenido?.url, r.sin_fondo?.url, r.logo?.url, ...(r.productos || []).map((p) => p.url)].filter(Boolean);
-  for (const { a, r } of analisis) {
+  for (const { a, r: r0 } of analisis) {
+    // Platillos servidos: nunca se les quita el fondo (12-nov-2026, decisión de Sebastián). El recorte queda solo para
+    // bebidas y productos envasados (vasos, botellas, frascos, cajas), como en Toolatte.
+    const r = esPlatilloServido(r0) ? { ...r0, aislable: false, sin_fondo: null } : r0;
     const original = copias.get(a.id);
     // Copia de otra foto: no se muestra; cuenta como usada a través de la foto que se queda.
     res.usables.push({ id: a.id, clave: a.clave, tipo: r.tipo, urls: original ? [...urlsDe(a, r), ...urlsDe(original.a, original.r)] : urlsDe(a, r) });

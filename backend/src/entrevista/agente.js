@@ -664,7 +664,10 @@ export async function procesarMensaje(b) {
   await db.guardar(e.id, cambios);
   Object.assign(e, cambios);
   // Al salir de B6 (fotos): revisar materiales y mandar las 3 propuestas, o pedir mejores imágenes.
-  if (!t.completado && (tocaPropuestas(e.brief, bloqueAnterior, t.bloque) || (sinDiseno && !e.brief?.marca?.propuestas))) {
+  // Si ya se retuvieron dos veces (no pasaron la revisión), no se reintenta en cada cambio de bloque: solo al cierre.
+  const retenidas = e.brief?.marca?.opciones_retenidas || 0;
+  let avisoRetenidas = null;
+  if (!t.completado && ((tocaPropuestas(e.brief, bloqueAnterior, t.bloque) && retenidas < 2) || (sinDiseno && !e.brief?.marca?.propuestas))) {
     try {
       const r = await iniciarPropuestas(e, e.brief);
       await db.guardar(e.id, { brief: r.brief }); e.brief = r.brief;
@@ -673,6 +676,12 @@ export async function procesarMensaje(b) {
       // El error queda registrado en la entrevista (antes solo iba a la consola y nadie se enteraba).
       console.error('iniciarPropuestas', err);
       await db.evento(e.id, 'propuestas_error', { error: String(err?.message || err).slice(0, 500), bloque: t.bloque, al_cierre: sinDiseno }).catch(() => {});
+      if (err?.code === 'OPCIONES_RETENIDAS') {
+        // No pasaron la revisión: no se le manda nada a medias; se le dice que siguen en proceso.
+        const b = { ...e.brief, marca: { ...(e.brief.marca || {}), opciones_retenidas: retenidas + 1 } };
+        await db.guardar(e.id, { brief: b }).catch(() => {}); e.brief = b;
+        avisoRetenidas = 'Sigo afinando tus opciones de diseño para que queden bien; te las mando por aquí en cuanto estén listas 🙏';
+      }
     }
   }
   if (sinDiseno) {
@@ -680,7 +689,7 @@ export async function procesarMensaje(b) {
     t = { ...t, reply: p?.opciones?.length
       ? `Antes de armar tu página necesito que elijas tu diseño 👇\n\n${p.opciones.map((o) => `*${o.etiqueta || o.letra}* · ${o.nombre}\n${o.url}`).join('\n\n')}\n\n¿Cuál te gusta más? Respóndeme con la letra.`
       : 'Antes de armar tu página me falta mostrarte las opciones de diseño para que elijas la que más te guste. Las estoy preparando; escríbeme *opciones* en un par de minutos y te las mando por aquí 🙏' };
-  }
+  } else if (avisoRetenidas) mensajes.push(avisoRetenidas);
   // La dirección ya no arranca aquí: es la última pregunta y su flujo empieza al confirmarse el pago de la página (pago_pagina.js).
   const demasiado = !t.completado && e.mensajes_cliente + 1 >= MAX_MSGS_CLIENTE;
   // Cierre forzado por tope: nunca dejar una pregunta de Ari sin respuesta posible.

@@ -145,17 +145,35 @@ export async function mostrar(e, brief, mat, { ronda = 0 } = {}) {
   const prev = brief.marca?.propuestas || {};
   // Agente de revisión visual y corrección (10-nov-2026): antes de mandarlas, cada opción se revisa (código + IA) y las
   // que fallan se corrigen y se vuelven a revisar. Solo se mandan las que pasan; con menos de 4, se intenta otra ronda.
+  // Reglas de envío (12-nov-2026, decisión de Sebastián; antes, si pasaban menos de 2, se mandaban todas):
+  //  1. Una opción con defectos medibles (contraste, texto chico, desborde, fotos con franjas, logo que no carga) nunca
+  //     se envía: se corrige y se vuelve a revisar, hasta 3 intentos.
+  //  2. El juicio de gusto de la IA ("genérica", "poco parecida a la referencia") no bloquea por sí solo: solo provoca
+  //     otro intento de mejora.
+  //  3. Si tras los 3 intentos quedan menos de 2 opciones sin defectos medibles, no se manda nada: queda el evento
+  //     opciones_retenidas (sin aviso por correo mientras el chat no esté en producción) y Ari dice que las sigue afinando.
+  const INTENTOS = 3;
+  const aOpcion = (o) => ({ etiqueta: o.letra, letra: o.letra, layout: o.layout, nombre: o.nombre, url: o.url, estilo: o.fuentes.estilo, tipografia: { titulos: o.fuentes.titulos, cuerpo: o.fuentes.cuerpo }, paleta: o.paleta });
   let mejor = null;
-  for (let intento = 0; intento < 2; intento++) {
+  for (let intento = 0; intento < INTENTOS; intento++) {
     const r = await crearPropuestasHTML(brief, mat, textos, { ronda: ronda + intento });
-    const opciones = r.opciones.map((o) => ({ etiqueta: o.letra, letra: o.letra, layout: o.layout, nombre: o.nombre, url: o.url, estilo: o.fuentes.estilo, tipografia: { titulos: o.fuentes.titulos, cuerpo: o.fuentes.cuerpo }, paleta: o.paleta }));
+    const opciones = r.opciones.map(aOpcion);
     const rev = await revisarYCorregir(opciones, { referencia: (brief.marca?.referencias_sitios || [])[0] || null }).catch((err) => { console.error('[propuestas] revisión', err.message); return { pasan: opciones, revision: [] }; });
-    if (e?.id) await db.evento(e.id, 'revision_opciones', { intento, token: r.token, pasan: rev.pasan.map((o) => o.letra), revision: (rev.revision || []).map(({ letra, ok, problemas }) => ({ letra, ok, problemas })) }).catch(() => {});
-    if (!mejor || rev.pasan.length > mejor.pasan.length) mejor = { r, pasan: rev.pasan, ronda: ronda + intento };
-    if (rev.pasan.length >= 4) break;
+    const de = (l) => (rev.revision || []).find((x) => x.letra === l);
+    // Sin defectos medibles: las que pasan todo y las que solo fallan por gusto.
+    const limpias = opciones.filter((o) => { const v = de(o.letra); return !v || v.ok !== false || (!v.error && !(v.objetivas || []).length); });
+    if (e?.id) await db.evento(e.id, 'revision_opciones', { intento, token: r.token, pasan: rev.pasan.map((o) => o.letra), sin_defectos: limpias.map((o) => o.letra), revision: (rev.revision || []).map(({ letra, ok, problemas, objetivas }) => ({ letra, ok, medibles: (objetivas || []).length, problemas })) }).catch(() => {});
+    if (!mejor || limpias.length > mejor.limpias.length || (limpias.length === mejor.limpias.length && rev.pasan.length > mejor.pasan.length)) mejor = { r, pasan: rev.pasan, limpias, ronda: ronda + intento };
+    if (rev.pasan.length >= 4 || (limpias.length >= 4 && intento >= 1)) break;
   }
-  const { r, pasan } = mejor;
-  const opciones = pasan.length >= 2 ? pasan : r.opciones.map((o) => ({ etiqueta: o.letra, letra: o.letra, layout: o.layout, nombre: o.nombre, url: o.url, estilo: o.fuentes.estilo, tipografia: { titulos: o.fuentes.titulos, cuerpo: o.fuentes.cuerpo }, paleta: o.paleta }));
+  const { r, limpias } = mejor;
+  if (limpias.length < 2) {
+    if (e?.id) await db.evento(e.id, 'opciones_retenidas', { token: r.token, sin_defectos: limpias.map((o) => o.letra), intentos: INTENTOS }).catch(() => {});
+    const err = new Error(`Opciones retenidas: solo ${limpias.length} sin defectos medibles tras ${INTENTOS} intentos`);
+    err.code = 'OPCIONES_RETENIDAS';
+    throw err;
+  }
+  const opciones = limpias;
   return { propuestas: { ...prev, estado: 'mostradas', token: r.token, opciones, textos, ronda: mejor.ronda, asesor_color: r.asesor?.hallazgos || [], usados: [...(prev.usados || []), r.token] }, salida: mensajeOpciones({ opciones, asesor: r.asesor }, brief, mat, mejor.ronda) };
 }
 

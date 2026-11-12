@@ -10,6 +10,7 @@ import { mezclar, contraste } from '../entrevista/tema.js';
 import { esPastel, coloresDePalabras, articuloDe } from './materiales.js';
 import { waUrl, formatoTel } from './bloques.js';
 import { sliderHTML, diapositivasDe, emparejarFotos, CSS_MOVIMIENTO, JS_MOVIMIENTO, efectosDe, filaJustificada, CSS_JUSTIFICADA } from './movimiento.js';
+import { direccionTexto, testimoniosValidos } from './datos_brief.js';
 import { enlacesRedes, CSS_REDES } from './iconos_redes.js';
 import { collageHTML, CSS_COLLAGE, JS_COLLAGE } from './collage.js';
 
@@ -96,11 +97,21 @@ function paletaGeneral(layout, colores, pastel, i, { acento = null, acentoCta = 
 /* ---------------- Logo con contraste garantizado ---------------- */
 // Logo de un solo color que no contrasta con el fondo → se pinta con el color de la tinta (máscara CSS), así se ve siempre.
 // Logo a color que no contrasta → placa de color contrario. Devuelve HTML que siempre incluye la URL del logo.
+/** true si el logo es un sello relleno (más de 60% de su caja es opaco): trae su propio fondo y no se entinta. */
+export function logoLleno(logo) {
+  if (!logo?.opaco || !logo.ancho || !logo.alto) return false;
+  const r = logo.ancho / logo.alto; // tonoLogo mide sobre una versión que cabe en 96x96
+  const area = r >= 1 ? 96 * (96 / r) : (96 * r) * 96;
+  return logo.opaco / area > 0.6;
+}
 export function logoHTML(logo, bg, fg, { clase = 'logo', alt = '' } = {}) {
   if (!logo?.url) return `<span class="nombre">${esc(alt)}</span>`;
   const claroLogo = logo.tono === 'claro', fondoClaro = lum(bg) > 0.4;
   const choca = claroLogo === fondoClaro;
   const ratio = logo.ancho && logo.alto ? (logo.ancho / logo.alto).toFixed(3) : '3';
+  // Logo tipo sello (círculo o cuadro relleno, con su propio fondo): se muestra tal cual. Pintarlo de un color o
+  // oscurecerlo lo deja como una mancha (12-nov-2026, La Fondita de Celestún: el logo salía como un círculo negro).
+  if (logoLleno(logo)) return `<img class="${clase}" src="${esc(logo.url)}" alt="${esc(alt)}">`;
   if (choca && logo.mono !== false) {
     const t = logo.tenidos?.[fg];
     if (t) return `<img class="${clase}" src="${esc(t)}" alt="${esc(alt)}">`;
@@ -337,7 +348,7 @@ function pagina(d) {
   };
   const secEquipo = () => { const eq = mat.equipo.filter((x) => !usadas.has(x.url) && fueraDeGaleria(x) && !ub.trabajo.has(x.url)); return eq.length ? `<div class="wrap"><div class="galeria g-eq">${eq.map((x) => `<figure>${img(x)}</figure>`).join('')}</div></div>` : ''; };
   const secResenas = () => {
-    const tes = (conf.testimonios || []).filter((x) => x.texto);
+    const tes = testimoniosValidos(brief, mat);
     if (!tes.length && !mat.resenas.length) return '';
     const limpio = (s) => String(s).replace(/\p{Extended_Pictographic}/gu, '').trim();
     const cards = tes.map((x) => `<blockquote><p>${esc(limpio(x.texto))}</p>${x.nombre ? `<cite>${esc(x.nombre)}</cite>` : ''}</blockquote>`).join('');
@@ -355,7 +366,7 @@ function pagina(d) {
   const secVideo = () => mat.videos.length ? `<section class="sec"><div class="wrap">${mat.videos.map((v) => { usadas.add(v.url); return `<video class="video" src="${esc(v.url)}" controls playsinline preload="metadata"></video>`; }).join('')}</div></section>` : '';
   const secContacto = () => {
     const c = brief.contacto || {};
-    const dir = c.direccion && typeof c.direccion === 'object' ? [c.direccion.calle, c.direccion.colonia, c.direccion.ciudad].filter(Boolean).join(', ') : c.direccion;
+    const dir = direccionTexto(brief);
     const zona = (brief.zona?.cobertura || []).join(' · ');
     const rs = enlacesRedes(redes(c));
     return `<section class="sec contacto" id="contacto"><div class="wrap"><h2>${esc(T.contacto)}</h2><div class="datos">${d.tel ? `<p><b>WhatsApp</b><a${wa}>${esc(d.tel)}</a></p>` : ''}${dir ? `<p><b>Dónde</b>${esc(dir)}</p>` : zona ? `<p><b>Dónde</b>${esc(zona)}</p>` : ''}${typeof c.horarios === 'string' ? `<p><b>Horario</b>${esc(c.horarios)}</p>` : ''}${c.email ? `<p><b>Correo</b><a href="mailto:${esc(c.email)}">${esc(c.email)}</a></p>` : ''}${rs ? `<p><b>Redes</b><span class="rs">${rs}</span></p>` : ''}</div>${cta()}</div></section>`;

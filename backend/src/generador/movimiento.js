@@ -224,14 +224,14 @@ export const CSS_MOVIMIENTO = `
 .sl-d.con-txt::after{content:"";position:absolute;inset:0;z-index:1;pointer-events:none;background:linear-gradient(180deg,rgba(0,0,0,0) 22%,rgba(0,0,0,.42) 52%,rgba(0,0,0,.78))}
 .sl-cap{position:absolute;left:0;right:0;bottom:0;z-index:2;padding:22px 20px 76px;color:#fff}
 .sl-t{font-family:var(--ft);font-size:clamp(26px,6vw,50px);line-height:1.06;letter-spacing:-.015em;max-width:18ch;text-wrap:balance;text-shadow:0 1px 18px rgba(0,0,0,.35)}
-.sl-a{color:rgba(255,255,255,.92);margin-top:10px;max-width:42ch;font-size:clamp(15px,3.8vw,19px);text-shadow:0 1px 12px rgba(0,0,0,.4)}
+.sl-a{color:rgba(255,255,255,.92);margin-top:10px;max-width:42ch;font-size:clamp(20px,2vw,22px);text-shadow:0 1px 12px rgba(0,0,0,.4)}
 .sl-btn{margin-top:16px;background:#fff;color:#1A1714}
 /* controles del slider 30% más chicos (10-nov-2026) */.sl-ctrl{position:absolute;z-index:3;left:50%;bottom:10px;transform:translateX(-50%);display:flex;align-items:center;gap:1px;background:rgba(0,0,0,.62);border-radius:999px;padding:2px;color:#fff}
 .sl-b{width:31px;height:31px;border:0;border-radius:50%;background:transparent;color:#fff;cursor:pointer;display:grid;place-items:center;padding:0}
 .sl-b svg{width:14px;height:14px;fill:currentColor}.sl-b:focus-visible{outline:3px solid #fff;outline-offset:-3px}
 .sl-pausa .i-play{display:none}.sl.pausado .sl-pausa .i-play{display:inline}.sl.pausado .sl-pausa .i-pausa{display:none}
 .sl-pos{font:700 10px/1 var(--fc);min-width:3.4em;text-align:center;font-variant-numeric:tabular-nums}
-.sl-marco .sl-cap{padding:18px 16px 70px}.sl-marco .sl-t{font-size:clamp(22px,5vw,32px)}.sl-marco .sl-a{font-size:15px}.sl-marco .sl-btn{padding:11px 18px;min-height:44px;font-size:15px}
+.sl-marco .sl-cap{padding:18px 16px 70px}.sl-marco .sl-t{font-size:clamp(22px,5vw,32px)}.sl-marco .sl-a{font-size:20px}.sl-marco .sl-btn{padding:11px 18px;min-height:44px;font-size:15px}
 .ovalo.sl-marco .sl-cap{text-align:center;padding:0 16% 22%}.ovalo.sl-marco .sl-t,.ovalo.sl-marco .sl-a{margin-left:auto;margin-right:auto}.ovalo.sl-marco .sl-ctrl{bottom:6%}
 .sl-carta{aspect-ratio:4/5;border-radius:8px;margin-bottom:12px}
 @media (min-width:900px){.sl-carta{aspect-ratio:16/8}.sl-cap{padding-bottom:84px}}
@@ -296,6 +296,20 @@ export const CSS_MOVIMIENTO = `
 .fx-texto .sl-d.activa .sl-a{animation-delay:.12s!important}.fx-texto .sl-d.activa .sl-btn{animation-delay:.24s!important}
 @media (prefers-reduced-motion:reduce){.fx-zoom .sl-d,.fx-cortina .sl-d{transform:none!important;clip-path:none!important;transition:none!important}.fx-mascara .rvf,.fx-foco .rvf{clip-path:none!important;opacity:1!important;transform:none!important}.fx-grano .sl::before,.fx-texto .sl-cap *{animation:none!important}}
 @media (prefers-reduced-motion:reduce){.km,.mv{animation:none!important}.rv .ri{opacity:1!important;translate:none!important;transition:none!important}.ln>span{transform:none!important;transition:none!important}.sl-d,.sl-d>video{transition:none}.btn,.paq,blockquote,.wa{transition:none!important;transform:none!important}}
+
+/* Regla (12-nov-2026, Sebastián): ningún enlace va simplemente subrayado. "Ver menú", "Abrir en Google Maps", el
+   correo, el teléfono y los documentos van con forma de botón (contorno), con la misma forma que el botón principal. */
+.lnk,.como-llegar,.doc,.vis p>a,.datos p>a{display:inline-flex;align-items:center;justify-content:center;align-self:flex-start;width:fit-content;text-decoration:none;font-weight:700;line-height:1.15;border:2px solid currentColor;border-radius:999px;padding:11px 22px;min-height:48px;transition:background-color .25s ease}
+.vis p>a,.datos p>a,.como-llegar{border-width:1.5px;padding:8px 16px;min-height:44px;margin-top:6px}
+@media (hover:hover){.lnk:hover,.como-llegar:hover,.doc:hover,.vis p>a:hover,.datos p>a:hover{background-color:color-mix(in srgb,currentColor 14%,transparent)}}
+/* Regla (12-nov-2026, Sebastián): en todas las opciones de todos los giros, los títulos de sección entran con un efecto
+   leve y reaccionan al mouse; los recuadros cambian un poco de color y crecen apenas (con su texto) al pasar el mouse. */
+.sec h2{text-decoration:underline;text-decoration-color:transparent;text-decoration-thickness:2px;text-underline-offset:.22em;transition:opacity .7s ease,transform .7s cubic-bezier(.2,.7,.2,1),text-decoration-color .35s ease,letter-spacing .35s ease}
+html.tit .sec h2:not(.visto){opacity:0;transform:translateY(16px)}
+.prod,.cat,.paq,.quotes blockquote,.pasos li{transition:background-color .3s ease,border-color .3s ease,transform .3s ease}
+@media (hover:hover){.sec h2:hover{text-decoration-color:currentColor;letter-spacing:.012em}
+.prod:hover,.cat:hover,.paq:hover,.quotes blockquote:hover,.pasos li:hover{background-color:color-mix(in srgb,var(--card) 88%,var(--p));border-color:color-mix(in srgb,var(--bor) 45%,var(--p));transform:scale(1.025)}}
+@media (prefers-reduced-motion:reduce){html.tit .sec h2:not(.visto){opacity:1;transform:none}.sec h2,.prod,.cat,.paq,.quotes blockquote,.pasos li{transition:none}.prod:hover,.cat:hover,.paq:hover,.quotes blockquote:hover,.pasos li:hover{transform:none}}
 `;
 
 // JS en línea (≈2.5 KB). Corre al final del body; no bloquea el pintado de la primera foto.
@@ -303,6 +317,7 @@ export const JS_MOVIMIENTO = `<script>(()=>{
 const R=matchMedia('(prefers-reduced-motion: reduce)').matches;
 const lenta=()=>{const c=navigator.connection;return !!c&&(c.saveData||/(^|-)(2g|3g)$/.test(c.effectiveType||''))};
 const io=(cb,o)=>'IntersectionObserver' in window?new IntersectionObserver(cb,o):null;
+if(!R&&'IntersectionObserver' in window){document.documentElement.classList.add('tit');const ot=new IntersectionObserver(es=>es.forEach(e=>{if(e.isIntersecting){e.target.classList.add('visto');ot.unobserve(e.target)}}),{rootMargin:'0px 0px -6% 0px'});document.querySelectorAll('.sec h2').forEach(h=>ot.observe(h))}
 let cargada=document.readyState==='complete';const listos=[];
 addEventListener('load',()=>{cargada=true;listos.forEach(f=>f())},{once:true});
 const alCargar=f=>cargada?f():listos.push(f);

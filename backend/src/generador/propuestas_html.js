@@ -16,8 +16,9 @@ import { evaluarColoresCliente, asignarFuentes } from './asesor_color.js';
 import { coloresDePalabras, logoTenido } from './materiales.js';
 import { CSS_MOVIMIENTO, JS_MOVIMIENTO, sliderHTML, diapositivasDe, emparejarFotos, efectosDe, conSrcset } from './movimiento.js';
 import { waUrl, formatoTel } from './bloques.js';
-import { paginasGenerales, logoHTML, redes, urlsPorUbicacion, conOpcionG } from './propuestas_general.js';
+import { logoLleno, paginasGenerales, logoHTML, redes, urlsPorUbicacion, conOpcionG } from './propuestas_general.js';
 import { completarMaterial } from './validar_material.js';
+import { direccionTexto, testimoniosValidos } from './datos_brief.js';
 
 // Regla dura de tipografía: la escala, el interlineado y la medida se agregan al final del CSS (mandan sobre la plantilla).
 const conReglaTipo = (html, par, estilo) => {
@@ -85,18 +86,16 @@ function categorias(menuTexto) {
 function productos(mat, menuTexto) {
   const items = (menuTexto || []).flatMap((s) => s.items || []);
   const buscar = (n) => { const k = String(n || '').toLowerCase(); return items.find((i) => String(i.nombre).toLowerCase() === k) || items.find((i) => { const x = String(i.nombre).toLowerCase(); return x && (x.includes(k) || k.includes(x)); }); };
-  return mat.fotos.filter((f) => f.sin_fondo || f.tipo === 'foto_producto').map((f) => { const it = buscar(f.alt); return { nombre: f.alt || it?.nombre, precio: it?.precio || '', descripcion: it?.descripcion || '', img: f.sin_fondo || f.url, alto: f.alto, ancho: f.ancho }; }).filter((p) => p.nombre);
+  return mat.fotos.filter((f) => f.sin_fondo || f.tipo === 'foto_producto').map((f) => { const it = buscar(f.alt); const nom = f.recorte || f.sin_fondo ? (f.nombre || f.alt || it?.nombre) : (f.nombre || it?.nombre || f.alt); const it2 = it || buscar(nom); return { nombre: nom, precio: it2?.precio || '', descripcion: it2?.descripcion || '', img: f.sin_fondo || f.url, url: f.url, recortado: !!(f.sin_fondo || f.recorte), alto: f.alto, ancho: f.ancho }; }).filter((p) => p.nombre);
 }
 
 /* ---------------- Plantilla ---------------- */
 function pagina(d) {
   const { pal: p, f } = d;
   const prod = d.productos;
-  const top = prod.slice(0, 6);
   const heroImgs = d.heroImgs;
   const wa = d.wa ? ` href="${esc(d.wa)}" target="_blank" rel="noopener"` : '';
   const logo = d.logoObj ? logoHTML(d.logoObj, p.bg, p.fg, { alt: d.nombre }) : `<span class="nombre">${esc(d.nombre)}</span>`;
-  const tarjetas = top.map((x) => `<article class="prod"><div class="ph"><img src="${esc(x.img)}" alt="${esc(x.nombre)}" loading="lazy"></div><h3>${esc(x.nombre)}</h3>${x.precio ? `<p class="precio">${esc(x.precio)}</p>` : ''}</article>`).join('');
   const cats = d.categorias.map((c) => `<a class="cat" href="#menu"><b>${esc(c.nombre)}</b><span>desde $${c.desde}</span></a>`).join('');
   const menuTxt = d.categorias.map((c, i) => `<details${i === 0 ? ' open' : ''}><summary>${esc(c.nombre)} <span>desde $${c.desde}</span></summary><ul>${c.items.slice(0, 14).map((it) => `<li><span><b>${esc(it.nombre)}</b>${it.descripcion ? `<small>${esc(it.descripcion)}</small>` : ''}</span><em>${esc(it.precio || '')}</em></li>`).join('')}</ul></details>`).join('');
   const menuImgs = d.menus.length ? `<div class="carr" aria-roledescription="carrusel" aria-label="Imágenes del menú"><div class="pista">${d.menus.map((u, i) => `<a class="slide" href="${esc(u)}" target="_blank" rel="noopener" aria-label="Menú ${i + 1} de ${d.menus.length}"><img src="${esc(u)}" alt="Menú de ${esc(d.nombre)} (${i + 1} de ${d.menus.length})" loading="${i < 2 ? 'eager' : 'lazy'}"></a>`).join('')}</div>${d.menus.length > 1 ? `<button class="cb prev" type="button" aria-label="Anterior">‹</button><button class="cb next" type="button" aria-label="Siguiente">›</button><div class="puntos">${d.menus.map((_, i) => `<button type="button" aria-label="Ir al menú ${i + 1}"${i === 0 ? ' aria-current="true"' : ''}></button>`).join('')}</div>` : ''}</div>` : '';
@@ -115,17 +114,50 @@ function pagina(d) {
   // en las 6 propuestas. Los recortes siguen en "Lo más pedido". Texto encima de cada foto; la foto 1 lleva el H1.
   const imgS = (x, { cls = '', eager = false, extra = '' } = {}) => `<img class="${cls}" src="${esc(x.url)}" alt="${esc(x.alt || '')}" loading="${eager ? 'eager' : 'lazy'}"${x.ancho ? ` width="${x.ancho}" height="${x.alto}"` : ''}${extra}>`;
   const emp = emparejarFotos({ hero: d.fotosSl[0], fotoTitular: d.textos.foto_url, pool: d.fotosSl, diapos: d.diapos, items: d.brief?.oferta?.items || [], cta: d.textos?.cta || '' });
-  const heroSl = emp.fotos.length >= 2 && emp.diapos.length ? sliderHTML({
-    fotos: emp.fotos, diapos: emp.diapos, img: imgS, cta: d.textos.cta, href: wa, tag: 'section', clase: 'hero h-sl', nombre: d.nombre,
-    primera: `<h1>${esc(d.textos.titular)}</h1><p class="sub">${esc(d.textos.subtitulo)}</p><div class="ctas"><a class="btn"${wa}>${esc(d.textos.cta)}</a><a class="lnk" href="#menu">Ver menú</a></div>`,
-  }).html : '';
-  const secDest = `<section class="sec" id="destacados"><h2>${esc(d.textos.destacados || 'Lo más pedido')}</h2><div class="prods">${tarjetas}</div></section>`;
+  // Portadas distintas (12-nov-2026, pedido de Sebastián: las 6 opciones salían con la misma portada porque el slider
+  // reemplazaba a todas). Cada opción acomoda el slider a su manera: A a todo lo ancho con el texto encima; B texto a un
+  // lado y fotos al otro; C bloque de color con el titular centrado y las fotos panorámicas; D logo al centro y fotos en
+  // arco; E franja de color con las fotos montadas sobre el borde; F tipo carta, fotos a la izquierda y texto a la derecha.
+  const conSl = emp.fotos.length >= 2 && emp.diapos.length > 0;
+  const marco = (clase) => sliderHTML({ fotos: emp.fotos, diapos: emp.diapos, img: imgS, tag: 'figure', clase: `${clase} sl-marco`, nombre: d.nombre }).html;
+  const txtH = `<h1>${esc(d.textos.titular)}</h1><p class="sub">${esc(d.textos.subtitulo)}</p>`;
+  const ctasH = (cls = '') => `<div class="ctas"><a class="btn${cls ? ` ${cls}` : ''}"${wa}>${esc(d.textos.cta)}</a><a class="lnk" href="#menu">Ver menú</a></div>`;
+  const infoH = (cls = '') => (info ? `<ul class="info${cls ? ` ${cls}` : ''}">${info}</ul>` : '');
+  const herosSl = !conSl ? {} : {
+    protagonista: sliderHTML({
+      fotos: emp.fotos, diapos: emp.diapos, img: imgS, cta: d.textos.cta, href: wa, tag: 'section', clase: 'hero h-sl', nombre: d.nombre,
+      primera: `${txtH}${ctasH()}`,
+    }).html,
+    menu: `<section class="hero hs hs-lado"><div class="txt">${txtH}${ctasH()}${infoH()}</div>${marco('hs-f')}</section>`,
+    fresco: `<section class="hero hs hs-caja"><div class="caja"><div class="txt">${txtH}${ctasH()}</div>${marco('hs-f')}</div></section>`,
+    mascota: `<section class="hero hs hs-arco">${d.logo ? `<img class="logo-grande" src="${esc(d.logo)}" alt="${esc(d.nombre)}">` : ''}${txtH}${marco('hs-f')}${ctasH()}${infoH('centro')}</section>`,
+    dostonos: `<section class="hero hs hs-banda"><div class="banda"><div class="txt">${txtH}${ctasH('inv')}</div></div>${marco('hs-f')}</section>`,
+    lista: `<section class="hero hs hs-carta">${marco('hs-f')}<p class="kicker">${esc(d.brief?.negocio?.giro_texto || '')}</p>${txtH}${ctasH()}${infoH()}</section>`,
+  };
+  const heroSl = herosSl[d.layout] || '';
+  // "Lo más pedido": fotos que no están ya en el slider (ninguna foto se repite); si no alcanzan, las que haya.
+  const enSlider = new Set(conSl ? emp.fotos.slice(0, 1 + emp.diapos.length).map((x) => x.url) : []);
+  const libres = prod.filter((x) => !enSlider.has(x.url));
+  const cand = libres.length >= 3 ? libres : prod;
+  const top = cand.slice(0, cand.length >= 6 ? 6 : cand.length >= 3 ? 3 : cand.length); // filas completas de 3 en computadora
+  // Platillos servidos: la foto entera, con su plato y su mesa (sin quitar el fondo). Solo los recortes van "flotando".
+  const tarjetas = top.map((x) => `<article class="prod"><div class="ph${x.recortado ? '' : ' foto'}"><img src="${esc(x.img)}" alt="${esc(x.nombre)}" loading="lazy"></div><h3>${esc(x.nombre)}</h3>${x.precio ? `<p class="precio">${esc(x.precio)}</p>` : ''}</article>`).join('');
+  const secDest = tarjetas ? `<section class="sec" id="destacados"><h2>${esc(d.textos.destacados || 'Lo más pedido')}</h2><div class="prods">${tarjetas}</div></section>` : '';
+  // Reseñas en su propia sección (12-nov-2026: las capturas de reseñas salían revueltas con las fotos en "Más de nosotros").
+  const limpioT = (t) => String(t).replace(/\p{Extended_Pictographic}/gu, '').trim();
+  const tesH = (d.testimonios || []).map((x) => `<blockquote><p>${esc(limpioT(x.texto))}</p>${x.nombre ? `<cite>${esc(x.nombre)}</cite>` : ''}</blockquote>`).join('');
+  const capsH = (d.resenas || []).map((x) => `<figure class="cap"><img src="${esc(x.url)}" alt="${esc(x.alt || 'Reseña de un cliente')}" loading="lazy"${x.ancho ? ` width="${x.ancho}" height="${x.alto}"` : ''}></figure>`).join('');
+  const secRes = tesH || capsH ? `<section class="sec resenas" id="resenas"><h2>Lo que dicen nuestros clientes</h2><div class="quotes">${tesH}${capsH}</div></section>` : '';
   const secCats = cats ? `<section class="sec"><h2>${esc(d.textos.categorias || 'Elige tu antojo')}</h2><div class="cats">${cats}</div></section>` : '';
   // Imágenes del menú del cliente: carrusel navegable justo debajo del título "Menú" (en todas las propuestas).
-  const secMenu = `<section class="sec menu" id="menu"><h2>Menú</h2>${menuImgs}<div class="mtxt">${menuTxt}</div></section>`;
+  // Sin menú transcrito: los platillos que dijo en la entrevista, y el PDF del menú (si lo mandó) con su botón.
+  const listaOferta = !menuTxt ? (d.brief?.oferta?.items || []).filter((x) => x?.nombre || typeof x === 'string').map((x) => (typeof x === 'string' ? { nombre: x } : x)) : [];
+  const menuLista = listaOferta.length ? `<ul class="mlista">${listaOferta.map((x) => `<li><span><b>${esc(x.nombre)}</b>${x.descripcion_corta ? `<small>${esc(x.descripcion_corta)}</small>` : ''}</span>${x.precio_o_rango && d.brief?.oferta?.mostrar_precios !== false ? `<em>${esc(x.precio_o_rango)}</em>` : ''}</li>`).join('')}</ul>` : '';
+  const menuDocs = (d.menuDocs || []).map((u, i, arr) => `<a class="btn menu-doc" href="${esc(u)}" target="_blank" rel="noopener">${arr.length > 1 ? `Ver el menú completo (${i + 1})` : 'Ver el menú completo'}</a>`).join('');
+  const secMenu = `<section class="sec menu" id="menu"><h2>Menú</h2>${menuImgs}<div class="mtxt">${menuTxt}${menuLista}</div>${menuDocs}</section>`;
   const orden = {
-    protagonista: [secDest, secCats, secMenu, vis], menu: [secDest, secCats, secMenu, vis], fresco: [secDest, secMenu, secCats, vis],
-    mascota: [secCats, secDest, secMenu, vis], dostonos: [secCats, secDest, secMenu, vis], lista: [secMenu, secDest, vis],
+    protagonista: [secDest, secCats, secMenu, secRes, vis], menu: [secMenu, secDest, secCats, secRes, vis], fresco: [secDest, secRes, secMenu, secCats, vis],
+    mascota: [secCats, secDest, secMenu, secRes, vis], dostonos: [secRes, secCats, secDest, secMenu, vis], lista: [secMenu, secDest, secRes, vis],
   }[d.layout];
 
   return `<!doctype html><html lang="es" class="${efectosDe(d.letra)}"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><meta name="robots" content="noindex">
@@ -178,8 +210,30 @@ footer{margin-top:48px;padding:24px 20px 90px;border-top:1px solid var(--bor);fo
 @media (min-width:900px){.slide{flex-basis:31%}.carr{margin:4px 0 30px}.pista{padding:4px 0 12px;scroll-padding:0}.h-menu{grid-template-columns:1.1fr 1fr;align-items:end}.h-menu .vasos img{height:240px}.h-menu .vasos img.c{height:320px}.hero{padding-top:56px}.h-fresco .caja{grid-template-columns:1.1fr 1fr;align-items:end}.h-dos{grid-template-columns:1.1fr 1fr;align-items:end;margin:0;border-radius:32px;padding:40px}.h-dos .vasos img{height:320px}.h-dos .vasos img+img{height:250px}.trio img{height:200px}.trio img.c{height:260px}.circulo{height:380px}.circulo::before{width:340px;height:340px}.circulo img{height:350px}.vis{grid-template-columns:repeat(3,1fr)}}
 @media (prefers-reduced-motion:reduce){html{scroll-behavior:auto}}
 ${CSS_MOVIMIENTO}
+/* portadas con slider, una distinta por opción (12-nov-2026) */
+.hs .ctas{display:flex;flex-wrap:wrap;align-items:center;gap:0 18px}.hs .lnk{margin:20px 0 0;white-space:nowrap}.hs h1{max-width:16ch}
+.hs-f{display:block;width:100%;margin:22px 0 0;border-radius:24px;aspect-ratio:4/3}
+.hs-caja .caja{background:var(--mut);border-radius:28px;padding:28px 20px 20px}.hs-caja .txt{text-align:center}.hs-caja h1{max-width:20ch}.hs-caja h1,.hs-caja .sub{margin-left:auto;margin-right:auto}.hs-caja .ctas{justify-content:center}.hs-caja .hs-f{border-radius:20px}
+.hs-arco{text-align:center}.hs-arco h1,.hs-arco .sub{margin-left:auto;margin-right:auto}.hs-arco .logo-grande{width:min(56%,210px);margin-bottom:16px}.hs-arco .hs-f{max-width:560px;margin:26px auto 0;aspect-ratio:4/5;border-radius:999px 999px 28px 28px}.hs-arco .ctas{justify-content:center}
+.hero.hs-banda{padding-top:0}.hs-banda .banda{background:${mezclar(p.primary, '#000000', 0.15)};color:${sobre(mezclar(p.primary, '#000000', 0.15))};margin:0 -20px;padding:32px 20px 116px;border-radius:0 0 32px 32px}.hs-banda .banda .sub{color:inherit;opacity:.9}.hs-banda .banda .lnk{color:inherit}.hs-banda .hs-f{margin-top:-92px;box-shadow:0 24px 50px rgba(0,0,0,.25)}
+.hs-carta{border-top:2px solid var(--fg);margin-top:20px;padding-top:24px}.hs-carta .kicker{font-family:var(--fc);font-weight:700;font-size:20px;line-height:1.2;letter-spacing:.1em;text-transform:uppercase;color:var(--acc);margin:22px 0 12px}.hs-carta .hs-f{margin-top:0;border-radius:6px;aspect-ratio:5/4}
+@media (min-width:900px){
+.hs-lado{display:grid;grid-template-columns:1fr 1.05fr;gap:48px;align-items:center}.hs-lado .hs-f{margin:0;aspect-ratio:4/5;max-height:calc(100svh - 170px);border-radius:32px}
+.hs-caja .caja{padding:56px 48px 48px}.hs-caja .hs-f{aspect-ratio:21/9;margin-top:36px;border-radius:24px}
+.hs-arco .hs-f{max-width:620px;aspect-ratio:1/1}
+.hs-banda .banda{margin:0;border-radius:32px;padding:64px 56px 210px}.hs-banda .hs-f{margin:-170px 56px 0;width:auto;aspect-ratio:21/9}
+.hs-carta{display:grid;grid-template-columns:1.05fr 1fr;column-gap:48px;align-items:start;align-content:center}.hs-carta .hs-f{grid-column:1;grid-row:1/span 5}.hs-carta>:not(.hs-f){grid-column:2}.hs-carta .kicker{margin-top:8px}
+}
+/* "Lo más pedido" con la foto entera del platillo */
+.prod .ph.foto{height:auto;aspect-ratio:4/3;display:block;overflow:hidden;border-radius:14px}.prod .ph.foto img{width:100%;height:100%;max-height:none;object-fit:cover}
+@media (min-width:900px){.prods{grid-template-columns:repeat(3,1fr);gap:18px}}
+/* reseñas */
+.quotes{display:grid;grid-template-columns:1fr;gap:14px;align-items:start}.quotes blockquote{background:var(--card);border:1px solid var(--bor);border-radius:20px;padding:20px}.quotes cite{display:block;margin-top:10px;font-style:normal;font-weight:700;color:var(--acc)}.quotes .cap{margin:0}.quotes .cap img{width:100%;height:auto;border-radius:16px;border:1px solid var(--bor)}
+@media (min-width:900px){.quotes{grid-template-columns:repeat(2,1fr);gap:18px}}
+/* menú sin transcribir */
+.mlista{list-style:none}.mlista li{display:flex;justify-content:space-between;gap:12px;padding:12px 0;border-bottom:1px dashed var(--bor)}.mlista li small{display:block;color:var(--soft)}.mlista li em{font-style:normal;font-weight:800;color:var(--p);white-space:nowrap}.menu-doc{margin-right:12px}
 .hero.h-sl{padding:0;margin-top:12px;min-height:68vh;min-height:calc(100svh - 200px);border-radius:18px;color:#fff}.h-sl h1{color:#fff;max-width:16ch;text-shadow:0 1px 18px rgba(0,0,0,.35)}.h-sl .sub{color:rgba(255,255,255,.92);max-width:44ch}.h-sl .lnk{color:#fff;margin:20px 0 0;white-space:nowrap}.h-sl .ctas{display:flex;flex-wrap:wrap;align-items:center;column-gap:18px}.h-sl .sl-t{font-weight:700}.h-sl .sl-cap{padding-left:24px;padding-right:24px}
-@media (min-width:900px){.hero.h-sl{margin-top:20px;min-height:calc(100svh - 200px);border-radius:24px}.h-sl .sl-cap{padding:40px 48px 88px}.h-sl .sl-d.con-txt::after{background:linear-gradient(90deg,rgba(0,0,0,.64),rgba(0,0,0,.14) 72%)}}
+@media (min-width:900px){.hero.h-sl{margin-top:20px;min-height:calc(100svh - 200px);border-radius:24px}.h-sl .sl-cap{padding:40px 48px 88px}.h-sl .sl-d.con-txt::after{background:linear-gradient(90deg,rgba(0,0,0,.78),rgba(0,0,0,.5) 48%,rgba(0,0,0,.12) 82%)}}
 </style></head>
 <body class="${d.layout}">
 <header class="barra"><div class="in">${logo}<nav><a href="#destacados">${esc(d.textos.destacados || 'Lo más pedido')}</a><a href="#menu">Menú</a><a href="#contacto">Contacto</a></nav></div></header>
@@ -237,7 +291,7 @@ export async function renderPropuestas(brief, mat, textos, { ronda = 0, fijo = n
   if (brief.negocio?.arquetipo !== 'restaurante') {
     // Logo de un color: versión pintada con la tinta de cada propuesta (contraste garantizado sobre fondos claros u oscuros).
     let pags = paginasGenerales({ brief, mat, textos, pares, urlFuentes, ronda, cps, fijo, solo });
-    if (mat.logo?.url && mat.logo.mono !== false) {
+    if (mat.logo?.url && mat.logo.mono !== false && !logoLleno(mat.logo)) {
       const tenidos = {};
       for (const pg of pags) for (const hex of [pg.paleta.fg, '#FFFFFF']) if (!tenidos[hex]) tenidos[hex] = await logoTenido(mat.logo, hex).catch(() => null);
       mat = { ...mat, logo: { ...mat.logo, tenidos: Object.fromEntries(Object.entries(tenidos).filter(([, v]) => v)) } };
@@ -260,7 +314,7 @@ export async function renderPropuestas(brief, mat, textos, { ronda = 0, fijo = n
   // Imágenes de portada: productos sin fondo más altos (vasos completos), distintos por propuesta.
   const altos = prods.filter((x) => x.img).sort((x, y) => (y.alto || 0) - (x.alto || 0));
   const c = brief.contacto || {};
-  const dir = c.direccion && typeof c.direccion === 'object' ? [c.direccion.calle, c.direccion.colonia, c.direccion.ciudad].filter(Boolean).join(', ') : c.direccion;
+  const dir = direccionTexto(brief);
   const cats = categorias(mat.menu_texto);
   // Fotos reales para el slider (no recortes de producto): local, trabajos, equipo y fotos con fondo.
   const vistas = new Set();
@@ -288,6 +342,7 @@ export async function renderPropuestas(brief, mat, textos, { ronda = 0, fijo = n
       fotosSl: reales.length ? reales.slice(i % reales.length).concat(reales.slice(0, i % reales.length)) : [], diapos, brief,
       heroImgs: [rot(0), rot(1), rot(2)], productos: prods.slice(i % 2 ? 3 : 0).concat(prods.slice(0, i % 2 ? 3 : 0)),
       categorias: cats, menus: mat.menus.map((m) => m.url), info: (textos.info || []).slice(0, 3),
+      testimonios: testimoniosValidos(brief, mat), resenas: mat.resenas || [], menuDocs: (mat.documentos || []).filter((x) => /\.pdf(\?|$)/i.test(x.url)).map((x) => x.url),
       wa: waUrl(c.whatsapp, c.mensaje_whatsapp_inicial), tel: c.whatsapp ? formatoTel(c.whatsapp) : null, direccion: dir, horarios: typeof c.horarios === 'string' ? c.horarios : null,
       promo: brief.oferta?.promocion_actual || null, email: c.email || null, redes: redes(c),
     };
