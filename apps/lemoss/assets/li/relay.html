@@ -1,0 +1,15 @@
+<!doctype html>
+<html lang="es"><head><meta charset="utf-8"><meta name="robots" content="noindex"><title>relay</title></head>
+<body><p id="s">cargando…</p>
+<script>
+(async () => {
+  const f = new URLSearchParams(location.search).get('f') || '';
+  if (!/^[A-Za-z0-9_.-]+$/.test(f)) { document.getElementById('s').textContent = 'archivo no válido'; return; }
+  const r = await fetch('/assets/li/' + f);
+  const buf = await r.arrayBuffer();
+  const msg = { relay: 'lemoss', name: f, type: r.headers.get('content-type') || '', buf };
+  for (let i = 0; i < 20 && !window.opener; i++) await new Promise(t => setTimeout(t, 250));
+  window.opener.postMessage(msg, 'https://www.linkedin.com', [buf]);
+  document.getElementById('s').textContent = 'enviado ' + f;
+})();
+</script></body></html>
