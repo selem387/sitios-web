@@ -310,10 +310,11 @@ footer a{display:inline-flex;align-items:center;text-decoration:none;font-weight
 @media (hover:hover){.lnk:hover,.como-llegar:hover,.doc:hover,.vis p>a:hover,.datos p>a:hover{background-color:color-mix(in srgb,currentColor 14%,transparent)}}
 /* Regla (12-nov-2026, Sebastián): en todas las opciones de todos los giros, los títulos de sección entran con un efecto
    leve y reaccionan al mouse; los recuadros cambian un poco de color y crecen apenas (con su texto) al pasar el mouse. */
-.sec h2{text-decoration:underline;text-decoration-color:transparent;text-decoration-thickness:2px;text-underline-offset:.22em;transition:opacity .7s ease,transform .7s cubic-bezier(.2,.7,.2,1),text-decoration-color .35s ease,letter-spacing .35s ease}
+/* 13-nov-2026: sin subrayado al pasar el mouse (se veía como guion bajo en los espacios); solo crece */
+.sec h2{text-decoration:none;transition:opacity .7s ease,transform .7s cubic-bezier(.2,.7,.2,1),letter-spacing .35s ease}
 html.tit .sec h2:not(.visto){opacity:0;transform:translateY(16px)}
 .prod,.cat,.paq,.quotes blockquote,.pasos li{transition:background-color .3s ease,border-color .3s ease,transform .3s ease}
-@media (hover:hover){.sec h2:hover{text-decoration-color:currentColor;letter-spacing:.012em}
+@media (hover:hover){.sec h2:hover{letter-spacing:.012em}
 .prod:hover,.cat:hover,.paq:hover,.quotes blockquote:hover,.pasos li:hover{background-color:color-mix(in srgb,var(--card) 88%,var(--p));border-color:color-mix(in srgb,var(--bor) 45%,var(--p));transform:scale(1.025)}}
 @media (prefers-reduced-motion:reduce){html.tit .sec h2:not(.visto){opacity:1;transform:none}.sec h2,.prod,.cat,.paq,.quotes blockquote,.pasos li{transition:none}.prod:hover,.cat:hover,.paq:hover,.quotes blockquote:hover,.pasos li:hover{transform:none}}
 `;
