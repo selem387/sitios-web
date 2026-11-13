@@ -140,7 +140,7 @@ async function respuestaPostCierre(u, texto = '', media = []) {
         const actual = sv?.contenido?.diseno?.propuesta || prop.elegido;
         const lista = opc.map((o) => `*${o.letra || o.etiqueta}. ${o.nombre}*${(o.letra || o.etiqueta) === actual ? ' (la que tienes ahora)' : ''}\n${o.url}`).join('\n\n');
         await db.evento(u.id, 'opciones_reenviadas', { actual });
-        const ref = (texto.match(/https?:\/\/\S+/g) || []).filter((x) => !/\/p\/[A-Za-z0-9]+\/[A-G]/.test(x));
+        const ref = (texto.match(/https?:\/\/\S+/g) || []).filter((x) => !/\/p\/[A-Za-z0-9]+\/[A-H]/.test(x));
         await db.evento(u.id, 'pregunta_cambio_diseno', { actual, referencias: ref });
         return `¿Quieres cambiar el diseño de tu página por otra de tus opciones? 😊${ref.length ? ' Revisa cuál se parece más a la página que me compartiste.' : ''}\n\nEstas son:\n\n${lista}\n\nDime la letra de la que quieres. Si ninguna te convence, dime *ninguna* y te preparo 6 nuevas${ref.length ? ' inspiradas en esa página' : ''}. Tus textos, fotos y los cambios que ya hicimos se quedan; solo cambia el diseño.`;
       }
