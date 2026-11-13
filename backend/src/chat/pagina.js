@@ -85,7 +85,7 @@ svg{width:22px;height:22px}
   <div class="prev" id="prev" aria-label="Archivos por enviar"></div>
   <div class="adj" id="adj" aria-live="polite"></div>
   <form id="f">
-    <input type="file" id="archivo" accept="image/*,audio/*,video/mp4,application/pdf" hidden multiple>
+    <input type="file" id="archivo" accept="image/*,audio/*,video/mp4,video/quicktime,.mov,application/pdf" hidden multiple>
     <button type="button" id="clip" aria-label="Adjuntar foto, video o archivo"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m21.4 11.1-9.2 9.2a6 6 0 0 1-8.5-8.5l9.2-9.2a4 4 0 0 1 5.7 5.7l-9.2 9.2a2 2 0 0 1-2.8-2.8l8.5-8.5"/></svg></button>
     <textarea id="t" rows="1" placeholder="Escribe un mensaje" aria-label="Mensaje"></textarea>
     <button type="button" id="mic" aria-label="Grabar nota de voz"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="2" width="6" height="12" rx="3"/><path d="M5 10a7 7 0 0 0 14 0M12 19v3"/></svg></button>
@@ -220,7 +220,9 @@ t.addEventListener('keydown', (e) => { if (e.key === 'Enter' && !e.shiftKey && m
 t.addEventListener('input', () => { t.style.height='auto'; t.style.height = Math.min(t.scrollHeight, 140) + 'px'; });
 $('#clip').onclick = () => $('#archivo').click();
 // Adjuntos: hasta MAX_ADJ por envío, con miniatura y ✕ para quitar antes de enviar. Se suben en paralelo (4 a la vez).
-const MAX_ADJ = 18, MAX_MB = 16; // MAX_MB igual que en chat/index.js
+const MAX_ADJ = 18, MAX_MB = 16, MAX_MB_VIDEO = 100; // topes iguales que en chat/index.js
+const esVideo = (f) => f.type.startsWith('video/') || /\\.(mov|mp4|m4v)$/i.test(f.name);
+const topeMb = (f) => (esVideo(f) ? MAX_MB_VIDEO : MAX_MB);
 let idAdj = 0;
 function avisoAdj(txt){ const a = $('#adj'); a.textContent = txt; a.style.display = txt ? 'block' : 'none'; }
 function limpiarAdj(){ for (const p of pendientes) if (p.local) URL.revokeObjectURL(p.local); pendientes = []; pintarAdj(); }
@@ -237,8 +239,8 @@ function pintarAdj(){
   for (const p of pendientes) {
     const d = document.createElement('div'); d.className = 'mini' + (p.estado === 'subiendo' ? ' subiendo' : '') + (p.estado === 'error' ? ' fallo' : '');
     if (p.local) { const im = document.createElement('img'); im.src = p.local; im.alt = p.file.name; d.appendChild(im); }
-    else d.textContent = p.file.type.startsWith('audio/') ? '🎤 Audio' : p.file.type.startsWith('video/') ? '🎬 Video' : p.file.type === 'application/pdf' ? '📄 PDF' : '📎 Archivo';
-    if (p.estado !== 'listo') { const s = document.createElement('span'); s.className = 'est'; s.textContent = p.estado === 'error' ? 'Error' : 'Subiendo…'; d.appendChild(s); }
+    else d.textContent = p.file.type.startsWith('audio/') ? '🎤 Audio' : esVideo(p.file) ? '🎬 Video' : p.file.type === 'application/pdf' ? '📄 PDF' : '📎 Archivo';
+    if (p.estado !== 'listo') { const s = document.createElement('span'); s.className = 'est'; s.textContent = p.estado === 'error' ? 'Error' : esVideo(p.file) ? 'Subiendo video…' : 'Subiendo…'; d.appendChild(s); }
     const q = document.createElement('button'); q.type = 'button'; q.className = 'q'; q.textContent = '✕'; q.setAttribute('aria-label', 'Quitar ' + p.file.name);
     q.onclick = () => { if (p.local) URL.revokeObjectURL(p.local); pendientes = pendientes.filter((x) => x !== p); pintarAdj(); };
     d.appendChild(q); cont.appendChild(d);
@@ -247,12 +249,12 @@ function pintarAdj(){
 }
 $('#archivo').onchange = async (e) => {
   const todos = [...e.target.files]; e.target.value='';
-  const elegidos = todos.filter((f) => f.size <= MAX_MB * 1024 * 1024), pesados = todos.length - elegidos.length;
+  const elegidos = todos.filter((f) => f.size <= topeMb(f) * 1024 * 1024), pesados = todos.length - elegidos.length;
   const libres = MAX_ADJ - pendientes.length;
   const files = elegidos.slice(0, Math.max(0, libres));
   const nuevos = files.map((f) => ({ id: ++idAdj, file: f, local: f.type.startsWith('image/') ? URL.createObjectURL(f) : '', estado: 'subiendo', res: null }));
   pendientes.push(...nuevos); pintarAdj();
-  if (pesados) avisoAdj((pesados === 1 ? 'Un archivo pesa' : pesados + ' archivos pesan') + ' más de ' + MAX_MB + ' MB y no se agregó. Manda una versión más corta o más ligera.');
+  if (pesados) avisoAdj((pesados === 1 ? 'Un archivo pesa' : pesados + ' archivos pesan') + ' más de lo permitido (' + MAX_MB_VIDEO + ' MB en video, ' + MAX_MB + ' MB en lo demás) y no se agregó. Manda una versión más corta o más ligera.');
   else if (elegidos.length > files.length) avisoAdj('Puedes mandar hasta ' + MAX_ADJ + ' archivos por mensaje; no agregué ' + (elegidos.length - files.length) + '. Envía estos y luego manda los demás.');
   const cola = [...nuevos];
   const trabajador = async () => {

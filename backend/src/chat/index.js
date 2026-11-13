@@ -8,6 +8,9 @@
 // Mismo flujo que WhatsApp: procesarMensaje(). Al cerrar la entrevista se lanza el generador.
 import crypto from 'node:crypto';
 import fs from 'node:fs/promises';
+import { createReadStream } from 'node:fs';
+import { spawn } from 'node:child_process';
+import { Readable } from 'node:stream';
 import path from 'node:path';
 import { config } from '../config.js';
 import { HttpError } from '../util.js';
@@ -23,8 +26,23 @@ import { urlSitio } from '../panel/cambios_vivo.js';
 const DIR = path.join(config.dataDir, 'chat');
 const CODIGO = process.env.CHAT_CODIGO || '';
 const MAX_MB = 16;
+const MAX_MB_VIDEO = 100; // igual que en pagina.js
+const FFMPEG = process.env.FFMPEG_BIN || 'ffmpeg';
 const MAX_ADJ = 18; // archivos por mensaje (igual que MAX_ADJ en pagina.js)
-const TIPOS = { 'image/jpeg': 'jpg', 'image/png': 'png', 'image/webp': 'webp', 'image/heic': 'heic', 'audio/webm': 'webm', 'audio/ogg': 'ogg', 'audio/mp4': 'm4a', 'audio/mpeg': 'mp3', 'application/pdf': 'pdf', 'video/mp4': 'mp4' };
+const TIPOS = { 'image/jpeg': 'jpg', 'image/png': 'png', 'image/webp': 'webp', 'image/heic': 'heic', 'audio/webm': 'webm', 'audio/ogg': 'ogg', 'audio/mp4': 'm4a', 'audio/mpeg': 'mp3', 'application/pdf': 'pdf', 'video/mp4': 'mp4', 'video/quicktime': 'mov' };
+
+// Un .mov (iPhone) no se reproduce en todos los navegadores: se guarda como MP4 H.264/AAC, a lo más 1080p.
+function aMp4(origen, destino, ms = 300000) {
+  return new Promise((ok, mal) => {
+    const p = spawn(FFMPEG, ['-y', '-i', origen, '-map', '0:v:0', '-map', '0:a:0?', '-c:v', 'libx264', '-preset', 'veryfast', '-crf', '23', '-pix_fmt', 'yuv420p',
+      '-vf', "scale='min(1920,iw)':'min(1920,ih)':force_original_aspect_ratio=decrease:force_divisible_by=2", '-c:a', 'aac', '-b:a', '128k', '-movflags', '+faststart', '-f', 'mp4', destino], { stdio: ['ignore', 'ignore', 'pipe'] });
+    let err = '';
+    const t = setTimeout(() => { p.kill('SIGKILL'); mal(new Error('ffmpeg: tiempo agotado')); }, ms);
+    p.stderr.on('data', (d) => { err = (err + d).slice(-600); });
+    p.on('error', (e) => { clearTimeout(t); mal(e); });
+    p.on('close', (code) => { clearTimeout(t); code === 0 ? ok() : mal(new Error(`ffmpeg ${code}: ${err.slice(-300)}`)); });
+  });
+}
 
 // Límite simple por IP: 90 peticiones por minuto (un envío de 18 fotos ya son 19 peticiones).
 const golpes = new Map();
@@ -95,10 +113,22 @@ export function registerChatRoutes(app, wrap) {
       } catch { /* si falla, sirve el original */ }
     }
     try {
-      const buf = await fs.readFile(path.join(DIR, nombre));
+      const ruta = path.join(DIR, nombre);
       const ext = nombre.split('.').pop();
       const mime = Object.entries(TIPOS).find(([, e]) => e === ext)?.[0] || 'application/octet-stream';
-      return c.body(buf, 200, { 'content-type': mime, 'cache-control': 'public, max-age=86400' });
+      const cab = { 'content-type': mime, 'cache-control': 'public, max-age=86400' };
+      if (!mime.startsWith('video/')) return c.body(await fs.readFile(ruta), 200, cab);
+      // Video: por partes (Range), que Safari exige para reproducir y permite adelantar sin bajar todo.
+      const { size } = await fs.stat(ruta);
+      cab['accept-ranges'] = 'bytes';
+      const r = /^bytes=(\d*)-(\d*)$/.exec(c.req.header('range') || '');
+      if (r && (r[1] || r[2])) {
+        let ini = r[1] ? Number(r[1]) : Math.max(0, size - Number(r[2]));
+        let fin = r[1] && r[2] ? Math.min(Number(r[2]), size - 1) : size - 1;
+        if (ini >= size || ini > fin) return c.body(null, 416, { 'content-range': `bytes */${size}` });
+        return c.body(Readable.toWeb(createReadStream(ruta, { start: ini, end: fin })), 206, { ...cab, 'content-range': `bytes ${ini}-${fin}/${size}`, 'content-length': String(fin - ini + 1) });
+      }
+      return c.body(Readable.toWeb(createReadStream(ruta)), 200, { ...cab, 'content-length': String(size) });
     } catch { return c.text('no', 404); }
   });
 
@@ -107,13 +137,24 @@ export function registerChatRoutes(app, wrap) {
     const form = await c.req.parseBody();
     const f = form.archivo;
     if (!f || typeof f === 'string') throw new HttpError(400, 'falta archivo');
-    const mime = (f.type || '').split(';')[0];
+    let mime = (f.type || '').split(';')[0];
+    // Algunos navegadores mandan el .mov o el .mp4 sin tipo: se toma de la extensión.
+    if (!TIPOS[mime]) { const x = String(f.name || '').toLowerCase().split('.').pop(); if (x === 'mov') mime = 'video/quicktime'; else if (x === 'mp4' || x === 'm4v') mime = 'video/mp4'; }
     const ext = TIPOS[mime];
     if (!ext) throw new HttpError(415, `Tipo no permitido: ${mime || 'desconocido'}`);
-    if (f.size > MAX_MB * 1024 * 1024) throw new HttpError(413, `Máximo ${MAX_MB} MB`);
+    const tope = mime.startsWith('video/') ? MAX_MB_VIDEO : MAX_MB;
+    if (f.size > tope * 1024 * 1024) throw new HttpError(413, `Máximo ${tope} MB`);
     await fs.mkdir(DIR, { recursive: true });
-    const nombre = `${crypto.randomBytes(12).toString('base64url').replace(/_/g, '-')}.${ext}`;
+    const base = crypto.randomBytes(12).toString('base64url').replace(/_/g, '-');
+    let nombre = `${base}.${ext}`;
     await fs.writeFile(path.join(DIR, nombre), Buffer.from(await f.arrayBuffer()));
+    if (ext === 'mov') {
+      const crudo = path.join(DIR, nombre);
+      try { await aMp4(crudo, path.join(DIR, `${base}.mp4`)); }
+      catch (err) { console.error('[chat] video', err.message); await fs.rm(path.join(DIR, `${base}.mp4`), { force: true }); await fs.rm(crudo, { force: true }); throw new HttpError(422, 'No pude leer ese video. Intenta con otro o mándalo en MP4.'); }
+      await fs.rm(crudo, { force: true });
+      nombre = `${base}.mp4`; mime = 'video/mp4';
+    }
     const tipo = mime.startsWith('image/') ? 'imagen' : mime.startsWith('audio/') ? 'audio' : mime.startsWith('video/') ? 'video' : 'documento';
     return { url: `${config.publicUrl}/chat/archivos/${nombre}`, mime, tipo };
   }));
