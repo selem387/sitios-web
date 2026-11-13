@@ -5,11 +5,15 @@
 import { config } from '../config.js';
 import { pedirJSON } from '../entrevista/claude.js';
 
+// Para medir y capturar: sin la etiqueta ni el botón flotante, y con las animaciones de entrada ya terminadas
+// (12-nov-2026: se medía a media animación y salían falsos "título desalineado" y "desborde horizontal", y capturas en blanco).
+const CSS_REVISION = '.etq,.wa{display:none!important}*,*::before,*::after{animation-duration:0s!important;animation-delay:0s!important;transition-duration:0s!important;transition-delay:0s!important}';
+
 export async function captura(url, { ancho = 1366, selector = null } = {}) {
   if (!config.renderUrl || !url) return null;
   const r = await fetch(`${config.renderUrl}/v1/captura`, {
     method: 'POST', headers: { 'content-type': 'application/json', 'x-api-key': config.renderApiKey },
-    body: JSON.stringify({ url, ancho, css: '.etq,.wa{display:none!important}', ...(selector ? { selector } : {}) }), signal: AbortSignal.timeout(90000),
+    body: JSON.stringify({ url, ancho, css: CSS_REVISION, ...(selector ? { selector } : {}) }), signal: AbortSignal.timeout(90000),
   }).catch(() => null);
   return r?.ok ? (await r.json()).url : null;
 }
@@ -19,7 +23,7 @@ async function objetivas(url) {
   if (!config.renderUrl || !url) return null;
   const r = await fetch(`${config.renderUrl}/v1/revisar`, {
     method: 'POST', headers: { 'content-type': 'application/json', 'x-api-key': config.renderApiKey },
-    body: JSON.stringify({ url, css: '.etq,.wa{display:none!important}' }), signal: AbortSignal.timeout(120000),
+    body: JSON.stringify({ url, css: CSS_REVISION }), signal: AbortSignal.timeout(120000),
   }).catch(() => null);
   if (!r?.ok) return null;
   const d = await r.json();
