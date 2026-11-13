@@ -222,10 +222,10 @@ body.l-logo .barra .logo,body.l-logo .barra [class$="-placa"]{transition:opacity
 .hs-carta{border-top:2px solid var(--fg);margin-top:20px;padding-top:24px}.hs-carta .kicker{font-family:var(--fc);font-weight:700;font-size:20px;line-height:1.2;letter-spacing:.1em;text-transform:uppercase;color:var(--acc);margin:22px 0 12px}.hs-carta .hs-f{margin-top:0;border-radius:6px;aspect-ratio:5/4}
 @media (min-width:900px){
 .hs-lado{display:grid;grid-template-columns:1fr 1.05fr;gap:48px;align-items:center}.hs-lado .hs-f{margin:0;aspect-ratio:4/5;max-height:calc(100svh - 170px);border-radius:32px}
-.hs-caja .caja{padding:56px 48px 48px}.hs-caja .hs-f{aspect-ratio:21/9;margin-top:36px;border-radius:24px}
+.hs-caja .caja{padding:56px 48px 48px}.hs-caja .hs-f{aspect-ratio:2/1;margin-top:36px;border-radius:24px}
 .hs-arco .hs-f{max-width:620px;aspect-ratio:1/1}
-.hs-banda .banda{margin:0 calc(50% - 50vw);border-radius:0;padding:64px calc(50vw - 50%) 210px}.hs-banda .hs-f{margin:-170px 0 0;aspect-ratio:21/9}
-.hs-carta{display:grid;grid-template-columns:1.25fr 1fr;column-gap:56px;align-items:end}.hs-carta .hs-f{grid-column:1/-1;aspect-ratio:21/8;margin-bottom:8px}.hs-carta .c-b{justify-self:end;text-align:right}.hs-carta .c-b .ctas,.hs-carta .c-b .info{justify-content:flex-end}.hs-carta h1{max-width:16ch}.hs-carta .sub{max-width:44ch}
+.hs-banda .banda{margin:0 calc(50% - 50vw);border-radius:0;padding:64px calc(50vw - 50%) 210px}.hs-banda .hs-f{margin:-170px 0 0;aspect-ratio:2/1}
+.hs-carta{display:grid;grid-template-columns:1.25fr 1fr;column-gap:56px;align-items:end}.hs-carta .hs-f{grid-column:1/-1;aspect-ratio:2/1;margin-bottom:8px}.hs-carta .c-b{justify-self:end;text-align:right}.hs-carta .c-b .ctas,.hs-carta .c-b .info{justify-content:flex-end}.hs-carta h1{max-width:16ch}.hs-carta .sub{max-width:44ch}
 }
 /* "Lo más pedido" con la foto entera del platillo */
 .prod .ph.foto{height:auto;aspect-ratio:4/3;display:block;overflow:hidden;border-radius:14px}.prod .ph.foto img{width:100%;height:100%;max-height:none;object-fit:cover}
