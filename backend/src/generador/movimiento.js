@@ -305,6 +305,8 @@ html,body{overflow-x:clip}
    correo, el teléfono y los documentos van con forma de botón (contorno), con la misma forma que el botón principal. */
 .lnk,.como-llegar,.doc,.vis p>a,.datos p>a{display:inline-flex;align-items:center;justify-content:center;align-self:flex-start;width:fit-content;text-decoration:none;font-weight:700;line-height:1.15;border:2px solid currentColor;border-radius:999px;padding:11px 22px;min-height:48px;transition:background-color .25s ease}
 .vis p>a,.datos p>a,.como-llegar{border-width:1.5px;padding:8px 16px;min-height:44px;margin-top:6px}
+footer a{display:inline-flex;align-items:center;text-decoration:none;font-weight:700;border:1.5px solid currentColor;border-radius:999px;padding:6px 14px;min-height:40px;margin:6px 4px 0;transition:background-color .25s ease}
+@media (hover:hover){footer a:hover{background-color:color-mix(in srgb,currentColor 14%,transparent)}}
 @media (hover:hover){.lnk:hover,.como-llegar:hover,.doc:hover,.vis p>a:hover,.datos p>a:hover{background-color:color-mix(in srgb,currentColor 14%,transparent)}}
 /* Regla (12-nov-2026, Sebastián): en todas las opciones de todos los giros, los títulos de sección entran con un efecto
    leve y reaccionan al mouse; los recuadros cambian un poco de color y crecen apenas (con su texto) al pasar el mouse. */

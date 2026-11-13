@@ -179,7 +179,7 @@ body .paq-det span,body .paq-det ul.inc,body .paq ul.inc,body .paq li span,body 
 body .paq-cab h3,body .paq-cab h4,body .paq h3,body .datos b,body .datos strong{font-size:${e.h3}}
 body .sub{font-size:${fluido(17, 22)}}
 /* Interfaz con fuente sans de pantalla (regla dura 10-nov-2026) */
-body nav a,body .barra a,body .menu a,body .menu-btn,body .btn,body button,body .sl-btn,body .wa,body .kicker,body label,body input,body select,body textarea,body .cifras li,body .chip,body .tr-info{font-family:"${fuenteUI(par)}",system-ui,-apple-system,"Segoe UI",sans-serif!important}
+body nav a,body .barra a,body .menu a,body .menu-btn,body .btn,body button,body .sl-btn,body .wa,body .kicker,body label,body input,body select,body textarea,body .cifras li,body .chip,body .tr-info,body .lnk,body .como-llegar,body .doc,body .vis p>a,body .datos p>a,body footer a{font-family:"${fuenteUI(par)}",system-ui,-apple-system,"Segoe UI",sans-serif!important}
 `;
 }
 

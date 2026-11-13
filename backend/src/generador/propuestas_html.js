@@ -121,7 +121,9 @@ function pagina(d) {
   const conSl = emp.fotos.length >= 2 && emp.diapos.length > 0;
   const marco = (clase) => sliderHTML({ fotos: emp.fotos, diapos: emp.diapos, img: imgS, tag: 'figure', clase: `${clase} sl-marco`, nombre: d.nombre }).html;
   const txtH = `<h1>${esc(d.textos.titular)}</h1><p class="sub">${esc(d.textos.subtitulo)}</p>`;
-  const ctasH = (cls = '') => `<div class="ctas"><a class="btn${cls ? ` ${cls}` : ''}"${wa}>${esc(d.textos.cta)}</a><a class="lnk" href="#menu">Ver menú</a></div>`;
+  // Si el botón principal ya habla del menú ("Ver menú completo"), no se pone otro "Ver menú" al lado: lleva a "Lo más pedido".
+  const lnkH = /men[uú]/i.test(d.textos.cta || '') ? `<a class="lnk" href="#destacados">${esc(d.textos.destacados || 'Lo más pedido')}</a>` : '<a class="lnk" href="#menu">Ver menú</a>';
+  const ctasH = (cls = '') => `<div class="ctas"><a class="btn${cls ? ` ${cls}` : ''}"${wa}>${esc(d.textos.cta)}</a>${lnkH}</div>`;
   const infoH = (cls = '') => (info ? `<ul class="info${cls ? ` ${cls}` : ''}">${info}</ul>` : '');
   const herosSl = !conSl ? {} : {
     protagonista: sliderHTML({
