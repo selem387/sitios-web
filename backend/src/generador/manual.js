@@ -415,7 +415,7 @@ html.cp-horiz .cp-regla{display:block;position:fixed;left:24px;right:24px;bottom
 .cp-regla-m i{display:block;width:1px;height:8px;background:currentColor;opacity:.35}.cp-regla-m i.l{height:30px;opacity:.5}
 .cp-regla-p{position:absolute;top:0;left:0;width:70px;height:6px;border-radius:6px;background:var(--acento);transform:translateX(0)}
 .cp-regla-n{list-style:none;position:absolute;left:0;right:0;top:38px;height:24px}
-.cp-regla-n li{position:absolute;top:0;font-size:13px;white-space:nowrap;opacity:.6;transition:opacity .3s;display:flex;gap:10px}.cp-regla-n li.act{opacity:1;font-weight:500;z-index:1}
+.cp-regla-n li{position:absolute;top:0;font-size:13px;white-space:nowrap;opacity:.6;transition:opacity .3s;display:flex;gap:10px;padding:0 6px;border-radius:6px}.cp-regla-n li.act{opacity:1;font-weight:500;z-index:1;background:var(--abajo)}
 .cp-regla-t{display:none}.cp-regla-n li.act .cp-regla-t{display:inline;background:color-mix(in srgb,var(--abajo) 80%,transparent);padding:0 6px;border-radius:6px}
 /* portada */
 html.cp-horiz .cp-inicio{width:calc(100vw + 40px);display:block;padding:0}
@@ -446,8 +446,8 @@ html.cp-horiz .cp-voz-t .cp-h{font-size:min(8vw,15vh);white-space:nowrap}
 html.cp-horiz .cp-voz-tx{display:flex;flex-wrap:wrap;align-items:flex-start;gap:20px 4vw;padding-top:4vh}
 html.cp-horiz .cp-voz-tx .cp-p{flex:0 0 22ch;max-width:22ch}
 html.cp-horiz .cp-srv-tx .cp-p{width:100%;max-width:24ch}
-html.cp-horiz .cp-pasos{width:30vw}
-html.cp-horiz .cp-voz-tx .cp-btn{flex-basis:100%}
+html.cp-horiz .cp-pasos{width:26vw}
+html.cp-horiz .cp-voz-tx .cp-btn{align-self:flex-start}
 html.cp-horiz .cp-voz-card{width:30vw;height:32vh;align-self:end;margin:0 6vw 0 10vw;max-width:none;aspect-ratio:auto}
 /* mi trabajo */
 html.cp-horiz .cp-trabajo{width:auto;padding:96px 0 120px}
