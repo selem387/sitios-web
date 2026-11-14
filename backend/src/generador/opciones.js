@@ -95,16 +95,16 @@ export function interpretarEleccion(texto = '') {
   const orig = String(texto).trim();
   const t = ` ${orig.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '')} `;
   const palabras = orig.split(/\s+/).filter(Boolean).length;
-  const ORD = { primera: 'A', primer: 'A', primero: 'A', segunda: 'B', segundo: 'B', tercera: 'C', tercero: 'C', cuarta: 'D', cuarto: 'D', quinta: 'E', quinto: 'E', sexta: 'F', sexto: 'F', septima: 'G', septimo: 'G', octava: 'H', octavo: 'H', novena: 'I', noveno: 'I', decima: 'J', decimo: 'J', undecima: 'K', undecimo: 'K', duodecima: 'L', duodecimo: 'L', decimotercera: 'M', decimotercero: 'M', decimotercer: 'M', decimocuarta: 'N', decimocuarto: 'N', decimoquinta: 'O', decimoquinto: 'O', decimosexta: 'P', decimosexto: 'P', ultima: 'G', ultimo: 'G', '1': 'A', '2': 'B', '3': 'C', '4': 'D', '5': 'E', '6': 'F', '7': 'G', '8': 'H', '9': 'I', '10': 'J', '11': 'K', '12': 'L', '13': 'M', '14': 'N', '15': 'O', '16': 'P' };
+  const ORD = { primera: 'A', primer: 'A', primero: 'A', segunda: 'B', segundo: 'B', tercera: 'C', tercero: 'C', cuarta: 'D', cuarto: 'D', quinta: 'E', quinto: 'E', sexta: 'F', sexto: 'F', septima: 'G', septimo: 'G', octava: 'H', octavo: 'H', novena: 'I', noveno: 'I', decima: 'J', decimo: 'J', undecima: 'K', undecimo: 'K', duodecima: 'L', duodecimo: 'L', decimotercera: 'M', decimotercero: 'M', decimotercer: 'M', decimocuarta: 'N', decimocuarto: 'N', decimoquinta: 'O', decimoquinto: 'O', decimosexta: 'P', decimosexto: 'P', decimoseptima: 'Q', decimoseptimo: 'Q', ultima: 'G', ultimo: 'G', '1': 'A', '2': 'B', '3': 'C', '4': 'D', '5': 'E', '6': 'F', '7': 'G', '8': 'H', '9': 'I', '10': 'J', '11': 'K', '12': 'L', '13': 'M', '14': 'N', '15': 'O', '16': 'P', '17': 'Q' };
   const PREF = '(?:la|el|opcion|propuesta|op\\.?|letra|numero|#)';
   const letras = [];
   const add = (l) => { if (l && !letras.includes(l)) letras.push(l); };
   // 1) Con prefijo: "la b", "opción C", "la 2", "la segunda".
-  for (const m of t.matchAll(new RegExp(`\\b${PREF}\\s+([a-p]|1[0-6]|[1-9]|primer[ao]?|segund[ao]|tercer[ao]?|cuart[ao]|quint[ao]|sext[ao]|septim[ao]|octav[ao]|noven[ao]|decim[ao]|undecim[ao]|duodecim[ao]|decimoterc(?:er[ao]?|[ao])|decimocuart[ao]|decimoquint[ao]|decimosext[ao]|ultim[ao])(?![\\w])`, 'g'))) add(ORD[m[1]] || ORD[m[1].replace(/o$/, 'a')] || m[1].toUpperCase());
+  for (const m of t.matchAll(new RegExp(`\\b${PREF}\\s+([a-q]|1[0-7]|[1-9]|primer[ao]?|segund[ao]|tercer[ao]?|cuart[ao]|quint[ao]|sext[ao]|septim[ao]|octav[ao]|noven[ao]|decim[ao]|undecim[ao]|duodecim[ao]|decimoterc(?:er[ao]?|[ao])|decimocuart[ao]|decimoquint[ao]|decimosext[ao]|decimoseptim[ao]|ultim[ao])(?![\\w])`, 'g'))) add(ORD[m[1]] || ORD[m[1].replace(/o$/, 'a')] || m[1].toUpperCase());
   // 2) Mensaje corto: "B", "b porfa", "la d", "2", "la segunda".
-  if (palabras <= 3) for (const m of t.matchAll(/(?:^|[\s,.;:¡!¿?"'(])([a-n]|o(?!\s+[a-z0-9])|p|1[0-6]|[1-9]|primer[ao]?|segund[ao]|tercer[ao]?|cuart[ao]|quint[ao]|sext[ao]|septim[ao]|octav[ao]|noven[ao]|decim[ao]|undecim[ao]|duodecim[ao]|decimoterc(?:er[ao]?|[ao])|decimocuart[ao]|decimoquint[ao]|decimosext[ao]|ultim[ao])(?=[\s,.;:!?)"']|$)/g)) add(ORD[m[1]] || m[1].toUpperCase());
+  if (palabras <= 3) for (const m of t.matchAll(/(?:^|[\s,.;:¡!¿?"'(])([a-n]|o(?!\s+[a-z0-9])|p|q(?!\s+[a-z0-9])|1[0-7]|[1-9]|primer[ao]?|segund[ao]|tercer[ao]?|cuart[ao]|quint[ao]|sext[ao]|septim[ao]|octav[ao]|noven[ao]|decim[ao]|undecim[ao]|duodecim[ao]|decimoterc(?:er[ao]?|[ao])|decimocuart[ao]|decimoquint[ao]|decimosext[ao]|decimoseptim[ao]|ultim[ao])(?=[\s,.;:!?)"']|$)/g)) add(ORD[m[1]] || m[1].toUpperCase());
   // 3) Mayúscula suelta: B, C, D, F en cualquier lugar; A y E solo si no abren frase seguidas de una palabra en minúscula.
-  for (const m of orig.matchAll(/(^|[^\p{L}\d])([A-P])(?![\p{L}\d])/gu)) {
+  for (const m of orig.matchAll(/(^|[^\p{L}\d])([A-Q])(?![\p{L}\d])/gu)) {
     const l = m[2];
     if (l === 'A' || l === 'E') {
       const ini = m.index + m[1].length;
@@ -113,18 +113,18 @@ export function interpretarEleccion(texto = '') {
     }
     add(l);
   }
-  const colores = t.match(/colores? (?:de|del|de la) (?:la |opcion |propuesta )?([a-p])\b/);
+  const colores = t.match(/colores? (?:de|del|de la) (?:la |opcion |propuesta )?([a-q])\b/);
   // "no me gusta la C": esa letra NO es elección y la frase no es un rechazo de todas.
-  const NEG = new RegExp(`no me (gust\\w*|convenc\\w*|lat\\w*|encant\\w*)( mucho| tanto)?( la| el| ${PREF})* ?([a-p])\\b`, 'g');
+  const NEG = new RegExp(`no me (gust\\w*|convenc\\w*|lat\\w*|encant\\w*)( mucho| tanto)?( la| el| ${PREF})* ?([a-q])\\b`, 'g');
   const negadas = [...t.matchAll(NEG)].map((m) => m[m.length - 1].toUpperCase());
   const tSinNeg = t.replace(NEG, ' ');
-  const POS = new RegExp(`(me gusta(ron|n)?|me gusto|me encanta|me encanto|me quedo con|elijo|escojo|quiero|prefiero|vamos con|va la|me late|esta bien)( mas)?( la| el| ${PREF})* ?([a-p])\\b`, 'g');
+  const POS = new RegExp(`(me gusta(ron|n)?|me gusto|me encanta|me encanto|me quedo con|elijo|escojo|quiero|prefiero|vamos con|va la|me late|esta bien)( mas)?( la| el| ${PREF})* ?([a-q])\\b`, 'g');
   const positivas = [...tSinNeg.matchAll(POS)].filter((m) => !/\bno\s*$/.test(tSinNeg.slice(0, m.index))).map((m) => m[m.length - 1].toUpperCase());
   const RECHAZO = /\bningun[ao]?\b|\bni una\b|no me (gusto|gustaron|gusta|gustan|convence|convencen|convencio|convencieron|late|laten|encanto|encantaron)\b|nada de (eso|esto)|\botras? (opciones|diferentes|distintas|nuevas)\b|todas (estan |se ven )?(feas|mal|iguales)|(quiero|hazme|mandame|dame) otras|no es lo que (busco|queria)/;
   const validas = letras.filter((l) => !negadas.includes(l));
   if (RECHAZO.test(tSinNeg) && !positivas.length) return { ninguna: true, mencionadas: letras };
   // Preguntas ("¿cuáles 6?", "¿dónde las veo?") no son elección salvo que nombre la opción con claridad.
-  if (!positivas.length && /\?|cuales|donde|no (me )?(llegaron|abren|veo)|reenv/.test(t) && !new RegExp(`\\b${PREF}\\s+[a-p]\\b`).test(t)) return null;
+  if (!positivas.length && /\?|cuales|donde|no (me )?(llegaron|abren|veo)|reenv/.test(t) && !new RegExp(`\\b${PREF}\\s+[a-q]\\b`).test(t)) return null;
   if (!validas.length && !positivas.length) return null;
   const base = colores ? [...positivas, ...validas].find((l) => l !== colores[1].toUpperCase()) || validas[0] : (positivas.at(-1) || validas[0]);
   return { elegido: base, colores_de: colores ? colores[1].toUpperCase() : null };
