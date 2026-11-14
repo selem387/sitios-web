@@ -8,6 +8,7 @@ import { CSS_REVISION_HISTORIA } from './historia.js';
 import { CSS_REVISION_NARRATIVA } from './narrativa.js';
 import { CSS_REVISION_MOVIMIENTO } from './movimiento_k.js';
 import { CSS_REVISION_GUIA } from './guia.js';
+import { CSS_REVISION_CATALOGO } from './catalogo.js';
 
 // Para medir y capturar: sin la etiqueta ni el botón flotante, y con las animaciones de entrada ya terminadas
 // (12-nov-2026: se medía a media animación y salían falsos "título desalineado" y "desborde horizontal", y capturas en blanco).
@@ -21,7 +22,8 @@ const CSS_REVISION = '.etq,.wa{display:none!important}*,*::before,*::after{anima
   // Opción K (movimiento): títulos y bloques ya visibles, sin tarjetas apiladas ni recorrido horizontal.
   + CSS_REVISION_MOVIMIENTO
   // Opción M (guía en movimiento): fotos del recorrido una debajo de otra, sin fijados.
-  + CSS_REVISION_GUIA;
+  + CSS_REVISION_GUIA
+  + CSS_REVISION_CATALOGO;
 
 export async function captura(url, { ancho = 1366, selector = null } = {}) {
   if (!config.renderUrl || !url) return null;
@@ -145,7 +147,7 @@ const ESQUEMA_CORRECCION = {
   required: ['css'],
 };
 
-const archivoDe = (url) => { const m = String(url || '').match(/\/p\/([A-Za-z0-9]{8,40})\/([A-M])\b/); return m ? path.join(DIR_PROPUESTAS, m[1], `${m[2]}.html`) : null; };
+const archivoDe = (url) => { const m = String(url || '').match(/\/p\/([A-Za-z0-9]{8,40})\/([A-O])\b/); return m ? path.join(DIR_PROPUESTAS, m[1], `${m[2]}.html`) : null; };
 
 // CSS seguro: fuera @import/url()/expression y cualquier regla que oculte imágenes, el logo o textos.
 function cssSeguro(css) {

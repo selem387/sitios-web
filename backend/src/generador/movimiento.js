@@ -38,7 +38,7 @@ const PRESETS_FX = [
   'fx-zoom fx-paralaje fx-hover',
   'fx-zoom fx-mascara fx-texto fx-hover',
 ];
-export const efectosDe = (letra) => PRESETS_FX[Math.max(0, 'ABCDEFGHIJK'.indexOf(String(letra || 'A').toUpperCase())) % PRESETS_FX.length];
+export const efectosDe = (letra) => PRESETS_FX[Math.max(0, 'ABCDEFGHIJKLMNO'.indexOf(String(letra || 'A').toUpperCase())) % PRESETS_FX.length];
 const ORDEN_TIPOS = ['diferenciador', 'oferta', 'prueba', 'vision'];
 
 /**

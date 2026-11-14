@@ -19,6 +19,7 @@ import { escenaHistoriaHTML, fraseDe, aptaHistoria, scriptsHistoria, CSS_HISTORI
 import { portadaMovimientoHTML, parMovimiento, conEfectosK, CSS_MOVIMIENTO_K } from './movimiento_k.js';
 import { portadaNarrativaHTML, parNarrativa, CSS_NARRATIVA, JS_NARRATIVA } from './narrativa.js';
 import { escenaGuiaHTML, cierreGuiaHTML, indiceGuiaHTML, parGuia, CSS_GUIA, JS_GUIA } from './guia.js';
+import { portadaCatalogoHTML, bandaFotoHTML, cierreCatalogoHTML, tabsDeServicios, parCatalogo, CSS_CATALOGO, JS_CATALOGO } from './catalogo.js';
 
 const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const lum = (h) => { const n = parseInt(h.slice(1), 16); const c = [(n >> 16) & 255, (n >> 8) & 255, n & 255].map((v) => v / 255).map((v) => (v <= 0.03928 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4)); return 0.2126 * c[0] + 0.7152 * c[1] + 0.0722 * c[2]; };
@@ -34,10 +35,11 @@ const conContraste = (c, bg, min = 4.5, hacia = '#000000') => { let x = c; for (
 // H (12-nov-2026): opción adicional "Recorrido con índice" (generador/indice.js). Siempre va como octava.
 // I (14-nov-2026): opción adicional "Historia con scroll" (generador/historia.js). Siempre va como novena.
 // J (14-nov-2026): opción adicional "Narrativa por capítulos" (generador/narrativa.js). Siempre va como décima.
-export const LAYOUTS_GENERAL = ['portada', 'editorial', 'mosaico', 'logo', 'dostonos', 'carta', 'collage', 'indice', 'historia', 'narrativa', 'movimiento', 'reservada_l', 'guia'];
+export const LAYOUTS_GENERAL = ['portada', 'editorial', 'mosaico', 'logo', 'dostonos', 'carta', 'collage', 'indice', 'historia', 'narrativa', 'movimiento', 'reservada_l', 'guia', 'reservada_n', 'catalogo'];
 // K (14-nov-2026): opción adicional "Recorrido en movimiento" (generador/movimiento_k.js + efectos_gsap.js). Siempre va como undécima.
 // M (14-nov-2026): opción adicional "Guía en movimiento" (generador/guia.js + efectos_gsap.js). Siempre va como decimotercera; la L queda reservada.
-export const LETRAS = 'ABCDEFGHIJKLM';
+// O (14-nov-2026): opción adicional "Catálogo en movimiento" (generador/catalogo.js, CSS nativo sin librerías). Siempre va como decimoquinta; la L y la N quedan reservadas.
+export const LETRAS = 'ABCDEFGHIJKLMNO';
 // La G sale para todos solo con OPCION_G=1 en el servicio api (11-nov-2026: primero se prueba cliente por cliente).
 export const conOpcionG = () => process.env.OPCION_G === '1';
 // La H sale para todos solo con OPCION_H=1 en el servicio api (igual que la G: primero cliente por cliente).
@@ -50,7 +52,9 @@ export const conOpcionJ = () => process.env.OPCION_J === '1';
 export const conOpcionK = () => process.env.OPCION_K === '1';
 // La M sale para todos solo con OPCION_M=1 (GSAP permitido: regla dura del proyecto, 14-nov-2026).
 export const conOpcionM = () => process.env.OPCION_M === '1';
-export const NOMBRES_GENERAL = { portada: 'Foto a pantalla completa', editorial: 'Editorial', mosaico: 'Mosaico de tu trabajo', logo: 'Tu logo al centro', dostonos: 'Dos tonos', carta: 'Minimalista', collage: 'Collage en movimiento', indice: 'Recorrido con índice', historia: 'Historia con scroll', narrativa: 'Narrativa por capítulos', movimiento: 'Recorrido en movimiento', guia: 'Guía en movimiento' };
+// La O sale para todos solo con OPCION_O=1 (no usa librerías de animación: CSS nativo y un script mínimo).
+export const conOpcionO = () => process.env.OPCION_O === '1';
+export const NOMBRES_GENERAL = { portada: 'Foto a pantalla completa', editorial: 'Editorial', mosaico: 'Mosaico de tu trabajo', logo: 'Tu logo al centro', dostonos: 'Dos tonos', carta: 'Minimalista', collage: 'Collage en movimiento', indice: 'Recorrido con índice', historia: 'Historia con scroll', narrativa: 'Narrativa por capítulos', movimiento: 'Recorrido en movimiento', guia: 'Guía en movimiento', catalogo: 'Catálogo en movimiento' };
 
 // Títulos por arquetipo (Claude puede reemplazarlos con textos.secciones).
 export const TITULOS = {
@@ -102,6 +106,7 @@ function paletaGeneral(layout, colores, pastel, i, { acento = null, acentoCta = 
     historia: { bg: mezclar(papel, '#F6F1E8', 0.6), fg: tinta, primary: base, muted: mezclar(tinte, '#FFFFFF', 0.5), banda: conContraste(tono(base, 0.2, 0.18, 0.3), '#FFFFFF', 9) },
     movimiento: { bg: mezclar(papel, '#FFFFFF', 0.7), fg: tinta, primary: base, muted: mezclar(tinte, '#FFFFFF', 0.6), banda: conContraste(tono(base, 0.22, 0.2, 0.3), '#FFFFFF', 8) },
     guia: { bg: mezclar(papel, '#FFFFFF', 0.82), fg: tinta, primary: base, muted: mezclar(tinte, '#FFFFFF', 0.6), banda: conContraste(tono(base, 0.2, 0.18, 0.28), '#FFFFFF', 9) },
+    catalogo: { bg: '#FFFFFF', fg: tinta, primary: base, muted: mezclar(tinte, '#FFFFFF', 0.6), banda: conContraste(tono(base, 0.2, 0.18, 0.28), '#FFFFFF', 9) },
     narrativa: { bg: '#FFFFFF', fg: conContraste(tono(base, 0.1, 0.1, 0.25), '#FFFFFF', 15), primary: base, muted: mezclar(tinte, '#FFFFFF', 0.7) },
   }[layout];
   p.primary = conContraste(p.primary, p.bg, 4.5);
@@ -281,7 +286,7 @@ function pagina(d) {
   // las demás con otra foto de su trabajo para que no se vean iguales (si el dueño fijó portada, se respeta en todas).
   const variar = d.dref && d.letra !== 'A' && !brief.fotos?.portada_manual;
   const heroMat = mat.hero && fueraDeGaleria(mat.hero) ? mat.hero : null;
-  const heroBase = !variar && (d.layout === 'portada' || d.layout === 'logo' || d.layout === 'collage' || d.layout === 'indice' || d.layout === 'historia' || d.layout === 'narrativa' || d.layout === 'movimiento' || d.layout === 'guia' || (brief.fotos?.portada_manual && heroMat)) ? (heroMat || fotosT[0]) : (fotosT[0] || heroMat || (fueraDeGaleria(mat.fundador) ? mat.fundador : null));
+  const heroBase = !variar && (d.layout === 'portada' || d.layout === 'logo' || d.layout === 'collage' || d.layout === 'indice' || d.layout === 'historia' || d.layout === 'narrativa' || d.layout === 'movimiento' || d.layout === 'guia' || d.layout === 'catalogo' || (brief.fotos?.portada_manual && heroMat)) ? (heroMat || fotosT[0]) : (fotosT[0] || heroMat || (fueraDeGaleria(mat.fundador) ? mat.fundador : null));
   // Si el titular habla de un producto, abre con la foto de ese producto (la eligió la IA de textos por su descripción).
   const fotoTit = !brief.fotos?.portada_manual && t.foto_url ? [mat.hero, ...trabajos].find((x) => x?.url === t.foto_url) : null;
   const heroFoto = fotoTit || heroBase;
@@ -370,6 +375,14 @@ function pagina(d) {
       gu.urls.forEach((u) => { enPortada.add(u); usadas.add(u); });
       return gu.html;
     },
+    // O: catálogo en movimiento (generador/catalogo.js). Portada en carrusel con las fotos del slider y sus textos;
+    // "Nuestro trabajo" hace de estante deslizable y los servicios van en pestañas. Sin librerías de animación.
+    catalogo: () => {
+      const pasos = poolSl.slice(1).map((foto, k) => ({ foto, titular: diapos[k]?.titular || '', apoyo: diapos[k]?.apoyo || '' }));
+      const ct = portadaCatalogoHTML({ heroFoto, pasos, img, kicker: [giroCorto(neg.giro_texto), neg.ciudad].filter(Boolean).join(' · '), titular: t.titular, subtitulo: t.subtitulo, cta: cta() });
+      ct.urls.forEach((u) => { enPortada.add(u); usadas.add(u); });
+      return ct.html;
+    },
     carta: () => { const s = poolSl.length ? `<div class="wrap">${slider({ tag: 'figure', clase: 'sl-carta sl-marco' })}</div>` : ''; const resto = s ? [] : fotosT.filter((x) => !usadas.has(x.url)).slice(0, 8); return `<section class="hero h-carta wrap"><div class="tit"><p class="kicker">${esc(d.nombre)}</p><h1>${esc(t.titular)}</h1></div><div class="lado"><p class="sub">${esc(t.subtitulo)}</p>${cta()}</div></section>${s}${resto.length ? `<div class="wrap">${filaJustificada(resto, img)}</div>` : ''}`; },
   };
   const promo = brief.oferta?.promocion_actual ? `<section class="promo" id="promocion"><div class="wrap"><p><b>Promoción</b> ${esc(brief.oferta.promocion_actual)}</p></div></section>` : '';
@@ -450,6 +463,12 @@ function pagina(d) {
     return `<section class="sec contacto" id="contacto"><div class="wrap"><h2>${esc(T.contacto)}</h2><div class="datos">${d.tel ? `<p><b>WhatsApp</b><a${wa}>${esc(d.tel)}</a></p>` : ''}${dir ? `<p><b>Dónde</b>${esc(dir)}</p>` : zona ? `<p><b>Dónde</b>${esc(zona)}</p>` : ''}${typeof c.horarios === 'string' ? `<p><b>Horario</b>${esc(c.horarios)}</p>` : ''}${c.email ? `<p><b>Correo</b><a href="mailto:${esc(c.email)}">${esc(c.email)}</a></p>` : ''}${rs ? `<p><b>Redes</b><span class="rs">${rs}</span></p>` : ''}</div>${cta()}</div></section>`;
   };
 
+  // O: banda de foto con una frase del cliente (su historia o diferenciador) y parallax; las fotos pueden repetirse (rep-ok).
+  const fotosCt = d.layout === 'catalogo' ? fotosT.filter((x) => x?.url && !enPortada.has(x.url) && x.url !== heroFoto?.url) : [];
+  const bandaCt = () => {
+    const frase = fraseDe(t.sobre || conf.historia_corta || '') || fraseDe(brief.oferta?.diferenciador || '') || '';
+    return bandaFotoHTML({ foto: fotosCt[1] || null, img, frase, cta: cta() });
+  };
   const ORDEN = {
     portada: [secTrabajo, secServicios, secSobre, secEquipo, secResenas, secProceso, secFaq, secVideo, secContacto],
     editorial: [secSobre, secTrabajo, secEquipo, secServicios, secResenas, procCli, secFaq, secVideo, secContacto],
@@ -463,6 +482,8 @@ function pagina(d) {
     movimiento: [secSobre, secTrabajo, secServicios, secEquipo, secResenas, secProceso, secFaq, secVideo, secContacto],
     narrativa: [secSobre, secTrabajo, secServicios, secEquipo, secResenas, secProceso, secFaq, secVideo, secContacto],
     guia: [secSobre, secTrabajo, secServicios, secEquipo, secResenas, secProceso, secFaq, secVideo, secContacto],
+    // O: estante de trabajo primero, banda con parallax, servicios en pestañas y el resto como en las demás.
+    catalogo: [secTrabajo, bandaCt, () => tabsDeServicios(secServicios()), secSobre, secEquipo, secResenas, secProceso, secFaq, secVideo, secContacto],
   }[d.layout];
   const cuerpo = ORDEN.map((fn) => fn()).join('');
   // Galería final: TODO lo que el cliente mandó y aún no aparece (regla dura). Nada se queda fuera.
@@ -495,8 +516,10 @@ function pagina(d) {
   const esNa = d.layout === 'narrativa';
   const esMv = d.layout === 'movimiento';
   const esGu = d.layout === 'guia';
+  const esCt = d.layout === 'catalogo';
+  const cierreCt = esCt ? cierreCatalogoHTML({ foto: fotosCt[0] || heroFoto, img, titulo: d.nombre, apoyo: [giroCorto(neg.giro_texto), neg.ciudad].filter(Boolean).join(' · '), cta: cta() }) : '';
   const cierreGu = esGu ? cierreGuiaHTML({ foto: fotosT.find((x) => x?.url && !enPortada.has(x.url)) || heroFoto, img, titulo: d.nombre, apoyo: [giroCorto(neg.giro_texto), neg.ciudad].filter(Boolean).join(' · '), cta: cta() }) : '';
-  const html = `<!doctype html><html lang="es" class="${esIx ? 'fx-zoom fx-hover' : esHs ? 'fx-zoom' : esNa ? 'fx-hover' : esMv || esGu ? 'fx-hover' : efectosDe(d.letra)}"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><meta name="robots" content="noindex">
+  const html = `<!doctype html><html lang="es" class="${esIx ? 'fx-zoom fx-hover' : esHs ? 'fx-zoom' : esNa ? 'fx-hover' : esMv || esGu || esCt ? 'fx-hover' : efectosDe(d.letra)}"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><meta name="robots" content="noindex">
 <title>${esc(d.nombre)} · Propuesta ${d.letra}</title>
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><!-- Tipografías sin bloquear la portada (7-nov-2026): la página se pinta con la letra de respaldo y cambia a la de Google en cuanto llega (display=swap). Lighthouse móvil ≥ 90. --><link rel="preload" as="style" href="${esc(d.fuentesUrl)}" onload="this.onload=null;this.rel='stylesheet'"><noscript><link href="${esc(d.fuentesUrl)}" rel="stylesheet"></noscript>
 <style>
@@ -568,13 +591,13 @@ a:focus-visible,summary:focus-visible{outline:3px solid var(--p);outline-offset:
 @media (min-width:900px){.h-portada .velo{background:linear-gradient(90deg,rgba(0,0,0,.6),rgba(0,0,0,.15) 70%)}.h-edit{grid-template-columns:1.1fr .9fr;align-items:center;padding-top:64px}.h-dos .in{grid-template-columns:1.1fr .9fr;align-items:end}.mos{grid-template-columns:repeat(4,1fr)}.mos>:first-child{grid-column:span 2;grid-row:span 2;aspect-ratio:auto}.mos-sl{min-height:380px}.mos.solo>.mos-sl{aspect-ratio:16/8!important;min-height:0}.h-portada .sl-d.con-txt::after{background:linear-gradient(90deg,rgba(0,0,0,.66),rgba(0,0,0,.18) 72%)}
 .s-in{grid-template-columns:.8fr 1.2fr}.galeria{columns:3 220px}.g-editorial{columns:4 220px}.contacto .datos{grid-template-columns:repeat(3,1fr)}}
 @media (prefers-reduced-motion:reduce){html{scroll-behavior:auto}}
-${CSS_MOVIMIENTO}${d.layout === 'collage' ? CSS_COLLAGE : ''}${esIx ? CSS_INDICE : ''}${esHs ? CSS_HISTORIA : ''}${esNa ? CSS_NARRATIVA : ''}${esMv ? CSS_MOVIMIENTO_K : ''}${esGu ? CSS_GUIA : ''}
+${CSS_MOVIMIENTO}${d.layout === 'collage' ? CSS_COLLAGE : ''}${esIx ? CSS_INDICE : ''}${esHs ? CSS_HISTORIA : ''}${esNa ? CSS_NARRATIVA : ''}${esMv ? CSS_MOVIMIENTO_K : ''}${esGu ? CSS_GUIA : ''}${esCt ? CSS_CATALOGO : ''}
 </style>${esHs ? scriptsHistoria() : ''}</head>
 <body class="l-${d.layout}">
 <header class="barra"><div class="wrap in">${logoBarra}<nav>${navs.map(([id, n]) => `<a href="#${id}">${esc(n)}</a>`).join('')}</nav></div></header>${esIx ? navIndiceHTML(seccionesIx) : ''}${esGu ? indiceGuiaHTML(navs) : ''}
-<main>${heroFinal}${cuerpoFinal}${galeria}${esGu ? cierreGu : ''}</main>
+<main>${heroFinal}${cuerpoFinal}${galeria}${esGu ? cierreGu : ''}${esCt ? cierreCt : ''}</main>
 <footer>${marcaPie ? `<div class="pie-marcas">${marcaPie}</div>` : ''}© ${new Date().getFullYear()} ${esc(d.nombre)} · Propuesta ${d.letra}: ${esc(NOMBRES_GENERAL[d.layout])}</footer>
-<span class="etq">Propuesta ${d.letra}</span>${JS_MOVIMIENTO}${JS_CAR_TRABAJO}${d.layout === 'logo' ? JS_LOGO_UNICO : ''}${d.layout === 'collage' ? JS_COLLAGE : ''}${esIx ? monogramaHTML({ logoUrl: mat.logo?.url, nombre: d.nombre }) + JS_INDICE : ''}${esHs ? JS_HISTORIA : ''}${esNa ? JS_NARRATIVA : ''}${esGu ? JS_GUIA : ''}
+<span class="etq">Propuesta ${d.letra}</span>${JS_MOVIMIENTO}${JS_CAR_TRABAJO}${d.layout === 'logo' ? JS_LOGO_UNICO : ''}${d.layout === 'collage' ? JS_COLLAGE : ''}${esIx ? monogramaHTML({ logoUrl: mat.logo?.url, nombre: d.nombre }) + JS_INDICE : ''}${esHs ? JS_HISTORIA : ''}${esNa ? JS_NARRATIVA : ''}${esGu ? JS_GUIA : ''}${esCt ? JS_CATALOGO : ''}
 <a class="wa"${wa} aria-label="Escríbeme por WhatsApp"><svg viewBox="0 0 32 32" aria-hidden="true"><path d="M16 3a13 13 0 0 0-11.2 19.6L3 29l6.6-1.7A13 13 0 1 0 16 3Zm0 23.7c-2 0-4-.6-5.7-1.6l-.4-.2-3.9 1 1-3.8-.3-.4A10.7 10.7 0 1 1 16 26.7Zm5.9-8c-.3-.2-1.9-1-2.2-1-.3-.1-.5-.2-.7.1l-1 1.3c-.2.2-.4.2-.7.1a8.8 8.8 0 0 1-4.4-3.8c-.3-.6.3-.5.9-1.7.1-.2 0-.4 0-.6l-1-2.4c-.3-.6-.5-.5-.7-.5h-.6c-.2 0-.6.1-.9.4-.3.3-1.2 1.1-1.2 2.8s1.2 3.2 1.4 3.5c.2.2 2.4 3.6 5.7 5 2.1.9 3 1 4 .8.7-.1 1.9-.8 2.2-1.5.3-.8.3-1.4.2-1.5l-.6-.3Z"/></svg></a>
 </body></html>`;
   return esMv || esGu ? conEfectosK(html, p) : html;
@@ -610,16 +633,18 @@ export function paginasGenerales({ brief, mat, textos, pares, urlFuentes, ronda 
   const conJ = conOpcionJ() || fijo?.letra === 'J' || !!solo?.includes('J');
   // La M (guía en movimiento) igual que la K: letra fija y diseño propio (una grotesca, efectos GSAP).
   const conM = conOpcionM() || fijo?.letra === 'M' || !!solo?.includes('M');
-  const todas = [...(dref ? dref.layouts : LAYOUTS_GENERAL.slice(0, 6)).map((layout, i) => ({ layout, i })), ...(conG ? [{ layout: 'collage', i: 6 }] : []), ...(conH ? [{ layout: 'indice', i: 7 }] : []), ...(conI ? [{ layout: 'historia', i: 8 }] : []), ...(conJ ? [{ layout: 'narrativa', i: 9 }] : []), ...(conK ? [{ layout: 'movimiento', i: 10 }] : []), ...(conM ? [{ layout: 'guia', i: 12 }] : [])]
+  // La O (catálogo en movimiento) igual que la M: letra fija y diseño propio (una grotesca, CSS nativo).
+  const conO = conOpcionO() || fijo?.letra === 'O' || !!solo?.includes('O');
+  const todas = [...(dref ? dref.layouts : LAYOUTS_GENERAL.slice(0, 6)).map((layout, i) => ({ layout, i })), ...(conG ? [{ layout: 'collage', i: 6 }] : []), ...(conH ? [{ layout: 'indice', i: 7 }] : []), ...(conI ? [{ layout: 'historia', i: 8 }] : []), ...(conJ ? [{ layout: 'narrativa', i: 9 }] : []), ...(conK ? [{ layout: 'movimiento', i: 10 }] : []), ...(conM ? [{ layout: 'guia', i: 12 }] : []), ...(conO ? [{ layout: 'catalogo', i: 14 }] : [])]
     .filter(({ i }) => (!fijo || LETRAS[i] === fijo.letra) && (!solo || solo.includes(LETRAS[i])));
   return todas.map(({ layout, i }) => {
     const letra = LETRAS[i];
     const v = textos.variantes?.[i] || textos.variantes?.[0] || {};
-    const propia = layout === 'indice' || layout === 'historia' || layout === 'narrativa' || layout === 'movimiento' || layout === 'guia';
+    const propia = layout === 'indice' || layout === 'historia' || layout === 'narrativa' || layout === 'movimiento' || layout === 'guia' || layout === 'catalogo';
     // H: titulares en letra sin remates (trazo limpio). De los pares del estilo del cliente toma el primero cuyo título sea sans.
     // I: al revés, titulares con remates (serif editorial), como en las marcas de alimentos y cosmética.
     const claseH = layout === 'historia' ? 'serif' : 'sans';
-    const parH = layout === 'guia' ? parGuia(pares) : layout === 'movimiento' ? parMovimiento(pares) : layout === 'narrativa' ? parNarrativa(pares) : propia ? pares.find((x) => METRICAS[x.titulos]?.clase === claseH) || pares[i % pares.length] : null;
+    const parH = layout === 'catalogo' ? parCatalogo(pares) : layout === 'guia' ? parGuia(pares) : layout === 'movimiento' ? parMovimiento(pares) : layout === 'narrativa' ? parNarrativa(pares) : propia ? pares.find((x) => METRICAS[x.titulos]?.clase === claseH) || pares[i % pares.length] : null;
     const par = fijo?.fuentes || parH || (dref ? parPorNombres(dref.pares[i] || dref.pares[i % dref.pares.length]) : pares[i % pares.length]);
     const d = {
       i: i + ronda * 3, letra, layout, dref: propia ? null : dref, nombre: brief.negocio?.nombre || '', brief, mat, titulos,
