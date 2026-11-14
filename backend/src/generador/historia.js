@@ -23,6 +23,9 @@ const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '
 export const MAX_PASOS = 4;
 export const MIN_FOTOS_HISTORIA = 4;
 // Giros donde la historia con scroll no conviene: el visitante quiere el teléfono o el precio rápido.
+// Manda el subtipo (paletas_giro.js): dentro de "servicios" la fotografía, la arquitectura o una agencia sí la sostienen;
+// un despacho contable o legal no. Si no hay subtipo, se decide por arquetipo.
+export const SUBTIPOS_SIN_HISTORIA = ['plomero_electricista', 'servicio_local', 'legal', 'contador_consultor', 'servicio_b2b', 'medica', 'veterinaria', 'restaurante', 'cafeteria_panaderia'];
 export const ARQUETIPOS_SIN_HISTORIA = ['oficios', 'servicios', 'restaurante'];
 
 export const VENDOR = { motion: 'motion-14.14.0.min.js', lenis: 'lenis-1.3.27.min.js' };
@@ -30,7 +33,9 @@ const DIR_VENDOR = path.join(path.dirname(fileURLToPath(import.meta.url)), 'vend
 
 /** ¿El negocio tiene giro y fotos para la historia? fotosBuenas: fotos del cliente que no son capturas ni de calidad regular. */
 export function aptaHistoria(brief = {}, fotosBuenas = 0) {
-  if (ARQUETIPOS_SIN_HISTORIA.includes(brief.negocio?.arquetipo)) return false;
+  const st = brief.negocio?.subtipo;
+  if (brief.negocio?.arquetipo === 'restaurante') return false;
+  if (st ? SUBTIPOS_SIN_HISTORIA.includes(st) : ARQUETIPOS_SIN_HISTORIA.includes(brief.negocio?.arquetipo)) return false;
   return fotosBuenas >= MIN_FOTOS_HISTORIA;
 }
 
