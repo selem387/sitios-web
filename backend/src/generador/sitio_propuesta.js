@@ -189,9 +189,9 @@ async function logoParaFondo(logo, bg, fg) {
  * @returns {Promise<{contenido, header, footer, menu, medios, estilos, fuentesUrl, logoClave, resumen}>}
  */
 export async function sitioDePropuesta({ brief, mat, prop, elegida, deColores = null }) {
-  const indice = Math.max(0, 'ABCDEFGHIJ'.indexOf(elegida.letra || elegida.etiqueta));
-  // La G (collage), la H (recorrido con índice) la I (historia con scroll) y la J (narrativa) no tienen versión WordPress (suspendido): usan la composición de foto a pantalla completa.
-  const layout = elegida.layout === 'collage' || elegida.layout === 'indice' || elegida.layout === 'historia' || elegida.layout === 'narrativa' ? 'portada' : elegida.layout;
+  const indice = Math.max(0, 'ABCDEFGHIJK'.indexOf(elegida.letra || elegida.etiqueta));
+  // La G (collage), la H (recorrido con índice) la I (historia con scroll) la J (narrativa) y la K (movimiento) no tienen versión WordPress (suspendido): usan la composición de foto a pantalla completa.
+  const layout = elegida.layout === 'collage' || elegida.layout === 'indice' || elegida.layout === 'historia' || elegida.layout === 'narrativa' || elegida.layout === 'movimiento' ? 'portada' : elegida.layout;
   if (!NOMBRES_GENERAL[layout]) throw new Error(`layout de propuesta desconocido: ${layout}`);
   const ronda = prop.ronda || 0;
   const pal = { ...(elegida.paleta || {}), ...((deColores?.paleta) || {}) };

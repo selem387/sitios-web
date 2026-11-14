@@ -6,6 +6,6 @@ Plantilla con titulares partidos, bandas de texto, cifras animadas, tarjetas api
 - Plantilla: `plantilla_movimiento.js` (`renderPagina(giro)`).
 - Pruebas: `backend/test/efectos_gsap.test.mjs`.
 
-**Pendiente (no incluido en este PR):** integración como letra K (OPCION_K=1, generar_k.mjs, regex de letras) y fotos reales del cliente.
+**Integración:** letra K, `OPCION_K=1`, `backend/src/herramientas/generar_k.mjs` (mismo uso que generar_j). Foto de portada real del cliente; el resto de la página es la general con efectos (`conEfectosK`).
 
 **Licencia:** usa GSAP (Webflow). Su licencia prohíbe "productos competidores"; un constructor de sitios es zona gris. Resolver antes de usarla con clientes (consultar a GSAP o migrar a Motion + Lenis, MIT).
