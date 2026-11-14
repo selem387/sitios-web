@@ -1,0 +1,48 @@
+/* Efectos GSAP reutilizables (generador/efectos_gsap.js). Todo se activa con atributos data-fx; sin JS o con "reducir movimiento" el contenido queda quieto y completo. */
+html.lenis,html.lenis body{height:auto}
+.lenis.lenis-smooth{scroll-behavior:auto!important}
+.lenis.lenis-smooth [data-lenis-prevent]{overscroll-behavior:contain}
+.lenis.lenis-stopped{overflow:hidden}
+/* evita el destello antes de partir los textos (la clase la quita el runtime o un seguro de 4 s) */
+html.fx-pre [data-fx="titulo"]:not(.fx-dividido),html.fx-pre [data-fx="palabras"]:not(.fx-dividido){visibility:hidden}
+/* máscaras de los textos partidos (SplitType): cada renglón recorta a sus palabras o letras mientras suben */
+[data-fx="titulo"] .line,[data-fx="palabras"] .line{overflow:hidden;padding-bottom:.14em;margin-bottom:-.14em}
+[data-fx="titulo"] .word,[data-fx="titulo"] .char{will-change:transform}
+/* título de sección: efecto leve al pasar el cursor */
+[data-fx="titulo"]{transition:letter-spacing .35s ease}
+@media (hover:hover){[data-fx="titulo"]:hover{letter-spacing:.012em}}
+/* recuadros: cambian un poco de color y crecen apenas al pasar el cursor */
+.fx-tarjeta{transition:background-color .3s ease,border-color .3s ease,transform .3s ease}
+@media (hover:hover){.fx-tarjeta:hover{background-color:color-mix(in srgb,var(--suave) 86%,var(--acento));border-color:color-mix(in srgb,var(--linea) 40%,var(--acento));transform:scale(1.025)}}
+/* banda de texto que corre con el desplazamiento */
+.fx-banda{overflow:hidden;white-space:nowrap;background:var(--banda);color:var(--sobre-banda);padding:clamp(14px,2.2vw,28px) 0;user-select:none}
+.fx-banda-pista{display:flex;width:max-content;will-change:transform}
+.fx-banda-grupo{display:flex;flex:none}
+.fx-banda-grupo>span{font-family:var(--f-titulo);font-size:clamp(34px,6.4vw,96px);line-height:1;text-transform:uppercase;padding-right:.5em;display:inline-flex;align-items:center}
+.fx-banda-grupo>span::after{content:"✦";font-size:.5em;margin-left:.5em;color:var(--acento-sobre-banda,var(--acento))}
+.fx-banda--contorno{background:transparent;color:var(--tinta)}
+.fx-banda--contorno .fx-banda-grupo>span{color:transparent;-webkit-text-stroke:1.5px currentColor}
+.fx-banda--contorno{color:var(--tinta)}
+.fx-banda--suave{background:var(--suave);color:var(--tinta)}
+.fx-banda--suave .fx-banda-grupo>span{font-size:clamp(22px,3vw,40px)}
+/* recorrido horizontal fijado (escritorio) / carrusel con deslizamiento (celular) */
+.fx-horiz{overflow:hidden}
+.fx-horiz-pista{display:flex;gap:clamp(16px,2vw,28px);width:max-content;padding:0 var(--margen)}
+.fx-horiz-prog{height:3px;background:var(--linea);margin:0 var(--margen);border-radius:3px;overflow:hidden}
+.fx-horiz-prog>i{display:block;height:100%;background:var(--acento);transform:scaleX(0);transform-origin:left}
+@media (max-width:899px){.fx-horiz{overflow-x:auto;scroll-snap-type:x mandatory;-webkit-overflow-scrolling:touch}.fx-horiz-pista>*{scroll-snap-align:start}.fx-horiz-prog{display:none}}
+/* tarjetas que se apilan */
+.fx-apila>*{position:sticky;top:calc(var(--sticky-top,92px) + var(--i,0)*16px);transform-origin:50% 0}
+/* imagen con profundidad */
+.fx-paralaje{overflow:hidden;position:relative}
+.fx-paralaje>.fx-paralaje-in{position:absolute;left:0;right:0;top:-12%;bottom:-12%;will-change:transform}
+.fx-zoom{overflow:hidden}.fx-zoom>*{will-change:transform}
+/* línea que se dibuja con el desplazamiento */
+[data-fx="linea"]{transform-origin:left center}
+@media (prefers-reduced-motion:reduce){
+html.fx-pre [data-fx="titulo"],html.fx-pre [data-fx="palabras"]{visibility:visible}
+.fx-banda-pista{transform:none!important}.fx-banda{overflow-x:auto}
+.fx-horiz{overflow-x:auto}.fx-horiz-prog{display:none}
+.fx-apila>*{position:static}
+.fx-tarjeta,[data-fx="titulo"]{transition:none}
+}

@@ -38,7 +38,7 @@ const PRESETS_FX = [
   'fx-zoom fx-paralaje fx-hover',
   'fx-zoom fx-mascara fx-texto fx-hover',
 ];
-export const efectosDe = (letra) => PRESETS_FX[Math.max(0, 'ABCDEFGHI'.indexOf(String(letra || 'A').toUpperCase())) % PRESETS_FX.length];
+export const efectosDe = (letra) => PRESETS_FX[Math.max(0, 'ABCDEFGHIJKLMNOP'.indexOf(String(letra || 'A').toUpperCase())) % PRESETS_FX.length];
 const ORDEN_TIPOS = ['diferenciador', 'oferta', 'prueba', 'vision'];
 
 /**
@@ -311,8 +311,8 @@ footer a{display:inline-flex;align-items:center;text-decoration:none;font-weight
 /* Regla (12-nov-2026, Sebastián): en todas las opciones de todos los giros, los títulos de sección entran con un efecto
    leve y reaccionan al mouse; los recuadros cambian un poco de color y crecen apenas (con su texto) al pasar el mouse. */
 /* 13-nov-2026: sin subrayado al pasar el mouse (se veía como guion bajo en los espacios); solo crece */
-.sec h2{text-decoration:none;transition:opacity .7s ease,transform .7s cubic-bezier(.2,.7,.2,1),letter-spacing .35s ease}
-html.tit .sec h2:not(.visto){opacity:0;transform:translateY(16px)}
+.sec h2:not([data-fx]){text-decoration:none;transition:opacity .7s ease,transform .7s cubic-bezier(.2,.7,.2,1),letter-spacing .35s ease}
+html.tit .sec h2:not([data-fx]):not(.visto){opacity:0;transform:translateY(16px)}
 .prod,.cat,.paq,.quotes blockquote,.pasos li{transition:background-color .3s ease,border-color .3s ease,transform .3s ease}
 @media (hover:hover){.sec h2:hover{letter-spacing:.012em}
 .prod:hover,.cat:hover,.paq:hover,.quotes blockquote:hover,.pasos li:hover{background-color:color-mix(in srgb,var(--card) 88%,var(--p));border-color:color-mix(in srgb,var(--bor) 45%,var(--p));transform:scale(1.025)}}
@@ -324,7 +324,7 @@ export const JS_MOVIMIENTO = `<script>(()=>{
 const R=matchMedia('(prefers-reduced-motion: reduce)').matches;
 const lenta=()=>{const c=navigator.connection;return !!c&&(c.saveData||/(^|-)(2g|3g)$/.test(c.effectiveType||''))};
 const io=(cb,o)=>'IntersectionObserver' in window?new IntersectionObserver(cb,o):null;
-if(!R&&'IntersectionObserver' in window){document.documentElement.classList.add('tit');const ot=new IntersectionObserver(es=>es.forEach(e=>{if(e.isIntersecting){e.target.classList.add('visto');ot.unobserve(e.target)}}),{rootMargin:'0px 0px -6% 0px'});document.querySelectorAll('.sec h2').forEach(h=>ot.observe(h))}
+if(!R&&'IntersectionObserver' in window){document.documentElement.classList.add('tit');const ot=new IntersectionObserver(es=>es.forEach(e=>{if(e.isIntersecting){e.target.classList.add('visto');ot.unobserve(e.target)}}),{rootMargin:'0px 0px -6% 0px'});document.querySelectorAll('.sec h2:not([data-fx])').forEach(h=>ot.observe(h))}
 let cargada=document.readyState==='complete';const listos=[];
 addEventListener('load',()=>{cargada=true;listos.forEach(f=>f())},{once:true});
 const alCargar=f=>cargada?f():listos.push(f);

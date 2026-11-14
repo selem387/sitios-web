@@ -16,6 +16,11 @@ import { collageHTML, CSS_COLLAGE, JS_COLLAGE } from './collage.js';
 import { escenaIndiceHTML, navIndiceHTML, monogramaHTML, CSS_INDICE, JS_INDICE } from './indice.js';
 import { METRICAS } from './tipo_color.js';
 import { escenaHistoriaHTML, fraseDe, aptaHistoria, scriptsHistoria, CSS_HISTORIA, JS_HISTORIA } from './historia.js';
+import { portadaMovimientoHTML, parMovimiento, conEfectosK, CSS_MOVIMIENTO_K } from './movimiento_k.js';
+import { portadaNarrativaHTML, parNarrativa, CSS_NARRATIVA, JS_NARRATIVA } from './narrativa.js';
+import { escenaGuiaHTML, cierreGuiaHTML, indiceGuiaHTML, parGuia, CSS_GUIA, JS_GUIA } from './guia.js';
+import { portadaFichaHTML, cintaFichaHTML, atributosFichaHTML, escenaFichaHTML, cierreFichaHTML, fichasDe, parFicha, CSS_FICHA, JS_FICHA } from './ficha.js';
+import { portadaCatalogoHTML, bandaFotoHTML, cierreCatalogoHTML, tabsDeServicios, parCatalogo, CSS_CATALOGO, JS_CATALOGO } from './catalogo.js';
 
 const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const lum = (h) => { const n = parseInt(h.slice(1), 16); const c = [(n >> 16) & 255, (n >> 8) & 255, n & 255].map((v) => v / 255).map((v) => (v <= 0.03928 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4)); return 0.2126 * c[0] + 0.7152 * c[1] + 0.0722 * c[2]; };
@@ -30,15 +35,30 @@ const conContraste = (c, bg, min = 4.5, hacia = '#000000') => { let x = c; for (
 // G (11-nov-2026): opción adicional "Collage en movimiento" (generador/collage.js). Siempre va como séptima.
 // H (12-nov-2026): opción adicional "Recorrido con índice" (generador/indice.js). Siempre va como octava.
 // I (14-nov-2026): opción adicional "Historia con scroll" (generador/historia.js). Siempre va como novena.
-export const LAYOUTS_GENERAL = ['portada', 'editorial', 'mosaico', 'logo', 'dostonos', 'carta', 'collage', 'indice', 'historia'];
-export const LETRAS = 'ABCDEFGHI';
+// J (14-nov-2026): opción adicional "Narrativa por capítulos" (generador/narrativa.js). Siempre va como décima.
+export const LAYOUTS_GENERAL = ['portada', 'editorial', 'mosaico', 'logo', 'dostonos', 'carta', 'collage', 'indice', 'historia', 'narrativa', 'movimiento', 'reservada_l', 'guia', 'reservada_n', 'catalogo', 'ficha'];
+// K (14-nov-2026): opción adicional "Recorrido en movimiento" (generador/movimiento_k.js + efectos_gsap.js). Siempre va como undécima.
+// M (14-nov-2026): opción adicional "Guía en movimiento" (generador/guia.js + efectos_gsap.js). Siempre va como decimotercera; la L queda reservada.
+// O (14-nov-2026): opción adicional "Catálogo en movimiento" (generador/catalogo.js, CSS nativo sin librerías). Siempre va como decimoquinta; la L y la N quedan reservadas.
+// P (14-nov-2026): opción adicional "Ficha en movimiento" (generador/ficha.js, CSS nativo sin librerías). Siempre va como decimosexta.
+export const LETRAS = 'ABCDEFGHIJKLMNOP';
 // La G sale para todos solo con OPCION_G=1 en el servicio api (11-nov-2026: primero se prueba cliente por cliente).
 export const conOpcionG = () => process.env.OPCION_G === '1';
 // La H sale para todos solo con OPCION_H=1 en el servicio api (igual que la G: primero cliente por cliente).
 export const conOpcionH = () => process.env.OPCION_H === '1';
 // La I sale para todos solo con OPCION_I=1 y, aun así, solo a giros que se venden con fotos y con al menos 4 fotos buenas.
 export const conOpcionI = () => process.env.OPCION_I === '1';
-export const NOMBRES_GENERAL = { portada: 'Foto a pantalla completa', editorial: 'Editorial', mosaico: 'Mosaico de tu trabajo', logo: 'Tu logo al centro', dostonos: 'Dos tonos', carta: 'Minimalista', collage: 'Collage en movimiento', indice: 'Recorrido con índice', historia: 'Historia con scroll' };
+// La J sale para todos solo con OPCION_J=1 en el servicio api (igual que la G y la H).
+export const conOpcionJ = () => process.env.OPCION_J === '1';
+// La K sale para todos solo con OPCION_K=1 (usa GSAP; uso permitido por decisión de Sebastián, 14-nov-2026).
+export const conOpcionK = () => process.env.OPCION_K === '1';
+// La M sale para todos solo con OPCION_M=1 (GSAP permitido: regla dura del proyecto, 14-nov-2026).
+export const conOpcionM = () => process.env.OPCION_M === '1';
+// La O sale para todos solo con OPCION_O=1 (no usa librerías de animación: CSS nativo y un script mínimo).
+export const conOpcionO = () => process.env.OPCION_O === '1';
+// La P sale para todos solo con OPCION_P=1 (no usa librerías de animación: CSS nativo y un script mínimo).
+export const conOpcionP = () => process.env.OPCION_P === '1';
+export const NOMBRES_GENERAL = { portada: 'Foto a pantalla completa', editorial: 'Editorial', mosaico: 'Mosaico de tu trabajo', logo: 'Tu logo al centro', dostonos: 'Dos tonos', carta: 'Minimalista', collage: 'Collage en movimiento', indice: 'Recorrido con índice', historia: 'Historia con scroll', narrativa: 'Narrativa por capítulos', movimiento: 'Recorrido en movimiento', guia: 'Guía en movimiento', catalogo: 'Catálogo en movimiento', ficha: 'Ficha en movimiento' };
 
 // Títulos por arquetipo (Claude puede reemplazarlos con textos.secciones).
 export const TITULOS = {
@@ -88,12 +108,18 @@ function paletaGeneral(layout, colores, pastel, i, { acento = null, acentoCta = 
     collage: { bg: '#FFFFFF', fg: tinta, primary: base, muted: mezclar(tinte, '#FFFFFF', 0.6), banda: conContraste(tono(base, 0.24, 0.2, 0.32), '#FFFFFF', 8) },
     indice: { bg: '#FFFFFF', fg: tinta, primary: base, muted: mezclar(tinte, '#FFFFFF', 0.6), banda: conContraste(tono(base, 0.24, 0.2, 0.32), '#FFFFFF', 8) },
     historia: { bg: mezclar(papel, '#F6F1E8', 0.6), fg: tinta, primary: base, muted: mezclar(tinte, '#FFFFFF', 0.5), banda: conContraste(tono(base, 0.2, 0.18, 0.3), '#FFFFFF', 9) },
+    movimiento: { bg: mezclar(papel, '#FFFFFF', 0.7), fg: tinta, primary: base, muted: mezclar(tinte, '#FFFFFF', 0.6), banda: conContraste(tono(base, 0.22, 0.2, 0.3), '#FFFFFF', 8) },
+    guia: { bg: mezclar(papel, '#FFFFFF', 0.82), fg: tinta, primary: base, muted: mezclar(tinte, '#FFFFFF', 0.6), banda: conContraste(tono(base, 0.2, 0.18, 0.28), '#FFFFFF', 9) },
+    catalogo: { bg: '#FFFFFF', fg: tinta, primary: base, muted: mezclar(tinte, '#FFFFFF', 0.6), banda: conContraste(tono(base, 0.2, 0.18, 0.28), '#FFFFFF', 9) },
+    ficha: (() => { const bg = tono(base, 0.09, 0.14, 0.3); const fg = conContraste('#F4EFE8', bg, 12, '#FFFFFF'); const pr = conContraste(tono(base, 0.66, 0.4, 0.9), bg, 4.6, '#FFFFFF'); return { bg, fg, primary: pr, muted: mezclar(bg, '#FFFFFF', 0.06), banda: mezclar(bg, '#000000', 0.35) }; })(),
+    narrativa: { bg: '#FFFFFF', fg: conContraste(tono(base, 0.1, 0.1, 0.25), '#FFFFFF', 15), primary: base, muted: mezclar(tinte, '#FFFFFF', 0.7) },
   }[layout];
   p.primary = conContraste(p.primary, p.bg, 4.5);
   p.onPrimary = sobre(p.primary);
   p.soft = conContraste(mezclar(p.fg, p.bg, 0.3), p.bg, 4.6);
   p.border = mezclar(p.fg, p.bg, 0.86);
   p.card = mezclar(p.bg, '#FFFFFF', 0.6);
+  if (layout === 'ficha') p.card = mezclar(p.bg, '#FFFFFF', 0.08); // tema oscuro: tarjetas un poco más claras que el fondo
   p.tinte = tinte;
   // Tercer color (8-nov-2026): acento en el 10 % (viñetas, pasos, líneas) y, en B y E, también en el botón principal.
   // El acento nunca repite el tono del protagonista: si coincide (diferencia < 25°), se usa otro color del logo.
@@ -102,6 +128,7 @@ function paletaGeneral(layout, colores, pastel, i, { acento = null, acentoCta = 
   const distinto = (c) => c && /^#[0-9A-F]{6}$/i.test(c) && croma2(c) > 0.2 && lum(c) < 0.6 && c !== base && difTono(c, base) >= 25;
   const acc = distinto(acento) ? acento : (colores.filter((c) => /^#[0-9A-F]{6}$/i.test(c)).find(distinto) || null);
   if (acc) { p.accent = acc; p.accentUso = 'relleno'; p.acentoCta = !!acentoCta; }
+  if (layout === 'ficha') { if (!p.accent || contraste(p.accent, p.bg) < 4.5) { p.accent = p.primary; p.acentoCta = false; } p.onAccent = sobre(p.accent); } // tema oscuro: el acento siempre se lee sobre el fondo
   return p;
 }
 
@@ -266,7 +293,7 @@ function pagina(d) {
   // las demás con otra foto de su trabajo para que no se vean iguales (si el dueño fijó portada, se respeta en todas).
   const variar = d.dref && d.letra !== 'A' && !brief.fotos?.portada_manual;
   const heroMat = mat.hero && fueraDeGaleria(mat.hero) ? mat.hero : null;
-  const heroBase = !variar && (d.layout === 'portada' || d.layout === 'logo' || d.layout === 'collage' || d.layout === 'indice' || d.layout === 'historia' || (brief.fotos?.portada_manual && heroMat)) ? (heroMat || fotosT[0]) : (fotosT[0] || heroMat || (fueraDeGaleria(mat.fundador) ? mat.fundador : null));
+  const heroBase = !variar && (d.layout === 'portada' || d.layout === 'logo' || d.layout === 'collage' || d.layout === 'indice' || d.layout === 'historia' || d.layout === 'narrativa' || d.layout === 'movimiento' || d.layout === 'guia' || d.layout === 'catalogo' || d.layout === 'ficha' || (brief.fotos?.portada_manual && heroMat)) ? (heroMat || fotosT[0]) : (fotosT[0] || heroMat || (fueraDeGaleria(mat.fundador) ? mat.fundador : null));
   // Si el titular habla de un producto, abre con la foto de ese producto (la eligió la IA de textos por su descripción).
   const fotoTit = !brief.fotos?.portada_manual && t.foto_url ? [mat.hero, ...trabajos].find((x) => x?.url === t.foto_url) : null;
   const heroFoto = fotoTit || heroBase;
@@ -287,6 +314,7 @@ function pagina(d) {
   const textoPortada = `<p class="kicker">${esc(neg.ciudad ? `${giroCorto(neg.giro_texto) || ''} · ${neg.ciudad}` : giroCorto(neg.giro_texto) || '')}</p><h1>${esc(t.titular)}</h1><p class="sub">${esc(t.subtitulo)}</p>${cta()}`;
 
   /* --- Héroes --- */
+  let escenaFc = ''; // P: la escena fija se arma con el hero y se coloca en el cuerpo
   const heros = {
     portada: () => (heroFoto ? slider({ tag: 'section', clase: 'hero h-portada', envolver: true, primera: textoPortada })
       : `<section class="hero h-portada"><div class="velo"></div><div class="wrap in">${textoPortada}</div></section>`),
@@ -331,6 +359,53 @@ function pagina(d) {
         cierre: fotoCierre ? { foto: fotoCierre, titulo: d.nombre, apoyo: [giro, neg.ciudad].filter(Boolean).join(' · '), cta: cta() } : null });
       esc0.urls.forEach((u) => enPortada.add(u));
       return esc0.html;
+    },
+    // J: portada tipográfica (generador/narrativa.js). Titular enorme, foto a todo lo ancho debajo; si el cliente subió
+    // un video, ese video va encima de la foto como fondo vivo y ya no se repite en la sección de video.
+    narrativa: () => {
+      const na = portadaNarrativaHTML({ heroFoto, video: mat.videos?.[0] || null, img, kicker: [giroCorto(neg.giro_texto), neg.ciudad].filter(Boolean).join(' · '), titular: t.titular, subtitulo: t.subtitulo, cta: cta(), info: t.info || [] });
+      na.urls.forEach((u) => { enPortada.add(u); usadas.add(u); });
+      return na.html;
+    },
+    // K: portada en movimiento (generador/movimiento_k.js). Titular por letras, foto del cliente con paralaje y banda de texto
+    // con los textos reales de las diapositivas (si no hay, con el giro y la ciudad). Los efectos del resto se añaden al final.
+    movimiento: () => {
+      const frases = [...diapos.map((x) => x?.titular).filter(Boolean), giroCorto(neg.giro_texto), neg.ciudad].filter(Boolean);
+      const mv = portadaMovimientoHTML({ heroFoto, img, kicker: [giroCorto(neg.giro_texto), neg.ciudad].filter(Boolean).join(' · '), titular: t.titular, subtitulo: t.subtitulo, cta: cta(), frases: frases.length >= 2 ? frases : [d.nombre, ...frases] });
+      mv.urls.forEach((u) => { enPortada.add(u); usadas.add(u); });
+      return mv.html;
+    },
+    // M: guía en movimiento (generador/guia.js). Portada que se abre, recorrido fijo con las fotos del slider y sus textos,
+    // frase que se enciende y (al final de la página) cierre que crece. Todas las fotos pueden repetirse en "Nuestro trabajo".
+    guia: () => {
+      const pasos = poolSl.slice(1).map((foto, k) => ({ foto, titular: diapos[k]?.titular || '', apoyo: diapos[k]?.apoyo || '' }));
+      const giro = giroCorto(neg.giro_texto) || '';
+      const frases = [...diapos.map((x) => x?.titular).filter(Boolean), giro, neg.ciudad].filter(Boolean);
+      const frase = fraseDe(t.sobre || conf.historia_corta || '') || fraseDe(brief.oferta?.diferenciador || '') || '';
+      const gu = escenaGuiaHTML({ heroFoto, pasos, frases: frases.length >= 2 ? frases : [d.nombre, ...frases], frase, img, kicker: [giro, neg.ciudad].filter(Boolean).join(' · '), titular: t.titular, subtitulo: t.subtitulo, cta: cta() });
+      gu.urls.forEach((u) => { enPortada.add(u); usadas.add(u); });
+      return gu.html;
+    },
+    // O: catálogo en movimiento (generador/catalogo.js). Portada en carrusel con las fotos del slider y sus textos;
+    // "Nuestro trabajo" hace de estante deslizable y los servicios van en pestañas. Sin librerías de animación.
+    catalogo: () => {
+      const pasos = poolSl.slice(1).map((foto, k) => ({ foto, titular: diapos[k]?.titular || '', apoyo: diapos[k]?.apoyo || '' }));
+      const ct = portadaCatalogoHTML({ heroFoto, pasos, img, kicker: [giroCorto(neg.giro_texto), neg.ciudad].filter(Boolean).join(' · '), titular: t.titular, subtitulo: t.subtitulo, cta: cta() });
+      ct.urls.forEach((u) => { enPortada.add(u); usadas.add(u); });
+      return ct.html;
+    },
+    // P: ficha en movimiento (generador/ficha.js). Portada oscura con acercamiento lento y panel de pedido con las opciones reales
+    // de la oferta; cinta de texto, fichas con panel emergente y escena fija con las fotos del slider y sus textos.
+    ficha: () => {
+      const pasos = poolSl.slice(1).map((foto, k) => ({ foto, titular: diapos[k]?.titular || '', apoyo: diapos[k]?.apoyo || '' }));
+      const giro = giroCorto(neg.giro_texto) || '';
+      const fp = portadaFichaHTML({ heroFoto, img, kicker: [giro, neg.ciudad].filter(Boolean).join(' · '), titular: t.titular, subtitulo: t.subtitulo, opciones: fichasDe(brief.oferta?.items, [], ''), cta: cta() });
+      fp.urls.forEach((u) => { enPortada.add(u); usadas.add(u); });
+      const frases = [...diapos.map((x) => x?.titular).filter(Boolean), giro, neg.ciudad].filter(Boolean);
+      const es = escenaFichaHTML({ pasos, img, etiqueta: d.nombre });
+      es.urls.forEach((u) => { enPortada.add(u); usadas.add(u); });
+      escenaFc = es.html;
+      return fp.html + cintaFichaHTML(frases.length >= 2 ? frases : [d.nombre, ...frases]);
     },
     carta: () => { const s = poolSl.length ? `<div class="wrap">${slider({ tag: 'figure', clase: 'sl-carta sl-marco' })}</div>` : ''; const resto = s ? [] : fotosT.filter((x) => !usadas.has(x.url)).slice(0, 8); return `<section class="hero h-carta wrap"><div class="tit"><p class="kicker">${esc(d.nombre)}</p><h1>${esc(t.titular)}</h1></div><div class="lado"><p class="sub">${esc(t.subtitulo)}</p>${cta()}</div></section>${s}${resto.length ? `<div class="wrap">${filaJustificada(resto, img)}</div>` : ''}`; },
   };
@@ -403,7 +478,7 @@ function pagina(d) {
   // Si el cliente fijó el título de "Cómo funciona" por chat, la sección aparece en cualquier diseño (10-nov-2026).
   const procCli = () => (t.proceso ? secProceso() : '');
   const secFaq = () => { const fq = (brief.faq || []).filter((x) => x.pregunta && x.respuesta); return fq.length ? `<section class="sec" id="faq"><div class="wrap"><div class="faq-l"><h2>${esc(T.faq)}</h2>${fq.map((x, k) => `<details${k === 0 ? ' open' : ''}><summary>${esc(x.pregunta)}</summary><p>${esc(x.respuesta)}</p></details>`).join('')}</div></div></section>` : ''; };
-  const secVideo = () => mat.videos.length ? `<section class="sec"><div class="wrap">${mat.videos.map((v) => { usadas.add(v.url); return `<video class="video" src="${esc(v.url)}" controls playsinline preload="metadata"></video>`; }).join('')}</div></section>` : '';
+  const secVideo = () => mat.videos.some((v) => !enPortada.has(v.url)) ? `<section class="sec"><div class="wrap">${mat.videos.filter((v) => !enPortada.has(v.url)).map((v) => { usadas.add(v.url); return `<video class="video" src="${esc(v.url)}" controls playsinline preload="metadata"></video>`; }).join('')}</div></section>` : '';
   const secContacto = () => {
     const c = brief.contacto || {};
     const dir = direccionTexto(brief);
@@ -412,6 +487,14 @@ function pagina(d) {
     return `<section class="sec contacto" id="contacto"><div class="wrap"><h2>${esc(T.contacto)}</h2><div class="datos">${d.tel ? `<p><b>WhatsApp</b><a${wa}>${esc(d.tel)}</a></p>` : ''}${dir ? `<p><b>Dónde</b>${esc(dir)}</p>` : zona ? `<p><b>Dónde</b>${esc(zona)}</p>` : ''}${typeof c.horarios === 'string' ? `<p><b>Horario</b>${esc(c.horarios)}</p>` : ''}${c.email ? `<p><b>Correo</b><a href="mailto:${esc(c.email)}">${esc(c.email)}</a></p>` : ''}${rs ? `<p><b>Redes</b><span class="rs">${rs}</span></p>` : ''}</div>${cta()}</div></section>`;
   };
 
+  // O: banda de foto con una frase del cliente (su historia o diferenciador) y parallax; las fotos pueden repetirse (rep-ok).
+  const fotosCt2 = d.layout === 'ficha' ? fotosT.filter((x) => x?.url && !enPortada.has(x.url) && x.url !== heroFoto?.url) : [];
+  const fotosCt = d.layout === 'catalogo' ? fotosT.filter((x) => x?.url && !enPortada.has(x.url) && x.url !== heroFoto?.url) : [];
+  const bandaCt = () => {
+    const frase = fraseDe(t.sobre || conf.historia_corta || '') || fraseDe(brief.oferta?.diferenciador || '') || '';
+    return bandaFotoHTML({ foto: fotosCt[1] || null, img, frase, cta: cta() });
+  };
+  const secFichas = () => d.layout === 'ficha' ? atributosFichaHTML({ fichas: fichasDe(brief.oferta?.items, t.info, T.servicios), titulo: t.fichas_titulo || 'En pocas palabras', cta: cta() }) : '';
   const ORDEN = {
     portada: [secTrabajo, secServicios, secSobre, secEquipo, secResenas, secProceso, secFaq, secVideo, secContacto],
     editorial: [secSobre, secTrabajo, secEquipo, secServicios, secResenas, procCli, secFaq, secVideo, secContacto],
@@ -422,6 +505,13 @@ function pagina(d) {
     collage: [secServicios, secTrabajo, secSobre, secEquipo, secResenas, procCli, secFaq, secVideo, secContacto],
     indice: [secSobre, secTrabajo, secServicios, secEquipo, secResenas, secProceso, secFaq, secVideo, secContacto],
     historia: [secServicios, secTrabajo, secSobre, secEquipo, secResenas, procCli, secFaq, secVideo, secContacto],
+    movimiento: [secSobre, secTrabajo, secServicios, secEquipo, secResenas, secProceso, secFaq, secVideo, secContacto],
+    narrativa: [secSobre, secTrabajo, secServicios, secEquipo, secResenas, secProceso, secFaq, secVideo, secContacto],
+    guia: [secSobre, secTrabajo, secServicios, secEquipo, secResenas, secProceso, secFaq, secVideo, secContacto],
+    // O: estante de trabajo primero, banda con parallax, servicios en pestañas y el resto como en las demás.
+    // P: fichas de la oferta, escena fija con las fotos, "Nuestro trabajo", servicios completos y el resto como en las demás.
+    ficha: [secFichas, () => escenaFc, secTrabajo, secServicios, secSobre, secEquipo, secResenas, secProceso, secFaq, secVideo, secContacto],
+    catalogo: [secTrabajo, bandaCt, () => tabsDeServicios(secServicios()), secSobre, secEquipo, secResenas, secProceso, secFaq, secVideo, secContacto],
   }[d.layout];
   const cuerpo = ORDEN.map((fn) => fn()).join('');
   // Galería final: TODO lo que el cliente mandó y aún no aparece (regla dura). Nada se queda fuera.
@@ -451,7 +541,15 @@ function pagina(d) {
   const ETQ_IX = { sobre: T.sobre, trabajo: T.trabajo, servicios: T.servicios, resenas: T.resenas, proceso: t.proceso || 'Cómo funciona', faq: T.faq, galeria: T.galeria, contacto: T.contacto };
   const seccionesIx = esIx ? [...`${cuerpoFinal}${galeria}`.matchAll(/<section[^>]*\bid="([a-z]+)"/g)].map((m) => [m[1], ETQ_IX[m[1]]]).filter((x) => x[1]) : [];
   const esHs = d.layout === 'historia';
-  const html = `<!doctype html><html lang="es" class="${esIx ? 'fx-zoom fx-hover' : esHs ? 'fx-zoom' : efectosDe(d.letra)}"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><meta name="robots" content="noindex">
+  const esNa = d.layout === 'narrativa';
+  const esMv = d.layout === 'movimiento';
+  const esGu = d.layout === 'guia';
+  const esCt = d.layout === 'catalogo';
+  const esFc = d.layout === 'ficha';
+  const cierreFc = esFc ? cierreFichaHTML({ foto: fotosCt2[0] || heroFoto, img, titulo: d.nombre, apoyo: [giroCorto(neg.giro_texto), neg.ciudad].filter(Boolean).join(' · '), cta: cta() }) : '';
+  const cierreCt = esCt ? cierreCatalogoHTML({ foto: fotosCt[0] || heroFoto, img, titulo: d.nombre, apoyo: [giroCorto(neg.giro_texto), neg.ciudad].filter(Boolean).join(' · '), cta: cta() }) : '';
+  const cierreGu = esGu ? cierreGuiaHTML({ foto: fotosT.find((x) => x?.url && !enPortada.has(x.url)) || heroFoto, img, titulo: d.nombre, apoyo: [giroCorto(neg.giro_texto), neg.ciudad].filter(Boolean).join(' · '), cta: cta() }) : '';
+  const html = `<!doctype html><html lang="es" class="${esIx ? 'fx-zoom fx-hover' : esHs ? 'fx-zoom' : esNa ? 'fx-hover' : esMv || esGu || esCt || esFc ? 'fx-hover' : efectosDe(d.letra)}"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><meta name="robots" content="noindex">
 <title>${esc(d.nombre)} · Propuesta ${d.letra}</title>
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><!-- Tipografías sin bloquear la portada (7-nov-2026): la página se pinta con la letra de respaldo y cambia a la de Google en cuanto llega (display=swap). Lighthouse móvil ≥ 90. --><link rel="preload" as="style" href="${esc(d.fuentesUrl)}" onload="this.onload=null;this.rel='stylesheet'"><noscript><link href="${esc(d.fuentesUrl)}" rel="stylesheet"></noscript>
 <style>
@@ -523,16 +621,16 @@ a:focus-visible,summary:focus-visible{outline:3px solid var(--p);outline-offset:
 @media (min-width:900px){.h-portada .velo{background:linear-gradient(90deg,rgba(0,0,0,.6),rgba(0,0,0,.15) 70%)}.h-edit{grid-template-columns:1.1fr .9fr;align-items:center;padding-top:64px}.h-dos .in{grid-template-columns:1.1fr .9fr;align-items:end}.mos{grid-template-columns:repeat(4,1fr)}.mos>:first-child{grid-column:span 2;grid-row:span 2;aspect-ratio:auto}.mos-sl{min-height:380px}.mos.solo>.mos-sl{aspect-ratio:16/8!important;min-height:0}.h-portada .sl-d.con-txt::after{background:linear-gradient(90deg,rgba(0,0,0,.66),rgba(0,0,0,.18) 72%)}
 .s-in{grid-template-columns:.8fr 1.2fr}.galeria{columns:3 220px}.g-editorial{columns:4 220px}.contacto .datos{grid-template-columns:repeat(3,1fr)}}
 @media (prefers-reduced-motion:reduce){html{scroll-behavior:auto}}
-${CSS_MOVIMIENTO}${d.layout === 'collage' ? CSS_COLLAGE : ''}${esIx ? CSS_INDICE : ''}${esHs ? CSS_HISTORIA : ''}
+${CSS_MOVIMIENTO}${d.layout === 'collage' ? CSS_COLLAGE : ''}${esIx ? CSS_INDICE : ''}${esHs ? CSS_HISTORIA : ''}${esNa ? CSS_NARRATIVA : ''}${esMv ? CSS_MOVIMIENTO_K : ''}${esGu ? CSS_GUIA : ''}${esCt ? CSS_CATALOGO : ''}${esFc ? CSS_FICHA : ''}
 </style>${esHs ? scriptsHistoria() : ''}</head>
 <body class="l-${d.layout}">
-<header class="barra"><div class="wrap in">${logoBarra}<nav>${navs.map(([id, n]) => `<a href="#${id}">${esc(n)}</a>`).join('')}</nav></div></header>${esIx ? navIndiceHTML(seccionesIx) : ''}
-<main>${heroFinal}${cuerpoFinal}${galeria}</main>
+<header class="barra"><div class="wrap in">${logoBarra}<nav>${navs.map(([id, n]) => `<a href="#${id}">${esc(n)}</a>`).join('')}</nav></div></header>${esIx ? navIndiceHTML(seccionesIx) : ''}${esGu ? indiceGuiaHTML(navs) : ''}
+<main>${heroFinal}${cuerpoFinal}${galeria}${esGu ? cierreGu : ''}${esCt ? cierreCt : ''}${esFc ? cierreFc : ''}</main>
 <footer>${marcaPie ? `<div class="pie-marcas">${marcaPie}</div>` : ''}© ${new Date().getFullYear()} ${esc(d.nombre)} · Propuesta ${d.letra}: ${esc(NOMBRES_GENERAL[d.layout])}</footer>
-<span class="etq">Propuesta ${d.letra}</span>${JS_MOVIMIENTO}${JS_CAR_TRABAJO}${d.layout === 'logo' ? JS_LOGO_UNICO : ''}${d.layout === 'collage' ? JS_COLLAGE : ''}${esIx ? monogramaHTML({ logoUrl: mat.logo?.url, nombre: d.nombre }) + JS_INDICE : ''}${esHs ? JS_HISTORIA : ''}
+<span class="etq">Propuesta ${d.letra}</span>${JS_MOVIMIENTO}${JS_CAR_TRABAJO}${d.layout === 'logo' ? JS_LOGO_UNICO : ''}${d.layout === 'collage' ? JS_COLLAGE : ''}${esIx ? monogramaHTML({ logoUrl: mat.logo?.url, nombre: d.nombre }) + JS_INDICE : ''}${esHs ? JS_HISTORIA : ''}${esNa ? JS_NARRATIVA : ''}${esGu ? JS_GUIA : ''}${esCt ? JS_CATALOGO : ''}${esFc ? JS_FICHA : ''}
 <a class="wa"${wa} aria-label="Escríbeme por WhatsApp"><svg viewBox="0 0 32 32" aria-hidden="true"><path d="M16 3a13 13 0 0 0-11.2 19.6L3 29l6.6-1.7A13 13 0 1 0 16 3Zm0 23.7c-2 0-4-.6-5.7-1.6l-.4-.2-3.9 1 1-3.8-.3-.4A10.7 10.7 0 1 1 16 26.7Zm5.9-8c-.3-.2-1.9-1-2.2-1-.3-.1-.5-.2-.7.1l-1 1.3c-.2.2-.4.2-.7.1a8.8 8.8 0 0 1-4.4-3.8c-.3-.6.3-.5.9-1.7.1-.2 0-.4 0-.6l-1-2.4c-.3-.6-.5-.5-.7-.5h-.6c-.2 0-.6.1-.9.4-.3.3-1.2 1.1-1.2 2.8s1.2 3.2 1.4 3.5c.2.2 2.4 3.6 5.7 5 2.1.9 3 1 4 .8.7-.1 1.9-.8 2.2-1.5.3-.8.3-1.4.2-1.5l-.6-.3Z"/></svg></a>
 </body></html>`;
-  return html;
+  return esMv || esGu ? conEfectosK(html, p) : html;
 }
 
 /** ¿Sale la I con OPCION_I=1? Giro que se vende con fotos y al menos 4 fotos buenas del cliente. */
@@ -559,16 +657,26 @@ export function paginasGenerales({ brief, mat, textos, pares, urlFuentes, ronda 
   const conH = conOpcionH() || fijo?.letra === 'H' || !!solo?.includes('H');
   // La I (historia con scroll) igual que la H, pero con OPCION_I=1 solo sale si el giro y las fotos la sostienen.
   const conI = (conOpcionI() && historiaApta(brief, mat)) || fijo?.letra === 'I' || !!solo?.includes('I');
-  const todas = [...(dref ? dref.layouts : LAYOUTS_GENERAL.slice(0, 6)).map((layout, i) => ({ layout, i })), ...(conG ? [{ layout: 'collage', i: 6 }] : []), ...(conH ? [{ layout: 'indice', i: 7 }] : []), ...(conI ? [{ layout: 'historia', i: 8 }] : [])]
+  // La J (narrativa por capítulos) igual que la H: letra fija y diseño propio (una grotesca, paleta propia).
+  // La K (recorrido en movimiento) igual que la J: letra fija y diseño propio (Public Sans, efectos GSAP).
+  const conK = conOpcionK() || fijo?.letra === 'K' || !!solo?.includes('K');
+  const conJ = conOpcionJ() || fijo?.letra === 'J' || !!solo?.includes('J');
+  // La M (guía en movimiento) igual que la K: letra fija y diseño propio (una grotesca, efectos GSAP).
+  const conM = conOpcionM() || fijo?.letra === 'M' || !!solo?.includes('M');
+  // La O (catálogo en movimiento) igual que la M: letra fija y diseño propio (una grotesca, CSS nativo).
+  const conO = conOpcionO() || fijo?.letra === 'O' || !!solo?.includes('O');
+  // La P (ficha en movimiento) igual que la O: letra fija y diseño propio (par del estilo del cliente, tema oscuro, CSS nativo).
+  const conP = conOpcionP() || fijo?.letra === 'P' || !!solo?.includes('P');
+  const todas = [...(dref ? dref.layouts : LAYOUTS_GENERAL.slice(0, 6)).map((layout, i) => ({ layout, i })), ...(conG ? [{ layout: 'collage', i: 6 }] : []), ...(conH ? [{ layout: 'indice', i: 7 }] : []), ...(conI ? [{ layout: 'historia', i: 8 }] : []), ...(conJ ? [{ layout: 'narrativa', i: 9 }] : []), ...(conK ? [{ layout: 'movimiento', i: 10 }] : []), ...(conM ? [{ layout: 'guia', i: 12 }] : []), ...(conO ? [{ layout: 'catalogo', i: 14 }] : []), ...(conP ? [{ layout: 'ficha', i: 15 }] : [])]
     .filter(({ i }) => (!fijo || LETRAS[i] === fijo.letra) && (!solo || solo.includes(LETRAS[i])));
   return todas.map(({ layout, i }) => {
     const letra = LETRAS[i];
     const v = textos.variantes?.[i] || textos.variantes?.[0] || {};
-    const propia = layout === 'indice' || layout === 'historia';
+    const propia = layout === 'indice' || layout === 'historia' || layout === 'narrativa' || layout === 'movimiento' || layout === 'guia' || layout === 'catalogo' || layout === 'ficha';
     // H: titulares en letra sin remates (trazo limpio). De los pares del estilo del cliente toma el primero cuyo título sea sans.
     // I: al revés, titulares con remates (serif editorial), como en las marcas de alimentos y cosmética.
     const claseH = layout === 'historia' ? 'serif' : 'sans';
-    const parH = propia ? pares.find((x) => METRICAS[x.titulos]?.clase === claseH) || pares[i % pares.length] : null;
+    const parH = layout === 'ficha' ? parFicha(pares) : layout === 'catalogo' ? parCatalogo(pares) : layout === 'guia' ? parGuia(pares) : layout === 'movimiento' ? parMovimiento(pares) : layout === 'narrativa' ? parNarrativa(pares) : propia ? pares.find((x) => METRICAS[x.titulos]?.clase === claseH) || pares[i % pares.length] : null;
     const par = fijo?.fuentes || parH || (dref ? parPorNombres(dref.pares[i] || dref.pares[i % dref.pares.length]) : pares[i % pares.length]);
     const d = {
       i: i + ronda * 3, letra, layout, dref: propia ? null : dref, nombre: brief.negocio?.nombre || '', brief, mat, titulos,

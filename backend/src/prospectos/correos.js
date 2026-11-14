@@ -29,7 +29,7 @@ export function armarCorreo(n, paso, dominio) {
   const pie = `<p style="margin-top:28px;color:#888;font-size:12px">Si no quieres recibir más correos sobre esto: <a href="${b}/baja/${n.folio}" style="color:#888">${b.replace('https://', '')}/baja/${n.folio}</a></p>`;
   const firma = '<p style="margin-top:20px">Saludos,<br>Sebastián Lemos<br><span style="color:#666">timewins · Mérida</span></p>';
   const marco = (h) => `<div style="font-family:Arial,Helvetica,sans-serif;font-size:15px;line-height:1.55;color:#222;max-width:560px">${h}${firma}${pie}</div>`;
-  const N = (n.opciones || []).length || 6; // 7 con la G (collage), 8 con la H (recorrido con índice), 9 con la I (historia con scroll); restaurantes 6
+  const N = (n.opciones || []).length || 6; // 7 con la G (collage), 8 con la H (recorrido con índice), 9 con la I (historia con scroll), 10 con la J (narrativa), 11 con la K (movimiento); restaurantes 6
   if (paso === 0) {
     const resenas = n.resenas ? `tienen ${Number(n.resenas).toLocaleString('es-MX')} reseñas en Google pero ` : '';
     return {
