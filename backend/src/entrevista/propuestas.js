@@ -127,7 +127,7 @@ async function aplicarRechazo(brief, d, comentarios) {
   if (d?.estilo) marca.estilo = d.estilo;
   if (d?.colores?.length && coloresDePalabras(d.colores).length) marca.colores = d.colores;
   if (d?.evitar?.length) marca.evitar = [...new Set([marca.evitar, ...d.evitar].filter(Boolean).join(', ').split(/,\s*/))].join(', ');
-  const ligas = [...new Set(comentarios.join(' ').match(/https?:\/\/[^\s)>\]]+/g) || [])].filter((u) => !/\/p\/[A-Za-z0-9]+\/[A-K]\b/.test(u)).slice(0, 3);
+  const ligas = [...new Set(comentarios.join(' ').match(/https?:\/\/[^\s)>\]]+/g) || [])].filter((u) => !/\/p\/[A-Za-z0-9]+\/[A-M]\b/.test(u)).slice(0, 3);
   if (ligas.length) marca.referencias_sitios = [...new Set([...(marca.referencias_sitios || []), ...ligas])];
   const estudio = ligas.length ? await estudiarReferencias({ marca: { referencias_sitios: ligas } }).catch(() => []) : [];
   const ref = estudio.find((x) => x && !x.error) || null;

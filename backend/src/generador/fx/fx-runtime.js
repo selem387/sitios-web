@@ -9,7 +9,8 @@
    data-fx="cifra"     contador (data-valor, data-prefijo, data-sufijo)
    data-fx="horizontal" sección fijada que recorre su pista de lado a lado (solo ≥ 900 px)
    data-fx="apila"     tarjetas que se apilan al bajar
-   data-fx="linea"     línea que se dibuja con el scroll (data-fx-eje="y" para vertical) */
+   data-fx="linea"     línea que se dibuja con el scroll (data-fx-eje="y" para vertical)
+   data-fx="abre"|"secuencia"|"cierre"  opción M: foto que se abre con el scroll, recorrido fijo de fotos y cierre que crece (ver generador/guia.js) */
 (function () {
   'use strict';
   var W = window, D = document, H = D.documentElement;
@@ -158,7 +159,45 @@
     W.gsap.fromTo(el, de, a);
   }
 
-  var ACCIONES = { titulo: titulo, palabras: palabras, banda: banda, revela: revela, paralaje: paralaje, zoom: zoom, cifra: cifra, horizontal: horizontal, apila: apila, linea: linea };
+
+  /* ---- opción M (guía en movimiento): foto que se abre, recorrido de fotos y cierre que crece ---- */
+  function abre(el) {
+    var foto = el.querySelector('.gu-abre-foto'), im = foto && foto.querySelector('img'); if (!foto) return;
+    el.classList.add('gu-pin');
+    var movil = W.innerWidth < 700;
+    W.gsap.fromTo(foto, { clipPath: movil ? 'inset(6% 4% 6% 4% round 16px)' : 'inset(14% 12% 14% 12% round 28px)' }, { clipPath: 'inset(0% 0% 0% 0% round 0px)', ease: 'none',
+      scrollTrigger: { trigger: el, start: 'top 85%', end: 'top top', scrub: true } });
+    if (im) W.gsap.fromTo(im, { scale: 1.2 }, { scale: 1, ease: 'none', scrollTrigger: { trigger: el, start: 'top 85%', end: 'bottom bottom', scrub: true } });
+  }
+
+  function secuencia(el) {
+    var ps = $$('.gu-p', el), cont = el.querySelector('.gu-cont b'), prog = el.querySelector('.gu-prog>i'); if (ps.length < 2) return;
+    el.classList.add('gu-pin');
+    var tl = W.gsap.timeline({ defaults: { ease: 'none' }, scrollTrigger: { trigger: el, start: 'top top', end: 'bottom bottom', scrub: 0.6,
+      onUpdate: function (s) {
+        if (prog) prog.style.transform = 'scaleX(' + s.progress.toFixed(4) + ')';
+        if (cont) { var k = Math.min(ps.length, 1 + Math.round(s.progress * (ps.length - 1))); cont.textContent = ('0' + k).slice(-2); }
+      } } });
+    ps.forEach(function (p, i) {
+      var im = p.querySelector('img'), cap = p.querySelector('figcaption');
+      if (i > 0) {
+        tl.fromTo(p, { clipPath: 'inset(100% 0% 0% 0%)' }, { clipPath: 'inset(0% 0% 0% 0%)', duration: 1 }, i - 1);
+        if (im) tl.fromTo(im, { scale: 1.2 }, { scale: 1, duration: 1 }, i - 1);
+        if (cap) tl.fromTo(cap, { opacity: 0, y: 30 }, { opacity: 1, y: 0, duration: 0.5 }, i - 0.45);
+      }
+    });
+    tl.to({}, { duration: 0.4 });
+  }
+
+  function cierre(el) {
+    var foto = el.querySelector('.gu-cierre-foto'), im = foto && foto.querySelector('img'); if (!foto) return;
+    el.classList.add('gu-pin');
+    W.gsap.fromTo(foto, { clipPath: 'inset(16% 12% 16% 12% round 28px)' }, { clipPath: 'inset(0% 0% 0% 0% round 0px)', ease: 'none',
+      scrollTrigger: { trigger: el, start: 'top 85%', end: 'top top', scrub: true } });
+    if (im) W.gsap.fromTo(im, { scale: 1.15 }, { scale: 1, ease: 'none', scrollTrigger: { trigger: el, start: 'top 85%', end: 'bottom bottom', scrub: true } });
+  }
+
+  var ACCIONES = { abre: abre, secuencia: secuencia, cierre: cierre, titulo: titulo, palabras: palabras, banda: banda, revela: revela, paralaje: paralaje, zoom: zoom, cifra: cifra, horizontal: horizontal, apila: apila, linea: linea };
 
   function construirTodo() {
     $$('[data-fx]').forEach(function (el) {

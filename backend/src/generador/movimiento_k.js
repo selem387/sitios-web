@@ -1,7 +1,7 @@
 // Opción K "Recorrido en movimiento" (14-nov-2026): portada tipográfica con titular que sube por línea, foto real del cliente con
 // paralaje y banda de texto corrida; el resto de la página es el de la plantilla general y recibe los efectos de efectos_gsap.js
 // (titulares por palabra, bloques que entran escalonados, scroll suave). Sin JS o con "reducir movimiento" todo queda quieto y completo.
-// Licencia: GSAP (Webflow) prohíbe "productos competidores"; resolver antes de activar OPCION_K con clientes (ver docs/opcion-k-movimiento-gsap.md).
+// Licencia: Sebastián decidió (14-nov-2026) que GSAP se puede usar (no se publica un editor de animaciones; se ofrecen sitios a prospectos de Google Maps).
 import { METRICAS } from './tipo_color.js';
 import { bandaHTML, conEfectosGsap } from './efectos_gsap.js';
 
