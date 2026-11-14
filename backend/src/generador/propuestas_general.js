@@ -21,6 +21,7 @@ import { portadaNarrativaHTML, parNarrativa, CSS_NARRATIVA, JS_NARRATIVA } from 
 import { escenaGuiaHTML, cierreGuiaHTML, indiceGuiaHTML, parGuia, CSS_GUIA, JS_GUIA } from './guia.js';
 import { portadaAvanceHTML, cifrasAvanceHTML, reconocimientosHTML, cifrasDe, reconocimientosDe, parAvance, CSS_AVANCE } from './avance.js';
 import { portadaFichaHTML, cintaFichaHTML, atributosFichaHTML, escenaFichaHTML, cierreFichaHTML, fichasDe, parFicha, CSS_FICHA, JS_FICHA } from './ficha.js';
+import { paginaVitrina, LETRA_Q, URL_FUENTES_Q } from './vitrina.js';
 import { portadaCatalogoHTML, bandaFotoHTML, cierreCatalogoHTML, tabsDeServicios, parCatalogo, CSS_CATALOGO, JS_CATALOGO } from './catalogo.js';
 
 const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -37,13 +38,15 @@ const conContraste = (c, bg, min = 4.5, hacia = '#000000') => { let x = c; for (
 // H (12-nov-2026): opción adicional "Recorrido con índice" (generador/indice.js). Siempre va como octava.
 // I (14-nov-2026): opción adicional "Historia con scroll" (generador/historia.js). Siempre va como novena.
 // J (14-nov-2026): opción adicional "Narrativa por capítulos" (generador/narrativa.js). Siempre va como décima.
-export const LAYOUTS_GENERAL = ['portada', 'editorial', 'mosaico', 'logo', 'dostonos', 'carta', 'collage', 'indice', 'historia', 'narrativa', 'movimiento', 'reservada_l', 'guia', 'avance', 'catalogo', 'ficha'];
+export const LAYOUTS_GENERAL = ['portada', 'editorial', 'mosaico', 'logo', 'dostonos', 'carta', 'collage', 'indice', 'historia', 'narrativa', 'movimiento', 'reservada_l', 'guia', 'avance', 'catalogo', 'ficha', 'vitrina'];
 // K (14-nov-2026): opción adicional "Recorrido en movimiento" (generador/movimiento_k.js + efectos_gsap.js). Siempre va como undécima.
 // M (14-nov-2026): opción adicional "Guía en movimiento" (generador/guia.js + efectos_gsap.js). Siempre va como decimotercera; la L queda reservada.
 // O (14-nov-2026): opción adicional "Catálogo en movimiento" (generador/catalogo.js, CSS nativo sin librerías). Siempre va como decimoquinta; la L queda reservada.
 // N (14-nov-2026): opción adicional "Cifras y avance" (generador/avance.js, CSS nativo sin librerías). Siempre va como decimocuarta.
 // P (14-nov-2026): opción adicional "Ficha en movimiento" (generador/ficha.js, CSS nativo sin librerías). Siempre va como decimosexta.
-export const LETRAS = 'ABCDEFGHIJKLMNOP';
+// Q (14-nov-2026): opción adicional "Vitrina" (generador/vitrina.js). Reconstruida desde cero con www.dvf.com como única
+// referencia: barra, portada, secciones, pie, letra (Jost) y CSS propios; no usa el esqueleto de las demás. Siempre va como decimoséptima.
+export const LETRAS = 'ABCDEFGHIJKLMNOPQ';
 // La G sale para todos solo con OPCION_G=1 en el servicio api (11-nov-2026: primero se prueba cliente por cliente).
 export const conOpcionG = () => process.env.OPCION_G === '1';
 // La H sale para todos solo con OPCION_H=1 en el servicio api (igual que la G: primero cliente por cliente).
@@ -62,7 +65,9 @@ export const conOpcionO = () => process.env.OPCION_O === '1';
 export const conOpcionN = () => process.env.OPCION_N === '1';
 // La P sale para todos solo con OPCION_P=1 (no usa librerías de animación: CSS nativo y un script mínimo).
 export const conOpcionP = () => process.env.OPCION_P === '1';
-export const NOMBRES_GENERAL = { portada: 'Foto a pantalla completa', editorial: 'Editorial', mosaico: 'Mosaico de tu trabajo', logo: 'Tu logo al centro', dostonos: 'Dos tonos', carta: 'Minimalista', collage: 'Collage en movimiento', indice: 'Recorrido con índice', historia: 'Historia con scroll', narrativa: 'Narrativa por capítulos', movimiento: 'Recorrido en movimiento', guia: 'Guía en movimiento', catalogo: 'Catálogo en movimiento', ficha: 'Ficha en movimiento', avance: 'Cifras y avance' };
+// La Q sale para todos solo con OPCION_Q=1 (CSS nativo y un script mínimo, sin librerías).
+export const conOpcionQ = () => process.env.OPCION_Q === '1';
+export const NOMBRES_GENERAL = { portada: 'Foto a pantalla completa', editorial: 'Editorial', mosaico: 'Mosaico de tu trabajo', logo: 'Tu logo al centro', dostonos: 'Dos tonos', carta: 'Minimalista', collage: 'Collage en movimiento', indice: 'Recorrido con índice', historia: 'Historia con scroll', narrativa: 'Narrativa por capítulos', movimiento: 'Recorrido en movimiento', guia: 'Guía en movimiento', catalogo: 'Catálogo en movimiento', ficha: 'Ficha en movimiento', vitrina: 'Vitrina', avance: 'Cifras y avance' };
 
 // Títulos por arquetipo (Claude puede reemplazarlos con textos.secciones).
 export const TITULOS = {
@@ -118,6 +123,8 @@ function paletaGeneral(layout, colores, pastel, i, { acento = null, acentoCta = 
     avance: { bg: '#FFFFFF', fg: tinta, primary: base, muted: mezclar(tinte, '#FFFFFF', 0.6), banda: conContraste(tono(base, 0.18, 0.16, 0.22), '#FFFFFF', 10) },
     ficha: (() => { const bg = tono(base, 0.09, 0.14, 0.3); const fg = conContraste('#F4EFE8', bg, 12, '#FFFFFF'); const pr = conContraste(tono(base, 0.66, 0.4, 0.9), bg, 4.6, '#FFFFFF'); return { bg, fg, primary: pr, muted: mezclar(bg, '#FFFFFF', 0.06), banda: mezclar(bg, '#000000', 0.35) }; })(),
     narrativa: { bg: '#FFFFFF', fg: conContraste(tono(base, 0.1, 0.1, 0.25), '#FFFFFF', 15), primary: base, muted: mezclar(tinte, '#FFFFFF', 0.7) },
+    // Q: negro sobre blanco como la referencia; el color del cliente solo queda guardado para el sitio en vivo.
+    vitrina: { bg: '#FFFFFF', fg: '#000000', primary: base, muted: '#EFEFEF' },
   }[layout];
   p.primary = conContraste(p.primary, p.bg, 4.5);
   p.onPrimary = sobre(p.primary);
@@ -685,25 +692,27 @@ export function paginasGenerales({ brief, mat, textos, pares, urlFuentes, ronda 
   // La N (cifras y avance) igual que la O: letra fija y diseño propio (una grotesca, CSS nativo).
   const conN = conOpcionN() || fijo?.letra === 'N' || !!solo?.includes('N');
   const conP = conOpcionP() || fijo?.letra === 'P' || !!solo?.includes('P');
-  const todas = [...(dref ? dref.layouts : LAYOUTS_GENERAL.slice(0, 6)).map((layout, i) => ({ layout, i })), ...(conG ? [{ layout: 'collage', i: 6 }] : []), ...(conH ? [{ layout: 'indice', i: 7 }] : []), ...(conI ? [{ layout: 'historia', i: 8 }] : []), ...(conJ ? [{ layout: 'narrativa', i: 9 }] : []), ...(conK ? [{ layout: 'movimiento', i: 10 }] : []), ...(conM ? [{ layout: 'guia', i: 12 }] : []), ...(conN ? [{ layout: 'avance', i: 13 }] : []), ...(conO ? [{ layout: 'catalogo', i: 14 }] : []), ...(conP ? [{ layout: 'ficha', i: 15 }] : [])]
+  // La Q (vitrina) igual que la P: letra fija y diseño propio (Jost, negro sobre blanco, CSS nativo).
+  const conQ = conOpcionQ() || fijo?.letra === 'Q' || !!solo?.includes('Q');
+  const todas = [...(dref ? dref.layouts : LAYOUTS_GENERAL.slice(0, 6)).map((layout, i) => ({ layout, i })), ...(conG ? [{ layout: 'collage', i: 6 }] : []), ...(conH ? [{ layout: 'indice', i: 7 }] : []), ...(conI ? [{ layout: 'historia', i: 8 }] : []), ...(conJ ? [{ layout: 'narrativa', i: 9 }] : []), ...(conK ? [{ layout: 'movimiento', i: 10 }] : []), ...(conM ? [{ layout: 'guia', i: 12 }] : []), ...(conN ? [{ layout: 'avance', i: 13 }] : []), ...(conO ? [{ layout: 'catalogo', i: 14 }] : []), ...(conP ? [{ layout: 'ficha', i: 15 }] : []), ...(conQ ? [{ layout: 'vitrina', i: 16 }] : [])]
     .filter(({ i }) => (!fijo || LETRAS[i] === fijo.letra) && (!solo || solo.includes(LETRAS[i])));
   return todas.map(({ layout, i }) => {
     const letra = LETRAS[i];
     const v = textos.variantes?.[i] || textos.variantes?.[0] || {};
-    const propia = layout === 'indice' || layout === 'historia' || layout === 'narrativa' || layout === 'movimiento' || layout === 'guia' || layout === 'catalogo' || layout === 'ficha' || layout === 'avance';
+    const propia = layout === 'indice' || layout === 'historia' || layout === 'narrativa' || layout === 'movimiento' || layout === 'guia' || layout === 'catalogo' || layout === 'ficha' || layout === 'avance' || layout === 'vitrina';
     // H: titulares en letra sin remates (trazo limpio). De los pares del estilo del cliente toma el primero cuyo título sea sans.
     // I: al revés, titulares con remates (serif editorial), como en las marcas de alimentos y cosmética.
     const claseH = layout === 'historia' ? 'serif' : 'sans';
-    const parH = layout === 'avance' ? parAvance(pares) : layout === 'ficha' ? parFicha(pares) : layout === 'catalogo' ? parCatalogo(pares) : layout === 'guia' ? parGuia(pares) : layout === 'movimiento' ? parMovimiento(pares) : layout === 'narrativa' ? parNarrativa(pares) : propia ? pares.find((x) => METRICAS[x.titulos]?.clase === claseH) || pares[i % pares.length] : null;
+    const parH = layout === 'vitrina' ? LETRA_Q : layout === 'avance' ? parAvance(pares) : layout === 'ficha' ? parFicha(pares) : layout === 'catalogo' ? parCatalogo(pares) : layout === 'guia' ? parGuia(pares) : layout === 'movimiento' ? parMovimiento(pares) : layout === 'narrativa' ? parNarrativa(pares) : propia ? pares.find((x) => METRICAS[x.titulos]?.clase === claseH) || pares[i % pares.length] : null;
     const par = fijo?.fuentes || parH || (dref ? parPorNombres(dref.pares[i] || dref.pares[i % dref.pares.length]) : pares[i % pares.length]);
     const d = {
       i: i + ronda * 3, letra, layout, dref: propia ? null : dref, nombre: brief.negocio?.nombre || '', brief, mat, titulos,
-      pal: fijo?.paleta || (dref && !propia ? paletaRef(dref, dref.paletas?.[i] ? i : 0) : { ...corregirPaleta(paletaGeneral(layout, cps[i % cps.length].colores, pastel, i + ronda * 2, { acento: cps[i % cps.length].acento, acentoCta: cps[i % cps.length].acentoCta })).paleta, familia: cps[i % cps.length].familia, origen: cps[i % cps.length].origen }), f: par, fuentesUrl: urlFuentes([par]),
+      pal: fijo?.paleta || (dref && !propia ? paletaRef(dref, dref.paletas?.[i] ? i : 0) : { ...corregirPaleta(paletaGeneral(layout, cps[i % cps.length].colores, pastel, i + ronda * 2, { acento: cps[i % cps.length].acento, acentoCta: cps[i % cps.length].acentoCta })).paleta, familia: cps[i % cps.length].familia, origen: cps[i % cps.length].origen }), f: par, fuentesUrl: layout === 'vitrina' && !fijo?.fuentes ? URL_FUENTES_Q : urlFuentes([par]),
       t: { titular: v.titular, subtitulo: v.subtitulo, foto_url: v.foto_url || null, cta: v.cta || 'Escríbeme por WhatsApp', info: (textos.info || []).slice(0, 3), sobre: textos.sobre, proceso: textos.proceso, proceso_intro: textos.proceso_intro, servicios_intro: textos.servicios_intro, servicios_cierre: textos.servicios_cierre, servicios_boton: textos.servicios_boton, diapositivas: textos.diapositivas },
       wa: waUrl(c.whatsapp, c.mensaje_whatsapp_inicial), tel: c.whatsapp ? formatoTel(c.whatsapp) : null,
     };
     const nombre = (!propia && dref?.nombres?.[i]) || NOMBRES_GENERAL[layout];
-    let html = pagina(d);
+    let html = layout === 'vitrina' ? paginaVitrina({ ...d, redes: redes(c), direccion: direccionTexto(brief) }).html : pagina(d);
     if (dref && !propia) html = aplicarRef(html, par, dref).replace(` · Propuesta ${letra}: ${esc(NOMBRES_GENERAL[layout])}</footer>`, ` · Propuesta ${letra}: ${esc(nombre)}</footer>`);
     return { letra, layout, nombre, html, fuentes: par, paleta: d.pal };
   });

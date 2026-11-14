@@ -153,6 +153,7 @@ export function escalaTipografica(estilo = 'calido', { cuerpo } = {}) {
 export const UI_WEB = ['Instrument Sans', 'Hanken Grotesk', 'Onest', 'Golos Text', 'Albert Sans', 'Schibsted Grotesk', 'Reddit Sans', 'Geist', 'Atkinson Hyperlegible'];
 const sansTexto = (f) => { const m = METRICAS[f]; return !!m && m.clase === 'sans' && !/condensada|expresiva/.test(m.sub || '') && (m.xh || 0.5) >= 0.47; };
 export function fuenteUI(par = {}) {
+  if (par.ui) return par.ui; // plantillas con letra de interfaz propia (Q: Jost, como su referencia)
   if (sansTexto(par.cuerpo)) return par.cuerpo;
   if (sansTexto(par.titulos) || ['Gabarito', 'Bricolage Grotesque'].includes(par.titulos)) return par.titulos;
   const fam = METRICAS[par.titulos]?.familia;
