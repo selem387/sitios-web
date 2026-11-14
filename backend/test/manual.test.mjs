@@ -94,6 +94,7 @@ test('la declaración enciende cada palabra en su tramo del scroll, sin salirse 
   const h = declaracionManualHTML({ frase: 'Cuidamos tu sonrisa como si fuera la nuestra de verdad' });
   assert.match(h, /aria-label="Cuidamos tu sonrisa/);
   assert.match(h, /<p class="mn-frase" aria-hidden="true">/);
+  assert.match(declaracionManualHTML({ frase: Array.from({ length: 30 }, (_, i) => `p${i}`).join(' ') }), /class="mn-frase f-l"/);
 });
 
 test('servicios en dos columnas conserva todo el contenido; si no reconoce la forma, devuelve igual', () => {
