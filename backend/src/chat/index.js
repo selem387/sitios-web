@@ -21,7 +21,8 @@ import { paginaChat } from './pagina.js';
 import { DIR_PROPUESTAS } from '../generador/propuestas_html.js';
 import { servirClip } from '../generador/clips.js';
 import { servirVendor } from '../generador/historia.js';
-import { pendientesChat, desdeChat, ultimoAviso } from '../entrevista/avisos.js';
+import { pendientesChat, desdeChat, ultimoAviso, avisar } from '../entrevista/avisos.js';
+import { conBarraBorrador, textoReaccion } from '../generador/barra_borrador.js';
 import { urlSitio } from '../panel/cambios_vivo.js';
 
 const DIR = path.join(config.dataDir, 'chat');
@@ -54,6 +55,7 @@ function limitar(c) {
   if (lista.length >= 90) throw new HttpError(429, 'Demasiados mensajes, espera un minuto');
   lista.push(ahora); golpes.set(ip, lista);
 }
+const accionesReaccion = (token, letra) => Object.fromEntries(['cambios', 'tal', 'no'].map((r) => [r, `/r/${token}/${letra}/${r}`]));
 const usuarioValido = (u) => /^web-[a-z0-9-]{8,60}$/.test(String(u || ''));
 
 function auth(c) {
@@ -94,8 +96,37 @@ export function registerChatRoutes(app, wrap) {
         return c.html(await renderSitio(sv, { previa: true }), 200, { 'cache-control': 'no-store', 'x-robots-tag': 'noindex' });
       }
     } catch (err) { console.error('[p] sitio vivo', token, err.message); }
-    try { return c.html(await fs.readFile(path.join(DIR_PROPUESTAS, token, `${letra}.html`), 'utf8'), 200, { 'cache-control': 'no-store', 'x-robots-tag': 'noindex' }); }
+    try {
+      const html = conBarraBorrador(await fs.readFile(path.join(DIR_PROPUESTAS, token, `${letra}.html`), 'utf8'), { acciones: accionesReaccion(token, letra) });
+      return c.html(html, 200, { 'cache-control': 'no-store', 'x-robots-tag': 'noindex' });
+    }
     catch { return c.text('Propuesta no encontrada', 404); }
+  });
+
+  // Barra borrador (generador/barra_borrador.js): "Me gusta con cambios" · "Me gusta como está" · "No me gusta".
+  // Se le pasa a Ari como mensaje del cliente y su respuesta le llega por su canal (WhatsApp o chat web).
+  app.post('/r/:token/:letra/:reaccion', async (c) => {
+    const { token, letra, reaccion } = c.req.param();
+    if (!/^[A-Za-z0-9]{8,40}$/.test(token) || !/^[A-P]$/.test(letra) || !['cambios', 'tal', 'no'].includes(reaccion)) return c.json({ error: 'no' }, 404);
+    try { limitar(c); } catch { return c.json({ error: 'espera' }, 429); }
+    const e = (await db.q(`SELECT id, usuario_id, canal FROM entrevistas WHERE brief#>>'{marca,propuestas,token}' = $1 ORDER BY creado DESC LIMIT 1`, [token]).catch(() => ({ rows: [] }))).rows[0];
+    if (!e) return c.json({ error: 'no' }, 404);
+    const op = ((await db.obtener(e.id))?.brief?.marca?.propuestas?.opciones || []).find((o) => o.letra === letra);
+    await db.evento(e.id, 'reaccion_opcion', { letra, reaccion }).catch(() => {});
+    const texto = textoReaccion(reaccion, `${letra}${op?.nombre ? ` (${op.nombre})` : ''}`);
+    // Ari contesta en segundo plano; la página confirma de inmediato.
+    enSerie(e.usuario_id, () => procesarMensaje({ usuario_id: e.usuario_id, texto, canal: e.canal || 'web' }))
+      .then((res) => {
+        const textos = (res?.respuestas || []).map((x) => (typeof x === 'string' ? x : x?.texto)).filter(Boolean);
+        if (textos.length) return avisar(e.id, textos, { evento: 'respuesta_reaccion', datos: { letra, reaccion }, guardar: false });
+      })
+      .catch((err) => console.error('[reaccion]', token, letra, err.message));
+    const mensaje = reaccion === 'no'
+      ? '¡Gracias por decirnos! Ari te escribe en un momento para saber qué no te gustó y mejorarla sin costo.'
+      : reaccion === 'cambios'
+        ? '¡Qué bueno que te gustó! Ari te escribe en un momento para saber qué cambios quieres, sin costo.'
+        : '¡Excelente! Ari te escribe en un momento para terminar tu página.';
+    return c.json({ ok: true, mensaje });
   });
 
   // Clips del slider de portada y variaciones IA (generador/clips.js).

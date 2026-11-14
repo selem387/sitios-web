@@ -1,7 +1,7 @@
 // Ligas cortas y páginas de prospección en timewins.site y timewins.online (modo "prospeccion" de dominios_cliente).
 //   /p/<folio>            prospecto: sus 6 opciones con "¿Te gusta esta?" · Blanca/Sebastián (con sesión): ficha completa
-//   /p/<folio>/<1-6>      una opción a pantalla completa con barra "Me gusta esta"
-//   /w/<folio>/<1-6>      registra la opción elegida en la sesión del constructor y abre WhatsApp a Blanca
+//   /p/<folio>/<1-6>      una opción a pantalla completa con la barra borrador (generador/barra_borrador.js)
+//   /w/<folio>/<1-6>?r=   registra la reacción (cambios|tal|no) en la sesión del constructor y abre WhatsApp a Blanca
 //   /w/<folio>            WhatsApp a Blanca sin opción
 //   /baja/<folio>         no recibir más correos
 //   /acceso/<token>       enlace mágico permanente (Blanca: atención · Sebastián: admin)
@@ -16,6 +16,7 @@ import { config } from '../config.js';
 import * as edb from '../entrevista/db.js';
 import { DIR_PROPUESTAS } from '../generador/propuestas_html.js';
 import { registrarModo } from '../generador/dominios.js';
+import { conBarraBorrador, textoReaccion } from '../generador/barra_borrador.js';
 import * as pdb from './db.js';
 import { encolar, enCola, usuarioDe, reanudar } from './construir.js';
 
@@ -76,10 +77,9 @@ async function opcionHtml(n, i, base, { vista = false } = {}) {
   const letra = LETRAS[i - 1];
   let html = await fs.readFile(path.join(DIR_PROPUESTAS, n.token, `${letra}.html`), 'utf8');
   if (vista) return html;
-  const barra = `<div id="tw-elige" style="position:fixed;left:0;right:0;bottom:0;z-index:2147483000;display:flex;gap:10px;justify-content:center;align-items:center;flex-wrap:wrap;padding:12px 16px calc(12px + env(safe-area-inset-bottom));background:rgba(20,18,16,.92);backdrop-filter:blur(8px);font:600 15px/1.3 system-ui,sans-serif;color:#fff">
-<a href="${base}/p/${n.folio}" style="color:#fff;text-decoration:underline;min-height:44px;display:inline-flex;align-items:center">‹ Ver las 6</a>
-<span>¿Te gusta la opción ${i}?</span><a href="${base}/w/${n.folio}/${i}" style="background:#25D366;color:#0B2B17;text-decoration:none;padding:12px 20px;border-radius:999px;font-weight:800;min-height:44px;display:inline-flex;align-items:center">Sí, quiero esta</a></div><div style="height:84px"></div>`;
-  return html.replace(/<\/body>/i, `${barra}</body>`);
+  // Barra borrador (regla dura 14-nov-2026): sus tres botones pasan por /w/<folio>/<n>?r=… y abren WhatsApp.
+  const acciones = Object.fromEntries(['cambios', 'tal', 'no'].map((r) => [r, `${base}/w/${n.folio}/${i}?r=${r}`]));
+  return conBarraBorrador(html, { acciones, modo: 'ir', volver: { url: `${base}/p/${n.folio}`, texto: `‹ Ver las ${(n.opciones || []).length || 6}` } });
 }
 
 function fichaBlanca(n, s, base, extra) {
@@ -134,19 +134,19 @@ async function lista(c, s, base) {
 }
 
 /* ---------------- Elección (clic en "me gusta esta") ---------------- */
-async function registrarEleccion(n, i, c) {
+async function registrarEleccion(n, i, c, r = null) {
   const letra = LETRAS[i - 1];
-  await pdb.q(`INSERT INTO prospeccion.clics (negocio_id, tipo, opcion, ip, agente) VALUES ($1,'elige',$2,$3,$4)`, [n.id, i, c.req.header('x-forwarded-for')?.split(',')[0] || null, String(c.req.header('user-agent') || '').slice(0, 200)]);
+  await pdb.q(`INSERT INTO prospeccion.clics (negocio_id, tipo, opcion, ip, agente) VALUES ($1,$2,$3,$4,$5)`, [n.id, r === 'cambios' ? 'elige_cambios' : 'elige', i, c.req.header('x-forwarded-for')?.split(',')[0] || null, String(c.req.header('user-agent') || '').slice(0, 200)]);
   await pdb.actualizar(n.id, { opcion_elegida: i, estado: 'interesado' });
   if (!n.entrevista_id) return;
   const e = await edb.obtener(n.entrevista_id);
   const p = e?.brief?.marca?.propuestas;
   if (!p?.opciones) return;
   const op = p.opciones.find((o) => o.letra === letra);
-  const brief = { ...e.brief, marca: { ...e.brief.marca, ...(op?.estilo ? { estilo: op.estilo } : {}), propuestas: { ...p, estado: 'elegida', elegido: letra, comentario: `Eligió la opción ${i} desde el correo` } } };
+  const brief = { ...e.brief, marca: { ...e.brief.marca, ...(op?.estilo ? { estilo: op.estilo } : {}), propuestas: { ...p, estado: 'elegida', elegido: letra, comentario: `Eligió la opción ${i} desde el correo${r === 'cambios' ? ', con cambios' : ''}` } } };
   await edb.guardar(e.id, { brief });
-  await edb.insertarMensaje(e.id, { rol: 'cliente', contenido: `Me gustó la opción ${i} (${letra}${op?.nombre ? ` · ${op.nombre}` : ''}).`, bloque: e.bloque_actual });
-  await edb.evento(e.id, 'prospecto_eligio', { opcion: i, letra });
+  await edb.insertarMensaje(e.id, { rol: 'cliente', contenido: r ? textoReaccion(r, `${i} (${letra}${op?.nombre ? ` · ${op.nombre}` : ''})`) : `Me gustó la opción ${i} (${letra}${op?.nombre ? ` · ${op.nombre}` : ''}).`, bloque: e.bloque_actual });
+  await edb.evento(e.id, 'prospecto_eligio', { opcion: i, letra, reaccion: r || 'tal' });
 }
 
 const waLink = (texto) => `https://wa.me/${WA_BLANCA()}?text=${encodeURIComponent(texto)}`;
@@ -170,7 +170,7 @@ async function atender(c, ruta, base, host) {
     const s = await sesion(c);
     if (s) {
       const act = [];
-      for (const x of (await pdb.q(`SELECT tipo, opcion, creado FROM prospeccion.clics WHERE negocio_id=$1 ORDER BY id DESC LIMIT 20`, [n.id])).rows) act.push(`${x.creado.toLocaleString('es-MX', { timeZone: 'America/Merida' })}: ${x.tipo === 'elige' ? `eligió la opción ${x.opcion}` : x.tipo}`);
+      for (const x of (await pdb.q(`SELECT tipo, opcion, creado FROM prospeccion.clics WHERE negocio_id=$1 ORDER BY id DESC LIMIT 20`, [n.id])).rows) act.push(`${x.creado.toLocaleString('es-MX', { timeZone: 'America/Merida' })}: ${x.tipo === 'elige' ? `le gustó la opción ${x.opcion} como está` : x.tipo === 'elige_cambios' ? `le gustó la opción ${x.opcion} con cambios` : x.tipo === 'no_gusta' ? `no le gustó la opción ${x.opcion}` : x.tipo}`);
       for (const x of (await pdb.q(`SELECT canal, paso, dominio, estado, creado FROM prospeccion.envios WHERE negocio_id=$1 ORDER BY id DESC LIMIT 20`, [n.id])).rows) act.push(`${x.creado.toLocaleString('es-MX', { timeZone: 'America/Merida' })}: ${x.canal} paso ${x.paso + 1} (${x.dominio || ''}) ${x.estado}`);
       return c.html(fichaBlanca(n, s, base, act), 200, { 'cache-control': 'no-store' });
     }
@@ -189,10 +189,17 @@ async function atender(c, ruta, base, host) {
     if (!n) return c.redirect(waLink('Hola Blanca, vi las páginas que me hicieron y me interesa.'), 302);
     const i = m[2] ? Number(m[2]) : null;
     const o = i && n.opciones?.[i - 1];
-    if (i) await registrarEleccion(n, i, c).catch((err) => console.error('[prospectos] eleccion', err.message));
+    // ?r=cambios|tal|no (barra borrador). Sin r: el "Sí, quiero esta" de siempre (= como está).
+    const r = ['cambios', 'tal', 'no'].includes(c.req.query('r')) ? c.req.query('r') : null;
+    if (i && r === 'no') await pdb.q(`INSERT INTO prospeccion.clics (negocio_id, tipo, opcion) VALUES ($1,'no_gusta',$2)`, [n.id, i]).catch(() => {});
+    else if (i) await registrarEleccion(n, i, c, r).catch((err) => console.error('[prospectos] eleccion', err.message));
     else await pdb.q(`INSERT INTO prospeccion.clics (negocio_id, tipo) VALUES ($1,'whatsapp')`, [n.id]).catch(() => {});
     const corto = `${DOMINIOS()[0]}/p/${n.folio}${i ? `/${i}` : ''}`;
-    const texto = i ? `Hola Blanca, me gustó la opción ${i}${o?.nombre ? ` (${o.nombre})` : ''} para ${n.nombre}.\n${corto}` : `Hola Blanca, vi las páginas que me hicieron para ${n.nombre} y me interesa.\n${corto}`;
+    const nom = `la opción ${i}${o?.nombre ? ` (${o.nombre})` : ''}`;
+    const texto = !i ? `Hola Blanca, vi las páginas que me hicieron para ${n.nombre} y me interesa.\n${corto}`
+      : r === 'no' ? `Hola Blanca, vi ${nom} para ${n.nombre} y no me gustó. Te cuento qué cambiaría:\n${corto}`
+      : r === 'cambios' ? `Hola Blanca, me gustó ${nom} para ${n.nombre}, pero con algunos cambios:\n${corto}`
+      : `Hola Blanca, me gustó ${nom} para ${n.nombre} como está.\n${corto}`;
     return c.redirect(waLink(texto), 302);
   }
   if ((m = ruta.match(/^\/baja\/([a-z0-9]{4,12})$/))) {

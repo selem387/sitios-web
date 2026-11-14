@@ -100,7 +100,7 @@ export async function pasada({ maxPorDominio = 2 } = {}) {
       WHERE n.correo IS NOT NULL AND NOT n.baja AND n.token IS NOT NULL AND n.estado IN ('construido','contactado') AND n.aprobado_en IS NOT NULL
         AND coalesce(n.dominio_envio, $1) = $1
         AND (u.paso IS NULL OR (u.paso = 0 AND u.ultimo < now() - interval '3 days') OR (u.paso = 1 AND u.ultimo < now() - interval '4 days'))
-        AND NOT EXISTS (SELECT 1 FROM prospeccion.clics k WHERE k.negocio_id=n.id AND k.tipo IN ('elige','whatsapp','baja'))
+        AND NOT EXISTS (SELECT 1 FROM prospeccion.clics k WHERE k.negocio_id=n.id AND k.tipo IN ('elige','elige_cambios','no_gusta','whatsapp','baja'))
       ORDER BY (u.paso IS NOT NULL) DESC, n.resenas DESC LIMIT $2`, [dominio, libres])).rows;
     for (const n of pend) {
       if (n.siguiente >= PASOS.length) continue;

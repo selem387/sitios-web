@@ -5,12 +5,13 @@ import * as db from './db.js';
 import { sendMail } from '../mail.js';
 import { repararTexto } from '../texto.js';
 
-export async function avisar(entrevistaId, textos, { evento = 'aviso', datos = {} } = {}) {
+export async function avisar(entrevistaId, textos, { evento = 'aviso', datos = {}, guardar = true } = {}) {
   const e = await db.obtener(entrevistaId);
   if (!e) return;
   const lista = (Array.isArray(textos) ? textos : [textos]).filter(Boolean).map(repararTexto);
   for (const t of lista) {
-    await db.insertarMensaje(e.id, { rol: 'agente', contenido: t, bloque: e.bloque_actual });
+    // guardar:false → el mensaje ya está en el historial (p. ej. respuesta de procesarMensaje); solo se entrega.
+    if (guardar) await db.insertarMensaje(e.id, { rol: 'agente', contenido: t, bloque: e.bloque_actual });
     await db.q('INSERT INTO avisos (entrevista_id, usuario_id, texto, evento) VALUES ($1,$2,$3,$4)', [e.id, e.usuario_id, t, evento]);
   }
   await db.evento(e.id, evento, { ...datos, mensajes: lista.length });
