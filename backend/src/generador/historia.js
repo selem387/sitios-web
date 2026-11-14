@@ -113,7 +113,7 @@ export function paginaHistoria(x) {
 <div class="sv-menu" id="sv-menu" hidden><button class="sv-cierra" type="button">Cerrar</button><nav aria-label="Menú">${navs.map(([id, n]) => `<a href="#${id}">${esc(n)}</a>`).join('')}</nav><div class="sv-menu-pie">${redesHTML}${datos.correo ? `<a href="mailto:${esc(datos.correo)}">${esc(datos.correo)}</a>` : ''}</div></div>`;
 
   // HeroVideo
-  const hero = `<section class="sv-hero" id="inicio">${heroFoto ? img(heroFoto, { cls: 'sv-hero-img rep-ok', eager: true, extra: ' fetchpriority="high" sizes="100vw"' }) : ''}<div class="sv-hero-velo"></div><div class="sv-hero-in"><h1 class="sv-t1 sv-partir">${esc(t.titular)}</h1><div class="sv-hero-der">${t.subtitulo ? `<p>${esc(t.subtitulo)}</p>` : ''}${btn('claro')}</div></div></section>`;
+  const hero = `<section class="sv-hero" id="inicio">${heroFoto ? img(heroFoto, { cls: 'sv-hero-img rep-ok', eager: true, extra: ' fetchpriority="high" sizes="100vw"' }) : ''}<div class="sv-hero-velo"></div><div class="sv-hero-in"><h1 class="sv-t1 sv-partir${String(t.titular || '').trim().split(/\s+/).length > 5 ? ' sv-largo' : ''}">${esc(t.titular)}</h1><div class="sv-hero-der">${t.subtitulo ? `<p>${esc(t.subtitulo)}</p>` : ''}${btn('claro')}</div></div></section>`;
 
   // StoryCanvas: un capítulo por foto (titular —— apoyo de su diapositiva) y uno de lista con los servicios.
   const fotosRel = pasos.slice(0, MAX_PASOS);
@@ -134,7 +134,7 @@ export function paginaHistoria(x) {
   // EntrypointChain → Mi trabajo (cascada en zigzag + texto fijo)
   const ANCHOS = [62, 48, 56, 44, 60, 50], SANGRIA = [0, 34, 12, 46, 6, 28], RITMO = [0.6, -0.4, 0.9, -0.2, 0.5, -0.6];
   const cadenaFigs = [...trabajo.map((f) => ({ f })), ...videos.map((v) => ({ v }))].map((it, k) => `<figure class="sv-esl" style="--w:${ANCHOS[k % 6]}%;--x:${SANGRIA[k % 6]}%;--v:${RITMO[k % 6]}">${it.f ? img(it.f, { cls: it.f.rep ? 'rep-ok' : '' }) : `<video src="${esc(it.v.url)}" muted loop playsinline autoplay preload="metadata"></video>`}</figure>`).join('');
-  const cadena = cadenaFigs ? `<section class="sv-cadena" id="trabajo"><div class="sv-cadena-fotos">${cadenaFigs}</div><div class="sv-cadena-txt"><div class="sv-cadena-fijo"><h2 class="sv-t2 sv-partir">${esc(T.trabajo)}</h2>${t.servicios_intro || t.subtitulo ? `<p class="sv-rev">${esc(t.servicios_intro || t.subtitulo)}</p>` : ''}${grupos.length ? btn('claro', `Ver ${T.servicios.toLowerCase()}`, ' href="#servicios"') : btn('claro')}</div></div></section>` : '';
+  const cadena = cadenaFigs ? `<section class="sv-cadena" id="trabajo"><div class="sv-cadena-fotos">${cadenaFigs}</div><div class="sv-cadena-txt"><div class="sv-cadena-fijo"><h2 class="sv-t2 sv-partir">${esc(T.trabajo)}</h2>${t.servicios_intro ? `<p class="sv-rev">${esc(t.servicios_intro)}</p>` : ''}${grupos.length ? btn('claro', `Ver ${T.servicios.toLowerCase()}`, ' href="#servicios"') : btn('claro')}</div></div></section>` : '';
 
   // ImageCTAGrid → Paquetes
   const opNombre = (g, o) => (o.nombre && o.nombre !== g.nombre ? o.nombre : '');
@@ -189,9 +189,9 @@ img,video{display:block;max-width:100%}a{color:inherit}
 .sv-hero{position:relative;height:100svh;min-height:560px;overflow:hidden;color:var(--crema);background:var(--ink)}
 .sv-hero-img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;max-width:none}
 .sv-vivo .sv-hero-img{transform:scale(1.12);transition:transform 2.4s cubic-bezier(.19,1,.22,1)}.sv-vivo.sv-listo .sv-hero-img{transform:scale(1)}
-.sv-hero-velo{position:absolute;inset:0;background:linear-gradient(180deg,rgba(0,0,0,.3),rgba(0,0,0,0) 28%,rgba(0,0,0,.08) 50%,rgba(0,0,0,.55))}
+.sv-hero-velo{position:absolute;inset:0;background:linear-gradient(180deg,rgba(0,0,0,.34),rgba(0,0,0,.06) 26%,rgba(0,0,0,.22) 52%,rgba(0,0,0,.66))}
 .sv-hero-in{position:absolute;left:0;right:0;bottom:0;padding:0 var(--pad) clamp(28px,4vw,56px);display:grid;grid-template-columns:1fr auto;gap:24px 48px;align-items:end}
-.sv-hero h1{max-width:9.5em}.sv-hero-der{display:grid;gap:clamp(20px,3vw,44px);justify-items:start;max-width:20ch}.sv-hero-der p{font-size:22px;line-height:1.35}
+.sv-hero h1{max-width:9.5em;text-shadow:0 2px 30px rgba(0,0,0,.25)}.sv-hero h1.sv-largo{font-size:clamp(44px,6.6vw,100px);max-width:11em}.sv-hero-der{text-shadow:0 1px 16px rgba(0,0,0,.35)}.sv-hero-der{display:grid;gap:clamp(20px,3vw,44px);justify-items:start;max-width:20ch}.sv-hero-der p{font-size:22px;line-height:1.35}
 @media (max-width:860px){.sv-hero-in{grid-template-columns:1fr;padding-bottom:84px}.sv-hero-der{max-width:none}.sv-hero-der p{display:-webkit-box;-webkit-line-clamp:4;-webkit-box-orient:vertical;overflow:hidden}}
 .sv-relato{position:relative;background:var(--ink)}
 .sv-fotos{display:grid}.sv-foto{position:relative;height:90svh;overflow:hidden}.sv-foto img{width:100%;height:100%;object-fit:cover;max-width:none}
@@ -276,8 +276,9 @@ var pon=function(v){if(!mn)return;mn.hidden=!v;ab&&ab.setAttribute('aria-expande
 ab&&ab.addEventListener('click',function(){pon(true)});mn&&mn.querySelector('.sv-cierra').addEventListener('click',function(){pon(false)});
 mn&&mn.addEventListener('click',function(e){if(e.target.closest('a'))pon(false)});D.addEventListener('keydown',function(e){if(e.key==='Escape'&&mn&&!mn.hidden)pon(false)});
 var hero=D.querySelector('.sv-hero'),y0=0;
-var barra=function(){if(!nav)return;var y=scrollY,hh=hero?hero.offsetHeight-80:0;nav.classList.toggle('sv-osc',y>hh);if(y>hh&&y>y0+4)nav.classList.add('sv-fuera');else if(y<y0-4||y<=hh)nav.classList.remove('sv-fuera');y0=y};
-addEventListener('scroll',barra,{passive:true});barra();
+var bor=function(){var b=D.getElementById('tw-borrador');return b?b.offsetHeight:0};
+var barra=function(){if(!nav)return;var y=scrollY;nav.style.top=Math.max(0,bor()-y)+'px';var hh=hero?hero.offsetHeight-80:0;nav.classList.toggle('sv-osc',y>hh);if(y>hh&&y>y0+4)nav.classList.add('sv-fuera');else if(y<y0-4||y<=hh)nav.classList.remove('sv-fuera');y0=y};
+addEventListener('scroll',barra,{passive:true});addEventListener('load',barra);barra();
 var partir=function(el){var ws=el.textContent.trim().split(/\s+/),sp=[];el.textContent='';
 ws.forEach(function(w,i){var s=D.createElement('span');s.textContent=w+(i<ws.length-1?' ':'');el.appendChild(s);sp.push(s)});
 var ls=[],t=null;sp.forEach(function(s){var o=s.offsetTop;if(o!==t){ls.push([]);t=o}ls[ls.length-1].push(s.textContent)});
@@ -289,7 +290,7 @@ try{if(window.Lenis){window.__svL=new Lenis({autoRaf:true,anchors:true});H.class
 H.classList.add('sv-vivo');
 $$('.sv-partir').forEach(partir);
 var h1=D.querySelector('.sv-hero h1');
-requestAnimationFrame(function(){requestAnimationFrame(function(){H.classList.add('sv-listo');h1&&h1.classList.add('sv-in')})});
+var listo=function(){H.classList.add('sv-listo');h1&&h1.classList.add('sv-in')};requestAnimationFrame(function(){requestAnimationFrame(listo)});setTimeout(listo,400);
 var hi=D.querySelector('.sv-hero-img'),hin=D.querySelector('.sv-hero-in');
 if(hero)M.scroll(function(p){if(hi&&p>0)hi.style.transform='translate3d(0,'+(p*18).toFixed(2)+'%,0) scale('+(1+p*.06).toFixed(4)+')';if(hin)hin.style.opacity=cl(1-p*1.6).toFixed(3)},{target:hero,offset:['start start','end start']});
 var rel=D.querySelector('.sv-relato');
