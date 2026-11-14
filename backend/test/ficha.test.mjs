@@ -17,7 +17,7 @@ const brief = { negocio: { nombre: 'Norte 21', arquetipo: 'inmobiliaria', giro_t
 const gen = (o = {}) => paginasGenerales({ brief, mat: matDe(6), textos, pares, urlFuentes: () => '', ...o });
 
 test('la P sale como decimosexta, solo cuando se pide; L y N siguen libres', () => {
-  assert.equal(LETRAS, 'ABCDEFGHIJKLMNOP');
+  assert.equal(LETRAS, 'ABCDEFGHIJKLMNOPQR');
   assert.deepEqual(gen({ solo: 'P' }).map((p) => [p.letra, p.layout]), [['P', 'ficha']]);
   assert.equal(gen().some((p) => p.layout === 'ficha'), false);
   assert.deepEqual(gen({ solo: 'L' }), []);

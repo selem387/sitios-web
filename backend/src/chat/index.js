@@ -86,7 +86,7 @@ export function registerChatRoutes(app, wrap) {
   // Propuestas de diseño navegables (7 por cliente; la G solo fuera de restaurantes): /p/<token>/<A-G>
   app.get('/p/:token/:letra', async (c) => {
     const { token, letra } = c.req.param();
-    if (!/^[A-Za-z0-9]{8,40}$/.test(token) || !/^[A-P]$/.test(letra)) return c.text('no', 404);
+    if (!/^[A-Za-z0-9]{8,40}$/.test(token) || !/^[A-R]$/.test(letra)) return c.text('no', 404);
     // Opción ya elegida (11-nov-2026): su liga muestra el sitio armado desde la base con sus ajustes visuales.
     try {
       const sv = (await db.q(`SELECT sv.*, e.brief#>>'{marca,propuestas,elegido}' AS _elegido FROM sitios_vivos sv JOIN entrevistas e ON e.id = sv.entrevista_id
@@ -107,7 +107,7 @@ export function registerChatRoutes(app, wrap) {
   // Se le pasa a Ari como mensaje del cliente y su respuesta le llega por su canal (WhatsApp o chat web).
   app.post('/r/:token/:letra/:reaccion', async (c) => {
     const { token, letra, reaccion } = c.req.param();
-    if (!/^[A-Za-z0-9]{8,40}$/.test(token) || !/^[A-P]$/.test(letra) || !['cambios', 'tal', 'no'].includes(reaccion)) return c.json({ error: 'no' }, 404);
+    if (!/^[A-Za-z0-9]{8,40}$/.test(token) || !/^[A-R]$/.test(letra) || !['cambios', 'tal', 'no'].includes(reaccion)) return c.json({ error: 'no' }, 404);
     try { limitar(c); } catch { return c.json({ error: 'espera' }, 429); }
     const e = (await db.q(`SELECT id, usuario_id, canal FROM entrevistas WHERE brief#>>'{marca,propuestas,token}' = $1 ORDER BY creado DESC LIMIT 1`, [token]).catch(() => ({ rows: [] }))).rows[0];
     if (!e) return c.json({ error: 'no' }, 404);

@@ -8,6 +8,7 @@ import { parPorNombres } from './fuentes.js';
 import { coloresParaPropuesta } from './paletas_giro.js';
 import { mezclar, contraste } from '../entrevista/tema.js';
 import { esPastel, coloresDePalabras, articuloDe } from './materiales.js';
+import { paginaManual, paletaManual, FUENTES_R } from './manual.js';
 import { waUrl, formatoTel } from './bloques.js';
 import { sliderHTML, diapositivasDe, emparejarFotos, CSS_MOVIMIENTO, JS_MOVIMIENTO, efectosDe, filaJustificada, CSS_JUSTIFICADA } from './movimiento.js';
 import { direccionTexto, testimoniosValidos } from './datos_brief.js';
@@ -37,13 +38,15 @@ const conContraste = (c, bg, min = 4.5, hacia = '#000000') => { let x = c; for (
 // H (12-nov-2026): opción adicional "Recorrido con índice" (generador/indice.js). Siempre va como octava.
 // I (14-nov-2026): opción adicional "Historia con scroll" (generador/historia.js). Siempre va como novena.
 // J (14-nov-2026): opción adicional "Narrativa por capítulos" (generador/narrativa.js). Siempre va como décima.
-export const LAYOUTS_GENERAL = ['portada', 'editorial', 'mosaico', 'logo', 'dostonos', 'carta', 'collage', 'indice', 'historia', 'narrativa', 'movimiento', 'reservada_l', 'guia', 'avance', 'catalogo', 'ficha'];
+export const LAYOUTS_GENERAL = ['portada', 'editorial', 'mosaico', 'logo', 'dostonos', 'carta', 'collage', 'indice', 'historia', 'narrativa', 'movimiento', 'reservada_l', 'guia', 'avance', 'catalogo', 'ficha', 'reservada_q', 'manual'];
 // K (14-nov-2026): opción adicional "Recorrido en movimiento" (generador/movimiento_k.js + efectos_gsap.js). Siempre va como undécima.
 // M (14-nov-2026): opción adicional "Guía en movimiento" (generador/guia.js + efectos_gsap.js). Siempre va como decimotercera; la L queda reservada.
 // O (14-nov-2026): opción adicional "Catálogo en movimiento" (generador/catalogo.js, CSS nativo sin librerías). Siempre va como decimoquinta; la L queda reservada.
 // N (14-nov-2026): opción adicional "Cifras y avance" (generador/avance.js, CSS nativo sin librerías). Siempre va como decimocuarta.
 // P (14-nov-2026): opción adicional "Ficha en movimiento" (generador/ficha.js, CSS nativo sin librerías). Siempre va como decimosexta.
-export const LETRAS = 'ABCDEFGHIJKLMNOP';
+// R (14-nov-2026): opción adicional "Manual de servicios" (generador/manual.js), página propia reconstruida solo desde compsych.konpo.co
+// (recorrido horizontal, GSAP + ScrollTrigger + Lenis + SplitType + Three.js). Siempre va como decimoctava; la Q queda reservada.
+export const LETRAS = 'ABCDEFGHIJKLMNOPQR';
 // La G sale para todos solo con OPCION_G=1 en el servicio api (11-nov-2026: primero se prueba cliente por cliente).
 export const conOpcionG = () => process.env.OPCION_G === '1';
 // La H sale para todos solo con OPCION_H=1 en el servicio api (igual que la G: primero cliente por cliente).
@@ -62,7 +65,9 @@ export const conOpcionO = () => process.env.OPCION_O === '1';
 export const conOpcionN = () => process.env.OPCION_N === '1';
 // La P sale para todos solo con OPCION_P=1 (no usa librerías de animación: CSS nativo y un script mínimo).
 export const conOpcionP = () => process.env.OPCION_P === '1';
-export const NOMBRES_GENERAL = { portada: 'Foto a pantalla completa', editorial: 'Editorial', mosaico: 'Mosaico de tu trabajo', logo: 'Tu logo al centro', dostonos: 'Dos tonos', carta: 'Minimalista', collage: 'Collage en movimiento', indice: 'Recorrido con índice', historia: 'Historia con scroll', narrativa: 'Narrativa por capítulos', movimiento: 'Recorrido en movimiento', guia: 'Guía en movimiento', catalogo: 'Catálogo en movimiento', ficha: 'Ficha en movimiento', avance: 'Cifras y avance' };
+// La R sale para todos solo con OPCION_R=1. No va a restaurantes (su plantilla es otra).
+export const conOpcionR = () => process.env.OPCION_R === '1';
+export const NOMBRES_GENERAL = { portada: 'Foto a pantalla completa', editorial: 'Editorial', mosaico: 'Mosaico de tu trabajo', logo: 'Tu logo al centro', dostonos: 'Dos tonos', carta: 'Minimalista', collage: 'Collage en movimiento', indice: 'Recorrido con índice', historia: 'Historia con scroll', narrativa: 'Narrativa por capítulos', movimiento: 'Recorrido en movimiento', guia: 'Guía en movimiento', catalogo: 'Catálogo en movimiento', ficha: 'Ficha en movimiento', avance: 'Cifras y avance' , manual: 'Manual de servicios' };
 
 // Títulos por arquetipo (Claude puede reemplazarlos con textos.secciones).
 export const TITULOS = {
@@ -685,11 +690,18 @@ export function paginasGenerales({ brief, mat, textos, pares, urlFuentes, ronda 
   // La N (cifras y avance) igual que la O: letra fija y diseño propio (una grotesca, CSS nativo).
   const conN = conOpcionN() || fijo?.letra === 'N' || !!solo?.includes('N');
   const conP = conOpcionP() || fijo?.letra === 'P' || !!solo?.includes('P');
-  const todas = [...(dref ? dref.layouts : LAYOUTS_GENERAL.slice(0, 6)).map((layout, i) => ({ layout, i })), ...(conG ? [{ layout: 'collage', i: 6 }] : []), ...(conH ? [{ layout: 'indice', i: 7 }] : []), ...(conI ? [{ layout: 'historia', i: 8 }] : []), ...(conJ ? [{ layout: 'narrativa', i: 9 }] : []), ...(conK ? [{ layout: 'movimiento', i: 10 }] : []), ...(conM ? [{ layout: 'guia', i: 12 }] : []), ...(conN ? [{ layout: 'avance', i: 13 }] : []), ...(conO ? [{ layout: 'catalogo', i: 14 }] : []), ...(conP ? [{ layout: 'ficha', i: 15 }] : [])]
+  // La R (manual de servicios) es una página propia: no pasa por pagina(); toma solo los datos del cliente.
+  const conR = conOpcionR() || fijo?.letra === 'R' || !!solo?.includes('R');
+  const todas = [...(dref ? dref.layouts : LAYOUTS_GENERAL.slice(0, 6)).map((layout, i) => ({ layout, i })), ...(conG ? [{ layout: 'collage', i: 6 }] : []), ...(conH ? [{ layout: 'indice', i: 7 }] : []), ...(conI ? [{ layout: 'historia', i: 8 }] : []), ...(conJ ? [{ layout: 'narrativa', i: 9 }] : []), ...(conK ? [{ layout: 'movimiento', i: 10 }] : []), ...(conM ? [{ layout: 'guia', i: 12 }] : []), ...(conN ? [{ layout: 'avance', i: 13 }] : []), ...(conO ? [{ layout: 'catalogo', i: 14 }] : []), ...(conP ? [{ layout: 'ficha', i: 15 }] : []), ...(conR ? [{ layout: 'manual', i: 17 }] : [])]
     .filter(({ i }) => (!fijo || LETRAS[i] === fijo.letra) && (!solo || solo.includes(LETRAS[i])));
   return todas.map(({ layout, i }) => {
     const letra = LETRAS[i];
     const v = textos.variantes?.[i] || textos.variantes?.[0] || {};
+    if (layout === 'manual') {
+      const cm = cps[i % cps.length];
+      const html = paginaManual({ brief, mat, textos, v, titulos, wa: waUrl(c.whatsapp, c.mensaje_whatsapp_inicial), colores: [...(mat.colores || []), ...(cm.colores || [])], nombreOpcion: NOMBRES_GENERAL.manual, letra });
+      return { letra, layout, nombre: NOMBRES_GENERAL.manual, html, fuentes: { titulos: FUENTES_R.cuerpo, cuerpo: FUENTES_R.cuerpo, estilo: 'minimalista' }, paleta: paletaManual(mat.colores || cm.colores || []) };
+    }
     const propia = layout === 'indice' || layout === 'historia' || layout === 'narrativa' || layout === 'movimiento' || layout === 'guia' || layout === 'catalogo' || layout === 'ficha' || layout === 'avance';
     // H: titulares en letra sin remates (trazo limpio). De los pares del estilo del cliente toma el primero cuyo título sea sans.
     // I: al revés, titulares con remates (serif editorial), como en las marcas de alimentos y cosmética.

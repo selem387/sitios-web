@@ -11,6 +11,7 @@ import { CSS_REVISION_GUIA } from './guia.js';
 import { CSS_REVISION_CATALOGO } from './catalogo.js';
 import { CSS_REVISION_FICHA } from './ficha.js';
 import { CSS_REVISION_AVANCE } from './avance.js';
+import { CSS_REVISION_MANUAL } from './manual.js';
 
 // Para medir y capturar: sin la etiqueta ni el botón flotante, y con las animaciones de entrada ya terminadas
 // (12-nov-2026: se medía a media animación y salían falsos "título desalineado" y "desborde horizontal", y capturas en blanco).
@@ -28,7 +29,9 @@ const CSS_REVISION = '.etq,.wa{display:none!important}*,*::before,*::after{anima
   + CSS_REVISION_CATALOGO
   + CSS_REVISION_FICHA
   // Opción N (cifras y avance): portada y fotos sin zoom.
-  + CSS_REVISION_AVANCE;
+  + CSS_REVISION_AVANCE
+  // Opción R (manual de servicios): página vertical y quieta, sin galería WebGL ni regla.
+  + CSS_REVISION_MANUAL;
 
 export async function captura(url, { ancho = 1366, selector = null } = {}) {
   if (!config.renderUrl || !url) return null;
@@ -152,7 +155,7 @@ const ESQUEMA_CORRECCION = {
   required: ['css'],
 };
 
-const archivoDe = (url) => { const m = String(url || '').match(/\/p\/([A-Za-z0-9]{8,40})\/([A-P])\b/); return m ? path.join(DIR_PROPUESTAS, m[1], `${m[2]}.html`) : null; };
+const archivoDe = (url) => { const m = String(url || '').match(/\/p\/([A-Za-z0-9]{8,40})\/([A-R])\b/); return m ? path.join(DIR_PROPUESTAS, m[1], `${m[2]}.html`) : null; };
 
 // CSS seguro: fuera @import/url()/expression y cualquier regla que oculte imágenes, el logo o textos.
 function cssSeguro(css) {
