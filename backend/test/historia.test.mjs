@@ -75,6 +75,7 @@ test('con pocas fotos la escena queda completa y sin relato vacío', () => {
 test('frase grande: primera oración, recortada si es muy larga', () => {
   assert.equal(fraseDe('Hola mundo. Otra cosa.'), 'Hola mundo.');
   assert.equal(fraseDe(''), '');
+  assert.equal(fraseDe('¡Hola! Soy Blanca, fotógrafa en Mérida y retrato familias. Más texto.'), 'Soy Blanca, fotógrafa en Mérida y retrato familias.');
   assert.match(fraseDe(Array(40).fill('palabra').join(' ')), /…$/);
 });
 
