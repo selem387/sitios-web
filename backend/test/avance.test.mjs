@@ -14,12 +14,12 @@ const brief = { negocio: { nombre: 'Norte 21', arquetipo: 'inmobiliaria', giro_t
 const conf = { cifras: ['15 años de experiencia', 'Más de 500 clientes', '98% de satisfacción'], premios: ['Mejor inmobiliaria 2025'], certificaciones: ['Corredor certificado AMPI'] };
 const gen = (o = {}) => paginasGenerales({ brief, mat: matDe(6), textos, pares, urlFuentes: () => '', ...o });
 
-test('la N sale como decimocuarta, solo cuando se pide; la L sigue libre', () => {
+test('la N sale como decimocuarta, solo cuando se pide; la L es la plataforma', () => {
   assert.equal(LETRAS[13], 'N');
   assert.equal(LAYOUTS_GENERAL[13], 'avance');
   assert.equal(NOMBRES_GENERAL.avance, 'Cifras y avance');
   assert.deepEqual(gen({ solo: 'N' }).map((p) => [p.letra, p.layout]), [['N', 'avance']]);
-  assert.deepEqual(gen({ solo: 'L' }), []);
+  assert.deepEqual(gen({ solo: 'L' }).map((p) => p.layout), ['plataforma']); // L (plataforma) ocupa la duodécima
   assert.equal(gen().some((p) => p.layout === 'avance'), false);
   assert.equal(parAvance(pares).titulos, 'Hanken Grotesk');
   assert.equal(parAvance([{ titulos: 'Gloock', cuerpo: 'Petrona' }]).titulos, 'Familjen Grotesk');
