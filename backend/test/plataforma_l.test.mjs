@@ -76,3 +76,12 @@ test('elegir la L por chat', () => {
   assert.equal(interpretarEleccion('la duodécima').elegido, 'L');
   assert.equal(interpretarEleccion('la 12').elegido, 'L');
 });
+
+test('sin diapositivas, cada servicio toma la foto cuya descripción se le parece (no la siguiente en orden)', () => {
+  const f = (n, alt) => ({ url: `https://x/${n}.jpg`, ancho: 1200, alto: 800, alt, tipo: 'foto_trabajo', clave: `b${n}` });
+  const m2 = { ...mat, fundador: null, hero: f(1, 'Pareja bailando en una fiesta'), trabajos: [f(2, 'Retrato de quinceañera en un jardín'), f(3, 'Mujer embarazada en estudio'), f(4, 'Bebé frente a globos y pastel'), f(5, 'Novios abrazados el día de su boda')] };
+  const b2 = { ...brief, oferta: { items: [{ grupo: '🎂 Smash cake', nombre: 'Primer añito', precio_o_rango: '$900', descripcion_corta: 'Pastel incluido.' }, { grupo: 'Maternidad', nombre: 'Sesión de embarazo', precio_o_rango: '$1,500' }, { grupo: 'Bodas', nombre: 'Boda civil', precio_o_rango: '$3,300' }] } };
+  const [l] = gen({ solo: 'L', mat: m2, brief: b2, textos: { ...textos, diapositivas: [] } });
+  const filas = [...l.html.matchAll(/<div class="ag-fila">.*?<h3>([^<]+)<\/h3>.*?alt="([^"]+)"/g)].map((x) => [x[1], x[2]]);
+  assert.deepEqual(filas, [['Smash cake', 'Bebé frente a globos y pastel'], ['Maternidad', 'Mujer embarazada en estudio'], ['Bodas', 'Novios abrazados el día de su boda']]);
+});

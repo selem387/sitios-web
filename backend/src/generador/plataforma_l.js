@@ -84,6 +84,14 @@ const sinNegritas = (t) => String(t || '').replace(/\*\*/g, '');
 const primerParrafo = (t) => sinNegritas(String(t || '').replace(/\r/g, '').split(/\n\s*\n/).map((x) => x.trim()).filter(Boolean)[0] || '');
 const precioNum = (p) => { const m = String(p || '').replace(/,/g, '').match(/\d+(?:\.\d+)?/); return m ? Number(m[0]) : null; };
 const conWa = (wa, texto) => { if (!wa) return '#contacto'; try { const u = new URL(wa); u.searchParams.set('text', texto); return u.toString(); } catch { return wa; } };
+// Parecido entre un texto y la descripción de una foto: raíces de palabras + sinónimos comunes de los giros.
+const SIN = [['bebe', 'newbo', 'recie', 'nacid', 'smash', 'añito', 'anito', 'primer'], ['mater', 'embar', 'panci', 'esper'], ['quinc', 'xv'], ['boda', 'novio', 'novia', 'pareja', 'matri', 'civil', 'recep'], ['cumpl', 'pastel', 'globo'], ['famil', 'papa', 'mama', 'hijo', 'hija', 'niño', 'niña', 'nino', 'nina'], ['bauti', 'iglesi', 'misa'], ['exter', 'jardi', 'parqu'], ['estud']];
+const VACIAS = new Set(['sesio', 'fotog', 'foto', 'fotos', 'hora', 'horas', 'minut', 'inclu', 'paque', 'elegi', 'catal', 'para', 'con', 'los', 'las', 'del', 'una', 'uno', 'que', 'sus', 'por', 'tus', 'esta', 'este', 'mas', 'muy', 'cada', 'set', 'mxn', 'desde', 'frent', 'sobre', 'fondo', 'blanc', 'event', 'rosa', 'azul']);
+export const raices = (t) => { const ws = String(t || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').match(/[a-zñ0-9]{2,}/g) || []; const set = new Set(ws.filter((w) => w.length > 2 || w === 'xv').map((w) => w.slice(0, 5)).filter((w) => !VACIAS.has(w))); const lista = [...set]; for (const g of SIN) if (lista.some((w) => g.some((x) => w.startsWith(x.slice(0, 5))))) set.add(`#${g[0]}`); return set; };
+const parecido = (a, b) => { let n = 0; for (const x of a) if (b.has(x)) n += x.startsWith('#') ? 3 : 1; return n; };
+// El título pesa el doble: decide entre fotos que empatan por palabras sueltas del detalle.
+export function mejorFoto(texto, fotos, titulo = '') { const ra = raices(texto), rt = raices(titulo); let mejor = null, max = 0; for (const x of fotos) { const rf = raices(`${x.alt || ''} ${x.descripcion || ''} ${x.nombre || ''}`); const v = parecido(ra, rf) + 2 * parecido(rt, rf); if (v > max) { max = v; mejor = x; } } return mejor; }
+const limpiaTitulo = (t) => String(t || '').replace(/^[^\p{L}\d]+/u, '').trim();
 const esFoto = (x) => x?.url && !/\.(mp4|mov|webm|m4v|pdf|docx?|xlsx?)(\?|$)/i.test(x.url) && !/^(video|documento)/.test(x.tipo || '');
 const buena = (x) => esFoto(x) && !x.captura && x.calidad !== 'regular' && !x.recorte;
 
@@ -118,7 +126,13 @@ export function paginaPlataforma({ brief = {}, mat = {}, v = {}, textos = {}, le
   const diapos = (Array.isArray(textos.diapositivas) ? textos.diapositivas : []).filter((d) => d?.titular);
   let filas = diapos.length >= 2
     ? diapos.slice(0, 4).map((d) => ({ titulo: d.titular, texto: d.apoyo || '', foto_url: d.foto_url || null }))
-    : grupos.slice(0, 4).map((g) => ({ titulo: g.nombre, texto: corta(g.opciones.map((o) => [o.nombre, o.precio].filter(Boolean).join(' · ')).filter(Boolean).join(' — ') || g.opciones[0]?.detalle?.split('\n')[0] || '', 170), foto_url: null }));
+    : grupos.slice(0, 4).map((g) => {
+      const frase = String(g.opciones.find((o) => o.detalle)?.detalle || '').split('\n').map((x) => x.trim()).find((x) => x && !/^[-•*]/.test(x)) || '';
+      const ps = g.opciones.map((o) => precioNum(o.precio)).filter((x) => x != null && x > 0);
+      const desdeG = ps.length && of.mostrar_precios !== false ? `${ps.length > 1 ? 'Desde' : 'Precio:'} $${Math.min(...ps).toLocaleString('es-MX')}${/mxn/i.test(g.opciones.map((o) => o.precio).join(' ')) ? ' MXN' : ''}.` : '';
+      const nombres = g.opciones.length > 1 ? g.opciones.map((o) => o.nombre).filter(Boolean).join(' · ') : '';
+      return { titulo: limpiaTitulo(g.nombre), texto: [corta(frase || nombres, 150), desdeG].filter(Boolean).join(' '), clave: [g.nombre, ...g.opciones.map((o) => `${o.nombre} ${o.detalle || ''}`)].join(' '), foto_url: null };
+    });
   if (filas.length < 2) filas = [];
 
   /* Reparto: el marco se queda con la primera foto (más si sobran), luego cada fila del explorador, y el resto va al carrusel. */
@@ -130,10 +144,13 @@ export function paginaPlataforma({ brief = {}, mat = {}, v = {}, textos = {}, le
   // Fotos pedidas por las diapositivas: quedan apartadas antes de llenar el marco.
   const pedidas = new Set(filas.map((f) => f.foto_url).filter(Boolean));
   const libresMarco = () => pool.filter((x) => !usadas.has(x.url) && !pedidas.has(x.url));
-  const extraMarco = Math.max(0, Math.min(3, libresMarco().length - reservadas - 3));
-  for (const x of libresMarco().slice(0, extraMarco)) marco.push(tomar(x));
   for (const f of filas) f.foto = (f.foto_url && tomar(pool.find((x) => x.url === f.foto_url))) || null;
+  // Sin foto elegida: cada fila toma la foto libre cuya descripción más se parece a su texto (si ninguna se parece, la siguiente).
+  // Va antes de llenar el marco para que el marco no se lleve la foto que le corresponde a un servicio.
+  for (const f of filas) if (!f.foto) f.foto = tomar(mejorFoto(f.clave || `${f.titulo} ${f.texto}`, pool.filter((x) => !usadas.has(x.url)), f.titulo));
   for (const f of filas) if (!f.foto) f.foto = siguiente();
+  const extraMarco = Math.max(0, Math.min(3, libresMarco().length - 3));
+  for (const x of libresMarco().slice(0, extraMarco)) marco.push(tomar(x));
   const casos = pool.filter((x) => !usadas.has(x.url)).map(tomar).filter(Boolean);
 
   /* --- Barra y aviso --- */
