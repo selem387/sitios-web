@@ -20,6 +20,7 @@ import { portadaMovimientoHTML, parMovimiento, conEfectosK, CSS_MOVIMIENTO_K } f
 import { portadaNarrativaHTML, parNarrativa, CSS_NARRATIVA, JS_NARRATIVA } from './narrativa.js';
 import { escenaGuiaHTML, cierreGuiaHTML, indiceGuiaHTML, parGuia, CSS_GUIA, JS_GUIA } from './guia.js';
 import { portadaVitrinaHTML, vitrinaTrabajoHTML, bandaVitrinaHTML, cierreVitrinaHTML, parVitrina, CSS_VITRINA, JS_VITRINA } from './vitrina.js';
+import { portadaManualHTML, declaracionManualHTML, serviciosManualHTML, trabajoManualHTML, cierreManualHTML, indiceManualHTML, parManual, CSS_MANUAL, JS_MANUAL } from './manual.js';
 import { portadaCatalogoHTML, bandaFotoHTML, cierreCatalogoHTML, tabsDeServicios, parCatalogo, CSS_CATALOGO, JS_CATALOGO } from './catalogo.js';
 
 const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -36,12 +37,13 @@ const conContraste = (c, bg, min = 4.5, hacia = '#000000') => { let x = c; for (
 // H (12-nov-2026): opción adicional "Recorrido con índice" (generador/indice.js). Siempre va como octava.
 // I (14-nov-2026): opción adicional "Historia con scroll" (generador/historia.js). Siempre va como novena.
 // J (14-nov-2026): opción adicional "Narrativa por capítulos" (generador/narrativa.js). Siempre va como décima.
-export const LAYOUTS_GENERAL = ['portada', 'editorial', 'mosaico', 'logo', 'dostonos', 'carta', 'collage', 'indice', 'historia', 'narrativa', 'movimiento', 'reservada_l', 'guia', 'reservada_n', 'catalogo', 'reservada_p', 'vitrina'];
+export const LAYOUTS_GENERAL = ['portada', 'editorial', 'mosaico', 'logo', 'dostonos', 'carta', 'collage', 'indice', 'historia', 'narrativa', 'movimiento', 'reservada_l', 'guia', 'reservada_n', 'catalogo', 'reservada_p', 'vitrina', 'manual'];
 // K (14-nov-2026): opción adicional "Recorrido en movimiento" (generador/movimiento_k.js + efectos_gsap.js). Siempre va como undécima.
 // M (14-nov-2026): opción adicional "Guía en movimiento" (generador/guia.js + efectos_gsap.js). Siempre va como decimotercera; la L queda reservada.
 // O (14-nov-2026): opción adicional "Catálogo en movimiento" (generador/catalogo.js, CSS nativo sin librerías). Siempre va como decimoquinta; la L y la N quedan reservadas.
 // Q (14-nov-2026): opción adicional "Vitrina editorial" (generador/vitrina.js, CSS nativo sin librerías ni video). Siempre va como decimoséptima; la P queda reservada.
-export const LETRAS = 'ABCDEFGHIJKLMNOPQ';
+// R (14-nov-2026): opción adicional "Manual de servicios" (generador/manual.js, CSS nativo sin librerías ni video). Siempre va como decimoctava.
+export const LETRAS = 'ABCDEFGHIJKLMNOPQR';
 // La G sale para todos solo con OPCION_G=1 en el servicio api (11-nov-2026: primero se prueba cliente por cliente).
 export const conOpcionG = () => process.env.OPCION_G === '1';
 // La H sale para todos solo con OPCION_H=1 en el servicio api (igual que la G: primero cliente por cliente).
@@ -58,7 +60,9 @@ export const conOpcionM = () => process.env.OPCION_M === '1';
 export const conOpcionO = () => process.env.OPCION_O === '1';
 // La Q sale para todos solo con OPCION_Q=1 (fotos que rotan con CSS puro; sin librerías ni video).
 export const conOpcionQ = () => process.env.OPCION_Q === '1';
-export const NOMBRES_GENERAL = { portada: 'Foto a pantalla completa', editorial: 'Editorial', mosaico: 'Mosaico de tu trabajo', logo: 'Tu logo al centro', dostonos: 'Dos tonos', carta: 'Minimalista', collage: 'Collage en movimiento', indice: 'Recorrido con índice', historia: 'Historia con scroll', narrativa: 'Narrativa por capítulos', movimiento: 'Recorrido en movimiento', guia: 'Guía en movimiento', catalogo: 'Catálogo en movimiento', vitrina: 'Vitrina editorial' };
+// La R sale para todos solo con OPCION_R=1 (secciones numeradas y escena fija con CSS puro; sin librerías ni video).
+export const conOpcionR = () => process.env.OPCION_R === '1';
+export const NOMBRES_GENERAL = { portada: 'Foto a pantalla completa', editorial: 'Editorial', mosaico: 'Mosaico de tu trabajo', logo: 'Tu logo al centro', dostonos: 'Dos tonos', carta: 'Minimalista', collage: 'Collage en movimiento', indice: 'Recorrido con índice', historia: 'Historia con scroll', narrativa: 'Narrativa por capítulos', movimiento: 'Recorrido en movimiento', guia: 'Guía en movimiento', catalogo: 'Catálogo en movimiento', vitrina: 'Vitrina editorial', manual: 'Manual de servicios' };
 
 // Títulos por arquetipo (Claude puede reemplazarlos con textos.secciones).
 export const TITULOS = {
@@ -112,6 +116,7 @@ function paletaGeneral(layout, colores, pastel, i, { acento = null, acentoCta = 
     guia: { bg: mezclar(papel, '#FFFFFF', 0.82), fg: tinta, primary: base, muted: mezclar(tinte, '#FFFFFF', 0.6), banda: conContraste(tono(base, 0.2, 0.18, 0.28), '#FFFFFF', 9) },
     catalogo: { bg: '#FFFFFF', fg: tinta, primary: base, muted: mezclar(tinte, '#FFFFFF', 0.6), banda: conContraste(tono(base, 0.2, 0.18, 0.28), '#FFFFFF', 9) },
     vitrina: { bg: mezclar(papel, '#FFFFFF', 0.9), fg: tinta, primary: base, muted: mezclar(tinte, '#FFFFFF', 0.78), banda: conContraste(tono(base, 0.18, 0.16, 0.26), '#FFFFFF', 9) },
+    manual: { bg: mezclar(papel, '#FFFFFF', 0.88), fg: tinta, primary: base, muted: mezclar(tinte, '#FFFFFF', 0.78), banda: conContraste(tono(base, 0.18, 0.16, 0.26), '#FFFFFF', 9) },
     narrativa: { bg: '#FFFFFF', fg: conContraste(tono(base, 0.1, 0.1, 0.25), '#FFFFFF', 15), primary: base, muted: mezclar(tinte, '#FFFFFF', 0.7) },
   }[layout];
   p.primary = conContraste(p.primary, p.bg, 4.5);
@@ -291,7 +296,7 @@ function pagina(d) {
   // las demás con otra foto de su trabajo para que no se vean iguales (si el dueño fijó portada, se respeta en todas).
   const variar = d.dref && d.letra !== 'A' && !brief.fotos?.portada_manual;
   const heroMat = mat.hero && fueraDeGaleria(mat.hero) ? mat.hero : null;
-  const heroBase = !variar && (d.layout === 'portada' || d.layout === 'logo' || d.layout === 'collage' || d.layout === 'indice' || d.layout === 'historia' || d.layout === 'narrativa' || d.layout === 'movimiento' || d.layout === 'guia' || d.layout === 'catalogo' || d.layout === 'vitrina' || (brief.fotos?.portada_manual && heroMat)) ? (heroMat || fotosT[0]) : (fotosT[0] || heroMat || (fueraDeGaleria(mat.fundador) ? mat.fundador : null));
+  const heroBase = !variar && (d.layout === 'portada' || d.layout === 'logo' || d.layout === 'collage' || d.layout === 'indice' || d.layout === 'historia' || d.layout === 'narrativa' || d.layout === 'movimiento' || d.layout === 'guia' || d.layout === 'catalogo' || d.layout === 'vitrina' || d.layout === 'manual' || (brief.fotos?.portada_manual && heroMat)) ? (heroMat || fotosT[0]) : (fotosT[0] || heroMat || (fueraDeGaleria(mat.fundador) ? mat.fundador : null));
   // Si el titular habla de un producto, abre con la foto de ese producto (la eligió la IA de textos por su descripción).
   const fotoTit = !brief.fotos?.portada_manual && t.foto_url ? [mat.hero, ...trabajos].find((x) => x?.url === t.foto_url) : null;
   const heroFoto = fotoTit || heroBase;
@@ -396,6 +401,12 @@ function pagina(d) {
       vq.urls.forEach((u) => { enPortada.add(u); usadas.add(u); });
       return vq.html;
     },
+    // R: manual de servicios (generador/manual.js). Una sola foto a pantalla completa con acercamiento lento, titular grande y un solo botón.
+    manual: () => {
+      const mn = portadaManualHTML({ heroFoto, img, kicker: [giroCorto(neg.giro_texto), neg.ciudad].filter(Boolean).join(' · '), titular: t.titular, subtitulo: t.subtitulo, cta: cta(), etiqueta: d.titulos.servicios });
+      mn.urls.forEach((u) => { enPortada.add(u); usadas.add(u); });
+      return mn.html;
+    },
     carta: () => { const s = poolSl.length ? `<div class="wrap">${slider({ tag: 'figure', clase: 'sl-carta sl-marco' })}</div>` : ''; const resto = s ? [] : fotosT.filter((x) => !usadas.has(x.url)).slice(0, 8); return `<section class="hero h-carta wrap"><div class="tit"><p class="kicker">${esc(d.nombre)}</p><h1>${esc(t.titular)}</h1></div><div class="lado"><p class="sub">${esc(t.subtitulo)}</p>${cta()}</div></section>${s}${resto.length ? `<div class="wrap">${filaJustificada(resto, img)}</div>` : ''}`; },
   };
   const promo = brief.oferta?.promocion_actual ? `<section class="promo" id="promocion"><div class="wrap"><p><b>Promoción</b> ${esc(brief.oferta.promocion_actual)}</p></div></section>` : '';
@@ -494,6 +505,13 @@ function pagina(d) {
     const frase = cand.find((x) => x.length <= 120 && !/…$/.test(x)) || [...cand].sort((a, b) => a.length - b.length)[0] || '';
     return bandaVitrinaHTML({ foto: fotosCt[0] || fotosT.find((x) => x?.url && x.url !== heroFoto?.url) || null, img, frase, cta: cta() });
   };
+  // R: frase del cliente que se enciende palabra por palabra, servicios en filas numeradas y rejilla de fotos con parallax.
+  const declMn = () => {
+    const frase = fraseDe(brief.oferta?.diferenciador || '') || fraseDe(t.sobre || conf.historia_corta || '') || '';
+    return declaracionManualHTML({ frase, kicker: 'Lo que nos distingue', cta: cta('inv') });
+  };
+  const secServiciosMn = () => serviciosManualHTML(secServicios());
+  const secTrabajoMn = () => trabajoManualHTML({ fotos: fotosDeTrabajo(), titulo: T.trabajo, img, info: waFoto });
   const ORDEN = {
     portada: [secTrabajo, secServicios, secSobre, secEquipo, secResenas, secProceso, secFaq, secVideo, secContacto],
     editorial: [secSobre, secTrabajo, secEquipo, secServicios, secResenas, procCli, secFaq, secVideo, secContacto],
@@ -508,6 +526,7 @@ function pagina(d) {
     narrativa: [secSobre, secTrabajo, secServicios, secEquipo, secResenas, secProceso, secFaq, secVideo, secContacto],
     guia: [secSobre, secTrabajo, secServicios, secEquipo, secResenas, secProceso, secFaq, secVideo, secContacto],
     // O: estante de trabajo primero, banda con parallax, servicios en pestañas y el resto como en las demás.
+    manual: [declMn, secServiciosMn, secProceso, secTrabajoMn, secSobre, secEquipo, secResenas, secFaq, secVideo, secContacto],
     vitrina: [secTrabajoVq, bandaVq, secServicios, secSobre, secEquipo, secResenas, secProceso, secFaq, secVideo, secContacto],
     catalogo: [secTrabajo, bandaCt, () => tabsDeServicios(secServicios()), secSobre, secEquipo, secResenas, secProceso, secFaq, secVideo, secContacto],
   }[d.layout];
@@ -544,10 +563,13 @@ function pagina(d) {
   const esGu = d.layout === 'guia';
   const esCt = d.layout === 'catalogo';
   const esVq = d.layout === 'vitrina';
+  const esMn = d.layout === 'manual';
   const cierreCt = esCt ? cierreCatalogoHTML({ foto: fotosCt[0] || heroFoto, img, titulo: d.nombre, apoyo: [giroCorto(neg.giro_texto), neg.ciudad].filter(Boolean).join(' · '), cta: cta() }) : '';
   const cierreVq = esVq ? cierreVitrinaHTML({ titulo: d.nombre, apoyo: [giroCorto(neg.giro_texto), neg.ciudad].filter(Boolean).join(' · '), cta: cta() }) : '';
+  const cierreMn = esMn ? cierreManualHTML({ titulo: d.nombre, apoyo: [giroCorto(neg.giro_texto), neg.ciudad].filter(Boolean).join(' · '), cta: cta('inv') }) : '';
+  const seccionesMn = esMn ? [...`${cuerpoFinal}${galeria}`.matchAll(/<section[^>]*\bid="([a-z]+)"/g)].map((m) => [m[1], ETQ_IX[m[1]]]).filter((x) => x[1] && x[0] !== 'galeria') : [];
   const cierreGu = esGu ? cierreGuiaHTML({ foto: fotosT.find((x) => x?.url && !enPortada.has(x.url)) || heroFoto, img, titulo: d.nombre, apoyo: [giroCorto(neg.giro_texto), neg.ciudad].filter(Boolean).join(' · '), cta: cta() }) : '';
-  const html = `<!doctype html><html lang="es" class="${esIx ? 'fx-zoom fx-hover' : esHs ? 'fx-zoom' : esNa ? 'fx-hover' : esMv || esGu || esCt || esVq ? 'fx-hover' : efectosDe(d.letra)}"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><meta name="robots" content="noindex">
+  const html = `<!doctype html><html lang="es" class="${esIx ? 'fx-zoom fx-hover' : esHs ? 'fx-zoom' : esNa ? 'fx-hover' : esMv || esGu || esCt || esVq || esMn ? 'fx-hover' : efectosDe(d.letra)}"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><meta name="robots" content="noindex">
 <title>${esc(d.nombre)} · Propuesta ${d.letra}</title>
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><!-- Tipografías sin bloquear la portada (7-nov-2026): la página se pinta con la letra de respaldo y cambia a la de Google en cuanto llega (display=swap). Lighthouse móvil ≥ 90. --><link rel="preload" as="style" href="${esc(d.fuentesUrl)}" onload="this.onload=null;this.rel='stylesheet'"><noscript><link href="${esc(d.fuentesUrl)}" rel="stylesheet"></noscript>
 <style>
@@ -619,13 +641,13 @@ a:focus-visible,summary:focus-visible{outline:3px solid var(--p);outline-offset:
 @media (min-width:900px){.h-portada .velo{background:linear-gradient(90deg,rgba(0,0,0,.6),rgba(0,0,0,.15) 70%)}.h-edit{grid-template-columns:1.1fr .9fr;align-items:center;padding-top:64px}.h-dos .in{grid-template-columns:1.1fr .9fr;align-items:end}.mos{grid-template-columns:repeat(4,1fr)}.mos>:first-child{grid-column:span 2;grid-row:span 2;aspect-ratio:auto}.mos-sl{min-height:380px}.mos.solo>.mos-sl{aspect-ratio:16/8!important;min-height:0}.h-portada .sl-d.con-txt::after{background:linear-gradient(90deg,rgba(0,0,0,.66),rgba(0,0,0,.18) 72%)}
 .s-in{grid-template-columns:.8fr 1.2fr}.galeria{columns:3 220px}.g-editorial{columns:4 220px}.contacto .datos{grid-template-columns:repeat(3,1fr)}}
 @media (prefers-reduced-motion:reduce){html{scroll-behavior:auto}}
-${CSS_MOVIMIENTO}${d.layout === 'collage' ? CSS_COLLAGE : ''}${esIx ? CSS_INDICE : ''}${esHs ? CSS_HISTORIA : ''}${esNa ? CSS_NARRATIVA : ''}${esMv ? CSS_MOVIMIENTO_K : ''}${esGu ? CSS_GUIA : ''}${esCt ? CSS_CATALOGO : ''}${esVq ? CSS_VITRINA : ''}
+${CSS_MOVIMIENTO}${d.layout === 'collage' ? CSS_COLLAGE : ''}${esIx ? CSS_INDICE : ''}${esHs ? CSS_HISTORIA : ''}${esNa ? CSS_NARRATIVA : ''}${esMv ? CSS_MOVIMIENTO_K : ''}${esGu ? CSS_GUIA : ''}${esCt ? CSS_CATALOGO : ''}${esVq ? CSS_VITRINA : ''}${esMn ? CSS_MANUAL : ''}
 </style>${esHs ? scriptsHistoria() : ''}</head>
 <body class="l-${d.layout}">
-<header class="barra"><div class="wrap in">${logoBarra}<nav>${navs.map(([id, n]) => `<a href="#${id}">${esc(n)}</a>`).join('')}</nav></div></header>${esIx ? navIndiceHTML(seccionesIx) : ''}${esGu ? indiceGuiaHTML(navs) : ''}
-<main>${heroFinal}${cuerpoFinal}${galeria}${esGu ? cierreGu : ''}${esCt ? cierreCt : ''}${esVq ? cierreVq : ''}</main>
+<header class="barra"><div class="wrap in">${logoBarra}<nav>${navs.map(([id, n]) => `<a href="#${id}">${esc(n)}</a>`).join('')}</nav></div></header>${esIx ? navIndiceHTML(seccionesIx) : ''}${esGu ? indiceGuiaHTML(navs) : ''}${esMn ? indiceManualHTML(seccionesMn) : ''}
+<main>${heroFinal}${cuerpoFinal}${galeria}${esGu ? cierreGu : ''}${esCt ? cierreCt : ''}${esVq ? cierreVq : ''}${esMn ? cierreMn : ''}</main>
 <footer>${marcaPie ? `<div class="pie-marcas">${marcaPie}</div>` : ''}© ${new Date().getFullYear()} ${esc(d.nombre)} · Propuesta ${d.letra}: ${esc(NOMBRES_GENERAL[d.layout])}</footer>
-<span class="etq">Propuesta ${d.letra}</span>${JS_MOVIMIENTO}${JS_CAR_TRABAJO}${d.layout === 'logo' ? JS_LOGO_UNICO : ''}${d.layout === 'collage' ? JS_COLLAGE : ''}${esIx ? monogramaHTML({ logoUrl: mat.logo?.url, nombre: d.nombre }) + JS_INDICE : ''}${esHs ? JS_HISTORIA : ''}${esNa ? JS_NARRATIVA : ''}${esGu ? JS_GUIA : ''}${esCt ? JS_CATALOGO : ''}${esVq ? JS_VITRINA : ''}
+<span class="etq">Propuesta ${d.letra}</span>${JS_MOVIMIENTO}${JS_CAR_TRABAJO}${d.layout === 'logo' ? JS_LOGO_UNICO : ''}${d.layout === 'collage' ? JS_COLLAGE : ''}${esIx ? monogramaHTML({ logoUrl: mat.logo?.url, nombre: d.nombre }) + JS_INDICE : ''}${esHs ? JS_HISTORIA : ''}${esNa ? JS_NARRATIVA : ''}${esGu ? JS_GUIA : ''}${esCt ? JS_CATALOGO : ''}${esVq ? JS_VITRINA : ''}${esMn ? JS_MANUAL : ''}
 <a class="wa"${wa} aria-label="Escríbeme por WhatsApp"><svg viewBox="0 0 32 32" aria-hidden="true"><path d="M16 3a13 13 0 0 0-11.2 19.6L3 29l6.6-1.7A13 13 0 1 0 16 3Zm0 23.7c-2 0-4-.6-5.7-1.6l-.4-.2-3.9 1 1-3.8-.3-.4A10.7 10.7 0 1 1 16 26.7Zm5.9-8c-.3-.2-1.9-1-2.2-1-.3-.1-.5-.2-.7.1l-1 1.3c-.2.2-.4.2-.7.1a8.8 8.8 0 0 1-4.4-3.8c-.3-.6.3-.5.9-1.7.1-.2 0-.4 0-.6l-1-2.4c-.3-.6-.5-.5-.7-.5h-.6c-.2 0-.6.1-.9.4-.3.3-1.2 1.1-1.2 2.8s1.2 3.2 1.4 3.5c.2.2 2.4 3.6 5.7 5 2.1.9 3 1 4 .8.7-.1 1.9-.8 2.2-1.5.3-.8.3-1.4.2-1.5l-.6-.3Z"/></svg></a>
 </body></html>`;
   return esMv || esGu ? conEfectosK(html, p) : html;
@@ -665,16 +687,18 @@ export function paginasGenerales({ brief, mat, textos, pares, urlFuentes, ronda 
   const conO = conOpcionO() || fijo?.letra === 'O' || !!solo?.includes('O');
   // La Q (vitrina editorial) igual que la O: letra fija y diseño propio (serif + grotesca, CSS nativo). La P queda reservada.
   const conQ = conOpcionQ() || fijo?.letra === 'Q' || !!solo?.includes('Q');
-  const todas = [...(dref ? dref.layouts : LAYOUTS_GENERAL.slice(0, 6)).map((layout, i) => ({ layout, i })), ...(conG ? [{ layout: 'collage', i: 6 }] : []), ...(conH ? [{ layout: 'indice', i: 7 }] : []), ...(conI ? [{ layout: 'historia', i: 8 }] : []), ...(conJ ? [{ layout: 'narrativa', i: 9 }] : []), ...(conK ? [{ layout: 'movimiento', i: 10 }] : []), ...(conM ? [{ layout: 'guia', i: 12 }] : []), ...(conO ? [{ layout: 'catalogo', i: 14 }] : []), ...(conQ ? [{ layout: 'vitrina', i: 16 }] : [])]
+  // La R (manual de servicios) igual que la Q: letra fija y diseño propio (una grotesca, CSS nativo). No va en restaurantes.
+  const conR = conOpcionR() || fijo?.letra === 'R' || !!solo?.includes('R');
+  const todas = [...(dref ? dref.layouts : LAYOUTS_GENERAL.slice(0, 6)).map((layout, i) => ({ layout, i })), ...(conG ? [{ layout: 'collage', i: 6 }] : []), ...(conH ? [{ layout: 'indice', i: 7 }] : []), ...(conI ? [{ layout: 'historia', i: 8 }] : []), ...(conJ ? [{ layout: 'narrativa', i: 9 }] : []), ...(conK ? [{ layout: 'movimiento', i: 10 }] : []), ...(conM ? [{ layout: 'guia', i: 12 }] : []), ...(conO ? [{ layout: 'catalogo', i: 14 }] : []), ...(conQ ? [{ layout: 'vitrina', i: 16 }] : []), ...(conR ? [{ layout: 'manual', i: 17 }] : [])]
     .filter(({ i }) => (!fijo || LETRAS[i] === fijo.letra) && (!solo || solo.includes(LETRAS[i])));
   return todas.map(({ layout, i }) => {
     const letra = LETRAS[i];
     const v = textos.variantes?.[i] || textos.variantes?.[0] || {};
-    const propia = layout === 'indice' || layout === 'historia' || layout === 'narrativa' || layout === 'movimiento' || layout === 'guia' || layout === 'catalogo' || layout === 'vitrina';
+    const propia = layout === 'indice' || layout === 'historia' || layout === 'narrativa' || layout === 'movimiento' || layout === 'guia' || layout === 'catalogo' || layout === 'vitrina' || layout === 'manual';
     // H: titulares en letra sin remates (trazo limpio). De los pares del estilo del cliente toma el primero cuyo título sea sans.
     // I: al revés, titulares con remates (serif editorial), como en las marcas de alimentos y cosmética.
     const claseH = layout === 'historia' ? 'serif' : 'sans';
-    const parH = layout === 'vitrina' ? parVitrina(pares) : layout === 'catalogo' ? parCatalogo(pares) : layout === 'guia' ? parGuia(pares) : layout === 'movimiento' ? parMovimiento(pares) : layout === 'narrativa' ? parNarrativa(pares) : propia ? pares.find((x) => METRICAS[x.titulos]?.clase === claseH) || pares[i % pares.length] : null;
+    const parH = layout === 'manual' ? parManual(pares) : layout === 'vitrina' ? parVitrina(pares) : layout === 'catalogo' ? parCatalogo(pares) : layout === 'guia' ? parGuia(pares) : layout === 'movimiento' ? parMovimiento(pares) : layout === 'narrativa' ? parNarrativa(pares) : propia ? pares.find((x) => METRICAS[x.titulos]?.clase === claseH) || pares[i % pares.length] : null;
     const par = fijo?.fuentes || parH || (dref ? parPorNombres(dref.pares[i] || dref.pares[i % dref.pares.length]) : pares[i % pares.length]);
     const d = {
       i: i + ronda * 3, letra, layout, dref: propia ? null : dref, nombre: brief.negocio?.nombre || '', brief, mat, titulos,
