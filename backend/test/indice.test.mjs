@@ -36,6 +36,8 @@ test('la H usa un par con título sin remates y arma portada, índice y monogram
   assert.match(h.html, /class="ix-fondo rep-ok" src="https:\/\/x\/1\.jpg"/);
   assert.equal((h.html.match(/<div class="ix-tunel">[\s\S]*?<\/div>/)[0].match(/<img/g) || []).length, 3);
   assert.match(h.html, /class="ix-lm ix-lm-t">Sin letras chiquitas</);
+  // la tarjeta va dentro de su marco y la encabeza el nombre del negocio
+  assert.match(h.html, /<div class="ix-tj-marco" aria-hidden="true"><div class="ix-tarjeta"><p class="ix-tj-k">Norte 21<\/p>/);
   assert.match(h.html, /<nav class="ix-nav"[^>]*><ol><li><a href="#inicio">Inicio<\/a><\/li><li><a href="#trabajo">/);
   assert.match(h.html, /class="ix-flot" aria-hidden="true" hidden><div class="ix-cubo"><span>N21<\/span>/);
   // "Nuestro trabajo" lleva todas las fotos de trabajo aunque estén en la portada, y nada se repite fuera de eso

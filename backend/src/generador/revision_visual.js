@@ -9,7 +9,7 @@ import { pedirJSON } from '../entrevista/claude.js';
 // (12-nov-2026: se medía a media animación y salían falsos "título desalineado" y "desborde horizontal", y capturas en blanco).
 const CSS_REVISION = '.etq,.wa{display:none!important}*,*::before,*::after{animation-duration:0s!important;animation-delay:0s!important;transition-duration:0s!important;transition-delay:0s!important}'
   // Opción H (recorrido con índice): se mide con la portada quieta y los titulares ya puestos, no a medio recorrido.
-  + '.ix-escena{height:auto!important}.ix-escena .h-indice{position:relative!important;top:0!important;height:auto!important;min-height:min(100svh,920px)!important;padding:120px 0 220px!important}.ix-banda,.ix-tunel,.ix-lema,.ix-tarjeta,.ix-flot{display:none!important}.ix-escena .ix-ficha{display:grid!important}.ix-escena .ix-txt{padding-bottom:0!important}.ix-pw>span,.ix-desliza,.h-indice h1{transform:none!important}';
+  + '.ix-escena{height:auto!important}.ix-escena .h-indice{position:relative!important;top:0!important;height:auto!important;min-height:min(100svh,920px)!important;padding:120px 0 220px!important}.ix-banda,.ix-tunel,.ix-lema,.ix-tj-marco,.ix-flot{display:none!important}.ix-escena .ix-ficha{display:grid!important}.ix-escena .ix-txt{padding-bottom:0!important}.ix-pw>span,.ix-desliza,.h-indice h1{transform:none!important}';
 
 export async function captura(url, { ancho = 1366, selector = null } = {}) {
   if (!config.renderUrl || !url) return null;
