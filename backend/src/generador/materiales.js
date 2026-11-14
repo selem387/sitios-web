@@ -156,7 +156,28 @@ async function guardar(img, prefijo, formato = 'jpg') {
  * 10-nov-2026 (caso El Rincón del Mayab: logo sobre negro con un filo de otro color en la esquina): el color de fondo es
  * el más común del borde (no solo el pixel de la esquina) y se borra solo lo conectado al borde (relleno por inundación),
  * así no se agujerean letras o detalles del mismo color dentro del logo. */
-async function fondoTransparente(buf) {
+// Logo de tinta oscura sobre fondo claro, sin color (blanco y negro): se vuelve silueta negra con transparencia según
+// lo oscuro de cada píxel. Así desaparecen también los huecos cerrados de las letras (dentro de la "o", la "B") y los
+// contornos claros que la inundación desde el borde no alcanza (14-nov-2026, caso Blanca Banderas).
+export function siluetaSiMonocromo(data) {
+  let n = 0, color = 0, oscuro = 0;
+  for (let k = 0; k < data.length; k += 4) {
+    if (data[k + 3] < 128) continue;
+    const r = data[k], g = data[k + 1], b = data[k + 2], mx = Math.max(r, g, b), mn = Math.min(r, g, b);
+    n++; if (mx - mn > 40) color++; if (0.2126 * r + 0.7152 * g + 0.0722 * b < 90) oscuro++;
+  }
+  if (!n || color / n > 0.15 || oscuro / n < 0.25) return false;
+  for (let k = 0; k < data.length; k += 4) {
+    if (Math.max(data[k], data[k + 1], data[k + 2]) - Math.min(data[k], data[k + 1], data[k + 2]) > 40) continue; // acentos de color se quedan
+    const L = 0.2126 * data[k] + 0.7152 * data[k + 1] + 0.0722 * data[k + 2];
+    const a = Math.max(0, Math.min(1, (225 - L) / 185));
+    data[k] = data[k + 1] = data[k + 2] = 0;
+    data[k + 3] = Math.round(data[k + 3] * a);
+  }
+  return true;
+}
+
+export async function fondoTransparente(buf) {
   const { data, info } = await sharp(buf).ensureAlpha().raw().toBuffer({ resolveWithObject: true });
   const W = info.width, H = info.height;
   const cuenta = new Map(); let mejor = null;
@@ -172,17 +193,44 @@ async function fondoTransparente(buf) {
   if (!mejor || mejor.n < borde.length * 0.3) return sharp(data, { raw: { width: W, height: H, channels: 4 } }).trim().png().toBuffer();
   const [r0, g0, b0] = [data[mejor.k], data[mejor.k + 1], data[mejor.k + 2]];
   const dist = (k) => Math.abs(data[k] - r0) + Math.abs(data[k + 1] - g0) + Math.abs(data[k + 2] - b0);
+  // 14-nov-2026 (caso Blanca Banderas): los píxeles del borde del dibujo mezclan tinta y fondo; antes solo bajaba su
+  // opacidad y conservaban el color del fondo, y quedaba un contorno blanco alrededor de cada letra. Ahora se separa el
+  // color del fondo ("color a transparencia"): esos píxeles quedan con el color de la tinta y la opacidad que les toca.
+  const bg = [r0, g0, b0];
+  const alfaDe = (k) => { let a = 0; for (let c = 0; c < 3; c++) { const v = data[k + c], f = bg[c]; a = Math.max(a, v > f ? (v - f) / (255 - f || 1) : (f - v) / (f || 1)); } return Math.min(1, a); };
+  const limpia = (k) => {
+    const a = alfaDe(k);
+    if (a < 0.04) { data[k + 3] = 0; return; }
+    for (let c = 0; c < 3; c++) data[k + c] = Math.max(0, Math.min(255, Math.round((data[k + c] - bg[c] * (1 - a)) / a)));
+    data[k + 3] = Math.min(data[k + 3], Math.round(255 * a));
+  };
   const visto = new Uint8Array(W * H), pila = [];
   for (const [x, y] of borde) { const i = y * W + x; if (!visto[i] && dist(i * 4) < 60) { visto[i] = 1; pila.push(i); } }
+  const orilla = [];
   while (pila.length) {
     const i = pila.pop(), k = i * 4, d = dist(k);
-    if (d < 28) data[k + 3] = 0; else data[k + 3] = Math.min(data[k + 3], Math.round(255 * (d - 28) / 32));
-    if (d >= 28) continue; // borde suave: no se sigue inundando hacia el dibujo
+    if (d >= 28) { orilla.push(i); continue; } // borde del dibujo: no se sigue inundando hacia adentro
+    data[k + 3] = 0;
     const x = i % W, y = (i / W) | 0;
     for (const n of [x > 0 ? i - 1 : -1, x < W - 1 ? i + 1 : -1, y > 0 ? i - W : -1, y < H - 1 ? i + W : -1]) {
       if (n >= 0 && !visto[n] && dist(n * 4) < 60) { visto[n] = 1; pila.push(n); }
     }
   }
+  // La orilla y dos píxeles hacia adentro (el suavizado de un JPEG ocupa 2-3 px) se limpian del color del fondo.
+  // Solo píxeles más claros/parecidos al fondo que la tinta: la tinta ya opaca queda igual (alfa 1).
+  let frente = orilla;
+  for (let paso = 0; paso < 3 && frente.length; paso++) {
+    const sig = [];
+    for (const i of frente) {
+      limpia(i * 4);
+      const x = i % W, y = (i / W) | 0;
+      for (const n of [x > 0 ? i - 1 : -1, x < W - 1 ? i + 1 : -1, y > 0 ? i - W : -1, y < H - 1 ? i + W : -1]) {
+        if (n >= 0 && !visto[n] && data[n * 4 + 3] > 0) { visto[n] = 1; sig.push(n); }
+      }
+    }
+    frente = sig;
+  }
+  siluetaSiMonocromo(data);
   return sharp(data, { raw: { width: W, height: H, channels: 4 } }).trim().png().toBuffer();
 }
 
