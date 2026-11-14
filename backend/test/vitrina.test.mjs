@@ -21,7 +21,7 @@ const textos = { variantes: Array(17).fill({ titular: 'Tu estilo regional', subt
 const gen = (o = {}) => paginasGenerales({ brief, mat, textos, pares: [{ titulos: 'Gloock', cuerpo: 'Hanken Grotesk', estilo: 'elegante' }], urlFuentes: () => '', ...o });
 
 test('la Q sale como decimoséptima, solo cuando se pide', () => {
-  assert.equal(LETRAS, 'ABCDEFGHIJKLMNOPQ');
+  assert.equal(LETRAS, 'ABCDEFGHIJKLMNOPQR');
   assert.deepEqual(gen({ solo: 'Q' }).map((p) => [p.letra, p.layout, p.nombre]), [['Q', 'vitrina', 'Vitrina']]);
   assert.equal(gen().some((p) => p.layout === 'vitrina'), false);
 });
