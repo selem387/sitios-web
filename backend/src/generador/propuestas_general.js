@@ -20,7 +20,7 @@ import { portadaMovimientoHTML, parMovimiento, conEfectosK, CSS_MOVIMIENTO_K } f
 import { portadaNarrativaHTML, parNarrativa, CSS_NARRATIVA, JS_NARRATIVA } from './narrativa.js';
 import { escenaGuiaHTML, cierreGuiaHTML, indiceGuiaHTML, parGuia, CSS_GUIA, JS_GUIA } from './guia.js';
 import { portadaVitrinaHTML, vitrinaTrabajoHTML, bandaVitrinaHTML, cierreVitrinaHTML, parVitrina, CSS_VITRINA, JS_VITRINA } from './vitrina.js';
-import { portadaManualHTML, declaracionManualHTML, serviciosManualHTML, trabajoManualHTML, cierreManualHTML, indiceManualHTML, parManual, CSS_MANUAL, JS_MANUAL } from './manual.js';
+import { portadaManualHTML, declaracionManualHTML, serviciosManualHTML, trabajoManualHTML, cierreManualHTML, indiceManualHTML, fraseDeclaracion, parManual, CSS_MANUAL, JS_MANUAL } from './manual.js';
 import { portadaCatalogoHTML, bandaFotoHTML, cierreCatalogoHTML, tabsDeServicios, parCatalogo, CSS_CATALOGO, JS_CATALOGO } from './catalogo.js';
 
 const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -505,7 +505,7 @@ function pagina(d) {
   };
   // R: frase del cliente que se enciende palabra por palabra, servicios en filas numeradas y rejilla de fotos con parallax.
   const declMn = () => {
-    const frase = fraseDe(brief.oferta?.diferenciador || '') || fraseDe(t.sobre || conf.historia_corta || '') || '';
+    const frase = fraseDeclaracion([brief.oferta?.diferenciador, t.sobre || conf.historia_corta, brief.oferta?.ventaja_injusta, t.subtitulo]);
     return declaracionManualHTML({ frase, kicker: 'Lo que nos distingue', cta: cta('inv') });
   };
   const secServiciosMn = () => serviciosManualHTML(secServicios());

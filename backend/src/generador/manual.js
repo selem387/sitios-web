@@ -58,6 +58,25 @@ export function indiceManualHTML(secciones = []) {
   return `<nav class="mn-rail" aria-label="Secciones"><ol>${s.map(([id, n], k) => `<li><a href="#${esc(id)}"><span>${dos(k + 1)}</span><b>${esc(n)}</b></a></li>`).join('')}</ol></nav>`;
 }
 
+/**
+ * Elige la frase de la declaración entre los textos del cliente (en orden de preferencia), sin cambiar una letra:
+ * descarta saludos y presentaciones ("¡Hola!", "Soy…", "Me llamo…"), frases que dependen de la anterior ("Lo que…",
+ * "Esto…") y las de menos de 8 o más de MAX_PALABRAS palabras. Prefiere la que dice lo que el negocio valora o disfruta.
+ */
+export function fraseDeclaracion(textos = []) {
+  const VALOR = /\b(disfrut\w*|me apasiona|nos apasiona|lo que más|nos importa|me importa|creemos|creo que|cuidamos|buscamos|nuestro objetivo|nuestra misión|mi misión|nos distingue|nos diferencia)\b/i;
+  const NO = /^(¡?\s*hola\b|soy\b|me llamo\b|mi nombre\b|somos\b(?!\s+(el|la|los|las|un|una)\b)|lo que\b|esto\b|eso\b|así\b|por eso\b|además\b|también\b)/i;
+  const todas = [];
+  for (const [k, texto] of textos.entries()) {
+    const limpio = String(texto || '').replace(/\s+/g, ' ').trim();
+    for (const f of limpio.match(/[^.!?…]+[.!?…]+|[^.!?…]+$/g) || []) {
+      const s = f.trim(), n = s.split(' ').length;
+      if (n >= 8 && n <= MAX_PALABRAS && !NO.test(s)) todas.push({ s, k, valor: VALOR.test(s) });
+    }
+  }
+  return (todas.find((x) => x.valor && x.k === 0) || todas.find((x) => x.k === 0) || todas.find((x) => x.valor) || todas[0])?.s || '';
+}
+
 /** Palabras de la declaración, cada una con el tramo de scroll donde se enciende (--s y --e, en %). */
 export function palabrasDeclaracion(frase = '') {
   const ps = String(frase).replace(/\s+/g, ' ').trim().split(' ').filter(Boolean).slice(0, MAX_PALABRAS);

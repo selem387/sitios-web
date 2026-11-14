@@ -128,3 +128,12 @@ test('con ordinales y letras, elegir la R por chat sin tocar la Q', () => {
   assert.equal(interpretarEleccion('la decimoséptima').elegido, 'Q');
   assert.notEqual(interpretarEleccion('quiero la que tiene el fondo azul')?.elegido, 'R');
 });
+
+test('la frase de la declaración salta saludos y presentaciones y prefiere lo que el negocio valora', async () => {
+  const { fraseDeclaracion } = await import('../src/generador/manual.js');
+  const sobre = '¡Hola! Soy Blanca, y me encanta poder compartir contigo un poquito de mi historia. Soy licenciada en Periodismo, pero todo empezó antes. Lo que empezó como una curiosidad terminó convirtiéndose en una de mis grandes pasiones. Con el tiempo descubrí que lo que más disfruto es capturar emociones, conexiones y esos pequeños instantes que muchas veces pasan desapercibidos.';
+  assert.match(fraseDeclaracion([undefined, sobre]), /^Con el tiempo descubrí que lo que más disfruto/);
+  assert.equal(fraseDeclaracion(['Tratamos a cada paciente como a alguien de la familia y le explicamos cada paso.', sobre]), 'Tratamos a cada paciente como a alguien de la familia y le explicamos cada paso.');
+  assert.equal(fraseDeclaracion(['¡Hola!', 'Corto.']), '');
+  assert.equal(fraseDeclaracion([]), '');
+});
