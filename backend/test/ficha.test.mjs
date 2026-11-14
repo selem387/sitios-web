@@ -20,7 +20,7 @@ test('la P sale como decimosexta, solo cuando se pide; L y N siguen libres', () 
   assert.equal(LETRAS, 'ABCDEFGHIJKLMNOP');
   assert.deepEqual(gen({ solo: 'P' }).map((p) => [p.letra, p.layout]), [['P', 'ficha']]);
   assert.equal(gen().some((p) => p.layout === 'ficha'), false);
-  assert.deepEqual(gen({ solo: 'N' }), []);
+  assert.deepEqual(gen({ solo: 'L' }), []);
   assert.equal(parFicha(pares).titulos, 'Gloock');
 });
 
