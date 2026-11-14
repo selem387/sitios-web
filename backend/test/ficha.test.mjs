@@ -16,11 +16,11 @@ const oferta = { proceso_pasos: ['Visita', 'Oferta', 'Firma'], items: [
 const brief = { negocio: { nombre: 'Norte 21', arquetipo: 'inmobiliaria', giro_texto: 'Bienes raíces', ciudad: 'Mérida' }, contacto: {}, oferta };
 const gen = (o = {}) => paginasGenerales({ brief, mat: matDe(6), textos, pares, urlFuentes: () => '', ...o });
 
-test('la P sale como decimosexta, solo cuando se pide; L y N siguen libres', () => {
+test('la P sale como decimosexta, solo cuando se pide; la L es la plataforma', () => {
   assert.equal(LETRAS, 'ABCDEFGHIJKLMNOP');
   assert.deepEqual(gen({ solo: 'P' }).map((p) => [p.letra, p.layout]), [['P', 'ficha']]);
   assert.equal(gen().some((p) => p.layout === 'ficha'), false);
-  assert.deepEqual(gen({ solo: 'L' }), []);
+  assert.deepEqual(gen({ solo: 'L' }).map((p) => p.layout), ['plataforma']); // L (plataforma) ocupa la duodécima
   assert.equal(parFicha(pares).titulos, 'Gloock');
 });
 

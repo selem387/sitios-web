@@ -12,9 +12,9 @@ const pares = [{ titulos: 'Gloock', cuerpo: 'Hanken Grotesk', estilo: 'elegante'
 const brief = { negocio: { nombre: 'Norte 21', arquetipo: 'inmobiliaria', giro_texto: 'Bienes raíces', ciudad: 'Mérida' }, contacto: {}, oferta: { proceso_pasos: ['Visita', 'Oferta', 'Firma'] } };
 const gen = (o = {}) => paginasGenerales({ brief, mat: matDe(6), textos, pares, urlFuentes: () => '', ...o });
 
-test('la M sale como decimotercera, solo cuando se pide, y la L queda libre', () => {
+test('la M sale como decimotercera, solo cuando se pide, y la L es la plataforma', () => {
   assert.deepEqual(gen({ solo: 'M' }).map((p) => [p.letra, p.layout]), [['M', 'guia']]);
-  assert.deepEqual(gen({ solo: 'L' }), []);
+  assert.deepEqual(gen({ solo: 'L' }).map((p) => p.layout), ['plataforma']); // L (plataforma) ocupa la duodécima
   assert.equal(gen().some((p) => p.layout === 'guia'), false);
   assert.equal(parGuia(pares).titulos, 'Hanken Grotesk');
   assert.equal(parGuia([{ titulos: 'Gloock', cuerpo: 'Petrona' }]).titulos, 'Instrument Sans');
