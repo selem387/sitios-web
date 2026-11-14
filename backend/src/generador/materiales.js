@@ -419,6 +419,16 @@ async function ampliarHastaFondo(original, a, W, H) {
   return { left, top, width: Math.min(W - left, Math.ceil((x1 - x0 + 1) / esc)), height: Math.min(H - top, Math.ceil((y1 - y0 + 1) / esc)) };
 }
 
+export const LOGO_V = 6;
+/** Caja ampliada del logo, o null si se desbordó: más de 3 veces el área que marcó el modelo o más de 45% de la imagen. */
+export function logoAcotado(lb, modelo, W, H) {
+  if (!lb || !modelo) return lb;
+  const a = lb.width * lb.height, m = modelo.width * modelo.height;
+  return a > m * 3 || a > W * H * 0.45 ? null : lb;
+}
+/** Análisis con un logo desbordado guardado antes de LOGO_V 6: hay que rehacerlo. */
+export const logoDesbordado = (an = {}) => !!(an.logo && an.tipo !== 'logo' && an.logo_v !== LOGO_V && an.logo_caja && an.logo_caja.w * an.logo_caja.h > 0.45);
+
 /** Imagen que en realidad es el logo (con o sin lema, sobre cualquier fondo): sin personas y el logo cubre ≥ 35%. */
 export function esVersionLogo(r = {}) {
   if (r.personas || !r.logo?.ancho || !r.contenido?.ancho) return false;
@@ -429,7 +439,7 @@ export function esVersionLogo(r = {}) {
 export async function analizarAsset(a, { negocio = '' } = {}) {
   // Logos recortados con la caja justa del modelo (antes de 10-nov-2026) salían con las letras cortadas: esos análisis
   // se rehacen una vez (solo los que tienen logo) para recortarlo con margen.
-  if (a.analisis?.version === VERSION && !(a.analisis.logo && a.analisis.logo_v !== 5)) {
+  if (a.analisis?.version === VERSION && !(a.analisis.logo && !a.analisis.logo_v) && !logoDesbordado(a.analisis)) {
     if (!a.analisis.huella || String(a.analisis.huella).split('|').length < 4) { // huella vieja (sin color/detalle o del recorte): se recalcula
       a.analisis.huella = await descargar(a.url).then(huella).catch(() => null); // del original: dos recortes distintos de la misma foto deben coincidir
       if (a.analisis.huella) await db.q(`UPDATE assets SET analisis = analisis || jsonb_build_object('huella', $2::text) WHERE id=$1`, [a.id, a.analisis.huella]).catch(() => {});
@@ -470,10 +480,14 @@ export async function analizarAsset(a, { negocio = '' } = {}) {
   // rectángulo negro con marco decorativo): se parte del centro, se excluye el marco del borde y luego el fondo se
   // vuelve transparente. Si no hay marco, la ampliación termina cubriendo todo el dibujo igual que antes.
   const centro = { left: Math.round(W * 0.3), top: Math.round(H * 0.3), width: Math.round(W * 0.4), height: Math.round(H * 0.4) };
-  const lb = v.tipo === 'logo'
+  let lb = v.tipo === 'logo'
     ? await ampliarHastaFondo(original, caja(v.logo, W, H, 0.005) || centro, W, H).catch(() => ({ left: 0, top: 0, width: W, height: H }))
     : await ampliarHastaFondo(original, caja(v.logo, W, H, 0.005), W, H).catch(() => caja(v.logo, W, H, 0.02));
-  if (lb) { out.logo_caja = { x: lb.left / W, y: lb.top / H, w: lb.width / W, h: lb.height / H }; out.logo_v = 5; }
+  // Logo dentro de otra imagen muy cargada (14-nov-2026, caso Toolatte: el logo venía en una captura de su menú y la
+  // ampliación no encontró fondo liso, así que tomó la captura completa como logo). Si la caja ampliada es mucho más grande
+  // que la que marcó el modelo, se usa la del modelo con margen.
+  if (lb && v.tipo !== 'logo') lb = logoAcotado(lb, caja(v.logo, W, H, 0.005), W, H) || caja(v.logo, W, H, 0.03);
+  if (lb) { out.logo_caja = { x: lb.left / W, y: lb.top / H, w: lb.width / W, h: lb.height / H }; out.logo_v = LOGO_V; }
   if (lb) {
     try {
       let buf = await recortar(original, lb);
