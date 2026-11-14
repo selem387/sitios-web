@@ -20,23 +20,23 @@ export const REACCIONES = {
 
 const CSS = `
 #tw-borrador,#tw-borrador *,#tw-salida,#tw-salida *{box-sizing:border-box!important;font-family:system-ui,-apple-system,"Segoe UI",Roboto,Arial,sans-serif!important;letter-spacing:normal!important;text-transform:none!important}
-#tw-borrador{position:relative!important;z-index:2147483000!important;background:#000!important;color:#fff!important;padding:12px 16px!important;margin:0!important;display:flex!important;flex-wrap:wrap!important;align-items:center!important;justify-content:center!important;gap:10px 18px!important;text-align:center!important;width:100%!important}
-#tw-borrador p,#tw-salida p{margin:0!important;color:#fff!important;font-size:15px!important;line-height:1.4!important;font-weight:500!important;max-width:640px}
-#tw-borrador .tw-acc,#tw-salida .tw-acc{display:flex!important;flex-wrap:wrap!important;gap:8px!important;justify-content:center!important}
-#tw-borrador button,#tw-salida button,#tw-borrador a.tw-volver{appearance:none!important;cursor:pointer!important;min-height:40px!important;padding:8px 16px!important;border-radius:999px!important;font-size:14px!important;font-weight:700!important;line-height:1.2!important;border:1.5px solid #fff!important;background:transparent!important;color:#fff!important;text-decoration:none!important;display:inline-flex!important;align-items:center!important;justify-content:center!important;transition:background .2s,color .2s,transform .2s!important;box-shadow:none!important}
+#tw-borrador{position:relative!important;z-index:2147483000!important;background:#000!important;color:#fff!important;padding:6px 12px!important;margin:0!important;display:flex!important;flex-wrap:wrap!important;align-items:center!important;justify-content:center!important;gap:6px 12px!important;text-align:center!important;width:100%!important}
+#tw-borrador p,#tw-salida p{margin:0!important;color:#fff!important;font-size:12.5px!important;line-height:1.3!important;font-weight:500!important;max-width:560px}
+#tw-borrador .tw-acc,#tw-salida .tw-acc{display:flex!important;flex-wrap:wrap!important;gap:6px!important;justify-content:center!important}
+#tw-borrador button,#tw-salida button,#tw-borrador a.tw-volver{appearance:none!important;cursor:pointer!important;min-height:28px!important;padding:4px 11px!important;border-radius:999px!important;font-size:12px!important;font-weight:700!important;line-height:1.2!important;border:1px solid #fff!important;background:transparent!important;color:#fff!important;text-decoration:none!important;display:inline-flex!important;align-items:center!important;justify-content:center!important;transition:background .2s,color .2s,transform .2s!important;box-shadow:none!important}
 #tw-borrador button:hover,#tw-salida button:hover{background:#fff!important;color:#000!important;transform:translateY(-1px)!important}
 #tw-borrador button.tw-si,#tw-salida button.tw-si{background:#fff!important;color:#000!important}
 #tw-borrador button:focus-visible,#tw-salida button:focus-visible,#tw-borrador a.tw-volver:focus-visible{outline:3px solid #fff!important;outline-offset:3px!important}
-#tw-borrador a.tw-volver{border-color:transparent!important;text-decoration:underline!important;padding:8px 6px!important}
+#tw-borrador a.tw-volver{border-color:transparent!important;text-decoration:underline!important;padding:4px 4px!important}
 #tw-borrador .tw-ok,#tw-salida .tw-ok{font-weight:700!important}
 #tw-salida{position:fixed!important;inset:0!important;z-index:2147483600!important;background:rgba(0,0,0,.6)!important;display:flex!important;align-items:center!important;justify-content:center!important;padding:16px!important;opacity:0;transition:opacity .25s!important}
 #tw-salida.tw-ver{opacity:1}
-#tw-salida .tw-caja{background:#000!important;color:#fff!important;border-radius:18px!important;padding:28px 22px 22px!important;max-width:460px!important;width:100%!important;text-align:center!important;position:relative!important;box-shadow:0 20px 60px rgba(0,0,0,.5)!important;display:flex!important;flex-direction:column!important;gap:18px!important}
-#tw-salida .tw-caja p{font-size:17px!important}
+#tw-salida .tw-caja{background:#000!important;color:#fff!important;border-radius:14px!important;padding:30px 16px 16px!important;max-width:340px!important;width:100%!important;text-align:center!important;position:relative!important;box-shadow:0 20px 60px rgba(0,0,0,.5)!important;display:flex!important;flex-direction:column!important;gap:12px!important}
+#tw-salida .tw-caja p{font-size:14px!important}
 #tw-salida .tw-acc{flex-direction:column!important}
-#tw-salida .tw-acc button{width:100%!important;min-height:46px!important;font-size:15px!important}
-#tw-salida .tw-x{position:absolute!important;top:8px!important;right:8px!important;min-height:36px!important;width:36px!important;padding:0!important;border:0!important;font-size:22px!important}
-@media (max-width:640px){#tw-borrador p{font-size:13.5px!important}#tw-borrador button{font-size:13px!important;padding:7px 12px!important;min-height:38px!important}}
+#tw-salida .tw-acc button{width:100%!important;min-height:36px!important;font-size:13px!important}
+#tw-salida .tw-x{position:absolute!important;top:8px!important;right:8px!important;min-height:28px!important;width:28px!important;padding:0!important;border:0!important;font-size:18px!important}
+@media (max-width:640px){#tw-borrador{padding:5px 8px!important;gap:4px!important}#tw-borrador p{font-size:11px!important}#tw-borrador .tw-acc{flex-wrap:nowrap!important;gap:4px!important}#tw-borrador button{font-size:11px!important;padding:3px 8px!important;min-height:26px!important;white-space:nowrap!important}#tw-borrador a.tw-volver{font-size:11px!important;min-height:22px!important}}
 @media (prefers-reduced-motion:reduce){#tw-borrador button,#tw-salida{transition:none!important}}`;
 
 function script(cfg) {
