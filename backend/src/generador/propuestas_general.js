@@ -15,12 +15,12 @@ import { enlacesRedes, CSS_REDES } from './iconos_redes.js';
 import { collageHTML, CSS_COLLAGE, JS_COLLAGE } from './collage.js';
 import { escenaIndiceHTML, navIndiceHTML, monogramaHTML, CSS_INDICE, JS_INDICE } from './indice.js';
 import { METRICAS } from './tipo_color.js';
-import { escenaHistoriaHTML, fraseDe, aptaHistoria, scriptsHistoria, CSS_HISTORIA, JS_HISTORIA } from './historia.js';
+import { fraseDe, aptaHistoria, paginaHistoria } from './historia.js';
 import { portadaMovimientoHTML, parMovimiento, conEfectosK, CSS_MOVIMIENTO_K } from './movimiento_k.js';
 import { portadaNarrativaHTML, parNarrativa, CSS_NARRATIVA, JS_NARRATIVA } from './narrativa.js';
 import { escenaGuiaHTML, cierreGuiaHTML, indiceGuiaHTML, parGuia, CSS_GUIA, JS_GUIA } from './guia.js';
-import { portadaAvanceHTML, cifrasAvanceHTML, reconocimientosHTML, cifrasDe, reconocimientosDe, parAvance, CSS_AVANCE } from './avance.js';
-import { portadaFichaHTML, cintaFichaHTML, atributosFichaHTML, escenaFichaHTML, cierreFichaHTML, fichasDe, parFicha, CSS_FICHA, JS_FICHA } from './ficha.js';
+import { portadaN, franjaN, vitrinaN, avanceN, tarjetasN, prensaN, contactoN, datosDe, fraseResaltada, parAvance, CSS_AVANCE, JS_AVANCE, URL_MONO_N } from './avance.js';
+import { paginaFicha } from './ficha.js';
 import { paginaVitrina, LETRA_Q, URL_FUENTES_Q } from './vitrina.js';
 import { portadaCatalogoHTML, bandaFotoHTML, cierreCatalogoHTML, tabsDeServicios, parCatalogo, CSS_CATALOGO, JS_CATALOGO } from './catalogo.js';
 
@@ -42,7 +42,7 @@ export const LAYOUTS_GENERAL = ['portada', 'editorial', 'mosaico', 'logo', 'dost
 // K (14-nov-2026): opción adicional "Recorrido en movimiento" (generador/movimiento_k.js + efectos_gsap.js). Siempre va como undécima.
 // M (14-nov-2026): opción adicional "Guía en movimiento" (generador/guia.js + efectos_gsap.js). Siempre va como decimotercera; la L queda reservada.
 // O (14-nov-2026): opción adicional "Catálogo en movimiento" (generador/catalogo.js, CSS nativo sin librerías). Siempre va como decimoquinta; la L queda reservada.
-// N (14-nov-2026): opción adicional "Cifras y avance" (generador/avance.js, CSS nativo sin librerías). Siempre va como decimocuarta.
+// N (14-nov-2026): opción adicional reconstruida solo desde vastspace.com (generador/avance.js: GSAP + ScrollTrigger + Lenis). Siempre va como decimocuarta.
 // P (14-nov-2026): opción adicional "Ficha en movimiento" (generador/ficha.js, CSS nativo sin librerías). Siempre va como decimosexta.
 // Q (14-nov-2026): opción adicional "Vitrina" (generador/vitrina.js). Reconstruida desde cero con www.dvf.com como única
 // referencia: barra, portada, secciones, pie, letra (Jost) y CSS propios; no usa el esqueleto de las demás. Siempre va como decimoséptima.
@@ -67,7 +67,7 @@ export const conOpcionN = () => process.env.OPCION_N === '1';
 export const conOpcionP = () => process.env.OPCION_P === '1';
 // La Q sale para todos solo con OPCION_Q=1 (CSS nativo y un script mínimo, sin librerías).
 export const conOpcionQ = () => process.env.OPCION_Q === '1';
-export const NOMBRES_GENERAL = { portada: 'Foto a pantalla completa', editorial: 'Editorial', mosaico: 'Mosaico de tu trabajo', logo: 'Tu logo al centro', dostonos: 'Dos tonos', carta: 'Minimalista', collage: 'Collage en movimiento', indice: 'Recorrido con índice', historia: 'Historia con scroll', narrativa: 'Narrativa por capítulos', movimiento: 'Recorrido en movimiento', guia: 'Guía en movimiento', catalogo: 'Catálogo en movimiento', ficha: 'Ficha en movimiento', vitrina: 'Vitrina', avance: 'Cifras y avance' };
+export const NOMBRES_GENERAL = { portada: 'Foto a pantalla completa', editorial: 'Editorial', mosaico: 'Mosaico de tu trabajo', logo: 'Tu logo al centro', dostonos: 'Dos tonos', carta: 'Minimalista', collage: 'Collage en movimiento', indice: 'Recorrido con índice', historia: 'Historia con scroll', narrativa: 'Narrativa por capítulos', movimiento: 'Recorrido en movimiento', guia: 'Guía en movimiento', catalogo: 'Catálogo en movimiento', ficha: 'Ficha en movimiento', vitrina: 'Vitrina', avance: 'Avance en el espacio' };
 
 // Títulos por arquetipo (Claude puede reemplazarlos con textos.secciones).
 export const TITULOS = {
@@ -120,8 +120,9 @@ function paletaGeneral(layout, colores, pastel, i, { acento = null, acentoCta = 
     movimiento: { bg: mezclar(papel, '#FFFFFF', 0.7), fg: tinta, primary: base, muted: mezclar(tinte, '#FFFFFF', 0.6), banda: conContraste(tono(base, 0.22, 0.2, 0.3), '#FFFFFF', 8) },
     guia: { bg: mezclar(papel, '#FFFFFF', 0.82), fg: tinta, primary: base, muted: mezclar(tinte, '#FFFFFF', 0.6), banda: conContraste(tono(base, 0.2, 0.18, 0.28), '#FFFFFF', 9) },
     catalogo: { bg: '#FFFFFF', fg: tinta, primary: base, muted: mezclar(tinte, '#FFFFFF', 0.6), banda: conContraste(tono(base, 0.2, 0.18, 0.28), '#FFFFFF', 9) },
-    avance: { bg: '#FFFFFF', fg: tinta, primary: base, muted: mezclar(tinte, '#FFFFFF', 0.6), banda: conContraste(tono(base, 0.18, 0.16, 0.22), '#FFFFFF', 10) },
-    ficha: (() => { const bg = tono(base, 0.09, 0.14, 0.3); const fg = conContraste('#F4EFE8', bg, 12, '#FFFFFF'); const pr = conContraste(tono(base, 0.66, 0.4, 0.9), bg, 4.6, '#FFFFFF'); return { bg, fg, primary: pr, muted: mezclar(bg, '#FFFFFF', 0.06), banda: mezclar(bg, '#000000', 0.35) }; })(),
+    // N: neutros de la referencia (crema, grafito, arena); el acento es el color del cliente.
+    avance: { bg: '#FDFCF4', fg: '#2A2C2F', primary: base, muted: '#ECE8E3', banda: '#2A2C2F' },
+    ficha: (() => { const bg = tono(base, 0.09, 0.14, 0.3); const fg = conContraste('#F4EFE8', bg, 12, '#FFFFFF'); const pr = conContraste(tono(base, 0.66, 0.4, 0.9), bg, 4.6, '#FFFFFF'); return { bg, fg, primary: pr, muted: mezclar(bg, '#FFFFFF', 0.06), banda: mezclar(bg, '#000000', 0.35), crema: mezclar(papel, '#FFFFFF', 0.55), tinta: conContraste(tono(base, 0.12, 0.1, 0.25), mezclar(papel, '#FFFFFF', 0.55), 12) }; })(),
     narrativa: { bg: '#FFFFFF', fg: conContraste(tono(base, 0.1, 0.1, 0.25), '#FFFFFF', 15), primary: base, muted: mezclar(tinte, '#FFFFFF', 0.7) },
     // Q: negro sobre blanco como la referencia; el color del cliente solo queda guardado para el sitio en vivo.
     vitrina: { bg: '#FFFFFF', fg: '#000000', primary: base, muted: '#EFEFEF' },
@@ -309,8 +310,6 @@ function pagina(d) {
   // Si el titular habla de un producto, abre con la foto de ese producto (la eligió la IA de textos por su descripción).
   const fotoTit = !brief.fotos?.portada_manual && t.foto_url ? [mat.hero, ...trabajos].find((x) => x?.url === t.foto_url) : null;
   const heroFoto = fotoTit || heroBase;
-  // N: cifras y reconocimientos reales del cliente (sin 2 cifras o sin premios/certificaciones, la sección no aparece).
-  const cifrasAv = cifrasDe(conf.cifras);
 
   const cta = (cls = '') => `<a class="btn ${cls}"${wa}>${esc(t.cta)}</a>`;
   const info = (t.info || []).map((x) => `<li>${esc(x)}</li>`).join('');
@@ -328,7 +327,6 @@ function pagina(d) {
   const textoPortada = `<p class="kicker">${esc(neg.ciudad ? `${giroCorto(neg.giro_texto) || ''} · ${neg.ciudad}` : giroCorto(neg.giro_texto) || '')}</p><h1>${esc(t.titular)}</h1><p class="sub">${esc(t.subtitulo)}</p>${cta()}`;
 
   /* --- Héroes --- */
-  let escenaFc = ''; // P: la escena fija se arma con el hero y se coloca en el cuerpo
   const heros = {
     portada: () => (heroFoto ? slider({ tag: 'section', clase: 'hero h-portada', envolver: true, primera: textoPortada })
       : `<section class="hero h-portada"><div class="velo"></div><div class="wrap in">${textoPortada}</div></section>`),
@@ -357,23 +355,8 @@ function pagina(d) {
       esc0.urls.forEach((u) => enPortada.add(u));
       return esc0.html;
     },
-    // I: historia con scroll (generador/historia.js). Portada, relato con las fotos del slider y sus textos, frase que se
-    // enciende con la historia del cliente y cierre con una foto que crece. Todas pueden repetirse en "Nuestro trabajo".
-    historia: () => {
-      const pasos = poolSl.slice(1).map((foto, k) => ({ foto, titular: diapos[k]?.titular || '', apoyo: diapos[k]?.apoyo || '' }));
-      const enEscena = new Set([heroFoto?.url, ...pasos.map((x) => x.foto.url)]);
-      const libres = [...fijasSl, ...poolBase].filter((x) => x?.url && !enEscena.has(x.url) && enEscena.add(x.url));
-      const flotan = libres.slice(0, 2);
-      // El cierre llena la pantalla: la foto libre más grande si tiene al menos 1200 px; si no, la de portada.
-      const grande = libres.slice(2).sort((x, y) => (y.ancho || 0) - (x.ancho || 0))[0];
-      const fotoCierre = grande && (grande.ancho || 0) >= 1200 ? grande : heroFoto;
-      const frase = fraseDe(t.sobre || conf.historia_corta || '') || fraseDe(brief.oferta?.diferenciador || '') || t.subtitulo || '';
-      const giro = giroCorto(neg.giro_texto) || '';
-      const esc0 = escenaHistoriaHTML({ heroFoto, pasos, frase, flotan, img, kicker: [giro, neg.ciudad].filter(Boolean).join(' · '), titular: t.titular, subtitulo: t.subtitulo, cta: cta(),
-        cierre: fotoCierre ? { foto: fotoCierre, titulo: d.nombre, apoyo: [giro, neg.ciudad].filter(Boolean).join(' · '), cta: cta() } : null });
-      esc0.urls.forEach((u) => enPortada.add(u));
-      return esc0.html;
-    },
+    // I: página propia completa (generador/historia.js, reconstruida desde savor.it): aquí no se arma héroe.
+    historia: () => '',
     // J: portada tipográfica (generador/narrativa.js). Titular enorme, foto a todo lo ancho debajo; si el cliente subió
     // un video, ese video va encima de la foto como fondo vivo y ya no se repite en la sección de video.
     narrativa: () => {
@@ -408,24 +391,11 @@ function pagina(d) {
       ct.urls.forEach((u) => { enPortada.add(u); usadas.add(u); });
       return ct.html;
     },
-    // N: cifras y avance (generador/avance.js). Foto principal a pantalla completa con zoom lento y la primera cifra como dato.
+    // N (vastspace.com): fotos del slider a pantalla completa con fundido, pausa y titular abajo a la izquierda.
     avance: () => {
-      const av = portadaAvanceHTML({ heroFoto, img, kicker: [giroCorto(neg.giro_texto), neg.ciudad].filter(Boolean).join(' · '), titular: t.titular, subtitulo: t.subtitulo, cta: cta(), dato: cifrasAv[0] || null });
-      av.urls.forEach((u) => { enPortada.add(u); usadas.add(u); });
-      return av.html;
-    },
-    // P: ficha en movimiento (generador/ficha.js). Portada oscura con acercamiento lento y panel de pedido con las opciones reales
-    // de la oferta; cinta de texto, fichas con panel emergente y escena fija con las fotos del slider y sus textos.
-    ficha: () => {
-      const pasos = poolSl.slice(1).map((foto, k) => ({ foto, titular: diapos[k]?.titular || '', apoyo: diapos[k]?.apoyo || '' }));
-      const giro = giroCorto(neg.giro_texto) || '';
-      const fp = portadaFichaHTML({ heroFoto, img, kicker: [giro, neg.ciudad].filter(Boolean).join(' · '), titular: t.titular, subtitulo: t.subtitulo, opciones: fichasDe(brief.oferta?.items, [], ''), cta: cta() });
-      fp.urls.forEach((u) => { enPortada.add(u); usadas.add(u); });
-      const frases = [...diapos.map((x) => x?.titular).filter(Boolean), giro, neg.ciudad].filter(Boolean);
-      const es = escenaFichaHTML({ pasos, img, etiqueta: d.nombre });
-      es.urls.forEach((u) => { enPortada.add(u); usadas.add(u); });
-      escenaFc = es.html;
-      return fp.html + cintaFichaHTML(frases.length >= 2 ? frases : [d.nombre, ...frases]);
+      const n = portadaN({ fotos: [heroFoto, ...poolSl], img, titular: t.titular, subtitulo: t.subtitulo, cta: cta(), verMas: '#trabajo' });
+      n.urls.forEach((u) => { enPortada.add(u); usadas.add(u); });
+      return n.html;
     },
     carta: () => { const s = poolSl.length ? `<div class="wrap">${slider({ tag: 'figure', clase: 'sl-carta sl-marco' })}</div>` : ''; const resto = s ? [] : fotosT.filter((x) => !usadas.has(x.url)).slice(0, 8); return `<section class="hero h-carta wrap"><div class="tit"><p class="kicker">${esc(d.nombre)}</p><h1>${esc(t.titular)}</h1></div><div class="lado"><p class="sub">${esc(t.subtitulo)}</p>${cta()}</div></section>${s}${resto.length ? `<div class="wrap">${filaJustificada(resto, img)}</div>` : ''}`; },
   };
@@ -508,13 +478,45 @@ function pagina(d) {
   };
 
   // O: banda de foto con una frase del cliente (su historia o diferenciador) y parallax; las fotos pueden repetirse (rep-ok).
-  const fotosCt2 = d.layout === 'ficha' ? fotosT.filter((x) => x?.url && !enPortada.has(x.url) && x.url !== heroFoto?.url) : [];
   const fotosCt = d.layout === 'catalogo' ? fotosT.filter((x) => x?.url && !enPortada.has(x.url) && x.url !== heroFoto?.url) : [];
   const bandaCt = () => {
     const frase = fraseDe(t.sobre || conf.historia_corta || '') || fraseDe(brief.oferta?.diferenciador || '') || '';
     return bandaFotoHTML({ foto: fotosCt[1] || null, img, frase, cta: cta() });
   };
-  const secFichas = () => d.layout === 'ficha' ? atributosFichaHTML({ fichas: fichasDe(brief.oferta?.items, t.info, T.servicios), titulo: t.fichas_titulo || 'En pocas palabras', cta: cta() }) : '';
+  // N: secciones propias (generador/avance.js). Solo datos reales; si falta el dato, la sección no aparece.
+  const libreVx = (x) => x?.url && !usadas.has(x.url) && !enPortada.has(x.url);
+  const franjaVx = () => franjaN(fraseResaltada(t.sobre || conf.historia_corta || brief.oferta?.diferenciador || ''));
+  const vitrinaVx = () => {
+    const rec = (mat.fotos || []).find((x) => x.recorte && libreVx(x));
+    const foto = rec || fotosT.find(libreVx) || null;
+    return vitrinaN({ foto, img, recorte: !!rec, nombre: d.nombre, etiqueta: [giroCorto(neg.giro_texto), neg.ciudad].filter(Boolean).join(' · '), apoyo: brief.oferta?.diferenciador || '', datos: datosDe(conf.cifras), href: '#servicios' });
+  };
+  const avanceVx = () => avanceN({ titulo: T.trabajo, img, nota: [giroCorto(neg.giro_texto), neg.ciudad].filter(Boolean).join(' · '), fotos: fotosT.filter(libreVx).map((foto) => ({ foto, texto: foto.alt || '' })) }).html;
+  const tarjetasVx = () => {
+    const ver = brief.oferta?.mostrar_precios !== false || brief.oferta?.mostrar_paquetes;
+    const items = agruparOferta(brief.oferta?.items || []).flatMap((g) => g.opciones.map((o) => ({ meta: [g.nombre, ...(ver && o.precio ? [o.precio] : [])].filter((x, k, a) => x && a.indexOf(x) === k), titulo: o.nombre || g.nombre, texto: o.detalle || '' }))).slice(0, 9);
+    const sobra = [...mat.local, ...(mat.otras || []), ...mat.trabajos].filter((x) => libreVx(x) && fueraDeGaleria(x));
+    items.forEach((it, k) => { if (sobra[k]) it.foto = sobra[k]; });
+    return tarjetasN({ titulo: T.servicios, items, img, cta: cta() });
+  };
+  const prensaVx = () => {
+    const limpio = (x) => String(x).replace(/\p{Extended_Pictographic}/gu, '').trim();
+    const citas = testimoniosValidos(brief, mat).map((x) => ({ texto: limpio(x.texto), autor: x.nombre || '' }));
+    const nombres = [...new Set([...(conf.premios || []), ...(conf.certificaciones || [])].map((x) => String(x || '').trim()).filter(Boolean))];
+    return prensaN({ titulo: T.resenas, citas, nombres, tituloNombres: 'Reconocimientos' });
+  };
+  const contactoVx = () => {
+    const c = brief.contacto || {};
+    const dir = direccionTexto(brief) || (brief.zona?.cobertura || []).join(' · ');
+    const rs = enlacesRedes(redes(c));
+    return contactoN({ titulo: T.contacto, cta: cta(), columnas: [
+      { titulo: 'WhatsApp', html: d.tel ? `<a${wa}>${esc(d.tel)}</a>` : '' },
+      { titulo: 'Dónde', html: dir ? `<span>${esc(dir)}</span>` : '' },
+      { titulo: 'Horario', html: typeof c.horarios === 'string' ? `<span>${esc(c.horarios)}</span>` : '' },
+      { titulo: 'Correo', html: c.email ? `<a href="mailto:${esc(c.email)}">${esc(c.email)}</a>` : '' },
+      { titulo: 'Redes', html: rs ? `<span class="rs">${rs}</span>` : '' },
+    ] });
+  };
   const ORDEN = {
     portada: [secTrabajo, secServicios, secSobre, secEquipo, secResenas, secProceso, secFaq, secVideo, secContacto],
     editorial: [secSobre, secTrabajo, secEquipo, secServicios, secResenas, procCli, secFaq, secVideo, secContacto],
@@ -530,9 +532,8 @@ function pagina(d) {
     guia: [secSobre, secTrabajo, secServicios, secEquipo, secResenas, secProceso, secFaq, secVideo, secContacto],
     // O: estante de trabajo primero, banda con parallax, servicios en pestañas y el resto como en las demás.
     // N: cifras justo después de la portada, serie de fotos, y reconocimientos reales antes de las preguntas.
-    avance: [() => cifrasAvanceHTML(cifrasAv), secTrabajo, secServicios, secSobre, secEquipo, secResenas, () => reconocimientosHTML(reconocimientosDe(conf)), secProceso, secFaq, secVideo, secContacto],
-    // P: fichas de la oferta, escena fija con las fotos, "Nuestro trabajo", servicios completos y el resto como en las demás.
-    ficha: [secFichas, () => escenaFc, secTrabajo, secServicios, secSobre, secEquipo, secResenas, secProceso, secFaq, secVideo, secContacto],
+    // N (vastspace.com): franja que se enciende, vitrina, carrusel de avance, tarjetas, prensa y marco negro de contacto.
+    avance: [franjaVx, vitrinaVx, avanceVx, tarjetasVx, secSobre, secEquipo, prensaVx, secProceso, secFaq, secVideo, contactoVx],
     catalogo: [secTrabajo, bandaCt, () => tabsDeServicios(secServicios()), secSobre, secEquipo, secResenas, secProceso, secFaq, secVideo, secContacto],
   }[d.layout];
   const cuerpo = ORDEN.map((fn) => fn()).join('');
@@ -567,12 +568,32 @@ function pagina(d) {
   const esMv = d.layout === 'movimiento';
   const esGu = d.layout === 'guia';
   const esCt = d.layout === 'catalogo';
-  const esFc = d.layout === 'ficha';
   const esAv = d.layout === 'avance';
-  const cierreFc = esFc ? cierreFichaHTML({ foto: fotosCt2[0] || heroFoto, img, titulo: d.nombre, apoyo: [giroCorto(neg.giro_texto), neg.ciudad].filter(Boolean).join(' · '), cta: cta() }) : '';
   const cierreCt = esCt ? cierreCatalogoHTML({ foto: fotosCt[0] || heroFoto, img, titulo: d.nombre, apoyo: [giroCorto(neg.giro_texto), neg.ciudad].filter(Boolean).join(' · '), cta: cta() }) : '';
   const cierreGu = esGu ? cierreGuiaHTML({ foto: fotosT.find((x) => x?.url && !enPortada.has(x.url)) || heroFoto, img, titulo: d.nombre, apoyo: [giroCorto(neg.giro_texto), neg.ciudad].filter(Boolean).join(' · '), cta: cta() }) : '';
-  const html = `<!doctype html><html lang="es" class="${esIx ? 'fx-zoom fx-hover' : esHs ? 'fx-zoom' : esNa ? 'fx-hover' : esMv || esGu || esCt || esFc || esAv ? 'fx-hover' : efectosDe(d.letra)}"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><meta name="robots" content="noindex">
+  // I (14-nov-2026): página completa propia hecha solo a partir de savor.it; de aquí solo toma los datos del cliente.
+  if (esHs) {
+    const c0 = brief.contacto || {};
+    const fund0 = mat.fundador && fueraDeGaleria(mat.fundador) ? mat.fundador : mat.equipo.find((x) => x.tipo === 'foto_fundador' && fueraDeGaleria(x)) || null;
+    const pasosHs = poolSl.slice(1).map((foto, k) => ({ foto, titular: diapos[k]?.titular || '', apoyo: diapos[k]?.apoyo || '' }));
+    const enRelato = new Set(pasosHs.slice(0, 4).map((x) => x.foto.url));
+    const vistasHs = new Set([heroFoto?.url, fund0?.url].filter(Boolean));
+    const trabajoHs = [...fotosT, ...extraSl, ...mat.equipo, ...poolSl].filter((x) => x?.url && fueraDeGaleria(x) && /^(foto|imagen)/.test(x.tipo || 'foto') && !vistasHs.has(x.url) && vistasHs.add(x.url))
+      .map((x) => (enRelato.has(x.url) ? { ...x, rep: true } : x));
+    const anchas = trabajoHs.filter((x) => buenaFoto(x) && (x.ancho || 0) >= (x.alto || 0) && (x.ancho || 0) >= 1200).sort((a0, b0) => (b0.ancho || 0) - (a0.ancho || 0));
+    const fotoBanda = anchas.find((x) => !enRelato.has(x.url)) || anchas[0] || heroFoto;
+    const redesHs = enlacesRedes(redes(c0));
+    return paginaHistoria({
+      nombre: d.nombre, letra: d.letra, p, ft, fc, t, T, brief, img, wa, heroFoto, pasos: pasosHs, trabajo: trabajoHs, retrato: fund0,
+      videos: mat.videos, catalogos: mat.catalogos, documentos: mat.documentos, resenasCap: mat.resenas, testimonios: testimoniosValidos(brief, mat),
+      grupos, mostrarPrecios, faq: (brief.faq || []).filter((q) => q.pregunta && q.respuesta),
+      datos: { whatsapp: d.tel, donde: direccionTexto(brief) || (brief.zona?.cobertura || []).join(' · '), horario: typeof c0.horarios === 'string' ? c0.horarios : '', correo: c0.email || '' },
+      redesHTML: redesHs ? `<div class="redes">${redesHs}</div>` : '',
+      logoClaro: logoHTML(mat.logo, '#141414', '#FFFFFF', { alt: d.nombre }), logoOscuro: logoHTML(mat.logo, p.bg, p.fg, { alt: d.nombre }),
+      logoPie: logoHTML(mat.logo, p.bg, p.fg, { alt: d.nombre, clase: 'logo-pie' }), fotoBanda,
+    });
+  }
+  const html = `<!doctype html><html lang="es" class="${esIx ? 'fx-zoom fx-hover' : esHs ? 'fx-zoom' : esNa ? 'fx-hover' : esMv || esGu || esCt || esAv ? 'fx-hover' : efectosDe(d.letra)}"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><meta name="robots" content="noindex">
 <title>${esc(d.nombre)} · Propuesta ${d.letra}</title>
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><!-- Tipografías sin bloquear la portada (7-nov-2026): la página se pinta con la letra de respaldo y cambia a la de Google en cuanto llega (display=swap). Lighthouse móvil ≥ 90. --><link rel="preload" as="style" href="${esc(d.fuentesUrl)}" onload="this.onload=null;this.rel='stylesheet'"><noscript><link href="${esc(d.fuentesUrl)}" rel="stylesheet"></noscript>
 <style>
@@ -644,15 +665,17 @@ a:focus-visible,summary:focus-visible{outline:3px solid var(--p);outline-offset:
 @media (min-width:900px){.h-portada .velo{background:linear-gradient(90deg,rgba(0,0,0,.6),rgba(0,0,0,.15) 70%)}.h-edit{grid-template-columns:1.1fr .9fr;align-items:center;padding-top:64px}.h-dos .in{grid-template-columns:1.1fr .9fr;align-items:end}.mos{grid-template-columns:repeat(4,1fr)}.mos>:first-child{grid-column:span 2;grid-row:span 2;aspect-ratio:auto}.mos-sl{min-height:380px}.mos.solo>.mos-sl{aspect-ratio:16/8!important;min-height:0}.h-portada .sl-d.con-txt::after{background:linear-gradient(90deg,rgba(0,0,0,.66),rgba(0,0,0,.18) 72%)}
 .s-in{grid-template-columns:.8fr 1.2fr}.galeria{columns:3 220px}.g-editorial{columns:4 220px}.contacto .datos{grid-template-columns:repeat(3,1fr)}}
 @media (prefers-reduced-motion:reduce){html{scroll-behavior:auto}}
-${CSS_MOVIMIENTO}${d.layout === 'collage' ? CSS_COLLAGE : ''}${esIx ? CSS_INDICE : ''}${esHs ? CSS_HISTORIA : ''}${esNa ? CSS_NARRATIVA : ''}${esMv ? CSS_MOVIMIENTO_K : ''}${esGu ? CSS_GUIA : ''}${esCt ? CSS_CATALOGO : ''}${esFc ? CSS_FICHA : ''}${esAv ? CSS_AVANCE : ''}
-</style>${esHs ? scriptsHistoria() : ''}</head>
+${CSS_MOVIMIENTO}${d.layout === 'collage' ? CSS_COLLAGE : ''}${esIx ? CSS_INDICE : ''}${esNa ? CSS_NARRATIVA : ''}${esMv ? CSS_MOVIMIENTO_K : ''}${esGu ? CSS_GUIA : ''}${esCt ? CSS_CATALOGO : ''}${esAv ? CSS_AVANCE : ''}
+</style></head>
 <body class="l-${d.layout}">
 <header class="barra"><div class="wrap in">${logoBarra}<nav>${navs.map(([id, n]) => `<a href="#${id}">${esc(n)}</a>`).join('')}</nav></div></header>${esIx ? navIndiceHTML(seccionesIx) : ''}${esGu ? indiceGuiaHTML(navs) : ''}
-<main>${heroFinal}${cuerpoFinal}${galeria}${esGu ? cierreGu : ''}${esCt ? cierreCt : ''}${esFc ? cierreFc : ''}</main>
+<main>${heroFinal}${cuerpoFinal}${galeria}${esGu ? cierreGu : ''}${esCt ? cierreCt : ''}</main>
 <footer>${marcaPie ? `<div class="pie-marcas">${marcaPie}</div>` : ''}© ${new Date().getFullYear()} ${esc(d.nombre)} · Propuesta ${d.letra}: ${esc(NOMBRES_GENERAL[d.layout])}</footer>
-<span class="etq">Propuesta ${d.letra}</span>${JS_MOVIMIENTO}${JS_CAR_TRABAJO}${d.layout === 'logo' ? JS_LOGO_UNICO : ''}${d.layout === 'collage' ? JS_COLLAGE : ''}${esIx ? monogramaHTML({ logoUrl: mat.logo?.url, nombre: d.nombre }) + JS_INDICE : ''}${esHs ? JS_HISTORIA : ''}${esNa ? JS_NARRATIVA : ''}${esGu ? JS_GUIA : ''}${esCt ? JS_CATALOGO : ''}${esFc ? JS_FICHA : ''}
+<span class="etq">Propuesta ${d.letra}</span>${JS_MOVIMIENTO}${JS_CAR_TRABAJO}${d.layout === 'logo' ? JS_LOGO_UNICO : ''}${d.layout === 'collage' ? JS_COLLAGE : ''}${esIx ? monogramaHTML({ logoUrl: mat.logo?.url, nombre: d.nombre }) + JS_INDICE : ''}${esNa ? JS_NARRATIVA : ''}${esGu ? JS_GUIA : ''}${esCt ? JS_CATALOGO : ''}
 <a class="wa"${wa} aria-label="Escríbeme por WhatsApp"><svg viewBox="0 0 32 32" aria-hidden="true"><path d="M16 3a13 13 0 0 0-11.2 19.6L3 29l6.6-1.7A13 13 0 1 0 16 3Zm0 23.7c-2 0-4-.6-5.7-1.6l-.4-.2-3.9 1 1-3.8-.3-.4A10.7 10.7 0 1 1 16 26.7Zm5.9-8c-.3-.2-1.9-1-2.2-1-.3-.1-.5-.2-.7.1l-1 1.3c-.2.2-.4.2-.7.1a8.8 8.8 0 0 1-4.4-3.8c-.3-.6.3-.5.9-1.7.1-.2 0-.4 0-.6l-1-2.4c-.3-.6-.5-.5-.7-.5h-.6c-.2 0-.6.1-.9.4-.3.3-1.2 1.1-1.2 2.8s1.2 3.2 1.4 3.5c.2.2 2.4 3.6 5.7 5 2.1.9 3 1 4 .8.7-.1 1.9-.8 2.2-1.5.3-.8.3-1.4.2-1.5l-.6-.3Z"/></svg></a>
 </body></html>`;
+  // N: letra mono de etiquetas (Geist Mono) y script propio (GSAP + ScrollTrigger + Lenis, como la referencia).
+  if (esAv) return html.replace('</head>', `<link rel="stylesheet" href="${URL_MONO_N}"></head>`).replace(/<\/body>(?![\s\S]*<\/body>)/, `${JS_AVANCE}</body>`);
   return esMv || esGu ? conEfectosK(html, p) : html;
 }
 
@@ -703,7 +726,7 @@ export function paginasGenerales({ brief, mat, textos, pares, urlFuentes, ronda 
     // H: titulares en letra sin remates (trazo limpio). De los pares del estilo del cliente toma el primero cuyo título sea sans.
     // I: al revés, titulares con remates (serif editorial), como en las marcas de alimentos y cosmética.
     const claseH = layout === 'historia' ? 'serif' : 'sans';
-    const parH = layout === 'vitrina' ? LETRA_Q : layout === 'avance' ? parAvance(pares) : layout === 'ficha' ? parFicha(pares) : layout === 'catalogo' ? parCatalogo(pares) : layout === 'guia' ? parGuia(pares) : layout === 'movimiento' ? parMovimiento(pares) : layout === 'narrativa' ? parNarrativa(pares) : propia ? pares.find((x) => METRICAS[x.titulos]?.clase === claseH) || pares[i % pares.length] : null;
+    const parH = layout === 'vitrina' ? LETRA_Q : layout === 'avance' ? parAvance(pares) : layout === 'ficha' ? (pares[0] || pares[i % pares.length]) : layout === 'catalogo' ? parCatalogo(pares) : layout === 'guia' ? parGuia(pares) : layout === 'movimiento' ? parMovimiento(pares) : layout === 'narrativa' ? parNarrativa(pares) : propia ? pares.find((x) => METRICAS[x.titulos]?.clase === claseH) || pares[i % pares.length] : null;
     const par = fijo?.fuentes || parH || (dref ? parPorNombres(dref.pares[i] || dref.pares[i % dref.pares.length]) : pares[i % pares.length]);
     const d = {
       i: i + ronda * 3, letra, layout, dref: propia ? null : dref, nombre: brief.negocio?.nombre || '', brief, mat, titulos,
@@ -712,7 +735,8 @@ export function paginasGenerales({ brief, mat, textos, pares, urlFuentes, ronda 
       wa: waUrl(c.whatsapp, c.mensaje_whatsapp_inicial), tel: c.whatsapp ? formatoTel(c.whatsapp) : null,
     };
     const nombre = (!propia && dref?.nombres?.[i]) || NOMBRES_GENERAL[layout];
-    let html = layout === 'vitrina' ? paginaVitrina({ ...d, redes: redes(c), direccion: direccionTexto(brief) }).html : pagina(d);
+    // P (14-nov-2026): página propia hecha solo a partir de la referencia (generador/ficha.js), sin la plantilla general.
+    let html = layout === 'vitrina' ? paginaVitrina({ ...d, redes: redes(c), direccion: direccionTexto(brief) }).html : layout === 'ficha' ? paginaFicha({ ...d, logoBarra: logoHTML(mat.logo, d.pal.bg, d.pal.fg, { alt: d.nombre }), testimonios: testimoniosValidos(brief, mat), redes: redes(c), direccion: direccionTexto(brief) }) : pagina(d);
     if (dref && !propia) html = aplicarRef(html, par, dref).replace(` · Propuesta ${letra}: ${esc(NOMBRES_GENERAL[layout])}</footer>`, ` · Propuesta ${letra}: ${esc(nombre)}</footer>`);
     return { letra, layout, nombre, html, fuentes: par, paleta: d.pal };
   });

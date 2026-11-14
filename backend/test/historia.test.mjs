@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { escenaHistoriaHTML, fraseDe, aptaHistoria, servirVendor, VENDOR, CSS_REVISION_HISTORIA } from '../src/generador/historia.js';
+import { fraseDe, aptaHistoria, servirVendor, VENDOR, CSS_REVISION_HISTORIA, botonSv, dosRenglones } from '../src/generador/historia.js';
 import { paginasGenerales, historiaApta } from '../src/generador/propuestas_general.js';
 import { fotosRepetidas } from '../src/generador/validar_material.js';
 import { interpretarEleccion } from '../src/generador/opciones.js';
@@ -38,38 +38,26 @@ test('aptitud por giro y número de fotos', () => {
   assert.equal(historiaApta(brief, { ...matDe(3), trabajos: matDe(3).trabajos.map((x) => ({ ...x, captura: true })) }), false);
 });
 
-test('la I usa un par con título con remates y arma portada, relato, frase y cierre', () => {
+test('la I es una página propia hecha a partir de savor.it (sin la plantilla general)', () => {
   const [h] = paginasGenerales({ brief, mat: matDe(6), textos, pares, urlFuentes: () => '', solo: 'I' });
   assert.equal(h.fuentes.titulos, 'Gloock');
-  assert.match(h.html, /<body class="l-historia">/);
-  assert.match(h.html, /<div class="hs" id="inicio"><section class="hero hs-hero">/);
-  assert.match(h.html, /class="hs-fondo rep-ok" src="https:\/\/x\/1\.jpg"/);
-  const relato = h.html.match(/<section class="hs-relato"[\s\S]*?<\/section>/)[0];
-  assert.ok((relato.match(/<figure class="hs-paso">/g) || []).length >= 2);
-  assert.match(relato, /<p class="hs-pt">Sin conservadores<\/p><p class="hs-pa">Solo leche y tiempo<\/p>/);
-  assert.match(h.html, /<p class="hs-frase">Empezamos en la cocina de mi abuela\.<\/p>/);
-  assert.match(h.html, /<section class="hs-cierre">[\s\S]*<p class="hs-ct">Lechería Ceiba<\/p>/);
-  // Motion y Lenis van diferidos desde /vendor/ y el JS los espera
+  assert.match(h.html, /<body class="l-historia"><header class="sv-nav"/);
+  assert.doesNotMatch(h.html, /class="barra"|class="sec"|class="wa"|sl-img|hs-/);
+  for (const sec of ['sv-hero', 'sv-relato', 'sv-sobre', 'sv-cadena', 'sv-pie']) assert.match(h.html, new RegExp(`class="${sec}`));
+  assert.match(h.html, /<section id="contacto" class="sv-pie-arriba">[\s\S]*<div class="datos">/);
+  assert.match(h.html, /class="sv-et sv-e1"[^>]*>Sin conservadores<\/p><svg class="sv-linea"[\s\S]*?class="sv-et sv-e2"[^>]*>Solo leche y tiempo<\/p>/);
+  assert.match(h.html, /<a class="sv-btn sv-btn--claro"[^>]*><span aria-hidden="true">Escríbeme<\/span><i class="sv-raya"/);
   assert.match(h.html, new RegExp(`<script defer src="[^"]*/vendor/${VENDOR.motion}"></script><script defer src="[^"]*/vendor/${VENDOR.lenis}"></script>`));
-  assert.match(h.html, /DOMContentLoaded/);
   assert.doesNotMatch(h.html, /gsap/i);
-  // "Nuestro trabajo" lleva todas las fotos de trabajo; nada se repite fuera de lo permitido
-  const trabajo = h.html.match(/<section class="sec" id="trabajo">[\s\S]*?<\/section>/)[0];
-  for (let n = 2; n <= 7; n++) assert.match(trabajo, new RegExp(`x/${n}\\.jpg`));
+  const cadena = h.html.match(/<section class="sv-cadena"[\s\S]*?<\/section>/)[0];
+  for (let n = 2; n <= 7; n++) assert.match(cadena, new RegExp(`x/${n}\\.jpg`));
   assert.deepEqual(fotosRepetidas(h.html, matDe(6)), []);
 });
 
-test('con pocas fotos la escena queda completa y sin relato vacío', () => {
-  const e = escenaHistoriaHTML({ img: () => '', titular: 'T', frase: '' });
-  assert.match(e.html, /sin-fondo/);
-  assert.doesNotMatch(e.html, /hs-relato|hs-poema|hs-cierre/);
-  assert.deepEqual(e.urls, []);
-  const img = (x) => `<img src="${x.url}">`;
-  const uno = escenaHistoriaHTML({ heroFoto: foto(1), pasos: [{ foto: foto(2), titular: 'Uno' }], img, titular: 'T' });
-  assert.match(uno.html, /class="hs-relato hs-uno"/);
-  // la foto de portada no se repite dentro del relato
-  const rep = escenaHistoriaHTML({ heroFoto: foto(1), pasos: [{ foto: foto(1) }, { foto: foto(2) }, { foto: foto(3) }], img, titular: 'T' });
-  assert.equal((rep.html.match(/x\/1\.jpg/g) || []).length, 1);
+test('sin textos de relato la página sigue completa', () => {
+  const [h] = paginasGenerales({ brief, mat: matDe(6), textos: { ...textos, diapositivas: [] }, pares, urlFuentes: () => '', solo: 'I' });
+  assert.match(h.html, /class="sv-pie"/);
+  assert.match(h.html, /class="sv-cadena"/);
 });
 
 test('frase grande: primera oración, recortada si es muy larga', () => {
@@ -86,7 +74,9 @@ test('/vendor/ solo sirve Motion y Lenis', async () => {
   assert.equal(r.s, 200);
   assert.match(r.h['cache-control'], /immutable/);
   assert.match(String(r.b).slice(0, 200), /MIT License/);
-  assert.ok(CSS_REVISION_HISTORIA.includes('.hs-p{opacity:1!important}'));
+  assert.ok(CSS_REVISION_HISTORIA.length > 0);
+  assert.deepEqual(dosRenglones('Inspired by Earths blueprints'), ['Inspired by', 'Earths blueprints']);
+  assert.match(botonSv('Reserva tu sesión', ' href="#"'), /<span aria-hidden="true">Reserva<\/span><i class="sv-raya" aria-hidden="true"><\/i><span aria-hidden="true">tu sesión<\/span>/);
 });
 
 test('el cliente puede elegir la I', () => {
