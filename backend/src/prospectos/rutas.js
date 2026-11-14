@@ -21,7 +21,7 @@ import * as pdb from './db.js';
 import { encolar, enCola, usuarioDe, reanudar } from './construir.js';
 
 const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
-const LETRAS = 'ABCDEFGHIJKLMNOP';
+const LETRAS = 'ABCDEFGHIJKLMNOPQ';
 const WA_BLANCA = () => (process.env.PROSPECCION_WA_ATENCION || '529992632568').replace(/\D/g, '');
 const DOMINIOS = () => String(process.env.PROSPECCION_DOMINIOS || 'timewins.site,timewins.online').split(',').map((x) => x.trim()).filter(Boolean);
 const COOKIE = 'tw_pr';
