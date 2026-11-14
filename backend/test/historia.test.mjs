@@ -31,6 +31,9 @@ test('aptitud por giro y número de fotos', () => {
   assert.equal(aptaHistoria(brief, 4), true);
   assert.equal(aptaHistoria(brief, 3), false);
   assert.equal(aptaHistoria({ negocio: { arquetipo: 'servicios' } }, 10), false);
+  assert.equal(aptaHistoria({ negocio: { arquetipo: 'servicios', subtipo: 'fotografia' } }, 10), true);
+  assert.equal(aptaHistoria({ negocio: { arquetipo: 'servicios', subtipo: 'legal' } }, 10), false);
+  assert.equal(aptaHistoria({ negocio: { arquetipo: 'oficios', subtipo: 'plomero_electricista' } }, 10), false);
   assert.equal(historiaApta(brief, matDe(3)), true); // portada + 3 de trabajo
   assert.equal(historiaApta(brief, { ...matDe(3), trabajos: matDe(3).trabajos.map((x) => ({ ...x, captura: true })) }), false);
 });
@@ -72,6 +75,7 @@ test('con pocas fotos la escena queda completa y sin relato vacío', () => {
 test('frase grande: primera oración, recortada si es muy larga', () => {
   assert.equal(fraseDe('Hola mundo. Otra cosa.'), 'Hola mundo.');
   assert.equal(fraseDe(''), '');
+  assert.equal(fraseDe('¡Hola! Soy Blanca, fotógrafa en Mérida y retrato familias. Más texto.'), 'Soy Blanca, fotógrafa en Mérida y retrato familias.');
   assert.match(fraseDe(Array(40).fill('palabra').join(' ')), /…$/);
 });
 

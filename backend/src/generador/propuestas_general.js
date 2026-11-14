@@ -349,7 +349,10 @@ function pagina(d) {
       const pasos = poolSl.slice(1).map((foto, k) => ({ foto, titular: diapos[k]?.titular || '', apoyo: diapos[k]?.apoyo || '' }));
       const enEscena = new Set([heroFoto?.url, ...pasos.map((x) => x.foto.url)]);
       const libres = [...fijasSl, ...poolBase].filter((x) => x?.url && !enEscena.has(x.url) && enEscena.add(x.url));
-      const flotan = libres.slice(0, 2), fotoCierre = libres[2] || heroFoto;
+      const flotan = libres.slice(0, 2);
+      // El cierre llena la pantalla: la foto libre más grande si tiene al menos 1200 px; si no, la de portada.
+      const grande = libres.slice(2).sort((x, y) => (y.ancho || 0) - (x.ancho || 0))[0];
+      const fotoCierre = grande && (grande.ancho || 0) >= 1200 ? grande : heroFoto;
       const frase = fraseDe(t.sobre || conf.historia_corta || '') || fraseDe(brief.oferta?.diferenciador || '') || t.subtitulo || '';
       const giro = giroCorto(neg.giro_texto) || '';
       const esc0 = escenaHistoriaHTML({ heroFoto, pasos, frase, flotan, img, kicker: [giro, neg.ciudad].filter(Boolean).join(' · '), titular: t.titular, subtitulo: t.subtitulo, cta: cta(),

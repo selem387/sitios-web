@@ -23,6 +23,9 @@ const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '
 export const MAX_PASOS = 4;
 export const MIN_FOTOS_HISTORIA = 4;
 // Giros donde la historia con scroll no conviene: el visitante quiere el teléfono o el precio rápido.
+// Manda el subtipo (paletas_giro.js): dentro de "servicios" la fotografía, la arquitectura o una agencia sí la sostienen;
+// un despacho contable o legal no. Si no hay subtipo, se decide por arquetipo.
+export const SUBTIPOS_SIN_HISTORIA = ['plomero_electricista', 'servicio_local', 'legal', 'contador_consultor', 'servicio_b2b', 'medica', 'veterinaria', 'restaurante', 'cafeteria_panaderia'];
 export const ARQUETIPOS_SIN_HISTORIA = ['oficios', 'servicios', 'restaurante'];
 
 export const VENDOR = { motion: 'motion-14.14.0.min.js', lenis: 'lenis-1.3.27.min.js' };
@@ -30,7 +33,9 @@ const DIR_VENDOR = path.join(path.dirname(fileURLToPath(import.meta.url)), 'vend
 
 /** ¿El negocio tiene giro y fotos para la historia? fotosBuenas: fotos del cliente que no son capturas ni de calidad regular. */
 export function aptaHistoria(brief = {}, fotosBuenas = 0) {
-  if (ARQUETIPOS_SIN_HISTORIA.includes(brief.negocio?.arquetipo)) return false;
+  const st = brief.negocio?.subtipo;
+  if (brief.negocio?.arquetipo === 'restaurante') return false;
+  if (st ? SUBTIPOS_SIN_HISTORIA.includes(st) : ARQUETIPOS_SIN_HISTORIA.includes(brief.negocio?.arquetipo)) return false;
   return fotosBuenas >= MIN_FOTOS_HISTORIA;
 }
 
@@ -38,7 +43,9 @@ export function aptaHistoria(brief = {}, fotosBuenas = 0) {
 export function fraseDe(texto = '') {
   const limpio = String(texto || '').replace(/\s+/g, ' ').trim();
   if (!limpio) return '';
-  const primera = (limpio.match(/^.+?[.!?](?=\s|$)/) || [limpio])[0].trim();
+  // Primera oración con cuerpo: se saltan saludos y frases cortas ("¡Hola!", "Soy Blanca.").
+  const oraciones = limpio.match(/[^.!?]+[.!?]+(?=\s|$)|[^.!?]+$/g) || [limpio];
+  const primera = (oraciones.find((o) => o.trim().split(' ').length >= 6) || oraciones[0]).trim();
   const ps = primera.split(' ');
   return ps.length > 26 ? `${ps.slice(0, 24).join(' ').replace(/[,;:]$/, '')}…` : primera;
 }
@@ -54,7 +61,8 @@ export function escenaHistoriaHTML({ heroFoto = null, pasos = [], frase = '', fl
   const ps = pasos.filter((x) => x?.foto?.url && !vistas.has(x.foto.url) && vistas.add(x.foto.url)).slice(0, MAX_PASOS);
   const fl = flotan.filter((x) => x?.url && !vistas.has(x.url) && vistas.add(x.url)).slice(0, 2);
   const fondo = heroFoto ? `${img(heroFoto, { cls: 'hs-fondo rep-ok', eager: true, extra: ' fetchpriority="high" sizes="100vw"' })}<div class="hs-velo"></div>` : '';
-  const hero = `<section class="hero hs-hero${heroFoto ? '' : ' sin-fondo'}">${fondo}<div class="wrap hs-txt">${kicker ? `<p class="kicker">${esc(kicker)}</p>` : ''}<h1>${esc(titular)}</h1>${subtitulo ? `<p class="sub">${esc(subtitulo)}</p>` : ''}${cta}</div><span class="hs-baja" aria-hidden="true">Desliza</span></section>`;
+  const largo = String(titular || '').trim().split(/\s+/).length > 5 ? ' hs-largo' : '';
+  const hero = `<section class="hero hs-hero${heroFoto ? '' : ' sin-fondo'}${largo}">${fondo}<div class="wrap hs-txt">${kicker ? `<p class="kicker">${esc(kicker)}</p>` : ''}<h1>${esc(titular)}</h1>${subtitulo ? `<p class="sub">${esc(subtitulo)}</p>` : ''}${cta}</div><span class="hs-baja" aria-hidden="true">Desliza</span></section>`;
   const relato = ps.length >= 2 ? `<section class="hs-relato" style="--n:${ps.length}" aria-label="${esc(titular || 'Nuestra historia')}"><div class="hs-fijo">${ps.map((x, k) => `<figure class="hs-paso">${img(x.foto, { cls: 'rep-ok', sizes: ' sizes="100vw"' })}${x.titular ? `<figcaption><p class="hs-pt">${esc(x.titular)}</p>${x.apoyo ? `<p class="hs-pa">${esc(x.apoyo)}</p>` : ''}</figcaption>` : ''}<span class="hs-num" aria-hidden="true">${String(k + 1).padStart(2, '0')} / ${String(ps.length).padStart(2, '0')}</span></figure>`).join('')}<ol class="hs-puntos" aria-hidden="true">${ps.map(() => '<li></li>').join('')}</ol></div></section>` : '';
   // Con una sola foto de relato no hay historia que contar: va como foto suelta grande.
   const suelta = ps.length === 1 ? `<section class="hs-relato hs-uno"><div class="hs-fijo"><figure class="hs-paso">${img(ps[0].foto, { cls: 'rep-ok', sizes: ' sizes="100vw"' })}${ps[0].titular ? `<figcaption><p class="hs-pt">${esc(ps[0].titular)}</p>${ps[0].apoyo ? `<p class="hs-pa">${esc(ps[0].apoyo)}</p>` : ''}</figcaption>` : ''}</figure></div></section>` : '';
@@ -94,6 +102,8 @@ body.l-historia .galeria.g-car figure,body.l-historia .galeria.g-car img,body.l-
 .hs-velo{position:absolute;inset:0;z-index:-1;background:linear-gradient(180deg,rgba(0,0,0,.18),rgba(0,0,0,.06) 35%,rgba(0,0,0,.62))}
 .hs-txt{width:100%;padding-bottom:clamp(40px,7vw,88px);will-change:transform,opacity}
 .hs-hero h1{font-size:clamp(46px,10.5vw,136px);line-height:.94;max-width:12ch}
+.hs-largo h1{font-size:clamp(38px,7.2vw,104px);max-width:15ch}
+@media (max-width:759px){.hs-hero .sub{display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden}}
 .hs-hero .sub,.hs-hero .kicker{color:rgba(255,255,255,.9)}.hs-hero .btn{background:#fff;color:#141414}
 .hs-baja{display:none;position:absolute;right:24px;bottom:28px;font-size:12px;letter-spacing:.18em;text-transform:uppercase;color:rgba(255,255,255,.85)}
 .hs-baja::after{content:"";display:block;width:1px;height:46px;margin:10px auto 0;background:currentColor;transform-origin:top;animation:hsbaja 2.2s ease-in-out infinite}
