@@ -168,12 +168,23 @@ function pagina(d) {
     const giro = String(neg0.giro_texto || '').split(/[:;(]/)[0].trim();
     const itemsOf = (d.brief?.oferta?.items || []).filter((x) => x?.nombre || typeof x === 'string');
     const items = itemsOf.length ? itemsOf : prod.length ? prod.map((x) => ({ nombre: x.nombre, precio_o_rango: x.precio, descripcion_corta: '' })) : d.categorias.map((c) => ({ nombre: c.nombre, precio_o_rango: `desde $${c.desde}`, descripcion_corta: '' }));
-    const fichas = fichasDe(items, d.info, 'Menú');
+    // Con menú transcrito, fichas y panel salen de sus categorías ("desde $X" y lo que incluye cada una); si no, de la oferta.
+    const cats = d.categorias.filter((c) => c.items?.length);
+    const fichasCat = cats.map((c) => ({ etiqueta: `${c.items.length} ${c.items.length === 1 ? 'opción' : 'opciones'}`, valor: c.nombre, detalle: c.items.slice(0, 6).map((x) => x.nombre).filter(Boolean).join(' · '), precio: `Desde $${c.desde}` }));
+    const fichas = fichasCat.length >= 2 ? fichasCat : fichasDe(items, d.info, 'Menú');
+    const chips = fichasCat.length >= 2 ? fichasCat.map((x) => ({ valor: x.valor, precio: x.precio.toLowerCase() })) : fichasDe(items, [], '');
     const foto0 = emp.fotos[0] || d.fotosSl[0] || null;
-    const pasos = conSl ? emp.fotos.slice(1).map((foto, k) => ({ foto, titular: emp.diapos[k]?.titular || '', apoyo: emp.diapos[k]?.apoyo || '' })) : [];
+    // Escena: fotos del slider con sus textos; si no hay fotos con fondo, sus productos (recortes sin fondo) sobre fondo oscuro con nombre y precio.
+    let pasos = conSl ? emp.fotos.slice(1).map((foto, k) => ({ foto, titular: emp.diapos[k]?.titular || '', apoyo: emp.diapos[k]?.apoyo || '' })) : [];
+    let deProducto = false;
+    if (pasos.length < 2) {
+      const vistos = new Set();
+      const pr = prod.filter((x) => x.img && !vistos.has(x.img) && vistos.add(x.img)).slice(0, 4);
+      if (pr.length >= 2) { deProducto = true; pasos = pr.map((x) => ({ foto: { url: x.img, alt: x.nombre || '' }, titular: x.nombre || '', apoyo: x.precio || '' })); }
+    }
     const cta0 = `<a class="btn"${wa}>${esc(d.textos.cta)}</a>`;
-    const fp = portadaFichaHTML({ heroFoto: foto0, img: imgS, kicker: [giro, neg0.ciudad].filter(Boolean).join(' · '), titular: d.textos.titular, subtitulo: d.textos.subtitulo, opciones: fichasDe(items, [], ''), cta: cta0 });
-    const es = escenaFichaHTML({ pasos, img: imgS, etiqueta: d.nombre });
+    const fp = portadaFichaHTML({ heroFoto: foto0, img: imgS, kicker: [giro, neg0.ciudad].filter(Boolean).join(' · '), titular: d.textos.titular, subtitulo: d.textos.subtitulo, opciones: chips, cta: cta0 });
+    const es = escenaFichaHTML({ pasos, img: imgS, etiqueta: d.nombre, producto: deProducto });
     const frases = [...emp.diapos.map((x) => x?.titular).filter(Boolean), giro, neg0.ciudad].filter(Boolean);
     const libresC = [...d.fotosSl].filter((x) => x?.url && x.url !== foto0?.url && !pasos.some((y) => y.foto.url === x.url));
     ficha = {

@@ -64,13 +64,13 @@ export function atributosFichaHTML({ fichas = [], titulo = 'En pocas palabras', 
  * Escena fija: las fotos del slider con su texto. Con JS y sin "reducir movimiento" el escenario se queda fijo y la foto cambia
  * al hacer scroll; si no, cada paso es un bloque normal (foto y texto) y se lee completo. → {html, urls}
  */
-export function escenaFichaHTML({ pasos = [], img, etiqueta = '' }) {
+export function escenaFichaHTML({ pasos = [], img, etiqueta = '', producto = false }) {
   const vistas = new Set();
   const ps = pasos.filter((x) => x?.foto?.url && !vistas.has(x.foto.url) && vistas.add(x.foto.url)).slice(0, MAX_PASOS_FICHA);
   if (ps.length < 2) return { html: '', urls: [] };
   const n = ps.length;
   const bloques = ps.map((x, k) => `<article class="fc-paso${k === 0 ? ' on' : ''}" data-i="${k}"><figure class="fc-pf">${img(x.foto, { cls: 'fc-pimg rep-ok', extra: ' sizes="100vw"' })}</figure><div class="wrap fc-cap"><p class="fc-num"><b>${dos(k + 1)}</b> / ${dos(n)}</p>${x.titular ? `<p class="fc-t">${esc(x.titular)}</p>` : ''}${x.apoyo ? `<p class="fc-ap">${esc(x.apoyo)}</p>` : ''}</div></article>`).join('');
-  const html = `<section class="fc-esc" id="recorrido" style="--n:${n}"${etiqueta ? ` aria-label="${esc(etiqueta)}"` : ''}><div class="fc-stage"><div class="fc-pasos">${bloques}</div><div class="fc-prog" aria-hidden="true"><i></i></div></div></section>`;
+  const html = `<section class="fc-esc${producto ? ' fc-esc-prod' : ''}" id="recorrido" style="--n:${n}"${etiqueta ? ` aria-label="${esc(etiqueta)}"` : ''}><div class="fc-stage"><div class="fc-pasos">${bloques}</div><div class="fc-prog" aria-hidden="true"><i></i></div></div></section>`;
   return { html, urls: ps.map((x) => x.foto.url) };
 }
 
@@ -145,6 +145,11 @@ html.fc-pin .fc-cap{transform:translateY(18px);opacity:0;transition:transform .7
 html.fc-pin .fc-prog{display:block;position:absolute;left:var(--margen);right:var(--margen);bottom:clamp(14px,2.4vw,26px);height:3px;background:rgba(255,255,255,.28);z-index:2}
 html.fc-pin .fc-prog i{display:block;height:100%;background:#fff;transform-origin:left;transform:scaleX(calc(var(--k,0) / var(--n)))}
 }
+/* escena con productos recortados (sin fondo): el producto al centro sobre fondo oscuro, como la bolsa de la referencia */
+.fc-esc-prod .fc-paso{background:radial-gradient(ellipse at 50% 42%,color-mix(in srgb,var(--fg) 14%,var(--bg)),var(--bg) 70%)}
+.fc-esc-prod .fc-paso::after{background:linear-gradient(0deg,rgba(0,0,0,.55),transparent 45%)}
+.fc-esc-prod .fc-pf{inset:6% 8% 26%}.fc-esc-prod .fc-pimg{object-fit:contain;filter:drop-shadow(0 26px 34px rgba(0,0,0,.55))}
+.fc-esc-prod .fc-cap{justify-items:center;text-align:center}.fc-esc-prod .fc-t{max-width:20ch}.fc-esc-prod .fc-ap{font-weight:700;font-size:clamp(18px,1.8vw,24px)}
 /* cierre */
 .fc-cierre{position:relative;overflow:clip;display:grid;align-items:end;color:#fff;background:var(--banda,#111);min-height:clamp(440px,76svh,760px)}
 .fc-cf{position:absolute;inset:0;margin:0;overflow:hidden}.fc-cf img{position:absolute;left:0;top:-12%;width:100%;height:124%;object-fit:cover;display:block}
