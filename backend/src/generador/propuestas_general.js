@@ -19,7 +19,7 @@ import { escenaHistoriaHTML, fraseDe, aptaHistoria, scriptsHistoria, CSS_HISTORI
 import { portadaMovimientoHTML, parMovimiento, conEfectosK, CSS_MOVIMIENTO_K } from './movimiento_k.js';
 import { portadaNarrativaHTML, parNarrativa, CSS_NARRATIVA, JS_NARRATIVA } from './narrativa.js';
 import { escenaGuiaHTML, cierreGuiaHTML, indiceGuiaHTML, parGuia, CSS_GUIA, JS_GUIA } from './guia.js';
-import { portadaAvanceHTML, cifrasAvanceHTML, reconocimientosHTML, cifrasDe, reconocimientosDe, parAvance, CSS_AVANCE } from './avance.js';
+import { portadaN, franjaN, vitrinaN, avanceN, tarjetasN, prensaN, contactoN, datosDe, fraseResaltada, parAvance, CSS_AVANCE, JS_AVANCE, URL_MONO_N } from './avance.js';
 import { paginaFicha } from './ficha.js';
 import { portadaCatalogoHTML, bandaFotoHTML, cierreCatalogoHTML, tabsDeServicios, parCatalogo, CSS_CATALOGO, JS_CATALOGO } from './catalogo.js';
 
@@ -41,7 +41,7 @@ export const LAYOUTS_GENERAL = ['portada', 'editorial', 'mosaico', 'logo', 'dost
 // K (14-nov-2026): opción adicional "Recorrido en movimiento" (generador/movimiento_k.js + efectos_gsap.js). Siempre va como undécima.
 // M (14-nov-2026): opción adicional "Guía en movimiento" (generador/guia.js + efectos_gsap.js). Siempre va como decimotercera; la L queda reservada.
 // O (14-nov-2026): opción adicional "Catálogo en movimiento" (generador/catalogo.js, CSS nativo sin librerías). Siempre va como decimoquinta; la L queda reservada.
-// N (14-nov-2026): opción adicional "Cifras y avance" (generador/avance.js, CSS nativo sin librerías). Siempre va como decimocuarta.
+// N (14-nov-2026): opción adicional reconstruida solo desde vastspace.com (generador/avance.js: GSAP + ScrollTrigger + Lenis). Siempre va como decimocuarta.
 // P (14-nov-2026): opción adicional "Ficha en movimiento" (generador/ficha.js, CSS nativo sin librerías). Siempre va como decimosexta.
 export const LETRAS = 'ABCDEFGHIJKLMNOP';
 // La G sale para todos solo con OPCION_G=1 en el servicio api (11-nov-2026: primero se prueba cliente por cliente).
@@ -62,7 +62,7 @@ export const conOpcionO = () => process.env.OPCION_O === '1';
 export const conOpcionN = () => process.env.OPCION_N === '1';
 // La P sale para todos solo con OPCION_P=1 (no usa librerías de animación: CSS nativo y un script mínimo).
 export const conOpcionP = () => process.env.OPCION_P === '1';
-export const NOMBRES_GENERAL = { portada: 'Foto a pantalla completa', editorial: 'Editorial', mosaico: 'Mosaico de tu trabajo', logo: 'Tu logo al centro', dostonos: 'Dos tonos', carta: 'Minimalista', collage: 'Collage en movimiento', indice: 'Recorrido con índice', historia: 'Historia con scroll', narrativa: 'Narrativa por capítulos', movimiento: 'Recorrido en movimiento', guia: 'Guía en movimiento', catalogo: 'Catálogo en movimiento', ficha: 'Ficha en movimiento', avance: 'Cifras y avance' };
+export const NOMBRES_GENERAL = { portada: 'Foto a pantalla completa', editorial: 'Editorial', mosaico: 'Mosaico de tu trabajo', logo: 'Tu logo al centro', dostonos: 'Dos tonos', carta: 'Minimalista', collage: 'Collage en movimiento', indice: 'Recorrido con índice', historia: 'Historia con scroll', narrativa: 'Narrativa por capítulos', movimiento: 'Recorrido en movimiento', guia: 'Guía en movimiento', catalogo: 'Catálogo en movimiento', ficha: 'Ficha en movimiento', avance: 'Avance en el espacio' };
 
 // Títulos por arquetipo (Claude puede reemplazarlos con textos.secciones).
 export const TITULOS = {
@@ -115,7 +115,8 @@ function paletaGeneral(layout, colores, pastel, i, { acento = null, acentoCta = 
     movimiento: { bg: mezclar(papel, '#FFFFFF', 0.7), fg: tinta, primary: base, muted: mezclar(tinte, '#FFFFFF', 0.6), banda: conContraste(tono(base, 0.22, 0.2, 0.3), '#FFFFFF', 8) },
     guia: { bg: mezclar(papel, '#FFFFFF', 0.82), fg: tinta, primary: base, muted: mezclar(tinte, '#FFFFFF', 0.6), banda: conContraste(tono(base, 0.2, 0.18, 0.28), '#FFFFFF', 9) },
     catalogo: { bg: '#FFFFFF', fg: tinta, primary: base, muted: mezclar(tinte, '#FFFFFF', 0.6), banda: conContraste(tono(base, 0.2, 0.18, 0.28), '#FFFFFF', 9) },
-    avance: { bg: '#FFFFFF', fg: tinta, primary: base, muted: mezclar(tinte, '#FFFFFF', 0.6), banda: conContraste(tono(base, 0.18, 0.16, 0.22), '#FFFFFF', 10) },
+    // N: neutros de la referencia (crema, grafito, arena); el acento es el color del cliente.
+    avance: { bg: '#FDFCF4', fg: '#2A2C2F', primary: base, muted: '#ECE8E3', banda: '#2A2C2F' },
     ficha: (() => { const bg = tono(base, 0.09, 0.14, 0.3); const fg = conContraste('#F4EFE8', bg, 12, '#FFFFFF'); const pr = conContraste(tono(base, 0.66, 0.4, 0.9), bg, 4.6, '#FFFFFF'); return { bg, fg, primary: pr, muted: mezclar(bg, '#FFFFFF', 0.06), banda: mezclar(bg, '#000000', 0.35), crema: mezclar(papel, '#FFFFFF', 0.55), tinta: conContraste(tono(base, 0.12, 0.1, 0.25), mezclar(papel, '#FFFFFF', 0.55), 12) }; })(),
     narrativa: { bg: '#FFFFFF', fg: conContraste(tono(base, 0.1, 0.1, 0.25), '#FFFFFF', 15), primary: base, muted: mezclar(tinte, '#FFFFFF', 0.7) },
   }[layout];
@@ -302,8 +303,6 @@ function pagina(d) {
   // Si el titular habla de un producto, abre con la foto de ese producto (la eligió la IA de textos por su descripción).
   const fotoTit = !brief.fotos?.portada_manual && t.foto_url ? [mat.hero, ...trabajos].find((x) => x?.url === t.foto_url) : null;
   const heroFoto = fotoTit || heroBase;
-  // N: cifras y reconocimientos reales del cliente (sin 2 cifras o sin premios/certificaciones, la sección no aparece).
-  const cifrasAv = cifrasDe(conf.cifras);
 
   const cta = (cls = '') => `<a class="btn ${cls}"${wa}>${esc(t.cta)}</a>`;
   const info = (t.info || []).map((x) => `<li>${esc(x)}</li>`).join('');
@@ -400,11 +399,11 @@ function pagina(d) {
       ct.urls.forEach((u) => { enPortada.add(u); usadas.add(u); });
       return ct.html;
     },
-    // N: cifras y avance (generador/avance.js). Foto principal a pantalla completa con zoom lento y la primera cifra como dato.
+    // N (vastspace.com): fotos del slider a pantalla completa con fundido, pausa y titular abajo a la izquierda.
     avance: () => {
-      const av = portadaAvanceHTML({ heroFoto, img, kicker: [giroCorto(neg.giro_texto), neg.ciudad].filter(Boolean).join(' · '), titular: t.titular, subtitulo: t.subtitulo, cta: cta(), dato: cifrasAv[0] || null });
-      av.urls.forEach((u) => { enPortada.add(u); usadas.add(u); });
-      return av.html;
+      const n = portadaN({ fotos: [heroFoto, ...poolSl], img, titular: t.titular, subtitulo: t.subtitulo, cta: cta(), verMas: '#trabajo' });
+      n.urls.forEach((u) => { enPortada.add(u); usadas.add(u); });
+      return n.html;
     },
     carta: () => { const s = poolSl.length ? `<div class="wrap">${slider({ tag: 'figure', clase: 'sl-carta sl-marco' })}</div>` : ''; const resto = s ? [] : fotosT.filter((x) => !usadas.has(x.url)).slice(0, 8); return `<section class="hero h-carta wrap"><div class="tit"><p class="kicker">${esc(d.nombre)}</p><h1>${esc(t.titular)}</h1></div><div class="lado"><p class="sub">${esc(t.subtitulo)}</p>${cta()}</div></section>${s}${resto.length ? `<div class="wrap">${filaJustificada(resto, img)}</div>` : ''}`; },
   };
@@ -492,6 +491,40 @@ function pagina(d) {
     const frase = fraseDe(t.sobre || conf.historia_corta || '') || fraseDe(brief.oferta?.diferenciador || '') || '';
     return bandaFotoHTML({ foto: fotosCt[1] || null, img, frase, cta: cta() });
   };
+  // N: secciones propias (generador/avance.js). Solo datos reales; si falta el dato, la sección no aparece.
+  const libreVx = (x) => x?.url && !usadas.has(x.url) && !enPortada.has(x.url);
+  const franjaVx = () => franjaN(fraseResaltada(t.sobre || conf.historia_corta || brief.oferta?.diferenciador || ''));
+  const vitrinaVx = () => {
+    const rec = (mat.fotos || []).find((x) => x.recorte && libreVx(x));
+    const foto = rec || fotosT.find(libreVx) || null;
+    return vitrinaN({ foto, img, recorte: !!rec, nombre: d.nombre, etiqueta: [giroCorto(neg.giro_texto), neg.ciudad].filter(Boolean).join(' · '), apoyo: brief.oferta?.diferenciador || '', datos: datosDe(conf.cifras), href: '#servicios' });
+  };
+  const avanceVx = () => avanceN({ titulo: T.trabajo, img, nota: [giroCorto(neg.giro_texto), neg.ciudad].filter(Boolean).join(' · '), fotos: fotosT.filter(libreVx).map((foto) => ({ foto, texto: foto.alt || '' })) }).html;
+  const tarjetasVx = () => {
+    const ver = brief.oferta?.mostrar_precios !== false || brief.oferta?.mostrar_paquetes;
+    const items = agruparOferta(brief.oferta?.items || []).flatMap((g) => g.opciones.map((o) => ({ meta: [g.nombre, ...(ver && o.precio ? [o.precio] : [])].filter((x, k, a) => x && a.indexOf(x) === k), titulo: o.nombre || g.nombre, texto: o.detalle || '' }))).slice(0, 9);
+    const sobra = [...mat.local, ...(mat.otras || []), ...mat.trabajos].filter((x) => libreVx(x) && fueraDeGaleria(x));
+    items.forEach((it, k) => { if (sobra[k]) it.foto = sobra[k]; });
+    return tarjetasN({ titulo: T.servicios, items, img, cta: cta() });
+  };
+  const prensaVx = () => {
+    const limpio = (x) => String(x).replace(/\p{Extended_Pictographic}/gu, '').trim();
+    const citas = testimoniosValidos(brief, mat).map((x) => ({ texto: limpio(x.texto), autor: x.nombre || '' }));
+    const nombres = [...new Set([...(conf.premios || []), ...(conf.certificaciones || [])].map((x) => String(x || '').trim()).filter(Boolean))];
+    return prensaN({ titulo: T.resenas, citas, nombres, tituloNombres: 'Reconocimientos' });
+  };
+  const contactoVx = () => {
+    const c = brief.contacto || {};
+    const dir = direccionTexto(brief) || (brief.zona?.cobertura || []).join(' · ');
+    const rs = enlacesRedes(redes(c));
+    return contactoN({ titulo: T.contacto, cta: cta(), columnas: [
+      { titulo: 'WhatsApp', html: d.tel ? `<a${wa}>${esc(d.tel)}</a>` : '' },
+      { titulo: 'Dónde', html: dir ? `<span>${esc(dir)}</span>` : '' },
+      { titulo: 'Horario', html: typeof c.horarios === 'string' ? `<span>${esc(c.horarios)}</span>` : '' },
+      { titulo: 'Correo', html: c.email ? `<a href="mailto:${esc(c.email)}">${esc(c.email)}</a>` : '' },
+      { titulo: 'Redes', html: rs ? `<span class="rs">${rs}</span>` : '' },
+    ] });
+  };
   const ORDEN = {
     portada: [secTrabajo, secServicios, secSobre, secEquipo, secResenas, secProceso, secFaq, secVideo, secContacto],
     editorial: [secSobre, secTrabajo, secEquipo, secServicios, secResenas, procCli, secFaq, secVideo, secContacto],
@@ -507,7 +540,8 @@ function pagina(d) {
     guia: [secSobre, secTrabajo, secServicios, secEquipo, secResenas, secProceso, secFaq, secVideo, secContacto],
     // O: estante de trabajo primero, banda con parallax, servicios en pestañas y el resto como en las demás.
     // N: cifras justo después de la portada, serie de fotos, y reconocimientos reales antes de las preguntas.
-    avance: [() => cifrasAvanceHTML(cifrasAv), secTrabajo, secServicios, secSobre, secEquipo, secResenas, () => reconocimientosHTML(reconocimientosDe(conf)), secProceso, secFaq, secVideo, secContacto],
+    // N (vastspace.com): franja que se enciende, vitrina, carrusel de avance, tarjetas, prensa y marco negro de contacto.
+    avance: [franjaVx, vitrinaVx, avanceVx, tarjetasVx, secSobre, secEquipo, prensaVx, secProceso, secFaq, secVideo, contactoVx],
     catalogo: [secTrabajo, bandaCt, () => tabsDeServicios(secServicios()), secSobre, secEquipo, secResenas, secProceso, secFaq, secVideo, secContacto],
   }[d.layout];
   const cuerpo = ORDEN.map((fn) => fn()).join('');
@@ -626,6 +660,8 @@ ${CSS_MOVIMIENTO}${d.layout === 'collage' ? CSS_COLLAGE : ''}${esIx ? CSS_INDICE
 <span class="etq">Propuesta ${d.letra}</span>${JS_MOVIMIENTO}${JS_CAR_TRABAJO}${d.layout === 'logo' ? JS_LOGO_UNICO : ''}${d.layout === 'collage' ? JS_COLLAGE : ''}${esIx ? monogramaHTML({ logoUrl: mat.logo?.url, nombre: d.nombre }) + JS_INDICE : ''}${esHs ? JS_HISTORIA : ''}${esNa ? JS_NARRATIVA : ''}${esGu ? JS_GUIA : ''}${esCt ? JS_CATALOGO : ''}
 <a class="wa"${wa} aria-label="Escríbeme por WhatsApp"><svg viewBox="0 0 32 32" aria-hidden="true"><path d="M16 3a13 13 0 0 0-11.2 19.6L3 29l6.6-1.7A13 13 0 1 0 16 3Zm0 23.7c-2 0-4-.6-5.7-1.6l-.4-.2-3.9 1 1-3.8-.3-.4A10.7 10.7 0 1 1 16 26.7Zm5.9-8c-.3-.2-1.9-1-2.2-1-.3-.1-.5-.2-.7.1l-1 1.3c-.2.2-.4.2-.7.1a8.8 8.8 0 0 1-4.4-3.8c-.3-.6.3-.5.9-1.7.1-.2 0-.4 0-.6l-1-2.4c-.3-.6-.5-.5-.7-.5h-.6c-.2 0-.6.1-.9.4-.3.3-1.2 1.1-1.2 2.8s1.2 3.2 1.4 3.5c.2.2 2.4 3.6 5.7 5 2.1.9 3 1 4 .8.7-.1 1.9-.8 2.2-1.5.3-.8.3-1.4.2-1.5l-.6-.3Z"/></svg></a>
 </body></html>`;
+  // N: letra mono de etiquetas (Geist Mono) y script propio (GSAP + ScrollTrigger + Lenis, como la referencia).
+  if (esAv) return html.replace('</head>', `<link rel="stylesheet" href="${URL_MONO_N}"></head>`).replace(/<\/body>(?![\s\S]*<\/body>)/, `${JS_AVANCE}</body>`);
   return esMv || esGu ? conEfectosK(html, p) : html;
 }
 
