@@ -362,9 +362,11 @@ function pagina(d) {
     // L: portada tipo plataforma (generador/plataforma_l.js). Titular centrado, tarjeta de acción y marco con la foto del cliente en lugar
     // de video; explorador con las fotos y textos reales de las diapositivas. El efecto de mouse del fondo se elige por giro o por cliente.
     plataforma: () => {
+      // emparejarFotos: poolSl[0] es la foto de portada y poolSl[k + 1] va con diapos[k] (texto y foto elegidos juntos).
       const otras = poolSl.filter((x) => x.url !== heroFoto?.url);
-      const frases = [diapos[0]?.titular, diapos[0]?.apoyo, giroCorto(neg.giro_texto)].filter(Boolean);
-      const items = otras.slice(0, 4).map((foto, k) => ({ foto, titulo: diapos[k + 1]?.titular || '', texto: diapos[k + 1]?.apoyo || '' })).filter((x) => x.titulo);
+      const items = poolSl.slice(1, 5).map((foto, k) => ({ foto, titulo: diapos[k]?.titular || '', texto: diapos[k]?.apoyo || '' })).filter((x) => x.titulo && x.foto.url !== heroFoto?.url);
+      // Tarjeta de acción: datos rápidos del negocio (no repite los textos del explorador).
+      const frases = [...(t.info || []), giroCorto(neg.giro_texto)].filter(Boolean).slice(0, 2);
       const fotoMini = items.length ? null : otras[0] || null;
       // Foto para el efecto de distorsión: otra del slider o, si no sobra, una buena del trabajo (distinta de las del marco y el explorador).
       const fotoFondo = [...otras, ...fotosT.filter(buenaFoto)].find((x) => x.url !== heroFoto?.url && x.url !== fotoMini?.url && !items.some((y) => y.foto.url === x.url)) || null;

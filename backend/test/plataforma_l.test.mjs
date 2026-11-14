@@ -37,6 +37,13 @@ test('el explorador usa fotos y textos reales y no repite fotos', () => {
   assert.equal(new Set(urls).size, urls.length, 'sin fotos repetidas en la portada');
 });
 
+test('en el explorador cada texto va con la foto que se eligió para él', () => {
+  const t2 = { ...textos, diapositivas: [{ titular: 'Foto cinco', foto_url: 'https://x/5.jpg' }, { titular: 'Foto tres', foto_url: 'https://x/3.jpg' }] };
+  const [l] = gen({ solo: 'L', textos: t2 });
+  const filas = [...l.html.matchAll(/<div class="pl-fila[^>]*>.*?<b>([^<]+)<\/b>.*?src="([^"]+)"/g)].map((m) => [m[1], m[2]]);
+  assert.deepEqual(filas, [['Foto cinco', 'https://x/5.jpg'], ['Foto tres', 'https://x/3.jpg']]);
+});
+
 test('el efecto sale del giro y se puede fijar por cliente o por variable de entorno', () => {
   assert.equal(efectoParaBrief(brief, {}), 'distorsion');
   assert.equal(efectoParaBrief({ negocio: { arquetipo: 'clinica' } }, {}), 'luz');
