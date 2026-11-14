@@ -28,15 +28,17 @@ export function inicialesDe(nombre = '') {
  * Portada de la opción H.
  * heroFoto: foto de fondo. tunel: fotos del túnel (se usan hasta 3). img(x, {cls, eager, extra}) es el de la plantilla.
  * info: datos cortos del negocio (ruedan en la tarjeta). lema/apoyo: texto grande sobre la banda de color.
- * logo: HTML del logo con contraste sobre fondo oscuro (o '').
+ * logo: HTML del logo con contraste sobre fondo oscuro (o ''). nombre: nombre del negocio (encabeza la tarjeta).
  * → {html, urls} (urls: fotos que quedaron en la portada)
  */
-export function escenaIndiceHTML({ heroFoto = null, tunel = [], img, kicker = '', titular = '', subtitulo = '', cta = '', info = [], lema = '', apoyo = '', logo = '' }) {
+export function escenaIndiceHTML({ heroFoto = null, tunel = [], img, kicker = '', titular = '', subtitulo = '', cta = '', info = [], lema = '', apoyo = '', logo = '', nombre = '' }) {
   const fotosT = tunel.filter((x) => x?.url && x.url !== heroFoto?.url).slice(0, MAX_FOTOS_TUNEL);
   const fondo = heroFoto ? `${img(heroFoto, { cls: 'ix-fondo rep-ok', eager: true, extra: ' fetchpriority="high" sizes="100vw"' })}<div class="ix-velo"></div>` : '';
   const datos = info.map((x) => String(x || '').trim()).filter(Boolean).slice(0, 4);
   const ficha = datos.length ? `<ul class="ix-ficha">${datos.map((x) => `<li>${esc(x)}</li>`).join('')}</ul>` : '';
-  const tarjeta = datos.length >= 2 ? `<div class="ix-tarjeta" aria-hidden="true">${kicker ? `<p class="ix-tj-k">${esc(kicker)}</p>` : '<span></span>'}<div class="ix-rueda"><ul>${datos.map((x) => `<li>${esc(x)}</li>`).join('')}</ul></div></div>` : '';
+  // La tarjeta sube dentro de un marco fijo (13-nov-2026: suelta colgaba hacia abajo y se encimaba con el logo flotante
+  // y el botón de WhatsApp). Arriba lleva el nombre del negocio, no el giro recortado.
+  const tarjeta = datos.length >= 2 ? `<div class="ix-tj-marco" aria-hidden="true"><div class="ix-tarjeta">${nombre ? `<p class="ix-tj-k">${esc(nombre)}</p>` : '<span></span>'}<div class="ix-rueda"><ul>${datos.map((x) => `<li>${esc(x)}</li>`).join('')}</ul></div></div></div>` : '';
   const figs = fotosT.map((x) => `<figure>${img(x, { cls: 'rep-ok', eager: true })}</figure>`).join('');
   const html = `<div class="ix-escena" id="inicio"><section class="hero h-indice${heroFoto ? '' : ' sin-fondo'}">${fondo}${logo ? `<div class="ix-logo">${logo}</div>` : ''}<div class="wrap ix-txt">${kicker ? `<p class="kicker">${esc(kicker)}</p>` : ''}<h1>${esc(titular)}</h1>${subtitulo ? `<p class="sub">${esc(subtitulo)}</p>` : ''}${cta}</div>${ficha}${tarjeta}<div class="ix-banda ix-b1" aria-hidden="true"></div><div class="ix-tunel">${figs}<figure class="ix-fin"></figure></div>${lema ? `<div class="ix-lema"><p class="ix-lm ix-lm-t">${esc(lema)}</p>${apoyo ? `<p class="ix-lm ix-lm-a">${esc(apoyo)}</p>` : ''}</div>` : ''}<div class="ix-banda ix-b2" aria-hidden="true"></div></section></div>`;
   return { html, urls: [heroFoto?.url, ...fotosT.map((x) => x.url)].filter(Boolean) };
@@ -75,7 +77,7 @@ body.l-indice .btn:hover{background:var(--fg);color:var(--bg)}
 .h-indice .btn:hover{background:#fff;color:#111}
 .ix-logo{display:none;position:absolute;left:50%;top:22px;transform:translateX(-50%)}.ix-logo .logo{height:56px}
 .ix-ficha{position:absolute;left:20px;right:20px;bottom:84px;list-style:none;display:grid;gap:4px;background:var(--bg);color:var(--fg);padding:16px 18px;text-align:left;font-weight:600;line-height:1.25}
-.ix-banda,.ix-lema,.ix-tunel,.ix-tarjeta{display:none}
+.ix-banda,.ix-lema,.ix-tunel,.ix-tj-marco{display:none}
 /* portada viva: la clase la pone el JS (nunca con "reducir movimiento") */
 .ix-escena.viva{height:520vh}
 .viva .h-indice{position:sticky;top:0;height:100svh;min-height:0;padding:0}
@@ -88,7 +90,8 @@ body.l-indice .btn:hover{background:var(--fg);color:var(--bg)}
 .ix-lm-t{font-family:var(--ft);font-size:clamp(30px,5.8vw,92px);line-height:1.02;max-width:17ch}.ix-lm-a{max-width:54ch;font-weight:600}
 /* en pantallas angostas los datos quedan fijos abajo (la tarjeta taparía el botón); la tarjeta que sube es de 900 px en adelante */
 .viva .ix-txt{padding-bottom:200px}
-.viva .ix-tarjeta{flex-direction:column;justify-content:space-between;gap:18px;position:absolute;background:var(--bg);color:var(--fg);padding:18px 20px;text-align:left;z-index:2;will-change:transform}
+.viva .ix-tj-marco{position:absolute;overflow:hidden;z-index:2}
+.ix-tarjeta{display:flex;flex-direction:column;justify-content:space-between;gap:14px;height:100%;background:var(--bg);color:var(--fg);padding:18px 20px;text-align:left;will-change:transform}
 .ix-tj-k{font-weight:600;max-width:22ch;line-height:1.2}
 .ix-rueda{height:2.3em;overflow:hidden;font-family:var(--ft);font-size:clamp(22px,2.3vw,34px);line-height:1.15;text-transform:uppercase;text-align:right}
 .ix-rueda ul{list-style:none;transition:transform .65s cubic-bezier(.16,1,.3,1)}
@@ -99,7 +102,7 @@ body.l-indice .btn:hover{background:var(--fg);color:var(--bg)}
 .ix-tunel .ix-fin{background:var(--banda)}
 /* índice lateral */
 .ix-nav{display:none}
-@media (min-width:900px){.ix-ficha{left:auto;right:96px;max-width:360px;bottom:28px}.viva .ix-ficha{display:none}.viva .ix-txt{padding-bottom:0}.viva .ix-tarjeta{display:flex;right:20px;width:min(30vw,400px);min-height:190px;bottom:160px}}
+@media (min-width:900px){.ix-ficha{left:auto;right:96px;max-width:360px;bottom:28px}.viva .ix-ficha{display:none}.viva .ix-txt{padding-bottom:0}.viva .ix-tj-marco{display:block;right:20px;width:min(30vw,400px);height:196px;bottom:160px}}
 @media (min-width:1100px){
 body.l-indice{--ixw:232px}
 body.l-indice .barra{display:none}.ix-logo{display:block}

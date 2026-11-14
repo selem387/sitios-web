@@ -306,7 +306,7 @@ function pagina(d) {
       const dp = diapos.find((x) => x?.titular) || null;
       const giro = giroCorto(neg.giro_texto) || '';
       const esc0 = escenaIndiceHTML({ heroFoto, tunel, img, kicker: [giro, neg.ciudad].filter(Boolean).join(' · '), titular: t.titular, subtitulo: t.subtitulo, cta: cta(), info: t.info || [],
-        lema: dp?.titular || d.nombre, apoyo: dp ? dp.apoyo : giro, logo: mat.logo ? logoHTML(mat.logo, '#141414', '#FFFFFF', { alt: d.nombre }) : '' });
+        lema: dp?.titular || d.nombre, apoyo: dp ? dp.apoyo : giro, logo: mat.logo ? logoHTML(mat.logo, '#141414', '#FFFFFF', { alt: d.nombre }) : '', nombre: d.nombre });
       esc0.urls.forEach((u) => enPortada.add(u));
       return esc0.html;
     },
