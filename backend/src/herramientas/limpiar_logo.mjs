@@ -1,5 +1,5 @@
-// Limpia el logo de un cliente que ya tiene propuestas: quita el contorno claro que dejó el fondo y los huecos cerrados
-// de las letras. Si el logo es de tinta oscura sin color queda como silueta negra transparente (14-nov-2026, Blanca).
+// Rehace el logo de un cliente que ya tiene propuestas desde el archivo que subió (cuando lo mandó como logo, sin otras
+// cosas en la imagen), con el quitado de fondo actual: sin contornos ni manchas; si es blanco y negro, silueta limpia.
 // Sobrescribe el archivo en su misma dirección (se corrige en todas sus páginas) y rehace sus versiones teñidas.
 // Uso dentro del contenedor api:  node src/herramientas/limpiar_logo.mjs "<nombre del negocio o id>" [--aplicar]
 import fs from 'node:fs/promises';
@@ -7,7 +7,7 @@ import path from 'node:path';
 import sharp from 'sharp';
 import { config } from '../config.js';
 import * as db from '../entrevista/db.js';
-import { procesarMateriales, siluetaSiMonocromo } from '../generador/materiales.js';
+import { procesarMateriales, fondoTransparente } from '../generador/materiales.js';
 import { DIR_PROPUESTAS } from '../generador/propuestas_html.js';
 
 const arg = process.argv[2];
@@ -21,11 +21,19 @@ const url = mat.logo?.url;
 if (!url?.startsWith(`${config.publicUrl}/chat/archivos/`)) { console.error('Sin logo propio en /chat/archivos/'); process.exit(1); }
 const DIR = path.join(config.dataDir, 'chat');
 const archivo = path.join(DIR, path.basename(new URL(url).pathname));
-const { data, info } = await sharp(await fs.readFile(archivo)).ensureAlpha().raw().toBuffer({ resolveWithObject: true });
-const mono = siluetaSiMonocromo(data);
-console.log(rows[0].nombre, '·', path.basename(archivo), mono ? '· silueta negra' : '· tiene color: no se cambia');
-if (!mono) process.exit(0);
-const limpio = await sharp(data, { raw: { width: info.width, height: info.height, channels: 4 } }).trim().png().toBuffer();
+const { rows: as } = await db.q(`SELECT url FROM assets WHERE entrevista_id=$1 AND tipo='logo' AND analisis->'logo'->>'url'=$2 ORDER BY id DESC LIMIT 1`, [e.id, url]);
+const original = as[0]?.url && path.join(DIR, path.basename(new URL(as[0].url).pathname));
+if (!original) { console.error('No encontré el archivo original del logo (solo se rehace si lo mandó como logo)'); process.exit(1); }
+let limpio = await fondoTransparente(await sharp(await fs.readFile(original)).rotate().png().toBuffer());
+// El análisis guardado dice si el logo es claro u oscuro y el sitio decide con eso si lo invierte o le pone placa:
+// una silueta blanca o negra se deja del mismo tono que dice el análisis.
+if (mat.logo.mono) {
+  const { data: d, info: i } = await sharp(limpio).ensureAlpha().raw().toBuffer({ resolveWithObject: true });
+  const v = mat.logo.tono === 'claro' ? 255 : 0;
+  for (let k = 0; k < d.length; k += 4) d[k] = d[k + 1] = d[k + 2] = v;
+  limpio = await sharp(d, { raw: { width: i.width, height: i.height, channels: 4 } }).png().toBuffer();
+}
+console.log(rows[0].nombre, '·', path.basename(original), '→', path.basename(archivo));
 // Versiones teñidas (logo-<hash>.png) que usan sus propuestas: se rehacen con el logo limpio y el mismo color.
 const prop = e.brief?.marca?.propuestas;
 const htmls = prop?.token ? await fs.readdir(path.join(DIR_PROPUESTAS, prop.token)).catch(() => []) : [];

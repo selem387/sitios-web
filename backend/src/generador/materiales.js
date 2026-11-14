@@ -156,25 +156,26 @@ async function guardar(img, prefijo, formato = 'jpg') {
  * 10-nov-2026 (caso El Rincón del Mayab: logo sobre negro con un filo de otro color en la esquina): el color de fondo es
  * el más común del borde (no solo el pixel de la esquina) y se borra solo lo conectado al borde (relleno por inundación),
  * así no se agujerean letras o detalles del mismo color dentro del logo. */
-// Logo de tinta oscura sobre fondo claro, sin color (blanco y negro): se vuelve silueta negra con transparencia según
-// lo oscuro de cada píxel. Así desaparecen también los huecos cerrados de las letras (dentro de la "o", la "B") y los
-// contornos claros que la inundación desde el borde no alcanza (14-nov-2026, caso Blanca Banderas).
-export function siluetaSiMonocromo(data) {
-  let n = 0, color = 0, oscuro = 0;
+const lum = (r, g, b) => 0.2126 * r + 0.7152 * g + 0.0722 * b;
+/** ¿Sin color? (menos del 2 % de los píxeles visibles con tono). */
+export function esMonocromo(data) {
+  let n = 0, color = 0;
   for (let k = 0; k < data.length; k += 4) {
     if (data[k + 3] < 128) continue;
-    const r = data[k], g = data[k + 1], b = data[k + 2], mx = Math.max(r, g, b), mn = Math.min(r, g, b);
-    n++; if (mx - mn > 40) color++; if (0.2126 * r + 0.7152 * g + 0.0722 * b < 90) oscuro++;
+    n++; if (Math.max(data[k], data[k + 1], data[k + 2]) - Math.min(data[k], data[k + 1], data[k + 2]) > 40) color++;
   }
-  if (!n || color / n > 0.15 || oscuro / n < 0.25) return false;
+  return n > 0 && color / n < 0.02;
+}
+/** Silueta por brillo respecto al fondo: tinta del tono contrario al fondo, opacidad según su distancia al fondo. */
+export function siluetaPorBrillo(data, W, H, Lbg) {
+  const claro = Lbg < 128, rango = claro ? 255 - Lbg : Lbg, tinta = claro ? 255 : 0;
   for (let k = 0; k < data.length; k += 4) {
-    if (Math.max(data[k], data[k + 1], data[k + 2]) - Math.min(data[k], data[k + 1], data[k + 2]) > 40) continue; // acentos de color se quedan
-    const L = 0.2126 * data[k] + 0.7152 * data[k + 1] + 0.0722 * data[k + 2];
-    const a = Math.max(0, Math.min(1, (225 - L) / 185));
-    data[k] = data[k + 1] = data[k + 2] = 0;
+    const d = Math.abs(lum(data[k], data[k + 1], data[k + 2]) - Lbg);
+    const a = Math.max(0, Math.min(1, (d - 0.06 * rango) / (0.8 * rango)));
+    data[k] = data[k + 1] = data[k + 2] = tinta;
     data[k + 3] = Math.round(data[k + 3] * a);
   }
-  return true;
+  return sharp(data, { raw: { width: W, height: H, channels: 4 } }).trim().png().toBuffer();
 }
 
 export async function fondoTransparente(buf) {
@@ -192,6 +193,10 @@ export async function fondoTransparente(buf) {
   }
   if (!mejor || mejor.n < borde.length * 0.3) return sharp(data, { raw: { width: W, height: H, channels: 4 } }).trim().png().toBuffer();
   const [r0, g0, b0] = [data[mejor.k], data[mejor.k + 1], data[mejor.k + 2]];
+  // Logo en blanco y negro (tinta clara sobre fondo oscuro o al revés): la tinta se separa por su brillo. Queda una
+  // silueta limpia del tono de la tinta (blanca o negra) con transparencia suave, sin contornos ni huecos cerrados de
+  // las letras. Después el sitio la tiñe o invierte según el fondo de la página (14-nov-2026, caso Blanca Banderas).
+  if (esMonocromo(data)) return siluetaPorBrillo(data, W, H, lum(r0, g0, b0));
   const dist = (k) => Math.abs(data[k] - r0) + Math.abs(data[k + 1] - g0) + Math.abs(data[k + 2] - b0);
   // 14-nov-2026 (caso Blanca Banderas): los píxeles del borde del dibujo mezclan tinta y fondo; antes solo bajaba su
   // opacidad y conservaban el color del fondo, y quedaba un contorno blanco alrededor de cada letra. Ahora se separa el
@@ -230,7 +235,6 @@ export async function fondoTransparente(buf) {
     }
     frente = sig;
   }
-  siluetaSiMonocromo(data);
   return sharp(data, { raw: { width: W, height: H, channels: 4 } }).trim().png().toBuffer();
 }
 
