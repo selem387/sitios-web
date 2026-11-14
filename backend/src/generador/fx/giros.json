@@ -1,0 +1,441 @@
+{
+  "version": 1,
+  "nota": "Catálogo de giros para la plantilla de movimiento (GSAP). Todo es texto de ejemplo: en el generador el contenido real sale del brief del cliente; aquí solo viven la paleta por defecto y la estructura de textos de cada giro.",
+  "giros": [
+    {
+      "id": "familia", "nombre": "Abogados de familia y divorcio", "grupo": "alto",
+      "paleta": { "fondo": "#f7f0e8", "tinta": "#2b1b20", "acento": "#9b2347", "banda": "#3a1520" },
+      "marca": "Herrera & Canché", "kicker": "Derecho familiar · Mérida, Yucatán",
+      "titular": "Tu familia no tiene que enfrentarlo sola",
+      "subtitulo": "Divorcio, pensión alimenticia y custodia con trato humano y estrategia firme.",
+      "cta": "Consulta gratuita y confidencial",
+      "bandas": ["Tu familia es primero ✦ Tu tranquilidad también", "Divorcio ✦ Custodia ✦ Pensión ✦ Convivencia ✦ Sucesiones"],
+      "mision": "Acompañamos a las familias de Yucatán en los momentos más difíciles. Con empatía, claridad y estrategia, defendemos lo que más importa: tus hijos, tu patrimonio y tu tranquilidad.",
+      "equipoTitulo": "Quiénes te acompañan",
+      "perfiles": [
+        { "n": "Lic. Ximena Herrera", "r": "Socia fundadora · Derecho familiar", "b": "Más de una década llevando divorcios y custodias con un enfoque que prioriza el bienestar de los hijos." },
+        { "n": "Lic. Daniela Canché", "r": "Socia · Pensión y convivencia", "b": "Especialista en pensiones alimenticias y convenios de convivencia que se cumplen." }
+      ],
+      "servicios": [
+        { "t": "Divorcio", "d": "Mutuo acuerdo o contencioso, con un plan claro desde el primer día.", "p": ["Convenio y división de bienes", "Divorcio sin causa", "Medidas provisionales"] },
+        { "t": "Pensión alimenticia", "d": "Fijación, aumento, reducción y cobro de pensiones atrasadas.", "p": ["Cálculo justo", "Embargo por incumplimiento", "Modificación de monto"] },
+        { "t": "Custodia y convivencia", "d": "Esquemas que cuidan a los niños y se pueden cumplir en la vida real.", "p": ["Guarda y custodia", "Régimen de visitas", "Restitución de menores"] },
+        { "t": "Sucesiones y adopción", "d": "Trámites que nadie quiere hacer solo, explicados paso a paso.", "p": ["Testamentos", "Juicios sucesorios", "Adopción"] }
+      ],
+      "pasos": [
+        { "t": "Consulta gratuita y confidencial", "d": "Platicamos tu situación sin compromiso y sin juicios." },
+        { "t": "Revisión de tu caso", "d": "Analizamos documentos y te explicamos opciones y tiempos." },
+        { "t": "Equipo a tu lado", "d": "Llevamos el proceso completo y te mantenemos informada." }
+      ],
+      "roles": ["Madre de familia", "Cliente anónimo", "Padre de dos hijos", "Cliente anterior"],
+      "form": { "label": "Cuéntanos tu caso", "boton": "Enviar mi caso" },
+      "cifras": ["años de experiencia", "familias acompañadas", "horas para responderte"]
+    },
+    {
+      "id": "accidentes", "nombre": "Abogados de accidentes", "grupo": "alto",
+      "paleta": { "fondo": "#f4f1ec", "tinta": "#1c1f26", "acento": "#c2410c", "banda": "#1c2433" },
+      "marca": "Ek Balam Abogados", "kicker": "Accidentes y lesiones · Yucatán",
+      "titular": "Tras un accidente, tu defensa no puede esperar",
+      "subtitulo": "Reclamamos a aseguradoras y responsables lo que te corresponde por lesiones y daños.",
+      "cta": "Revisa tu caso sin costo",
+      "bandas": ["Accidente de tránsito ✦ Lesiones ✦ Seguros", "Hablamos con la aseguradora por ti"],
+      "mision": "Después de un accidente lo último que necesitas es pelear con una aseguradora. Nos encargamos del trámite y de la reclamación para que te concentres en recuperarte.",
+      "equipoTitulo": "Tu equipo legal",
+      "perfiles": [
+        { "n": "Lic. Mauricio Ek", "r": "Socio · Reclamaciones a aseguradoras", "b": "Lleva reclamaciones por lesiones y daños desde la primera denuncia hasta el pago." },
+        { "n": "Lic. Paola Balam", "r": "Socia · Lesiones personales", "b": "Reúne peritajes y dictámenes para sustentar cada indemnización." }
+      ],
+      "servicios": [
+        { "t": "Accidentes de tránsito", "d": "Deslinde de responsabilidad y reclamación de daños.", "p": ["Choques y atropellos", "Daños al vehículo", "Reclamo al seguro"] },
+        { "t": "Lesiones personales", "d": "Indemnización por gastos médicos, incapacidad y secuelas.", "p": ["Gastos médicos", "Incapacidad", "Daño moral"] },
+        { "t": "Accidentes en transporte", "d": "Camiones, transporte público y plataformas.", "p": ["Transporte de pasajeros", "Plataformas", "Motocicletas"] },
+        { "t": "Muerte por accidente", "d": "Acompañamiento a familias en la reclamación y los trámites.", "p": ["Indemnización", "Trámites sucesorios", "Acompañamiento"] }
+      ],
+      "pasos": [
+        { "t": "Cuéntanos qué pasó", "d": "Consulta gratuita y confidencial, por teléfono o en persona." },
+        { "t": "Reunimos pruebas", "d": "Peritajes, partes médicos y documentos que respaldan tu caso." },
+        { "t": "Reclamamos por ti", "d": "Negociamos con la aseguradora o llevamos el juicio." }
+      ],
+      "roles": ["Víctima de accidente", "Cliente anónimo", "Motociclista", "Cliente anterior"],
+      "form": { "label": "Cuéntanos qué pasó", "boton": "Enviar mi caso" },
+      "cifras": ["años de experiencia", "casos atendidos", "horas para responderte"]
+    },
+    {
+      "id": "laboral", "nombre": "Abogados laborales (despido injusto)", "grupo": "alto",
+      "paleta": { "fondo": "#f3f1ea", "tinta": "#1f2a24", "acento": "#1f6f4a", "banda": "#16352a" },
+      "marca": "Pech y Asociados", "kicker": "Derecho laboral · Mérida",
+      "titular": "Si te despidieron, tus derechos siguen en pie",
+      "subtitulo": "Calculamos tu finiquito o indemnización y defendemos tu caso ante el tribunal laboral.",
+      "cta": "Calcula tu liquidación gratis",
+      "bandas": ["Despido injusto ✦ Finiquito ✦ Indemnización", "Conoce tus derechos antes de firmar"],
+      "mision": "Muchos trabajadores firman un finiquito sin saber qué les corresponde. Revisamos tu caso antes de que firmes y peleamos por el pago completo de lo que te deben.",
+      "equipoTitulo": "Quiénes te defienden",
+      "perfiles": [
+        { "n": "Lic. Rodrigo Pech", "r": "Socio · Juicios laborales", "b": "Representa a trabajadores en conciliación y juicio." },
+        { "n": "Lic. Karla Canul", "r": "Socia · Seguridad social", "b": "Atiende pensiones, incapacidades y créditos de vivienda." }
+      ],
+      "servicios": [
+        { "t": "Despido injusto", "d": "Reinstalación o indemnización constitucional.", "p": ["Cálculo de liquidación", "Demanda laboral", "Conciliación"] },
+        { "t": "Finiquito y prestaciones", "d": "Aguinaldo, vacaciones, prima y horas extra.", "p": ["Revisión de finiquito", "Horas extra", "Prima vacacional"] },
+        { "t": "Acoso y discriminación", "d": "Denuncia y reparación en el ámbito laboral.", "p": ["Acoso laboral", "Discriminación", "Maternidad"] },
+        { "t": "Seguridad social", "d": "Incapacidades, pensiones y trámites ante el IMSS.", "p": ["Riesgos de trabajo", "Pensiones", "Semanas cotizadas"] }
+      ],
+      "pasos": [
+        { "t": "Revisa tu situación", "d": "Consulta gratuita para saber si hubo despido injusto." },
+        { "t": "Calculamos lo que te toca", "d": "Te damos un estimado claro de liquidación o indemnización." },
+        { "t": "Defendemos tu caso", "d": "En conciliación o en juicio, con seguimiento puntual." }
+      ],
+      "roles": ["Trabajadora despedida", "Cliente anónimo", "Extrabajador", "Cliente anterior"],
+      "form": { "label": "Cuéntanos cómo fue tu despido", "boton": "Enviar mi caso" },
+      "cifras": ["años de experiencia", "trabajadores defendidos", "horas para responderte"]
+    },
+    {
+      "id": "negligencia", "nombre": "Negligencia médica", "grupo": "alto",
+      "paleta": { "fondo": "#f2f5f7", "tinta": "#14232e", "acento": "#0f6a8b", "banda": "#0f2f40" },
+      "marca": "Canché Médico-Legal", "kicker": "Responsabilidad médica · Yucatán",
+      "titular": "Cuando la atención médica falla, mereces respuestas",
+      "subtitulo": "Analizamos tu expediente con peritos médicos y reclamamos la reparación del daño.",
+      "cta": "Revisa tu expediente sin costo",
+      "bandas": ["Negligencia médica ✦ Errores de diagnóstico ✦ Cirugías", "Peritos médicos de tu lado"],
+      "mision": "Un error médico no solo afecta la salud: afecta a toda la familia. Revisamos con especialistas si hubo negligencia y te acompañamos en cada etapa de la reclamación.",
+      "equipoTitulo": "Equipo médico-legal",
+      "perfiles": [
+        { "n": "Lic. Andrea Canché", "r": "Socia · Responsabilidad médica", "b": "Coordina el análisis de expedientes con médicos peritos." },
+        { "n": "Lic. Iván Tuz", "r": "Socio · Litigio civil", "b": "Lleva reclamaciones contra hospitales y aseguradoras." }
+      ],
+      "servicios": [
+        { "t": "Errores de diagnóstico", "d": "Diagnósticos tardíos o equivocados.", "p": ["Revisión de expediente", "Peritaje médico", "Reclamación"] },
+        { "t": "Errores quirúrgicos", "d": "Complicaciones por mala práctica en quirófano.", "p": ["Cirugías", "Anestesia", "Infecciones"] },
+        { "t": "Partos y neonatales", "d": "Lesiones en el parto o en el recién nacido.", "p": ["Cesáreas", "Lesiones del bebé", "Atención prenatal"] },
+        { "t": "Reclamación a hospitales", "d": "Procedimiento ante la institución y su aseguradora.", "p": ["Queja", "Conciliación", "Juicio civil"] }
+      ],
+      "pasos": [
+        { "t": "Cuéntanos qué ocurrió", "d": "Consulta gratuita y confidencial." },
+        { "t": "Análisis con peritos", "d": "Un médico revisa si hubo desviación de la buena práctica." },
+        { "t": "Reclamamos la reparación", "d": "Negociación o juicio, con información clara en cada paso." }
+      ],
+      "roles": ["Paciente", "Familiar de paciente", "Cliente anónimo", "Cliente anterior"],
+      "form": { "label": "Cuéntanos qué ocurrió", "boton": "Enviar mi caso" },
+      "cifras": ["años de experiencia", "expedientes analizados", "horas para responderte"]
+    },
+    {
+      "id": "psicologia", "nombre": "Psicólogos y terapia de pareja", "grupo": "alto",
+      "paleta": { "fondo": "#f4f3ec", "tinta": "#26302a", "acento": "#5d7f65", "banda": "#2f4036" },
+      "marca": "Casa Ceiba Terapia", "kicker": "Psicoterapia · Mérida y en línea",
+      "titular": "Hablar con alguien puede cambiar cómo vives esto",
+      "subtitulo": "Terapia individual, de pareja y familiar en un espacio seguro y sin juicios.",
+      "cta": "Agenda tu primera sesión",
+      "bandas": ["Terapia individual ✦ De pareja ✦ Familiar", "Un espacio seguro para ti"],
+      "mision": "No tienes que poder con todo tú sola o solo. Te escuchamos sin prisa, sin etiquetas y a tu ritmo, para que encuentres herramientas que sí funcionan en tu vida diaria.",
+      "equipoTitulo": "Quiénes te escuchan",
+      "perfiles": [
+        { "n": "Mtra. Valeria Ceh", "r": "Psicóloga clínica · Terapia individual", "b": "Acompaña procesos de ansiedad, duelo y cambios de vida." },
+        { "n": "Mtro. Emilio Cetina", "r": "Terapeuta de pareja y familia", "b": "Trabaja la comunicación y los acuerdos en pareja y familia." }
+      ],
+      "servicios": [
+        { "t": "Terapia individual", "d": "Un espacio propio para entenderte y avanzar.", "p": ["Ansiedad y estrés", "Autoestima", "Cambios de vida"] },
+        { "t": "Terapia de pareja", "d": "Mejorar la comunicación o separarse con respeto.", "p": ["Conflictos", "Infidelidad", "Decisiones importantes"] },
+        { "t": "Terapia familiar", "d": "Acuerdos y vínculos más sanos en casa.", "p": ["Adolescentes", "Crianza", "Duelo familiar"] },
+        { "t": "Sesiones en línea", "d": "La misma atención desde donde estés.", "p": ["Videollamada", "Horarios flexibles", "Confidencial"] }
+      ],
+      "pasos": [
+        { "t": "Escríbenos", "d": "Cuéntanos brevemente qué te gustaría trabajar." },
+        { "t": "Primera sesión", "d": "Nos conocemos y definimos objetivos juntos." },
+        { "t": "Avanzas a tu ritmo", "d": "Sesiones semanales con seguimiento de tu proceso." }
+      ],
+      "roles": ["Paciente", "Pareja en terapia", "Paciente anónimo", "Paciente anterior"],
+      "form": { "label": "¿Qué te gustaría trabajar?", "boton": "Solicitar mi sesión" },
+      "cifras": ["años de práctica", "personas acompañadas", "horas para responderte"]
+    },
+    {
+      "id": "adicciones", "nombre": "Clínicas de adicciones y rehabilitación", "grupo": "alto",
+      "paleta": { "fondo": "#f6f3ee", "tinta": "#232a3a", "acento": "#4b5fae", "banda": "#20284a" },
+      "marca": "Nuevo Amanecer", "kicker": "Rehabilitación · Yucatán",
+      "titular": "Pedir ayuda es el primer paso para recuperar tu vida",
+      "subtitulo": "Programas de tratamiento con acompañamiento profesional y de la familia.",
+      "cta": "Habla con nosotros hoy",
+      "bandas": ["Tratamiento ✦ Acompañamiento ✦ Familia", "Confidencial y sin juicios"],
+      "mision": "La recuperación es un camino, y nadie lo recorre solo. Combinamos atención médica, terapia y apoyo a la familia para sostener el cambio mucho después del tratamiento.",
+      "equipoTitulo": "Equipo clínico",
+      "perfiles": [
+        { "n": "Dra. Luz Mena", "r": "Médica · Dirección clínica", "b": "Coordina la desintoxicación y el seguimiento médico." },
+        { "n": "Mtro. Julián Dzul", "r": "Psicólogo · Terapia de adicciones", "b": "Acompaña a pacientes y familias en cada etapa." }
+      ],
+      "servicios": [
+        { "t": "Valoración inicial", "d": "Evaluación médica y psicológica para definir el plan.", "p": ["Entrevista", "Evaluación médica", "Plan personalizado"] },
+        { "t": "Tratamiento residencial", "d": "Atención continua en un entorno seguro.", "p": ["Desintoxicación", "Terapia individual", "Terapia grupal"] },
+        { "t": "Programa ambulatorio", "d": "Tratamiento sin dejar tu vida diaria.", "p": ["Sesiones semanales", "Seguimiento", "Prevención de recaídas"] },
+        { "t": "Apoyo a la familia", "d": "Orientación para quienes acompañan.", "p": ["Talleres", "Terapia familiar", "Guía de apoyo"] }
+      ],
+      "pasos": [
+        { "t": "Primer contacto", "d": "Una llamada o mensaje confidencial, sin compromiso." },
+        { "t": "Valoración", "d": "Definimos el nivel de atención que necesita la persona." },
+        { "t": "Tratamiento y seguimiento", "d": "Acompañamos el proceso y la vida después." }
+      ],
+      "roles": ["Familiar", "Persona en recuperación", "Cliente anónimo", "Familiar anterior"],
+      "form": { "label": "Cuéntanos la situación", "boton": "Enviar mensaje confidencial" },
+      "cifras": ["años de experiencia", "familias acompañadas", "horas para responderte"]
+    },
+    {
+      "id": "migracion", "nombre": "Despachos de migración y asilo", "grupo": "alto",
+      "paleta": { "fondo": "#f6f2ea", "tinta": "#1f2733", "acento": "#b8892b", "banda": "#1e2d3d" },
+      "marca": "Puente Migratorio", "kicker": "Asesoría migratoria · Mérida",
+      "titular": "Tu trámite migratorio, explicado con claridad",
+      "subtitulo": "Residencias, visas, regularización y asilo con seguimiento paso a paso.",
+      "cta": "Consulta tu caso",
+      "bandas": ["Residencia ✦ Visas ✦ Regularización ✦ Asilo", "Trámites claros, sin sorpresas"],
+      "mision": "Un error en un trámite migratorio puede costar meses. Te orientamos con información clara, revisamos tu documentación y damos seguimiento hasta la resolución.",
+      "equipoTitulo": "Quiénes te asesoran",
+      "perfiles": [
+        { "n": "Lic. Sofía Ramírez", "r": "Socia · Residencias y visas", "b": "Atiende trámites de residencia y cambios de condición de estancia." },
+        { "n": "Lic. Tomás Be", "r": "Socio · Regularización y asilo", "b": "Asesora procedimientos de regularización y protección." }
+      ],
+      "servicios": [
+        { "t": "Residencia", "d": "Temporal y permanente por distintas vías.", "p": ["Por familia", "Por trabajo", "Renovaciones"] },
+        { "t": "Visas y permisos", "d": "Visas de trabajo, estudio y visitante.", "p": ["Permiso de trabajo", "Estancia", "Cambio de condición"] },
+        { "t": "Regularización", "d": "Solución a situaciones migratorias irregulares.", "p": ["Revisión de caso", "Documentación", "Seguimiento"] },
+        { "t": "Asilo y protección", "d": "Orientación en solicitudes de refugio.", "p": ["Solicitud", "Pruebas", "Apelación"] }
+      ],
+      "pasos": [
+        { "t": "Revisamos tu situación", "d": "Consulta inicial para ubicar la vía correcta." },
+        { "t": "Armamos tu expediente", "d": "Lista clara de documentos y tiempos." },
+        { "t": "Damos seguimiento", "d": "Presentamos el trámite y te avisamos cada avance." }
+      ],
+      "roles": ["Residente", "Familia migrante", "Cliente anónimo", "Cliente anterior"],
+      "form": { "label": "Cuéntanos tu situación migratoria", "boton": "Enviar mi caso" },
+      "cifras": ["años de experiencia", "trámites gestionados", "horas para responderte"]
+    },
+    {
+      "id": "duelo", "nombre": "Duelo y acompañamiento tanatológico", "grupo": "alto",
+      "paleta": { "fondo": "#f2f1f4", "tinta": "#272634", "acento": "#7a6aa6", "banda": "#2d2a45" },
+      "marca": "Luz de Ceiba", "kicker": "Tanatología · Mérida y en línea",
+      "titular": "No tienes que atravesar esta pérdida a solas",
+      "subtitulo": "Acompañamiento individual y en grupo para duelo, enfermedad y despedidas.",
+      "cta": "Conversemos",
+      "bandas": ["Duelo ✦ Pérdida ✦ Acompañamiento", "A tu ritmo, sin prisa"],
+      "mision": "El duelo no se supera: se aprende a llevar. Te acompañamos con calidez para que puedas honrar lo vivido y encontrar de nuevo un lugar para ti.",
+      "equipoTitulo": "Quiénes te acompañan",
+      "perfiles": [
+        { "n": "Mtra. Rosario Cauich", "r": "Tanatóloga", "b": "Acompaña duelos por fallecimiento y enfermedad." },
+        { "n": "Lic. Mateo Uc", "r": "Psicólogo · Grupos de apoyo", "b": "Facilita grupos de apoyo y talleres." }
+      ],
+      "servicios": [
+        { "t": "Acompañamiento individual", "d": "Sesiones privadas para procesar tu pérdida.", "p": ["Duelo reciente", "Duelo complicado", "Aniversarios"] },
+        { "t": "Grupos de apoyo", "d": "Compartir con quienes entienden.", "p": ["Grupo semanal", "Talleres", "Sesiones en línea"] },
+        { "t": "Enfermedad y despedida", "d": "Apoyo a pacientes y familias.", "p": ["Pacientes", "Cuidadores", "Familias"] },
+        { "t": "Duelo infantil", "d": "Cómo hablar de la muerte con niños.", "p": ["Orientación", "Terapia de juego", "Escuelas"] }
+      ],
+      "pasos": [
+        { "t": "Escríbenos", "d": "Cuéntanos con tus palabras lo que estás viviendo." },
+        { "t": "Primera conversación", "d": "Nos conocemos sin presión." },
+        { "t": "Caminamos contigo", "d": "Sesiones al ritmo que necesites." }
+      ],
+      "roles": ["Hija", "Cliente anónimo", "Viudo", "Participante de grupo"],
+      "form": { "label": "¿Qué te gustaría compartir?", "boton": "Enviar mensaje" },
+      "cifras": ["años de acompañamiento", "personas acompañadas", "horas para responderte"]
+    },
+    {
+      "id": "fraude", "nombre": "Fraude y extorsión (recuperación de patrimonio)", "grupo": "alto",
+      "paleta": { "fondo": "#f3f3f1", "tinta": "#181b1f", "acento": "#b4232a", "banda": "#1a2026" },
+      "marca": "Escudo Patrimonial", "kicker": "Defensa patrimonial · Yucatán",
+      "titular": "Si te defraudaron, actuar a tiempo cambia el resultado",
+      "subtitulo": "Denuncia, medidas cautelares y recuperación de bienes ante fraude o extorsión.",
+      "cta": "Cuéntanos el caso en confianza",
+      "bandas": ["Fraude ✦ Extorsión ✦ Abuso de confianza", "Cada día cuenta"],
+      "mision": "Un fraude deja vergüenza y miedo. Nosotros dejamos eso de lado y vamos a lo que importa: preservar pruebas, denunciar bien y buscar que recuperes lo que es tuyo.",
+      "equipoTitulo": "Quiénes te defienden",
+      "perfiles": [
+        { "n": "Lic. Gabriela Mex", "r": "Socia · Penal patrimonial", "b": "Lleva denuncias y querellas por fraude y abuso de confianza." },
+        { "n": "Lic. Fernando Chan", "r": "Socio · Recuperación civil", "b": "Busca asegurar bienes y recuperar el patrimonio." }
+      ],
+      "servicios": [
+        { "t": "Fraude", "d": "Inversiones falsas, ventas y estafas.", "p": ["Denuncia penal", "Preservar pruebas", "Seguimiento"] },
+        { "t": "Extorsión", "d": "Orientación inmediata y protección.", "p": ["Denuncia", "Medidas de protección", "Acompañamiento"] },
+        { "t": "Abuso de confianza", "d": "Socios, empleados o administradores.", "p": ["Querella", "Auditoría", "Reparación"] },
+        { "t": "Recuperación de bienes", "d": "Medidas para asegurar y recuperar activos.", "p": ["Embargo", "Medidas cautelares", "Juicio civil"] }
+      ],
+      "pasos": [
+        { "t": "Cuéntanos en confianza", "d": "Consulta inicial confidencial, sin juicios." },
+        { "t": "Preservamos pruebas", "d": "Ordenamos documentos y evidencias." },
+        { "t": "Actuamos", "d": "Denuncia, medidas y recuperación." }
+      ],
+      "roles": ["Víctima de fraude", "Empresario", "Cliente anónimo", "Cliente anterior"],
+      "form": { "label": "Cuéntanos qué ocurrió", "boton": "Enviar mi caso" },
+      "cifras": ["años de experiencia", "casos atendidos", "horas para responderte"]
+    },
+    {
+      "id": "dental", "nombre": "Clínicas dentales (rehabilitación)", "grupo": "medio",
+      "paleta": { "fondo": "#f3f9f9", "tinta": "#0f2a33", "acento": "#0e8a9a", "banda": "#0b3a46" },
+      "marca": "Clínica Dental Ceiba", "kicker": "Odontología · Mérida",
+      "titular": "Recupera tu sonrisa sin miedo al dentista",
+      "subtitulo": "Rehabilitación, implantes y estética dental con atención amable y sin dolor innecesario.",
+      "cta": "Agenda tu valoración",
+      "bandas": ["Implantes ✦ Ortodoncia ✦ Estética dental", "Valoración sin compromiso"],
+      "mision": "Una sonrisa sana cambia cómo comes, hablas y te muestras. Te explicamos cada tratamiento con claridad, sus costos y sus tiempos, para que decidas con tranquilidad.",
+      "equipoTitulo": "Tu equipo dental",
+      "perfiles": [
+        { "n": "Dra. Mariana Cetina", "r": "Cirujana dentista · Rehabilitación", "b": "Planea tratamientos completos de rehabilitación oral." },
+        { "n": "Dr. Alan Pool", "r": "Especialista en implantes", "b": "Coloca implantes con planeación digital." }
+      ],
+      "servicios": [
+        { "t": "Implantes dentales", "d": "Reemplazo fijo de piezas faltantes.", "p": ["Planeación digital", "Una pieza o arcada", "Seguimiento"] },
+        { "t": "Ortodoncia", "d": "Alineación con brackets o alineadores.", "p": ["Brackets", "Alineadores", "Retenedores"] },
+        { "t": "Estética dental", "d": "Blanqueamiento, carillas y diseño de sonrisa.", "p": ["Blanqueamiento", "Carillas", "Diseño de sonrisa"] },
+        { "t": "Odontología general", "d": "Limpiezas, resinas y prevención.", "p": ["Limpieza", "Resinas", "Revisión anual"] }
+      ],
+      "pasos": [
+        { "t": "Agenda tu valoración", "d": "Elige día y hora por WhatsApp." },
+        { "t": "Plan de tratamiento", "d": "Te presentamos opciones, costos y tiempos." },
+        { "t": "Tratamiento y seguimiento", "d": "Cuidamos tu comodidad en cada visita." }
+      ],
+      "roles": ["Paciente", "Paciente de ortodoncia", "Paciente anónimo", "Paciente anterior"],
+      "form": { "label": "¿Qué te gustaría mejorar de tu sonrisa?", "boton": "Solicitar valoración" },
+      "cifras": ["años de experiencia", "sonrisas atendidas", "horas para responderte"]
+    },
+    {
+      "id": "fertilidad", "nombre": "Clínicas de fertilidad", "grupo": "medio",
+      "paleta": { "fondo": "#fbf3f1", "tinta": "#35222a", "acento": "#c76b78", "banda": "#4a2a35" },
+      "marca": "Vida Naciente", "kicker": "Medicina reproductiva · Mérida",
+      "titular": "El camino hacia tu bebé merece acompañamiento",
+      "subtitulo": "Diagnóstico, tratamientos de baja y alta complejidad y apoyo emocional.",
+      "cta": "Agenda tu primera consulta",
+      "bandas": ["Diagnóstico ✦ Inseminación ✦ Fecundación in vitro", "Acompañamiento paso a paso"],
+      "mision": "Buscar un embarazo puede ser emocionalmente agotador. Te damos información honesta sobre tus opciones y un equipo que te acompaña con calidez en cada decisión.",
+      "equipoTitulo": "Equipo médico",
+      "perfiles": [
+        { "n": "Dra. Elena Pat", "r": "Ginecóloga · Biología de la reproducción", "b": "Diseña planes individuales según cada diagnóstico." },
+        { "n": "Dr. Héctor Solís", "r": "Especialista en laboratorio de embriología", "b": "Coordina el laboratorio y los procedimientos." }
+      ],
+      "servicios": [
+        { "t": "Estudio de fertilidad", "d": "Evaluación completa de la pareja.", "p": ["Perfil hormonal", "Estudio masculino", "Ultrasonido"] },
+        { "t": "Inseminación artificial", "d": "Tratamiento de baja complejidad.", "p": ["Estimulación", "Seguimiento", "Procedimiento"] },
+        { "t": "Fecundación in vitro", "d": "Alta complejidad con laboratorio propio.", "p": ["Ciclo completo", "Congelación", "Transferencia"] },
+        { "t": "Apoyo emocional", "d": "Acompañamiento psicológico durante el proceso.", "p": ["Sesiones", "Parejas", "Grupos"] }
+      ],
+      "pasos": [
+        { "t": "Primera consulta", "d": "Escuchamos tu historia y revisamos estudios previos." },
+        { "t": "Plan personalizado", "d": "Opciones, tiempos y costos claros." },
+        { "t": "Acompañamiento", "d": "Seguimiento cercano durante todo el tratamiento." }
+      ],
+      "roles": ["Paciente", "Pareja", "Paciente anónima", "Paciente anterior"],
+      "form": { "label": "Cuéntanos tu historia", "boton": "Solicitar consulta" },
+      "cifras": ["años de experiencia", "parejas acompañadas", "horas para responderte"]
+    },
+    {
+      "id": "cirugia", "nombre": "Cirugía estética y bariátrica", "grupo": "medio",
+      "paleta": { "fondo": "#f7f3ef", "tinta": "#2b2522", "acento": "#a8765a", "banda": "#3a2c27" },
+      "marca": "Clínica Kukulcán Estética", "kicker": "Cirugía plástica y bariátrica · Mérida",
+      "titular": "Un cambio que se siente tuyo, con seguridad médica",
+      "subtitulo": "Procedimientos estéticos y bariátricos con valoración honesta y seguimiento.",
+      "cta": "Solicita tu valoración",
+      "bandas": ["Cirugía estética ✦ Bariátrica ✦ Postoperatorio", "Valoración honesta"],
+      "mision": "Cada cuerpo y cada objetivo es distinto. Valoramos contigo qué es posible, qué conviene y qué riesgos existen, para que decidas con información completa.",
+      "equipoTitulo": "Equipo médico",
+      "perfiles": [
+        { "n": "Dr. Ricardo Kú", "r": "Cirujano plástico certificado", "b": "Realiza procedimientos estéticos y reconstructivos." },
+        { "n": "Dra. Natalia Ake", "r": "Cirugía bariátrica", "b": "Acompaña pacientes antes y después de la cirugía." }
+      ],
+      "servicios": [
+        { "t": "Cirugía estética corporal", "d": "Contorno y reconstrucción.", "p": ["Abdomen", "Mamoplastia", "Lipoescultura"] },
+        { "t": "Cirugía facial", "d": "Rejuvenecimiento natural.", "p": ["Párpados", "Rinoplastia", "Lifting"] },
+        { "t": "Cirugía bariátrica", "d": "Manga, bypass y seguimiento nutricional.", "p": ["Valoración", "Cirugía", "Nutrición"] },
+        { "t": "Postoperatorio", "d": "Cuidados y revisiones.", "p": ["Revisiones", "Terapias", "Cuidados"] }
+      ],
+      "pasos": [
+        { "t": "Valoración", "d": "Revisamos tu objetivo y tu salud." },
+        { "t": "Plan quirúrgico", "d": "Te explicamos riesgos, tiempos y costos." },
+        { "t": "Cirugía y seguimiento", "d": "Acompañamos tu recuperación." }
+      ],
+      "roles": ["Paciente", "Paciente bariátrica", "Paciente anónima", "Paciente anterior"],
+      "form": { "label": "¿Qué te gustaría cambiar?", "boton": "Solicitar valoración" },
+      "cifras": ["años de experiencia", "pacientes atendidos", "horas para responderte"]
+    },
+    {
+      "id": "contadores", "nombre": "Contadores y defensa fiscal (SAT)", "grupo": "medio",
+      "paleta": { "fondo": "#f4f6f8", "tinta": "#14263d", "acento": "#1d5fa8", "banda": "#14263d" },
+      "marca": "Cuenta Clara", "kicker": "Contabilidad y defensa fiscal · Mérida",
+      "titular": "Si el SAT te escribió, no lo enfrentes solo",
+      "subtitulo": "Auditorías, requerimientos y contabilidad ordenada para personas y empresas.",
+      "cta": "Revisa tu situación fiscal",
+      "bandas": ["Auditorías ✦ Requerimientos ✦ Declaraciones", "Contabilidad clara"],
+      "mision": "Un requerimiento fiscal da miedo cuando no sabes qué responder. Revisamos tu situación, preparamos tu defensa y dejamos tu contabilidad en orden.",
+      "equipoTitulo": "Tu equipo fiscal",
+      "perfiles": [
+        { "n": "C.P. Laura Tun", "r": "Contadora pública · Contabilidad", "b": "Lleva contabilidad y declaraciones de personas y empresas." },
+        { "n": "Lic. Oscar Pat", "r": "Abogado fiscalista", "b": "Defiende ante auditorías y resoluciones del SAT." }
+      ],
+      "servicios": [
+        { "t": "Defensa fiscal", "d": "Auditorías, requerimientos y recursos.", "p": ["Respuesta a requerimientos", "Recurso de revocación", "Juicio de nulidad"] },
+        { "t": "Contabilidad mensual", "d": "Orden y cumplimiento al día.", "p": ["Declaraciones", "Facturación", "Estados financieros"] },
+        { "t": "Personas físicas", "d": "Régimen, anual y devoluciones.", "p": ["Declaración anual", "Devoluciones", "Régimen fiscal"] },
+        { "t": "Nómina y seguridad social", "d": "Cumplimiento ante IMSS e Infonavit.", "p": ["Nómina", "Altas y bajas", "Cuotas"] }
+      ],
+      "pasos": [
+        { "t": "Revisamos tu situación", "d": "Consulta inicial sin compromiso." },
+        { "t": "Diagnóstico fiscal", "d": "Te decimos riesgos y opciones." },
+        { "t": "Ejecutamos", "d": "Defensa o contabilidad, con reportes claros." }
+      ],
+      "roles": ["Empresario", "Persona física", "Cliente anónimo", "Cliente anterior"],
+      "form": { "label": "Cuéntanos tu situación fiscal", "boton": "Enviar consulta" },
+      "cifras": ["años de experiencia", "clientes atendidos", "horas para responderte"]
+    },
+    {
+      "id": "deuda", "nombre": "Asesores de deuda y reestructura de créditos", "grupo": "medio",
+      "paleta": { "fondo": "#f6f4ec", "tinta": "#26301d", "acento": "#5a7d2a", "banda": "#243a22" },
+      "marca": "Ruta Libre", "kicker": "Asesoría de deudas · Mérida",
+      "titular": "Salir de las deudas empieza con un plan realista",
+      "subtitulo": "Reestructura de créditos, negociación con acreedores y orden financiero.",
+      "cta": "Revisa tu caso",
+      "bandas": ["Deudas ✦ Reestructura ✦ Negociación", "Un plan que sí puedes cumplir"],
+      "mision": "Las deudas pesan, pero tienen salida. Analizamos tus ingresos y créditos, negociamos con acreedores y armamos un plan que puedas sostener.",
+      "equipoTitulo": "Tu equipo",
+      "perfiles": [
+        { "n": "Lic. Beatriz Poot", "r": "Asesora financiera", "b": "Arma planes de pago realistas." },
+        { "n": "Lic. Marco Euán", "r": "Abogado · Negociación con acreedores", "b": "Negocia quitas y convenios de pago." }
+      ],
+      "servicios": [
+        { "t": "Diagnóstico de deudas", "d": "Mapa completo de lo que debes.", "p": ["Créditos", "Tarjetas", "Intereses"] },
+        { "t": "Reestructura", "d": "Plazos y pagos que sí caben en tu presupuesto.", "p": ["Convenios", "Quitas", "Consolidación"] },
+        { "t": "Defensa ante cobranza", "d": "Orientación ante llamadas y demandas.", "p": ["Cobranza", "Demandas", "Embargos"] },
+        { "t": "Orden financiero", "d": "Presupuesto y hábitos para no volver a caer.", "p": ["Presupuesto", "Ahorro", "Historial"] }
+      ],
+      "pasos": [
+        { "t": "Cuéntanos tus deudas", "d": "Consulta inicial confidencial." },
+        { "t": "Plan realista", "d": "Opciones claras de pago o reestructura." },
+        { "t": "Negociamos y damos seguimiento", "d": "Hablamos con los acreedores por ti." }
+      ],
+      "roles": ["Cliente", "Empresario", "Cliente anónimo", "Cliente anterior"],
+      "form": { "label": "Cuéntanos tu situación", "boton": "Enviar mi caso" },
+      "cifras": ["años de experiencia", "personas asesoradas", "horas para responderte"]
+    },
+    {
+      "id": "inmobiliaria", "nombre": "Inmobiliarias: regularización y sucesiones", "grupo": "medio",
+      "paleta": { "fondo": "#f5f1e8", "tinta": "#1d2b24", "acento": "#b88a2e", "banda": "#17382c" },
+      "marca": "Casa Segura Yucatán", "kicker": "Regularización de propiedades · Yucatán",
+      "titular": "Tu propiedad en regla, sin vueltas ni sorpresas",
+      "subtitulo": "Escrituración, regularización y sucesiones para que tu patrimonio quede protegido.",
+      "cta": "Revisa tu propiedad",
+      "bandas": ["Escrituras ✦ Regularización ✦ Sucesiones", "Patrimonio protegido"],
+      "mision": "Una propiedad sin papeles en regla es un riesgo para tu familia. Revisamos tu situación, hacemos los trámites y dejamos todo listo para que puedas vender, heredar o construir con certeza.",
+      "equipoTitulo": "Quiénes te asesoran",
+      "perfiles": [
+        { "n": "Lic. Aurora Cob", "r": "Socia · Escrituración", "b": "Gestiona escrituras y trámites ante el registro público." },
+        { "n": "Lic. Pedro Yam", "r": "Socio · Sucesiones", "b": "Lleva juicios sucesorios y regularización." }
+      ],
+      "servicios": [
+        { "t": "Regularización", "d": "Propiedades sin escritura o con papeles incompletos.", "p": ["Posesión", "Prescripción", "Rectificaciones"] },
+        { "t": "Escrituración", "d": "Compraventa y donaciones seguras.", "p": ["Compraventa", "Donación", "Registro"] },
+        { "t": "Sucesiones", "d": "Herencias con o sin testamento.", "p": ["Testamentos", "Juicio sucesorio", "Adjudicación"] },
+        { "t": "Revisión legal", "d": "Antes de comprar o invertir.", "p": ["Estudio de títulos", "Gravámenes", "Uso de suelo"] }
+      ],
+      "pasos": [
+        { "t": "Revisamos tus documentos", "d": "Consulta inicial sin costo." },
+        { "t": "Ruta legal", "d": "Te explicamos tiempos y costos del trámite." },
+        { "t": "Tramitamos", "d": "Te entregamos tu propiedad en regla." }
+      ],
+      "roles": ["Propietaria", "Familia heredera", "Cliente anónimo", "Cliente anterior"],
+      "form": { "label": "Cuéntanos de tu propiedad", "boton": "Enviar mi caso" },
+      "cifras": ["años de experiencia", "propiedades regularizadas", "horas para responderte"]
+    }
+  ]
+}
