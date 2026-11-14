@@ -16,7 +16,8 @@ import { evaluarColoresCliente, asignarFuentes } from './asesor_color.js';
 import { coloresDePalabras, logoTenido } from './materiales.js';
 import { CSS_MOVIMIENTO, JS_MOVIMIENTO, sliderHTML, diapositivasDe, emparejarFotos, efectosDe, conSrcset } from './movimiento.js';
 import { waUrl, formatoTel } from './bloques.js';
-import { logoLleno, JS_LOGO_UNICO, paginasGenerales, logoHTML, redes, urlsPorUbicacion, conOpcionG, conOpcionH, conOpcionI, conOpcionJ, conOpcionK, conOpcionM } from './propuestas_general.js';
+import { portadaFichaHTML, cintaFichaHTML, atributosFichaHTML, escenaFichaHTML, cierreFichaHTML, fichasDe, CSS_FICHA, JS_FICHA } from './ficha.js';
+import { logoLleno, JS_LOGO_UNICO, paginasGenerales, logoHTML, redes, urlsPorUbicacion, conOpcionP, conOpcionG, conOpcionH, conOpcionI, conOpcionJ, conOpcionK, conOpcionM } from './propuestas_general.js';
 import { completarMaterial } from './validar_material.js';
 import { direccionTexto, testimoniosValidos } from './datos_brief.js';
 
@@ -32,7 +33,7 @@ const conReglaTipo = (html, par, estilo) => {
 export const DIR_PROPUESTAS = path.join(config.dataDir, 'propuestas');
 const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const LAYOUTS = ['protagonista', 'menu', 'fresco', 'mascota', 'dostonos', 'lista'];
-const NOMBRES = { protagonista: 'Producto protagonista', menu: 'Tu menú al frente', fresco: 'Fresca con acento', mascota: 'Tu logo al centro', dostonos: 'Dos tonos', lista: 'Minimalista tipo carta' };
+const NOMBRES = { protagonista: 'Producto protagonista', menu: 'Tu menú al frente', fresco: 'Fresca con acento', mascota: 'Tu logo al centro', dostonos: 'Dos tonos', lista: 'Minimalista tipo carta', ficha: 'Ficha en movimiento' };
 
 /* ---------------- Paletas ---------------- */
 const lum = (h) => { const n = parseInt(h.slice(1), 16); const c = [(n >> 16) & 255, (n >> 8) & 255, n & 255].map((v) => v / 255).map((v) => (v <= 0.03928 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4)); return 0.2126 * c[0] + 0.7152 * c[1] + 0.0722 * c[2]; };
@@ -60,6 +61,8 @@ function paleta(layout, b) {
     fresco: { bg: crema, fg: tinta, primary: b.acento, accent: b.principal, muted: mezclar(b.claro, b.principal, 0.1), card: mezclar(crema, '#FFFFFF', 0.6) },
     mascota: { bg: crema, fg: tinta, primary: b.principal, accent: b.acento, muted: mezclar(crema, b.principal, 0.1), card: '#FFFFFF' },
     dostonos: { bg: crema, fg: tinta, primary: b.principal, accent: b.acento, muted: mezclar(b.principal, '#000000', 0.1), card: '#FFFFFF' },
+    // P (14-nov-2026): tema oscuro derivado del color principal; el acento se usa solo si se lee sobre el fondo.
+    ficha: (() => { const bg = mezclar(b.principal, '#000000', 0.62); const pr = contraste(b.acento, bg) >= 4.5 ? b.acento : mezclar(crema, bg, 0.1); return { bg, fg: crema, primary: pr, accent: pr, muted: mezclar(bg, '#FFFFFF', 0.06), card: mezclar(bg, '#FFFFFF', 0.08) }; })(),
     lista: { bg: mezclar(crema, '#FFFFFF', 0.5), fg: tinta, primary: b.acento, accent: b.principal, muted: mezclar(b.acento, '#FFFFFF', 0.82), card: '#FFFFFF' },
   }[layout];
   p.onPrimary = sobre(p.primary); p.soft = mezclar(p.fg, p.bg, 0.35); p.border = mezclar(p.fg, p.bg, 0.85);
@@ -112,7 +115,7 @@ function pagina(d) {
   };
   // Slider de portada (6-nov-2026): con 2 o más fotos reales del local/negocio reemplaza la portada de productos recortados
   // en las 6 propuestas. Los recortes siguen en "Lo más pedido". Texto encima de cada foto; la foto 1 lleva el H1.
-  const imgS = (x, { cls = '', eager = false, extra = '' } = {}) => `<img class="${cls}" src="${esc(x.url)}" alt="${esc(x.alt || '')}" loading="${eager ? 'eager' : 'lazy'}"${x.ancho ? ` width="${x.ancho}" height="${x.alto}"` : ''}${extra}>`;
+  const imgS = (x, { cls = '', eager = false, extra = '', sizes = '' } = {}) => `<img class="${cls}" src="${esc(x.url)}" alt="${esc(x.alt || '')}" loading="${eager ? 'eager' : 'lazy'}"${x.ancho ? ` width="${x.ancho}" height="${x.alto}"` : ''}${extra}${sizes}>`;
   const emp = emparejarFotos({ hero: d.fotosSl[0], fotoTitular: d.textos.foto_url, pool: d.fotosSl, diapos: d.diapos, items: d.brief?.oferta?.items || [], cta: d.textos?.cta || '' });
   // Portadas distintas (12-nov-2026, pedido de Sebastián: las 6 opciones salían con la misma portada porque el slider
   // reemplazaba a todas). Cada opción acomoda el slider a su manera: A a todo lo ancho con el texto encima; B texto a un
@@ -157,7 +160,31 @@ function pagina(d) {
   const menuLista = listaOferta.length ? `<ul class="mlista">${listaOferta.map((x) => `<li><span><b>${esc(x.nombre)}</b>${x.descripcion_corta ? `<small>${esc(x.descripcion_corta)}</small>` : ''}</span>${x.precio_o_rango && d.brief?.oferta?.mostrar_precios !== false ? `<em>${esc(x.precio_o_rango)}</em>` : ''}</li>`).join('')}</ul>` : '';
   const menuDocs = (d.menuDocs || []).map((u, i, arr) => `<a class="btn menu-doc" href="${esc(u)}" target="_blank" rel="noopener">${arr.length > 1 ? `Ver el menú completo (${i + 1})` : 'Ver el menú completo'}</a>`).join('');
   const secMenu = `<section class="sec menu" id="menu"><h2>Menú</h2>${menuImgs}<div class="mtxt">${menuTxt}${menuLista}</div>${menuDocs}</section>`;
+  // P: ficha en movimiento (generador/ficha.js). Portada oscura con las opciones reales del menú, cinta, fichas, escena fija con las
+  // fotos del slider y sus textos, y cierre con parallax. Las fotos pueden repetirse en "Más de nosotros".
+  let ficha = null;
+  if (d.layout === 'ficha') {
+    const neg0 = d.brief?.negocio || {};
+    const giro = String(neg0.giro_texto || '').split(/[:;(]/)[0].trim();
+    const itemsOf = (d.brief?.oferta?.items || []).filter((x) => x?.nombre || typeof x === 'string');
+    const items = itemsOf.length ? itemsOf : prod.length ? prod.map((x) => ({ nombre: x.nombre, precio_o_rango: x.precio, descripcion_corta: '' })) : d.categorias.map((c) => ({ nombre: c.nombre, precio_o_rango: `desde $${c.desde}`, descripcion_corta: '' }));
+    const fichas = fichasDe(items, d.info, 'Menú');
+    const foto0 = emp.fotos[0] || d.fotosSl[0] || null;
+    const pasos = conSl ? emp.fotos.slice(1).map((foto, k) => ({ foto, titular: emp.diapos[k]?.titular || '', apoyo: emp.diapos[k]?.apoyo || '' })) : [];
+    const cta0 = `<a class="btn"${wa}>${esc(d.textos.cta)}</a>`;
+    const fp = portadaFichaHTML({ heroFoto: foto0, img: imgS, kicker: [giro, neg0.ciudad].filter(Boolean).join(' · '), titular: d.textos.titular, subtitulo: d.textos.subtitulo, opciones: fichasDe(items, [], ''), cta: cta0 });
+    const es = escenaFichaHTML({ pasos, img: imgS, etiqueta: d.nombre });
+    const frases = [...emp.diapos.map((x) => x?.titular).filter(Boolean), giro, neg0.ciudad].filter(Boolean);
+    const libresC = [...d.fotosSl].filter((x) => x?.url && x.url !== foto0?.url && !pasos.some((y) => y.foto.url === x.url));
+    ficha = {
+      hero: fp.html + cintaFichaHTML(frases.length >= 2 ? frases : [d.nombre, ...frases]),
+      fichas: atributosFichaHTML({ fichas, titulo: 'En pocas palabras', cta: cta0 }),
+      escena: es.html,
+      cierre: cierreFichaHTML({ foto: libresC[0] || foto0, img: imgS, titulo: d.nombre, apoyo: [giro, neg0.ciudad].filter(Boolean).join(' · '), cta: cta0 }),
+    };
+  }
   const orden = {
+    ficha: ficha ? [ficha.fichas, ficha.escena, `<div class="wrap">${secDest}${secMenu}${secRes}${vis}</div>`, ficha.cierre] : [],
     protagonista: [secDest, secCats, secMenu, secRes, vis], menu: [secMenu, secDest, secCats, secRes, vis], fresco: [secDest, secRes, secMenu, secCats, vis],
     mascota: [secCats, secDest, secMenu, secRes, vis], dostonos: [secRes, secCats, secDest, secMenu, vis], lista: [secMenu, secDest, secRes, vis],
   }[d.layout];
@@ -236,11 +263,12 @@ body.l-logo .barra .logo,body.l-logo .barra [class$="-placa"]{transition:opacity
 /* menú sin transcribir */
 .mlista{list-style:none}.mlista li{display:flex;justify-content:space-between;gap:12px;padding:12px 0;border-bottom:1px dashed var(--bor)}.mlista li small{display:block;color:var(--soft)}.mlista li em{font-style:normal;font-weight:800;color:var(--p);white-space:nowrap}.menu-doc{margin-right:12px}
 .hero.h-sl{padding:0;margin-top:12px;min-height:68vh;min-height:calc(100svh - 200px);border-radius:18px;color:#fff}.h-sl h1{color:#fff;max-width:16ch;text-shadow:0 1px 18px rgba(0,0,0,.35)}.h-sl .sub{color:rgba(255,255,255,.92);max-width:44ch}.h-sl .lnk{color:#fff;margin:20px 0 0;white-space:nowrap}.h-sl .ctas{display:flex;flex-wrap:wrap;align-items:center;column-gap:18px}.h-sl .sl-t{font-weight:700}.h-sl .sl-cap{padding-left:24px;padding-right:24px}
+${d.layout === 'ficha' ? CSS_FICHA : ''}
 @media (min-width:900px){.hero.h-sl{margin-top:20px;min-height:calc(100svh - 200px);border-radius:24px}.h-sl .sl-cap{padding:40px 48px 88px}.h-sl .sl-d.con-txt::after{background:linear-gradient(90deg,rgba(0,0,0,.78),rgba(0,0,0,.5) 48%,rgba(0,0,0,.12) 82%)}}
 </style></head>
-<body class="${d.layout}${conSl && d.layout === 'mascota' && d.logo ? ' l-logo' : ''}">
+<body class="${d.layout}${d.layout === 'ficha' ? ' l-ficha' : ''}${conSl && d.layout === 'mascota' && d.logo ? ' l-logo' : ''}">
 <header class="barra"><div class="in">${logo}<nav><a href="#destacados">${esc(d.textos.destacados || 'Lo más pedido')}</a><a href="#menu">Menú</a><a href="#contacto">Contacto</a></nav></div></header>
-<main class="wrap">${heroSl || heros[d.layout]}${d.promo ? `<section class="promo" id="promocion"><p><b>Promoción</b> ${esc(d.promo)}</p></section>` : ''}${orden.join('')}</main>
+<main${ficha ? '' : ' class="wrap"'}>${ficha ? ficha.hero : heroSl || heros[d.layout]}${d.promo ? `${ficha ? '<div class="wrap">' : ''}<section class="promo" id="promocion"><p><b>Promoción</b> ${esc(d.promo)}</p></section>${ficha ? '</div>' : ''}` : ''}${orden.join('')}</main>
 <footer>© ${new Date().getFullYear()} ${esc(d.nombre)} · Propuesta ${d.letra}: ${esc(NOMBRES[d.layout])}</footer>
 <span class="etq">Propuesta ${d.letra}</span>
 <a class="wa"${wa} aria-label="Escríbenos por WhatsApp"><svg viewBox="0 0 32 32" aria-hidden="true"><path d="M16 3a13 13 0 0 0-11.2 19.6L3 29l6.6-1.7A13 13 0 1 0 16 3Zm0 23.7c-2 0-4-.6-5.7-1.6l-.4-.2-3.9 1 1-3.8-.3-.4A10.7 10.7 0 1 1 16 26.7Zm5.9-8c-.3-.2-1.9-1-2.2-1-.3-.1-.5-.2-.7.1l-1 1.3c-.2.2-.4.2-.7.1a8.8 8.8 0 0 1-4.4-3.8c-.3-.6.3-.5.9-1.7.1-.2 0-.4 0-.6l-1-2.4c-.3-.6-.5-.5-.7-.5h-.6c-.2 0-.6.1-.9.4-.3.3-1.2 1.1-1.2 2.8s1.2 3.2 1.4 3.5c.2.2 2.4 3.6 5.7 5 2.1.9 3 1 4 .8.7-.1 1.9-.8 2.2-1.5.3-.8.3-1.4.2-1.5l-.6-.3Z"/></svg></a>
@@ -250,7 +278,7 @@ function idx(){var x=p.scrollLeft,m=0,best=1e9;s.forEach(function(el,i){var dd=M
 function ir(i){i=Math.max(0,Math.min(s.length-1,i));p.scrollTo({left:s[i].offsetLeft-p.offsetLeft-20,behavior:matchMedia('(prefers-reduced-motion: reduce)').matches?'auto':'smooth'})}
 function upd(){var i=idx();d.forEach(function(el,k){el.setAttribute('aria-current',k===i?'true':'false')});a.disabled=i===0;b.disabled=p.scrollLeft+p.clientWidth>=p.scrollWidth-4}
 a.onclick=function(){ir(idx()-1)};b.onclick=function(){ir(idx()+1)};d.forEach(function(el,k){el.onclick=function(){ir(k)}});p.addEventListener('scroll',function(){clearTimeout(p._t);p._t=setTimeout(upd,60)},{passive:true});upd()});
-</script>${JS_MOVIMIENTO}${conSl && d.layout === 'mascota' && d.logo ? JS_LOGO_UNICO : ''}
+</script>${JS_MOVIMIENTO}${d.layout === 'ficha' ? JS_FICHA : ''}${conSl && d.layout === 'mascota' && d.logo ? JS_LOGO_UNICO : ''}
 </body></html>`;
 }
 
@@ -330,9 +358,12 @@ export async function renderPropuestas(brief, mat, textos, { ronda = 0, fijo = n
   const reales = [...reales0.slice(0, 1), ...fijasR, ...reales0.slice(1)].sort((x, y) => (ub.portada.has(y.url) ? 1 : 0) - (ub.portada.has(x.url) ? 1 : 0));
   const diapos = diapositivasDe({ diapositivas: textos.diapositivas }, brief);
   const out = [];
-  for (const [i, layout] of LAYOUTS.entries()) {
-    const letra = 'ABCDEF'[i];
+  // La P (ficha en movimiento) va como séptima de la lista y con letra fija: solo con OPCION_P=1, o si se pide (fijo o solo).
+  const conP = conOpcionP() || fijo?.letra === 'P' || !!solo?.includes('P');
+  for (const [i, layout] of [...LAYOUTS, ...(conP ? ['ficha'] : [])].entries()) {
+    const letra = layout === 'ficha' ? 'P' : 'ABCDEF'[i];
     if (fijo && fijo.letra !== letra) continue;
+    if (solo && !solo.includes(letra)) continue;
     const v = textos.variantes?.[i] || textos.variantes?.[0] || {};
     // Regla de paletas por giro: colores del cliente mandan; si faltan, familias del giro según personalidad y estilo.
     const cp = cps[i];
