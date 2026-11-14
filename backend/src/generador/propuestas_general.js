@@ -489,7 +489,9 @@ function pagina(d) {
   // Q: tarjetas que rotan las fotos de trabajo y banda partida con la frase del cliente (las fotos pueden repetirse: rep-ok).
   const secTrabajoVq = () => vitrinaTrabajoHTML({ fotos: fotosDeTrabajo(), titulo: T.trabajo, img, info: waFoto });
   const bandaVq = () => {
-    const frase = fraseDe(t.sobre || conf.historia_corta || '') || fraseDe(brief.oferta?.diferenciador || '') || '';
+    // Titular grande: se prefiere la frase corta y completa (sin "…"); si todas son largas, la más corta.
+    const cand = [brief.oferta?.diferenciador, t.sobre, conf.historia_corta].map((x) => fraseDe(x || '')).filter(Boolean);
+    const frase = cand.find((x) => x.length <= 120 && !/…$/.test(x)) || [...cand].sort((a, b) => a.length - b.length)[0] || '';
     return bandaVitrinaHTML({ foto: fotosCt[0] || fotosT.find((x) => x?.url && x.url !== heroFoto?.url) || null, img, frase, cta: cta() });
   };
   const ORDEN = {
