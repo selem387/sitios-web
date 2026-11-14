@@ -386,7 +386,10 @@ function pagina(d) {
     },
     // N (vastspace.com): fotos del slider a pantalla completa con fundido, pausa y titular abajo a la izquierda.
     avance: () => {
-      const n = portadaN({ fotos: [heroFoto, ...poolSl], img, titular: t.titular, subtitulo: t.subtitulo, cta: cta(), verMas: '#trabajo' });
+      // Si la foto principal es la de la fundadora, va en "Sobre mí" y la portada usa las fotos de trabajo.
+      const otras = poolSl.filter((x) => x?.url && x.url !== heroFoto?.url);
+      const fP = heroFoto && (heroFoto.tipo === 'foto_fundador' || heroFoto.url === mat.fundador?.url) && otras.length ? otras : [heroFoto, ...otras];
+      const n = portadaN({ fotos: fP, img, titular: t.titular, subtitulo: t.subtitulo, cta: cta(), verMas: '#trabajo' });
       n.urls.forEach((u) => { enPortada.add(u); usadas.add(u); });
       return n.html;
     },
@@ -484,10 +487,10 @@ function pagina(d) {
     const foto = rec || fotosT.find(libreVx) || null;
     return vitrinaN({ foto, img, recorte: !!rec, nombre: d.nombre, etiqueta: [giroCorto(neg.giro_texto), neg.ciudad].filter(Boolean).join(' · '), apoyo: brief.oferta?.diferenciador || '', datos: datosDe(conf.cifras), href: '#servicios' });
   };
-  const avanceVx = () => avanceN({ titulo: T.trabajo, img, nota: [giroCorto(neg.giro_texto), neg.ciudad].filter(Boolean).join(' · '), fotos: fotosT.filter(libreVx).map((foto) => ({ foto, texto: foto.alt || '' })) }).html;
+  const avanceVx = () => avanceN({ titulo: T.trabajo, img, nota: [giroCorto(neg.giro_texto), neg.ciudad].filter(Boolean).join(' · '), fotos: fotosT.filter(libreVx).map((foto) => ({ foto, texto: '' })) }).html;
   const tarjetasVx = () => {
     const ver = brief.oferta?.mostrar_precios !== false || brief.oferta?.mostrar_paquetes;
-    const items = agruparOferta(brief.oferta?.items || []).flatMap((g) => g.opciones.map((o) => ({ meta: [g.nombre, ...(ver && o.precio ? [o.precio] : [])].filter((x, k, a) => x && a.indexOf(x) === k), titulo: o.nombre || g.nombre, texto: o.detalle || '' }))).slice(0, 9);
+    const items = agruparOferta(brief.oferta?.items || []).flatMap((g) => g.opciones.map((o) => ({ meta: [String(g.nombre).replace(/\p{Extended_Pictographic}|\uFE0F/gu, '').trim(), ...(ver && o.precio ? [o.precio] : [])].filter((x, k, a) => x && a.indexOf(x) === k), titulo: o.nombre || g.nombre, texto: String(o.detalle || '').split(/\n\s*\n/)[0].trim() })));
     const sobra = [...mat.local, ...(mat.otras || []), ...mat.trabajos].filter((x) => libreVx(x) && fueraDeGaleria(x));
     items.forEach((it, k) => { if (sobra[k]) it.foto = sobra[k]; });
     return tarjetasN({ titulo: T.servicios, items, img, cta: cta() });
