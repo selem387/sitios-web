@@ -19,7 +19,7 @@ const enCurso = new Set();
 
 /** Ligas de otros sitios en un texto (no sus propias propuestas /p/<token>/<letra>). */
 export const ligasReferencia = (texto) => (String(texto || '').match(/https?:\/\/[^\s)>\]]+/g) || [])
-  .filter((u) => !/\/p\/[A-Za-z0-9]+\/[A-H]\b/.test(u) && !/easypanel\.host\/s\//.test(u));
+  .filter((u) => !/\/p\/[A-Za-z0-9]+\/[A-I]\b/.test(u) && !/easypanel\.host\/s\//.test(u));
 
 /** Dirección de diseño (estilo, colores, notas) a partir de lo que pidió y del estudio de sus referencias. */
 async function direccion(comentario, estudio, brief) {

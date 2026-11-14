@@ -20,6 +20,7 @@ import { encolar } from '../generador/index.js';
 import { paginaChat } from './pagina.js';
 import { DIR_PROPUESTAS } from '../generador/propuestas_html.js';
 import { servirClip } from '../generador/clips.js';
+import { servirVendor } from '../generador/historia.js';
 import { pendientesChat, desdeChat, ultimoAviso } from '../entrevista/avisos.js';
 import { urlSitio } from '../panel/cambios_vivo.js';
 
@@ -83,7 +84,7 @@ export function registerChatRoutes(app, wrap) {
   // Propuestas de diseño navegables (7 por cliente; la G solo fuera de restaurantes): /p/<token>/<A-G>
   app.get('/p/:token/:letra', async (c) => {
     const { token, letra } = c.req.param();
-    if (!/^[A-Za-z0-9]{8,40}$/.test(token) || !/^[A-H]$/.test(letra)) return c.text('no', 404);
+    if (!/^[A-Za-z0-9]{8,40}$/.test(token) || !/^[A-I]$/.test(letra)) return c.text('no', 404);
     // Opción ya elegida (11-nov-2026): su liga muestra el sitio armado desde la base con sus ajustes visuales.
     try {
       const sv = (await db.q(`SELECT sv.*, e.brief#>>'{marca,propuestas,elegido}' AS _elegido FROM sitios_vivos sv JOIN entrevistas e ON e.id = sv.entrevista_id
@@ -99,6 +100,8 @@ export function registerChatRoutes(app, wrap) {
 
   // Clips del slider de portada y variaciones IA (generador/clips.js).
   app.get('/clips/:nombre', (c) => servirClip(c));
+  // Motion y Lenis de la opción I (generador/historia.js), con el nombre versionado y caché de un año.
+  app.get('/vendor/:nombre', (c) => servirVendor(c));
 
   app.get('/chat/archivos/:nombre', async (c) => {
     const nombre = c.req.param('nombre');

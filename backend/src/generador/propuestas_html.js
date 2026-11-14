@@ -16,7 +16,7 @@ import { evaluarColoresCliente, asignarFuentes } from './asesor_color.js';
 import { coloresDePalabras, logoTenido } from './materiales.js';
 import { CSS_MOVIMIENTO, JS_MOVIMIENTO, sliderHTML, diapositivasDe, emparejarFotos, efectosDe, conSrcset } from './movimiento.js';
 import { waUrl, formatoTel } from './bloques.js';
-import { logoLleno, JS_LOGO_UNICO, paginasGenerales, logoHTML, redes, urlsPorUbicacion, conOpcionG, conOpcionH } from './propuestas_general.js';
+import { logoLleno, JS_LOGO_UNICO, paginasGenerales, logoHTML, redes, urlsPorUbicacion, conOpcionG, conOpcionH, conOpcionI } from './propuestas_general.js';
 import { completarMaterial } from './validar_material.js';
 import { direccionTexto, testimoniosValidos } from './datos_brief.js';
 
@@ -287,7 +287,7 @@ export async function renderPropuestas(brief, mat, textos, { ronda = 0, fijo = n
   const coloresCliente = [...new Set([...coloresDePalabras(brief.marca?.colores || []), ...(mat.colores || [])])];
   const evitarHex = coloresDePalabras(String(brief.marca?.evitar || '').split(/[,;y]+/));
   const asesor = evaluarColoresCliente({ brief, colores: coloresCliente });
-  const cps = [0, 1, 2, 3, 4, 5, 6, 7].map((i) => coloresParaPropuesta({ brief, coloresCliente, i, ronda, evitarHex }));
+  const cps = [0, 1, 2, 3, 4, 5, 6, 7, 8].map((i) => coloresParaPropuesta({ brief, coloresCliente, i, ronda, evitarHex }));
   if (asesor.corregidos && !brief.marca?.colores_aviso_aceptado) cps[5] = { ...coloresParaPropuesta({ brief, coloresCliente: asesor.corregidos, i: 5, ronda, evitarHex }), origen: 'sugerencia', familia: 'Tus colores con el ajuste sugerido' };
   // Regla de coherencia letra–paleta: cada paleta recibe el par tipográfico que transmite la misma personalidad.
   const pares = asignarFuentes(cps.map((c) => c.colores), candidatos);
@@ -373,7 +373,7 @@ export async function textosPropuestas(brief, mat) {
   const cat = catalogoFotos(mat);
   const enfoques = menu ? 'producto, antojo, rapidez/pickup, ubicación, variedad del menú, experiencia'
     : 'el resultado que se lleva el cliente, la especialidad más fuerte, la experiencia/años, la zona, la variedad de servicios o paquetes, el trato personal';
-  const nVar = menu ? 6 : conOpcionH() ? 8 : conOpcionG() ? 7 : 6; // G (collage) y H (recorrido con índice) solo en la plantilla general
+  const nVar = menu ? 6 : conOpcionI() ? 9 : conOpcionH() ? 8 : conOpcionG() ? 7 : 6; // G (collage), H (recorrido con índice) e I (historia con scroll) solo en la plantilla general
   const prompt = `Escribe los textos de ${nVar} propuestas de página de inicio para este negocio mexicano (giro: ${brief.negocio?.giro_texto || brief.negocio?.arquetipo || ''}). Español de México, trato "${brief?.marca?.tono_textos === 'usted' ? 'usted' : 'tú'}", ${brief.negocio?.tamano === 'solo_tu' ? 'en primera persona del singular (es una sola persona), ' : ''}sin emojis, sin frases genéricas de IA, sin inventar datos (nada de años, clientes, premios ni promociones que no estén abajo). Cada titular con un enfoque distinto (${enfoques}).
 Además, "diapositivas": los textos que van encima de las fotos 2 a 5 del slider de la portada (la foto 1 usa el titular de cada propuesta). En este orden y solo si el brief trae el dato real: diferenciador (oferta.diferenciador: lo que lo distingue de la competencia o su ventaja injusta), oferta (servicio o producto estrella, o la promoción vigente), prueba (cifra, años, certificación o reseña real del brief), vision (su historia o visión). Si un dato no está en el brief, omite esa diapositiva; nunca inventes. Cada una: una sola idea, beneficio antes que característica, titular de 3 a 8 palabras.
 Fotos del cliente (cada una con su descripción hecha por IA): ${JSON.stringify(cat.map(({ id, descripcion, tipo }) => ({ id, descripcion, tipo })))}

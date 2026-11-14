@@ -20,7 +20,7 @@ import * as pdb from './db.js';
 import { encolar, enCola, usuarioDe, reanudar } from './construir.js';
 
 const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
-const LETRAS = 'ABCDEFGH';
+const LETRAS = 'ABCDEFGHI';
 const WA_BLANCA = () => (process.env.PROSPECCION_WA_ATENCION || '529992632568').replace(/\D/g, '');
 const DOMINIOS = () => String(process.env.PROSPECCION_DOMINIOS || 'timewins.site,timewins.online').split(',').map((x) => x.trim()).filter(Boolean);
 const COOKIE = 'tw_pr';
@@ -262,7 +262,7 @@ export function registerProspectosRoutes(app) {
   if (!pdb.activo()) { console.log('[prospectos] sin PROSPECCION_DATABASE_URL: módulo apagado'); return; }
   registrarModo('prospeccion', async (c, reg, next, host) => {
     const ruta = c.req.path.replace(/\/+$/, '') || '/';
-    if (ruta === '/chat' || ruta.startsWith('/chat/') || ruta.startsWith('/clips/')) return next();
+    if (ruta === '/chat' || ruta.startsWith('/chat/') || ruta.startsWith('/clips/') || ruta.startsWith('/vendor/')) return next();
     try { return (await atender(c, ruta, '', host)) || c.text('No encontrado', 404); }
     catch (err) { console.error('[prospectos]', err); return c.text('Error', 500); }
   });

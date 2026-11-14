@@ -78,7 +78,7 @@ export function middlewareDominios() {
     }
     const ruta = c.req.path.replace(/\/+$/, '') || '/';
     if (ruta === '/') return c.html(selector(host, reg), 200, { 'cache-control': 'no-cache' });
-    const letra = ruta.match(/^\/([a-h])$/i)?.[1]?.toUpperCase();
+    const letra = ruta.match(/^\/([a-i])$/i)?.[1]?.toUpperCase();
     if (letra) {
       try {
         const html = (await fs.readFile(path.join(DIR_PROPUESTAS, reg.token, `${letra}.html`), 'utf8'))
