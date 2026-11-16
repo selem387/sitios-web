@@ -6,6 +6,7 @@
 // - Pausa visible (WCAG 2.2.2), pausa con mouse/foco, flechas, teclado, deslizar; prefers-reduced-motion apaga todo.
 // - Solo se animan transform y opacity (sin costo de layout; Lighthouse móvil ≥ 90).
 import { urlClip, tipoClip, encolarClips } from './clips.js';
+import { indiceDeLetra } from './opciones/registro.js';
 
 // Clips de FFmpeg y Higgsfield en el slider: SUSPENDIDOS (6-nov-2026, Sebastián: las fotos "saltan").
 // Todas las fotos usan solo movimiento CSS. Para reactivarlos: variable CLIPS_SLIDER=1 en el servicio api.
@@ -38,7 +39,7 @@ const PRESETS_FX = [
   'fx-zoom fx-paralaje fx-hover',
   'fx-zoom fx-mascara fx-texto fx-hover',
 ];
-export const efectosDe = (letra) => PRESETS_FX[Math.max(0, 'ABCDEFGHIJKLMNOPQR'.indexOf(String(letra || 'A').toUpperCase())) % PRESETS_FX.length];
+export const efectosDe = (letra) => PRESETS_FX[indiceDeLetra(String(letra || 'A').toUpperCase()) % PRESETS_FX.length];
 const ORDEN_TIPOS = ['diferenciador', 'oferta', 'prueba', 'vision'];
 
 /**

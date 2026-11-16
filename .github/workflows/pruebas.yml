@@ -20,3 +20,28 @@ jobs:
           cache-dependency-path: backend/package-lock.json
       - run: npm ci
       - run: npm test
+
+  # Un PR de opción (rama opcion/<nombre>) solo puede tocar la carpeta de esa opción.
+  # Lo compartido (plantilla general, kit, mapas por giro, reglas, letras) se cambia desde el chat designado.
+  carpeta-de-la-opcion:
+    if: github.event_name == 'pull_request' && startsWith(github.head_ref, 'opcion/')
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Solo archivos de su carpeta
+        env:
+          RAMA: ${{ github.head_ref }}
+          BASE: ${{ github.event.pull_request.base.sha }}
+        run: |
+          nombre="${RAMA#opcion/}"
+          if ! [[ "$nombre" =~ ^[a-z0-9_]+$ ]]; then echo "::error::La rama debe llamarse opcion/<nombre> (minúsculas, números o guion bajo)"; exit 1; fi
+          carpeta="backend/src/generador/opciones/$nombre/"
+          fuera=$(git diff --name-only "$BASE"...HEAD | grep -v "^$carpeta" || true)
+          if [ -n "$fuera" ]; then
+            echo "::error::Este PR de opción toca archivos fuera de $carpeta"
+            echo "$fuera"
+            exit 1
+          fi
+          echo "Todos los archivos están en $carpeta"

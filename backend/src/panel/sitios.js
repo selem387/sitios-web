@@ -10,6 +10,7 @@ import { giroCorto } from '../generador/propuestas_general.js';
 import { parPorNombres } from '../generador/fuentes.js';
 import { REDES, normalizarRedes } from '../entrevista/redes.js';
 import { config } from '../config.js';
+import { indiceDeLetra } from '../generador/opciones/registro.js';
 
 const q = db.q;
 const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -125,7 +126,7 @@ export function contenidoActual(entrevista, sv, mat = null) {
   const b = entrevista.brief || {};
   const k = sv.contenido || {};
   const prop = b.marca?.propuestas || {};
-  const i = Math.max(0, 'ABCDEFGHIJKLMNOPQR'.indexOf(prop.elegido || 'A'));
+  const i = indiceDeLetra(prop.elegido || 'A');
   const v = prop.textos?.variantes?.[i] || prop.textos?.variantes?.[0] || {};
   const c = b.contacto || {};
   return {
@@ -161,7 +162,7 @@ export function aplicarContenido(entrevista, sv) {
   // mergeProfundo reemplaza los arreglos completos (items, faq, testimonios), que es lo que el panel manda.
   const brief = mergeProfundo(b, parche);
   const prop = b.marca?.propuestas || {};
-  const i = Math.max(0, 'ABCDEFGHIJKLMNOPQR'.indexOf(prop.elegido || 'A'));
+  const i = indiceDeLetra(prop.elegido || 'A');
   const variantes = [...(prop.textos?.variantes || [])];
   if (k.portada) variantes[i] = { ...(variantes[i] || {}), ...Object.fromEntries(Object.entries(k.portada).filter(([, x]) => x)) };
   const textos = { ...(prop.textos || {}), variantes, ...(k.historia ? { sobre: k.historia.texto } : {}), ...(k.titulos && Object.keys(k.titulos).length ? { secciones: { ...(prop.textos?.secciones || {}), ...k.titulos } } : {}) };

@@ -14,16 +14,13 @@ import { direccionTexto, testimoniosValidos } from './datos_brief.js';
 import { enlacesRedes, CSS_REDES } from './iconos_redes.js';
 import { collageHTML, CSS_COLLAGE, JS_COLLAGE } from './collage.js';
 import { escenaIndiceHTML, navIndiceHTML, monogramaHTML, CSS_INDICE, JS_INDICE } from './indice.js';
-import { METRICAS } from './tipo_color.js';
-import { fraseDe, aptaHistoria, paginaHistoria } from './historia.js';
-import { portadaMovimientoHTML, parMovimiento, conEfectosK, CSS_MOVIMIENTO_K } from './movimiento_k.js';
-import { portadaNarrativaHTML, parNarrativa, CSS_NARRATIVA, JS_NARRATIVA } from './narrativa.js';
-import { escenaGuiaHTML, cierreGuiaHTML, indiceGuiaHTML, parGuia, CSS_GUIA, JS_GUIA } from './guia.js';
-import { portadaN, franjaN, vitrinaN, avanceN, tarjetasN, prensaN, contactoN, datosDe, fraseResaltada, parAvance, CSS_AVANCE, JS_AVANCE, URL_MONO_N } from './avance.js';
-import { paginaFicha } from './ficha.js';
-import { paginaVitrina, LETRA_Q, URL_FUENTES_Q } from './vitrina.js';
-import { paginaManual, paletaManual, FUENTES_R } from './manual.js';
-import { portadaCatalogoHTML, bandaFotoHTML, cierreCatalogoHTML, tabsDeServicios, parCatalogo, CSS_CATALOGO, JS_CATALOGO } from './catalogo.js';
+import { fraseDe, paginaHistoria } from './historia.js';
+import { portadaMovimientoHTML, conEfectosK, CSS_MOVIMIENTO_K } from './movimiento_k.js';
+import { portadaNarrativaHTML, CSS_NARRATIVA, JS_NARRATIVA } from './narrativa.js';
+import { escenaGuiaHTML, cierreGuiaHTML, indiceGuiaHTML, CSS_GUIA, JS_GUIA } from './guia.js';
+import { portadaN, franjaN, vitrinaN, avanceN, tarjetasN, prensaN, contactoN, datosDe, fraseResaltada, CSS_AVANCE, JS_AVANCE, URL_MONO_N } from './avance.js';
+import { LAYOUTS, LETRAS as LETRAS_REGISTRO, NOMBRES, OPCIONES_EXTRA, porNombre } from './opciones/registro.js';
+import { portadaCatalogoHTML, bandaFotoHTML, cierreCatalogoHTML, tabsDeServicios, CSS_CATALOGO, JS_CATALOGO } from './catalogo.js';
 
 const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const lum = (h) => { const n = parseInt(h.slice(1), 16); const c = [(n >> 16) & 255, (n >> 8) & 255, n & 255].map((v) => v / 255).map((v) => (v <= 0.03928 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4)); return 0.2126 * c[0] + 0.7152 * c[1] + 0.0722 * c[2]; };
@@ -35,44 +32,24 @@ const deHsl = (H, S, L) => { const f = (n) => { const k = (n + H * 12) % 12, a =
 const tono = (h, L, Smin = 0.32, Smax = 1) => { const [H, S] = hsl(h); return deHsl(H, Math.min(Smax, Math.max(S, Smin)), L); };
 const conContraste = (c, bg, min = 4.5, hacia = '#000000') => { let x = c; for (let i = 0; i < 12 && contraste(x, bg) < min; i++) x = mezclar(x, hacia, 0.15); return x; };
 
-// G (11-nov-2026): opción adicional "Collage en movimiento" (generador/collage.js). Siempre va como séptima.
-// H (12-nov-2026): opción adicional "Recorrido con índice" (generador/indice.js). Siempre va como octava.
-// I (14-nov-2026): opción adicional "Historia con scroll" (generador/historia.js). Siempre va como novena.
-// J (14-nov-2026): opción adicional "Narrativa por capítulos" (generador/narrativa.js). Siempre va como décima.
-export const LAYOUTS_GENERAL = ['portada', 'editorial', 'mosaico', 'logo', 'dostonos', 'carta', 'collage', 'indice', 'historia', 'narrativa', 'movimiento', 'reservada_l', 'guia', 'avance', 'catalogo', 'ficha', 'vitrina', 'manual'];
-// K (14-nov-2026): opción adicional "Recorrido en movimiento" (generador/movimiento_k.js + efectos_gsap.js). Siempre va como undécima.
-// M (14-nov-2026): opción adicional "Guía en movimiento" (generador/guia.js + efectos_gsap.js). Siempre va como decimotercera; la L queda reservada.
-// O (14-nov-2026): opción adicional "Catálogo en movimiento" (generador/catalogo.js, CSS nativo sin librerías). Siempre va como decimoquinta; la L queda reservada.
-// N (14-nov-2026): opción adicional reconstruida solo desde vastspace.com (generador/avance.js: GSAP + ScrollTrigger + Lenis). Siempre va como decimocuarta.
-// P (14-nov-2026): opción adicional "Ficha en movimiento" (generador/ficha.js, CSS nativo sin librerías). Siempre va como decimosexta.
-// Q (14-nov-2026): opción adicional "Vitrina" (generador/vitrina.js). Reconstruida desde cero con www.dvf.com como única
-// referencia: barra, portada, secciones, pie, letra (Jost) y CSS propios; no usa el esqueleto de las demás. Siempre va como decimoséptima.
-// R (14-nov-2026): opción adicional "Manual de servicios" (generador/manual.js), página propia reconstruida solo desde compsych.konpo.co
-// (recorrido horizontal, GSAP + ScrollTrigger + Lenis + SplitType + Three.js). Siempre va como decimoctava.
-export const LETRAS = 'ABCDEFGHIJKLMNOPQR';
-// La G sale para todos solo con OPCION_G=1 en el servicio api (11-nov-2026: primero se prueba cliente por cliente).
-export const conOpcionG = () => process.env.OPCION_G === '1';
-// La H sale para todos solo con OPCION_H=1 en el servicio api (igual que la G: primero cliente por cliente).
-export const conOpcionH = () => process.env.OPCION_H === '1';
-// La I sale para todos solo con OPCION_I=1 y, aun así, solo a giros que se venden con fotos y con al menos 4 fotos buenas.
-export const conOpcionI = () => process.env.OPCION_I === '1';
-// La J sale para todos solo con OPCION_J=1 en el servicio api (igual que la G y la H).
-export const conOpcionJ = () => process.env.OPCION_J === '1';
-// La K sale para todos solo con OPCION_K=1 (usa GSAP; uso permitido por decisión de Sebastián, 14-nov-2026).
-export const conOpcionK = () => process.env.OPCION_K === '1';
-// La M sale para todos solo con OPCION_M=1 (GSAP permitido: regla dura del proyecto, 14-nov-2026).
-export const conOpcionM = () => process.env.OPCION_M === '1';
-// La O sale para todos solo con OPCION_O=1 (no usa librerías de animación: CSS nativo y un script mínimo).
-export const conOpcionO = () => process.env.OPCION_O === '1';
-// La N sale para todos solo con OPCION_N=1 (CSS nativo, sin script).
-export const conOpcionN = () => process.env.OPCION_N === '1';
-// La P sale para todos solo con OPCION_P=1 (no usa librerías de animación: CSS nativo y un script mínimo).
-export const conOpcionP = () => process.env.OPCION_P === '1';
-// La Q sale para todos solo con OPCION_Q=1 (CSS nativo y un script mínimo, sin librerías).
-export const conOpcionQ = () => process.env.OPCION_Q === '1';
-// La R sale para todos solo con OPCION_R=1. No va a restaurantes (su plantilla es otra).
-export const conOpcionR = () => process.env.OPCION_R === '1';
-export const NOMBRES_GENERAL = { portada: 'Foto a pantalla completa', editorial: 'Editorial', mosaico: 'Mosaico de tu trabajo', logo: 'Tu logo al centro', dostonos: 'Dos tonos', carta: 'Minimalista', collage: 'Collage en movimiento', indice: 'Recorrido con índice', historia: 'Historia con scroll', narrativa: 'Narrativa por capítulos', movimiento: 'Recorrido en movimiento', guia: 'Guía en movimiento', catalogo: 'Catálogo en movimiento', ficha: 'Ficha en movimiento', vitrina: 'Vitrina', avance: 'Avance en el espacio' , manual: 'Manual de servicios' };
+// Las opciones se dan de alta solas: cada una vive en su carpeta dentro de generador/opciones/ (ver opciones/registro.js).
+// De ahí salen las letras, los nombres internos (layouts) y los nombres que ve el cliente; aquí ya no se enumeran.
+export const LAYOUTS_GENERAL = LAYOUTS;
+export const LETRAS = LETRAS_REGISTRO;
+// Una opción adicional sale para todos solo con OPCION_<letra>=1 en el servicio api; si no, se genera a mano por cliente.
+export const conOpcion = (letra) => process.env[`OPCION_${letra}`] === '1';
+export const conOpcionG = () => conOpcion('G');
+export const conOpcionH = () => conOpcion('H');
+export const conOpcionI = () => conOpcion('I');
+export const conOpcionJ = () => conOpcion('J');
+export const conOpcionK = () => conOpcion('K');
+export const conOpcionM = () => conOpcion('M');
+export const conOpcionO = () => conOpcion('O');
+export const conOpcionN = () => conOpcion('N');
+export const conOpcionP = () => conOpcion('P');
+export const conOpcionQ = () => conOpcion('Q');
+export const conOpcionR = () => conOpcion('R');
+export const NOMBRES_GENERAL = NOMBRES;
 
 // Títulos por arquetipo (Claude puede reemplazarlos con textos.secciones).
 export const TITULOS = {
@@ -688,10 +665,10 @@ ${CSS_MOVIMIENTO}${d.layout === 'collage' ? CSS_COLLAGE : ''}${esIx ? CSS_INDICE
 }
 
 /** ¿Sale la I con OPCION_I=1? Giro que se vende con fotos y al menos 4 fotos buenas del cliente. */
-export function historiaApta(brief, mat) {
-  const buenas = new Set([mat.hero, ...mat.trabajos, ...mat.local, ...mat.equipo, ...(mat.otras || [])].filter((x) => x?.url && !x.captura && x.calidad !== 'regular' && /^(foto|imagen)/.test(x.tipo || 'foto')).map((x) => x.url));
-  return aptaHistoria(brief, buenas.size);
-}
+export const historiaApta = (brief, mat) => porNombre('historia').apta({ brief, mat });
+
+// Piezas comunes que reciben las opciones con página propia (se ampliará al separar las secciones de la plantilla).
+const KIT = Object.freeze({ logoHTML, redes, direccionTexto, testimoniosValidos });
 
 /** Datos de las 6 páginas generales. */
 export function paginasGenerales({ brief, mat, textos, pares, urlFuentes, ronda = 0, cps: cpsDados = null, fijo = null, solo = null }) {
@@ -704,54 +681,34 @@ export function paginasGenerales({ brief, mat, textos, pares, urlFuentes, ronda 
   const c = brief.contacto || {};
   // Estilo de referencia del cliente: 6 variaciones de ese estilo (acomodos, letras y paletas propias).
   const dref = esDireccionRef(brief.marca?.direccion_ref) ? brief.marca.direccion_ref : null;
-  // La G (collage) va siempre, también con estilo de referencia (que define solo las 6 primeras).
-  const conG = conOpcionG() || fijo?.letra === 'G' || !!solo?.includes('G');
-  // La H (recorrido con índice) igual: siempre es la letra H aunque la G no esté activa, y conserva su propio diseño
-  // (letras y paleta) aunque el cliente tenga estilo de referencia.
-  const conH = conOpcionH() || fijo?.letra === 'H' || !!solo?.includes('H');
-  // La I (historia con scroll) igual que la H, pero con OPCION_I=1 solo sale si el giro y las fotos la sostienen.
-  const conI = (conOpcionI() && historiaApta(brief, mat)) || fijo?.letra === 'I' || !!solo?.includes('I');
-  // La J (narrativa por capítulos) igual que la H: letra fija y diseño propio (una grotesca, paleta propia).
-  // La K (recorrido en movimiento) igual que la J: letra fija y diseño propio (Public Sans, efectos GSAP).
-  const conK = conOpcionK() || fijo?.letra === 'K' || !!solo?.includes('K');
-  const conJ = conOpcionJ() || fijo?.letra === 'J' || !!solo?.includes('J');
-  // La M (guía en movimiento) igual que la K: letra fija y diseño propio (una grotesca, efectos GSAP).
-  const conM = conOpcionM() || fijo?.letra === 'M' || !!solo?.includes('M');
-  // La O (catálogo en movimiento) igual que la M: letra fija y diseño propio (una grotesca, CSS nativo).
-  const conO = conOpcionO() || fijo?.letra === 'O' || !!solo?.includes('O');
-  // La P (ficha en movimiento) igual que la O: letra fija y diseño propio (par del estilo del cliente, tema oscuro, CSS nativo).
-  // La N (cifras y avance) igual que la O: letra fija y diseño propio (una grotesca, CSS nativo).
-  const conN = conOpcionN() || fijo?.letra === 'N' || !!solo?.includes('N');
-  const conP = conOpcionP() || fijo?.letra === 'P' || !!solo?.includes('P');
-  // La Q (vitrina) igual que la P: letra fija y diseño propio (Jost, negro sobre blanco, CSS nativo).
-  const conQ = conOpcionQ() || fijo?.letra === 'Q' || !!solo?.includes('Q');
-  // La R (manual de servicios): página propia; solo toma los datos del cliente.
-  const conR = conOpcionR() || fijo?.letra === 'R' || !!solo?.includes('R');
-  const todas = [...(dref ? dref.layouts : LAYOUTS_GENERAL.slice(0, 6)).map((layout, i) => ({ layout, i })), ...(conG ? [{ layout: 'collage', i: 6 }] : []), ...(conH ? [{ layout: 'indice', i: 7 }] : []), ...(conI ? [{ layout: 'historia', i: 8 }] : []), ...(conJ ? [{ layout: 'narrativa', i: 9 }] : []), ...(conK ? [{ layout: 'movimiento', i: 10 }] : []), ...(conM ? [{ layout: 'guia', i: 12 }] : []), ...(conN ? [{ layout: 'avance', i: 13 }] : []), ...(conO ? [{ layout: 'catalogo', i: 14 }] : []), ...(conP ? [{ layout: 'ficha', i: 15 }] : []), ...(conQ ? [{ layout: 'vitrina', i: 16 }] : []), ...(conR ? [{ layout: 'manual', i: 17 }] : [])]
+  // Opciones adicionales: van siempre con su letra fija, también con estilo de referencia (que define solo las 6 primeras).
+  // Cada una sale si está encendida para todos (y cumple su requisito, si lo tiene), o si se pidió a mano (fijo o solo).
+  const adicionales = OPCIONES_EXTRA.filter((o) => (conOpcion(o.letra) && (!o.apta || o.apta({ brief, mat }))) || fijo?.letra === o.letra || !!solo?.includes(o.letra));
+  const todas = [...(dref ? dref.layouts : LAYOUTS_GENERAL.slice(0, 6)).map((layout, i) => ({ layout, i })), ...adicionales.map((o) => ({ layout: o.nombre, i: o.indice }))]
     .filter(({ i }) => (!fijo || LETRAS[i] === fijo.letra) && (!solo || solo.includes(LETRAS[i])));
   return todas.map(({ layout, i }) => {
     const letra = LETRAS[i];
     const v = textos.variantes?.[i] || textos.variantes?.[0] || {};
-    if (layout === 'manual') {
-      const cm = cps[i % cps.length];
-      const html = paginaManual({ brief, mat, textos, v, titulos, wa: waUrl(c.whatsapp, c.mensaje_whatsapp_inicial), colores: [...(mat.colores || []), ...(cm.colores || [])], nombreOpcion: NOMBRES_GENERAL.manual, letra });
-      return { letra, layout, nombre: NOMBRES_GENERAL.manual, html, fuentes: { titulos: FUENTES_R.cuerpo, cuerpo: FUENTES_R.cuerpo, estilo: 'minimalista' }, paleta: paletaManual(mat.colores?.length ? mat.colores : cm.colores || []) };
+    const op = porNombre(layout);
+    const wa = waUrl(c.whatsapp, c.mensaje_whatsapp_inicial);
+    // Opción que arma su resultado entero, sin pasar por la plantilla general.
+    if (op?.completa) {
+      const r = op.completa({ brief, mat, textos, v, titulos, wa, coloresPropuesta: cps[i % cps.length].colores, letra, titulo: op.titulo });
+      return { letra, layout, nombre: op.titulo, html: r.html, fuentes: r.fuentes, paleta: r.paleta };
     }
-    const propia = layout === 'indice' || layout === 'historia' || layout === 'narrativa' || layout === 'movimiento' || layout === 'guia' || layout === 'catalogo' || layout === 'ficha' || layout === 'avance' || layout === 'vitrina';
-    // H: titulares en letra sin remates (trazo limpio). De los pares del estilo del cliente toma el primero cuyo título sea sans.
-    // I: al revés, titulares con remates (serif editorial), como en las marcas de alimentos y cosmética.
-    const claseH = layout === 'historia' ? 'serif' : 'sans';
-    const parH = layout === 'vitrina' ? LETRA_Q : layout === 'avance' ? parAvance(pares) : layout === 'ficha' ? (pares[0] || pares[i % pares.length]) : layout === 'catalogo' ? parCatalogo(pares) : layout === 'guia' ? parGuia(pares) : layout === 'movimiento' ? parMovimiento(pares) : layout === 'narrativa' ? parNarrativa(pares) : propia ? pares.find((x) => METRICAS[x.titulos]?.clase === claseH) || pares[i % pares.length] : null;
+    // Opción con diseño propio: conserva su letra y su paleta aunque el cliente tenga estilo de referencia.
+    const propia = !!op?.propia;
+    const parH = op?.par ? op.par(pares, i) : null;
     const par = fijo?.fuentes || parH || (dref ? parPorNombres(dref.pares[i] || dref.pares[i % dref.pares.length]) : pares[i % pares.length]);
     const d = {
       i: i + ronda * 3, letra, layout, dref: propia ? null : dref, nombre: brief.negocio?.nombre || '', brief, mat, titulos,
-      pal: fijo?.paleta || (dref && !propia ? paletaRef(dref, dref.paletas?.[i] ? i : 0) : { ...corregirPaleta(paletaGeneral(layout, cps[i % cps.length].colores, pastel, i + ronda * 2, { acento: cps[i % cps.length].acento, acentoCta: cps[i % cps.length].acentoCta })).paleta, familia: cps[i % cps.length].familia, origen: cps[i % cps.length].origen }), f: par, fuentesUrl: layout === 'vitrina' && !fijo?.fuentes ? URL_FUENTES_Q : urlFuentes([par]),
+      pal: fijo?.paleta || (dref && !propia ? paletaRef(dref, dref.paletas?.[i] ? i : 0) : { ...corregirPaleta(paletaGeneral(layout, cps[i % cps.length].colores, pastel, i + ronda * 2, { acento: cps[i % cps.length].acento, acentoCta: cps[i % cps.length].acentoCta })).paleta, familia: cps[i % cps.length].familia, origen: cps[i % cps.length].origen }), f: par, fuentesUrl: op?.urlFuentes && !fijo?.fuentes ? op.urlFuentes : urlFuentes([par]),
       t: { titular: v.titular, subtitulo: v.subtitulo, foto_url: v.foto_url || null, cta: v.cta || 'Escríbeme por WhatsApp', info: (textos.info || []).slice(0, 3), sobre: textos.sobre, proceso: textos.proceso, proceso_intro: textos.proceso_intro, servicios_intro: textos.servicios_intro, servicios_cierre: textos.servicios_cierre, servicios_boton: textos.servicios_boton, diapositivas: textos.diapositivas },
-      wa: waUrl(c.whatsapp, c.mensaje_whatsapp_inicial), tel: c.whatsapp ? formatoTel(c.whatsapp) : null,
+      wa, tel: c.whatsapp ? formatoTel(c.whatsapp) : null,
     };
     const nombre = (!propia && dref?.nombres?.[i]) || NOMBRES_GENERAL[layout];
-    // P (14-nov-2026): página propia hecha solo a partir de la referencia (generador/ficha.js), sin la plantilla general.
-    let html = layout === 'vitrina' ? paginaVitrina({ ...d, redes: redes(c), direccion: direccionTexto(brief) }).html : layout === 'ficha' ? paginaFicha({ ...d, logoBarra: logoHTML(mat.logo, d.pal.bg, d.pal.fg, { alt: d.nombre }), testimonios: testimoniosValidos(brief, mat), redes: redes(c), direccion: direccionTexto(brief) }) : pagina(d);
+    // Opción con página propia (hecha solo a partir de su referencia): la arma ella; las demás, la plantilla general.
+    let html = op?.pagina ? op.pagina(d, KIT) : pagina(d);
     if (dref && !propia) html = aplicarRef(html, par, dref).replace(` · Propuesta ${letra}: ${esc(NOMBRES_GENERAL[layout])}</footer>`, ` · Propuesta ${letra}: ${esc(nombre)}</footer>`);
     return { letra, layout, nombre, html, fuentes: par, paleta: d.pal };
   });

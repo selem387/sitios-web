@@ -19,9 +19,9 @@ import { registrarModo } from '../generador/dominios.js';
 import { conBarraBorrador, textoReaccion } from '../generador/barra_borrador.js';
 import * as pdb from './db.js';
 import { encolar, enCola, usuarioDe, reanudar } from './construir.js';
+import { LETRAS } from '../generador/opciones/registro.js';
 
 const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
-const LETRAS = 'ABCDEFGHIJKLMNOPQR';
 const WA_BLANCA = () => (process.env.PROSPECCION_WA_ATENCION || '529992632568').replace(/\D/g, '');
 const DOMINIOS = () => String(process.env.PROSPECCION_DOMINIOS || 'timewins.site,timewins.online').split(',').map((x) => x.trim()).filter(Boolean);
 const COOKIE = 'tw_pr';

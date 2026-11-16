@@ -12,6 +12,7 @@ import { DIR_PROPUESTAS } from './propuestas_html.js';
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import { enlacesRedes, CSS_REDES } from './iconos_redes.js';
+import { indiceDeLetra, porNombre } from './opciones/registro.js';
 
 const esc = (s) => String(s ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 // JSON de atributos dentro de un comentario HTML: no puede contener "--".
@@ -189,9 +190,9 @@ async function logoParaFondo(logo, bg, fg) {
  * @returns {Promise<{contenido, header, footer, menu, medios, estilos, fuentesUrl, logoClave, resumen}>}
  */
 export async function sitioDePropuesta({ brief, mat, prop, elegida, deColores = null }) {
-  const indice = Math.max(0, 'ABCDEFGHIJKLMNOPQR'.indexOf(elegida.letra || elegida.etiqueta));
-  // La G (collage), la H (recorrido con índice) la I (historia con scroll) la J (narrativa) la K (movimiento) y la M (guía) no tienen versión WordPress (suspendido): usan la composición de foto a pantalla completa.
-  const layout = elegida.layout === 'collage' || elegida.layout === 'manual' || elegida.layout === 'indice' || elegida.layout === 'historia' || elegida.layout === 'narrativa' || elegida.layout === 'movimiento' || elegida.layout === 'guia' || elegida.layout === 'catalogo' || elegida.layout === 'avance' ? 'portada' : elegida.layout;
+  const indice = indiceDeLetra(elegida.letra || elegida.etiqueta);
+  // Las opciones sin versión WordPress (suspendido) usan la composición de foto a pantalla completa; cada opción lo declara en su carpeta.
+  const layout = porNombre(elegida.layout)?.sinWordPress ? 'portada' : elegida.layout;
   if (!NOMBRES_GENERAL[layout]) throw new Error(`layout de propuesta desconocido: ${layout}`);
   const ronda = prop.ronda || 0;
   const pal = { ...(elegida.paleta || {}), ...((deColores?.paleta) || {}) };

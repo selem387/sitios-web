@@ -7,6 +7,9 @@ import * as db from '../entrevista/db.js';
 import { DIR_PROPUESTAS } from './propuestas_html.js';
 import { conBarraBorrador } from './barra_borrador.js';
 import { paginaChat } from '../chat/pagina.js';
+import { CLASE_MINUS } from './opciones/letras.js';
+
+const RE_RUTA_LETRA = new RegExp(`^\\/(${CLASE_MINUS})$`, 'i');
 
 const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 let listo = false;
@@ -80,7 +83,7 @@ export function middlewareDominios() {
     const ruta = c.req.path.replace(/\/+$/, '') || '/';
     if (ruta.startsWith('/r/')) return next(); // reacciones de la barra borrador (chat/index.js)
     if (ruta === '/') return c.html(selector(host, reg), 200, { 'cache-control': 'no-cache' });
-    const letra = ruta.match(/^\/([a-r])$/i)?.[1]?.toUpperCase();
+    const letra = ruta.match(RE_RUTA_LETRA)?.[1]?.toUpperCase();
     if (letra) {
       try {
         const html = (await fs.readFile(path.join(DIR_PROPUESTAS, reg.token, `${letra}.html`), 'utf8'))
