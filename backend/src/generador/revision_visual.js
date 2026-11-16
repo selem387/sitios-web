@@ -4,34 +4,14 @@
 
 import { config } from '../config.js';
 import { pedirJSON } from '../entrevista/claude.js';
-import { CSS_REVISION_HISTORIA } from './historia.js';
-import { CSS_REVISION_NARRATIVA } from './narrativa.js';
-import { CSS_REVISION_MOVIMIENTO } from './movimiento_k.js';
-import { CSS_REVISION_GUIA } from './guia.js';
-import { CSS_REVISION_CATALOGO } from './catalogo.js';
-import { CSS_REVISION_FICHA } from './ficha.js';
-import { CSS_REVISION_AVANCE } from './avance.js';
-import { CSS_REVISION_MANUAL } from './manual.js';
+import { OPCIONES } from './opciones/registro.js';
+import { reLigaPropuesta } from './opciones/letras.js';
 
 // Para medir y capturar: sin la etiqueta ni el botón flotante, y con las animaciones de entrada ya terminadas
 // (12-nov-2026: se medía a media animación y salían falsos "título desalineado" y "desborde horizontal", y capturas en blanco).
 const CSS_REVISION = '.etq,.wa{display:none!important}*,*::before,*::after{animation-duration:0s!important;animation-delay:0s!important;transition-duration:0s!important;transition-delay:0s!important}'
-  // Opción H (recorrido con índice): se mide con la portada quieta y los titulares ya puestos, no a medio recorrido.
-  + '.ix-escena{height:auto!important}.ix-escena .h-indice{position:relative!important;top:0!important;height:auto!important;min-height:min(100svh,920px)!important;padding:120px 0 220px!important}.ix-banda,.ix-tunel,.ix-lema,.ix-tj-marco,.ix-flot{display:none!important}.ix-escena .ix-ficha{display:grid!important}.ix-escena .ix-txt{padding-bottom:0!important}.ix-pw>span,.ix-desliza,.h-indice h1{transform:none!important}';
-  // Opción I (historia con scroll): se mide con todo quieto (fotos del relato una debajo de otra, frase encendida).
-  + CSS_REVISION_HISTORIA
-  // Opción J (narrativa): todos los bloques visibles aunque no hayan entrado en pantalla.
-  + CSS_REVISION_NARRATIVA
-  // Opción K (movimiento): títulos y bloques ya visibles, sin tarjetas apiladas ni recorrido horizontal.
-  + CSS_REVISION_MOVIMIENTO
-  // Opción M (guía en movimiento): fotos del recorrido una debajo de otra, sin fijados.
-  + CSS_REVISION_GUIA
-  + CSS_REVISION_CATALOGO
-  + CSS_REVISION_FICHA
-  // Opción N (cifras y avance): portada y fotos sin zoom.
-  + CSS_REVISION_AVANCE
-  // Opción R (manual de servicios): página vertical y quieta, sin galería WebGL ni regla.
-  + CSS_REVISION_MANUAL;
+  // Cada opción declara en su carpeta (opcion.js, cssRevision) cómo se mide quieta y completa.
+  + OPCIONES.map((o) => o.cssRevision || '').join('');
 
 export async function captura(url, { ancho = 1366, selector = null } = {}) {
   if (!config.renderUrl || !url) return null;
@@ -155,7 +135,8 @@ const ESQUEMA_CORRECCION = {
   required: ['css'],
 };
 
-const archivoDe = (url) => { const m = String(url || '').match(/\/p\/([A-Za-z0-9]{8,40})\/([A-R])\b/); return m ? path.join(DIR_PROPUESTAS, m[1], `${m[2]}.html`) : null; };
+const RE_LIGA_PROPUESTA = reLigaPropuesta({ captura: true, token: '[A-Za-z0-9]{8,40}' });
+const archivoDe = (url) => { const m = String(url || '').match(RE_LIGA_PROPUESTA); return m ? path.join(DIR_PROPUESTAS, m[1], `${m[2]}.html`) : null; };
 
 // CSS seguro: fuera @import/url()/expression y cualquier regla que oculte imágenes, el logo o textos.
 function cssSeguro(css) {

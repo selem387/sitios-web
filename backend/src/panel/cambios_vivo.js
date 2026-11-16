@@ -14,6 +14,10 @@ import { SECCIONES, urlBase, limpiarSeccion, contenidoActual, disenoElegido, ren
 import { textosInventados, separarPrecio, renglonesAjenos } from './reinterpretar.js';
 import { validarEstructura, textoDe } from './estructura.js';
 import { opcionesNuevasPendientes, adoptarOpcionNueva, restaurarBrief } from './rediseno.js';
+import { CLASE_MINUS, CLASE_MAYUS } from '../generador/opciones/letras.js';
+
+const RE_ELIGE_LETRA = new RegExp(`^(?:quiero\\s+|me\\s+gusta\\s+|elijo\\s+|prefiero\\s+)?(?:la\\s+)?(?:opci[oó]n\\s+)?(${CLASE_MINUS})\\s*[.!]*$`, 'i');
+const RE_LIGA_LETRA = new RegExp(`\\/p\\/[A-Za-z0-9]+\\/(${CLASE_MAYUS})\\b`);
 
 const q = db.q;
 const NO_PUDE = 'No pude aplicar ese cambio a tu página 😔 ¿Me lo explicas de otra forma? Por ejemplo, dime en qué parte de la página está y cómo quieres que quede.';
@@ -332,7 +336,7 @@ export async function aplicarCambioVivo(c, e, sv) {
     // Solo lo que escribió el cliente: se ignora el "(Ari preguntó: …)" que se agrega cuando contesta una pregunta.
     const t = c.pedidos.filter((p) => !/^\(Ari pregunt[oó]:/.test(p.texto || '')).map((p) => p.texto || '').join(' ').trim();
     if (c.pedidos.some((p) => p.media?.length) || t.length > 80) return null;
-    const m = t.match(/^(?:quiero\s+|me\s+gusta\s+|elijo\s+|prefiero\s+)?(?:la\s+)?(?:opci[oó]n\s+)?([a-r])\s*[.!]*$/i) || t.match(/\/p\/[A-Za-z0-9]+\/([A-R])\b/);
+    const m = t.match(RE_ELIGE_LETRA) || t.match(RE_LIGA_LETRA);
     const L = m && m[1].toUpperCase();
     return L && act.propuestas.some((o) => o.letra === L) && L !== act.propuesta ? L : null;
   })();

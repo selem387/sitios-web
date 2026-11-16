@@ -23,6 +23,9 @@ import { avisarEquipo } from './avisos.js';
 import { notaRequisitos, primerBloqueIncompleto, faltantes, unirNoTiene, noTieneDelHistorial, preguntaYaNegada, rellenarDelHistorial, omitidasDelHistorial } from './requisitos.js';
 import { atenderExtraccion, asegurarResumen } from './redes_extraccion.js';
 import { dominioRespondido, quiereDominio, PREGUNTA_DOMINIO, mensajePago, pagoPendiente, atenderPostCierre } from './pago_pagina.js';
+import { reLigaPropuesta } from '../generador/opciones/letras.js';
+
+const RE_LIGA_PROPUESTA = reLigaPropuesta({ borde: false });
 
 // Tope de seguridad (fotos y audios cuentan como mensajes). Una entrevista real ronda 60–130.
 const MAX_MSGS_CLIENTE = 400;
@@ -140,7 +143,7 @@ async function respuestaPostCierre(u, texto = '', media = []) {
         const actual = sv?.contenido?.diseno?.propuesta || prop.elegido;
         const lista = opc.map((o) => `*${o.letra || o.etiqueta}. ${o.nombre}*${(o.letra || o.etiqueta) === actual ? ' (la que tienes ahora)' : ''}\n${o.url}`).join('\n\n');
         await db.evento(u.id, 'opciones_reenviadas', { actual });
-        const ref = (texto.match(/https?:\/\/\S+/g) || []).filter((x) => !/\/p\/[A-Za-z0-9]+\/[A-R]/.test(x));
+        const ref = (texto.match(/https?:\/\/\S+/g) || []).filter((x) => !RE_LIGA_PROPUESTA.test(x));
         await db.evento(u.id, 'pregunta_cambio_diseno', { actual, referencias: ref });
         return `¿Quieres cambiar el diseño de tu página por otra de tus opciones? 😊${ref.length ? ' Revisa cuál se parece más a la página que me compartiste.' : ''}\n\nEstas son:\n\n${lista}\n\nDime la letra de la que quieres. Si ninguna te convence, dime *ninguna* y te preparo 6 nuevas${ref.length ? ' inspiradas en esa página' : ''}. Tus textos, fotos y los cambios que ya hicimos se quedan; solo cambia el diseño.`;
       }

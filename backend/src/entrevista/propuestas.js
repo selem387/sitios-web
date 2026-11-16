@@ -13,6 +13,9 @@ import { pedirJSON } from './claude.js';
 import { estudiarReferencias } from './referencias.js';
 import { atenderMostradas, clasificarImagenesPedido } from './propuestas_cambios.js';
 import { construirDireccion, PRESETS, LISTA_PRESETS } from '../generador/estilo_ref.js';
+import { reLigaPropuesta } from '../generador/opciones/letras.js';
+
+const RE_LIGA_PROPUESTA = reLigaPropuesta();
 
 const NO_TENGO = /no (las |los )?tengo|no tengo (m[aá]s|otras|mejores)|son (todas|las [uú]nicas)|con esas|as[ií] est[aá] bien|usa(lo)? (esas|lo que hay)|no hay (m[aá]s|otras)/i;
 const hash = (s) => [...String(s)].reduce((h, c) => (h * 31 + c.charCodeAt(0)) >>> 0, 7);
@@ -127,7 +130,7 @@ async function aplicarRechazo(brief, d, comentarios) {
   if (d?.estilo) marca.estilo = d.estilo;
   if (d?.colores?.length && coloresDePalabras(d.colores).length) marca.colores = d.colores;
   if (d?.evitar?.length) marca.evitar = [...new Set([marca.evitar, ...d.evitar].filter(Boolean).join(', ').split(/,\s*/))].join(', ');
-  const ligas = [...new Set(comentarios.join(' ').match(/https?:\/\/[^\s)>\]]+/g) || [])].filter((u) => !/\/p\/[A-Za-z0-9]+\/[A-R]\b/.test(u)).slice(0, 3);
+  const ligas = [...new Set(comentarios.join(' ').match(/https?:\/\/[^\s)>\]]+/g) || [])].filter((u) => !RE_LIGA_PROPUESTA.test(u)).slice(0, 3);
   if (ligas.length) marca.referencias_sitios = [...new Set([...(marca.referencias_sitios || []), ...ligas])];
   const estudio = ligas.length ? await estudiarReferencias({ marca: { referencias_sitios: ligas } }).catch(() => []) : [];
   const ref = estudio.find((x) => x && !x.error) || null;

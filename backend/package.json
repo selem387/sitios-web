@@ -8,7 +8,7 @@
   "scripts": {
     "start": "node src/index.js",
     "dev": "node --watch src/index.js",
-    "test": "node --test test/*.test.js test/*.test.mjs",
+    "test": "node --test test/*.test.js test/*.test.mjs \"src/generador/opciones/**/*.test.mjs\"",
     "test:e2e": "node --test test/e2e.test.js"
   },
   "engines": {
