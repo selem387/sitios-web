@@ -1,5 +1,5 @@
-// Opción Q "Vitrina" (generador/vitrina.js). Página propia, hecha solo a partir de su referencia.
-import { paginaVitrina, LETRA_Q, URL_FUENTES_Q } from '../../vitrina.js';
+// Opción Q "Vitrina" (generador/opciones/vitrina/vitrina.js). Página propia, hecha solo a partir de su referencia.
+import { paginaVitrina, LETRA_Q, URL_FUENTES_Q } from './vitrina.js';
 
 export const opcion = {
   nombre: 'vitrina', letra: 'Q', indice: 16, titulo: 'Vitrina',

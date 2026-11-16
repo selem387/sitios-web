@@ -1,8 +1,8 @@
-// Opción I "Historia con scroll" (generador/historia.js). Titulares con remates (serif editorial).
+// Opción I "Historia con scroll" (generador/opciones/historia/historia.js). Titulares con remates (serif editorial).
 import { METRICAS } from '../../tipo_color.js';
-import { aptaHistoria, CSS_REVISION_HISTORIA } from '../../historia.js';
+import { aptaHistoria, CSS_REVISION_HISTORIA } from './historia.js';
 import { logoHTML, redes } from '../../kit/utiles.js';
-import { paginaHistoria } from '../../historia.js';
+import { paginaHistoria } from './historia.js';
 import { direccionTexto, testimoniosValidos } from '../../datos_brief.js';
 import { enlacesRedes } from '../../iconos_redes.js';
 import { mezclar } from '../../../entrevista/tema.js';
@@ -24,7 +24,7 @@ export const opcion = {
   conFotoPrincipal: true,
   // Cómo se arma con la plantilla general (propuestas_general.js, función pagina): c es el contexto de la página.
   plantilla: {
-    // I: página propia completa (generador/historia.js, reconstruida desde savor.it): aquí no se arma héroe.
+    // I: página propia completa (generador/opciones/historia/historia.js, reconstruida desde savor.it): aquí no se arma héroe.
     portada: (c) => {
       const armar = () => '';
       return armar();

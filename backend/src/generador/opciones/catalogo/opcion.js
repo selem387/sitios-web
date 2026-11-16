@@ -1,8 +1,8 @@
-// Opción O "Catálogo en movimiento" (generador/catalogo.js).
-import { parCatalogo, CSS_REVISION_CATALOGO } from '../../catalogo.js';
+// Opción O "Catálogo en movimiento" (generador/opciones/catalogo/catalogo.js).
+import { parCatalogo, CSS_REVISION_CATALOGO } from './catalogo.js';
 import { giroCorto } from '../../kit/utiles.js';
-import { fraseDe } from '../../historia.js';
-import { portadaCatalogoHTML, bandaFotoHTML, cierreCatalogoHTML, tabsDeServicios, CSS_CATALOGO, JS_CATALOGO } from '../../catalogo.js';
+import { fraseDe } from '../../kit/utiles.js';
+import { portadaCatalogoHTML, bandaFotoHTML, cierreCatalogoHTML, tabsDeServicios, CSS_CATALOGO, JS_CATALOGO } from './catalogo.js';
 import { mezclar } from '../../../entrevista/tema.js';
 import { tono, conContraste } from '../../kit/color.js';
 
@@ -17,7 +17,7 @@ export const opcion = {
   conFotoPrincipal: true,
   // Cómo se arma con la plantilla general (propuestas_general.js, función pagina): c es el contexto de la página.
   plantilla: {
-    // O: catálogo en movimiento (generador/catalogo.js). Portada en carrusel con las fotos del slider y sus textos;
+    // O: catálogo en movimiento (generador/opciones/catalogo/catalogo.js). Portada en carrusel con las fotos del slider y sus textos;
     // "Nuestro trabajo" hace de estante deslizable y los servicios van en pestañas. Sin librerías de animación.
     portada: (c) => {
       const { t, usadas, img, neg, heroFoto, cta, poolSl, diapos, enPortada } = c;

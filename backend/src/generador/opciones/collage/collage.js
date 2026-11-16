@@ -6,7 +6,7 @@
 // - La foto de fondo no entra al panel.
 // - Pausa visible (WCAG 2.2.2); con "reducir movimiento" el panel queda quieto en el primer acomodo.
 // - Respaldo: MP4 hecho con FFmpeg (generador/clips.js) que solo se usa si el JS no corre o falla.
-import { urlCollage, encolarCollage } from './clips.js';
+import { urlCollage, encolarCollage } from '../../clips.js';
 
 const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 export const MAX_FOTOS_COLLAGE = 9;

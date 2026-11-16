@@ -12,8 +12,8 @@
 // - Solo transform, opacity y clip-path; un requestAnimationFrame por evento de scroll.
 // - Sin JS o con "reducir movimiento" todo queda visible y quieto (los estados ocultos solo existen con .na-js).
 // - El contenido sale del brief igual que en las demás opciones; aquí solo vive lo visual.
-import { METRICAS } from './tipo_color.js';
-import { COMUNES as COMUNES_TITULOS } from './fuentes.js';
+import { METRICAS } from '../../tipo_color.js';
+import { COMUNES as COMUNES_TITULOS } from '../../fuentes.js';
 
 const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 

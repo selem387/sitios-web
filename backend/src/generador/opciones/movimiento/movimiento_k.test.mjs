@@ -1,8 +1,8 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { paginasGenerales } from '../src/generador/propuestas_general.js';
-import { interpretarEleccion } from '../src/generador/opciones.js';
-import { parMovimiento } from '../src/generador/movimiento_k.js';
+import { paginasGenerales } from '../../propuestas_general.js';
+import { interpretarEleccion } from '../../opciones.js';
+import { parMovimiento } from './movimiento_k.js';
 
 const foto = (n) => ({ url: `https://x/${n}.jpg`, ancho: 1200, alto: 800, alt: `foto ${n}`, tipo: 'foto_trabajo', clave: `a${n}` });
 const mat = { logo: null, logos_extra: [], hero: foto(1), fundador: null, fotos: [], trabajos: Array.from({ length: 5 }, (_, k) => foto(k + 2)), equipo: [], local: [], resenas: [], catalogos: [], menus: [], otras: [], documentos: [], videos: [] };

@@ -1,7 +1,7 @@
-// Opción K "Recorrido en movimiento" (generador/movimiento_k.js).
-import { parMovimiento, CSS_REVISION_MOVIMIENTO } from '../../movimiento_k.js';
+// Opción K "Recorrido en movimiento" (generador/opciones/movimiento/movimiento_k.js).
+import { parMovimiento, CSS_REVISION_MOVIMIENTO } from './movimiento_k.js';
 import { giroCorto } from '../../kit/utiles.js';
-import { portadaMovimientoHTML, conEfectosK, CSS_MOVIMIENTO_K } from '../../movimiento_k.js';
+import { portadaMovimientoHTML, conEfectosK, CSS_MOVIMIENTO_K } from './movimiento_k.js';
 import { mezclar } from '../../../entrevista/tema.js';
 import { tono, conContraste } from '../../kit/color.js';
 
@@ -16,7 +16,7 @@ export const opcion = {
   conFotoPrincipal: true,
   // Cómo se arma con la plantilla general (propuestas_general.js, función pagina): c es el contexto de la página.
   plantilla: {
-    // K: portada en movimiento (generador/movimiento_k.js). Titular por letras, foto del cliente con paralaje y banda de texto
+    // K: portada en movimiento (generador/opciones/movimiento/movimiento_k.js). Titular por letras, foto del cliente con paralaje y banda de texto
     // con los textos reales de las diapositivas (si no hay, con el giro y la ciudad). Los efectos del resto se añaden al final.
     portada: (c) => {
       const { d, t, usadas, img, neg, heroFoto, cta, diapos, enPortada } = c;

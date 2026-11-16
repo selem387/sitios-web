@@ -12,8 +12,8 @@
 // - Solo fotos del cliente; nada de video generado. Solo transform y opacity en lo que se anima.
 // - Sin JS o con "reducir movimiento": el carrusel se desliza con el dedo, las pestañas muestran todo y nada se anima solo.
 // - Las fotos de las bandas llevan rep-ok: pueden repetirse en "Nuestro trabajo", que siempre lleva todas.
-import { METRICAS } from './tipo_color.js';
-import { COMUNES as COMUNES_TITULOS } from './fuentes.js';
+import { METRICAS } from '../../tipo_color.js';
+import { COMUNES as COMUNES_TITULOS } from '../../fuentes.js';
 
 const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 

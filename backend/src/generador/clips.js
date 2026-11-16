@@ -28,7 +28,7 @@ const hash = (s) => crypto.createHash('sha1').update(s).digest('hex').slice(0, 2
 export const nombreClip = (fotoUrl, tipo) => `${hash(`${fotoUrl}|${tipo}|v1`)}.mp4`;
 export const urlClip = (fotoUrl, tipo) => `${config.publicUrl}/clips/${nombreClip(fotoUrl, tipo)}`;
 
-// Collage de la opción G (generador/collage.js): MP4 de respaldo del panel que cambia de acomodo.
+// Collage de la opción G (generador/opciones/collage/collage.js): MP4 de respaldo del panel que cambia de acomodo.
 export const nombreCollage = (estados) => `${hash(`${JSON.stringify(estados)}|collage|v1`)}.mp4`;
 export const urlCollage = (estados) => `${config.publicUrl}/clips/${nombreCollage(estados)}`;
 /** Pide el MP4 de respaldo de un collage. estados: [{tipo, urls}]. No espera. */
@@ -164,7 +164,7 @@ async function clipFfmpeg(c, tmp) {
 const COL_W = 1280, COL_H = 880, COL_G = 10, COL_SEG = 3.6, COL_TR = 0.9;
 const TRANSICIONES = ['wipeleft', 'slideup', 'fade', 'wiperight', 'slideleft', 'wipeup'];
 async function collageFfmpeg(c, tmp) {
-  const { rectsAcomodo } = await import('./collage.js');
+  const { rectsAcomodo } = await import('./opciones/collage/collage.js');
   const dir = `${tmp}.d`;
   await fs.mkdir(dir, { recursive: true });
   try {

@@ -20,7 +20,7 @@ import { encolar } from '../generador/index.js';
 import { paginaChat } from './pagina.js';
 import { DIR_PROPUESTAS } from '../generador/propuestas_html.js';
 import { servirClip } from '../generador/clips.js';
-import { servirVendor } from '../generador/historia.js';
+import { servirVendor } from '../generador/librerias.js';
 import { pendientesChat, desdeChat, ultimoAviso, avisar } from '../entrevista/avisos.js';
 import { conBarraBorrador, textoReaccion } from '../generador/barra_borrador.js';
 import { urlSitio } from '../panel/cambios_vivo.js';
@@ -132,7 +132,7 @@ export function registerChatRoutes(app, wrap) {
 
   // Clips del slider de portada y variaciones IA (generador/clips.js).
   app.get('/clips/:nombre', (c) => servirClip(c));
-  // Motion y Lenis de la opción I (generador/historia.js), con el nombre versionado y caché de un año.
+  // Motion y Lenis de la opción I (generador/opciones/historia), servidos por generador/librerias.js, con el nombre versionado y caché de un año.
   app.get('/vendor/:nombre', (c) => servirVendor(c));
 
   app.get('/chat/archivos/:nombre', async (c) => {

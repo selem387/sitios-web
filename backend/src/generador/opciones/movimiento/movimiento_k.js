@@ -2,8 +2,8 @@
 // paralaje y banda de texto corrida; el resto de la página es el de la plantilla general y recibe los efectos de efectos_gsap.js
 // (titulares por palabra, bloques que entran escalonados, scroll suave). Sin JS o con "reducir movimiento" todo queda quieto y completo.
 // Licencia: Sebastián decidió (14-nov-2026) que GSAP se puede usar (no se publica un editor de animaciones; se ofrecen sitios a prospectos de Google Maps).
-import { METRICAS } from './tipo_color.js';
-import { bandaHTML, conEfectosGsap } from './efectos_gsap.js';
+import { METRICAS } from '../../tipo_color.js';
+import { bandaHTML, conEfectosGsap } from '../../efectos_gsap.js';
 
 const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 

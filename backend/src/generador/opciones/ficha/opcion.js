@@ -1,5 +1,5 @@
-// Opción P "Ficha en movimiento" (generador/ficha.js). Página propia, hecha solo a partir de su referencia.
-import { paginaFicha, CSS_REVISION_FICHA } from '../../ficha.js';
+// Opción P "Ficha en movimiento" (generador/opciones/ficha/ficha.js). Página propia, hecha solo a partir de su referencia.
+import { paginaFicha, CSS_REVISION_FICHA } from './ficha.js';
 import { mezclar } from '../../../entrevista/tema.js';
 import { tono, conContraste } from '../../kit/color.js';
 

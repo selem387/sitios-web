@@ -1,9 +1,9 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { paginasGenerales } from '../src/generador/propuestas_general.js';
-import { interpretarEleccion } from '../src/generador/opciones.js';
-import { fotosRepetidas } from '../src/generador/validar_material.js';
-import { parGuia, escenaGuiaHTML, indiceGuiaHTML } from '../src/generador/guia.js';
+import { paginasGenerales } from '../../propuestas_general.js';
+import { interpretarEleccion } from '../../opciones.js';
+import { fotosRepetidas } from '../../validar_material.js';
+import { parGuia, escenaGuiaHTML, indiceGuiaHTML } from './guia.js';
 
 const foto = (n) => ({ url: `https://x/${n}.jpg`, ancho: 1200, alto: 800, alt: `foto ${n}`, tipo: 'foto_trabajo', clave: `a${n}` });
 const matDe = (n, extra = {}) => ({ logo: null, logos_extra: [], hero: foto(1), fundador: null, fotos: [], trabajos: Array.from({ length: n }, (_, k) => foto(k + 2)), equipo: [], local: [], resenas: [], catalogos: [], menus: [], otras: [], documentos: [], videos: [], ...extra });

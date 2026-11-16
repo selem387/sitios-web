@@ -1,9 +1,9 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { paginasGenerales, LETRAS, LAYOUTS_GENERAL } from '../src/generador/propuestas_general.js';
-import { interpretarEleccion } from '../src/generador/opciones.js';
-import { fotosRepetidas } from '../src/generador/validar_material.js';
-import { parAvance, datosDe, fraseResaltada, franjaN, vitrinaN, avanceN, prensaN, CDN_N } from '../src/generador/avance.js';
+import { paginasGenerales, LETRAS, LAYOUTS_GENERAL } from '../../propuestas_general.js';
+import { interpretarEleccion } from '../../opciones.js';
+import { fotosRepetidas } from '../../validar_material.js';
+import { parAvance, datosDe, fraseResaltada, franjaN, vitrinaN, avanceN, prensaN, CDN_N } from './avance.js';
 
 const foto = (n) => ({ url: `https://x/${n}.jpg`, ancho: 1200, alto: 800, alt: `foto ${n}`, tipo: 'foto_trabajo', clave: `a${n}` });
 const matDe = (n, extra = {}) => ({ logo: null, logos_extra: [], hero: foto(1), fundador: null, fotos: [], trabajos: Array.from({ length: n }, (_, k) => foto(k + 2)), equipo: [], local: [], resenas: [], catalogos: [], menus: [], otras: [], documentos: [], videos: [], ...extra });
