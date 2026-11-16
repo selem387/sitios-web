@@ -58,7 +58,11 @@ export function datosDe(lista = []) {
 
 /** Primera oración (o las dos primeras si la primera es corta) para la franja que se enciende. */
 export function fraseResaltada(texto = '') {
-  const t = String(texto || '').replace(/\s+/g, ' ').trim();
+  const crudo = String(texto || '');
+  // Si el cliente marcó una frase en negritas (su remate), esa es la que se enciende.
+  const neg = [...crudo.matchAll(/\*\*([^*]{40,240})\*\*/g)].map((m) => m[1].trim()).filter((x) => /[.!?…]$/.test(x)).pop();
+  if (neg) return neg;
+  const t = crudo.replace(/\*\*/g, '').replace(/\s+/g, ' ').trim();
   if (!t) return '';
   const os = t.match(/[^.!?]+[.!?]+/g) || [t];
   let f = os[0].trim();
@@ -149,7 +153,7 @@ body.l-avance .barra.se-oculta{transform:translateY(-120%)}
 .vx-foto{width:100%;height:100%;object-fit:cover;transform-origin:60% 50%}
 .vx-cuadro.es-activa .vx-foto{animation:vx-acerca 9s linear both}
 @keyframes vx-acerca{from{transform:scale(1.02)}to{transform:scale(1.12)}}
-.vx-portada::after{content:"";position:absolute;inset:0;background:linear-gradient(0deg,rgba(0,0,0,.55),rgba(0,0,0,0) 55%),linear-gradient(180deg,rgba(0,0,0,.35),rgba(0,0,0,0) 22%);pointer-events:none}
+.vx-portada::after{content:"";position:absolute;inset:0;background:linear-gradient(0deg,rgba(0,0,0,.72),rgba(0,0,0,.25) 50%,rgba(0,0,0,0) 72%),linear-gradient(90deg,rgba(0,0,0,.35),rgba(0,0,0,0) 60%),linear-gradient(180deg,rgba(0,0,0,.35),rgba(0,0,0,0) 22%);pointer-events:none}
 .vx-port-txt{position:relative;z-index:1;padding:0 var(--vx-m) clamp(32px,5vw,56px);display:grid;gap:18px;justify-items:start}
 .vx-h1{font-size:clamp(44px,5.3vw,76px);line-height:.86;max-width:13ch;margin:0}
 .vx-sub{max-width:44ch;font-size:16px;opacity:.92;margin:0}

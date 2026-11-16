@@ -33,7 +33,7 @@ test('la N sigue el recorrido de la referencia: portada, franja, vitrina, avance
   assert.match(n.html, /class="vx-gigante" aria-hidden="true">Norte 21</);
   assert.equal((n.html.match(/<div><dt>/g) || []).length, 2);
   assert.match(n.html, /class="vx-marcas"/);
-  assert.equal((n.html.match(/class="vx-card/g) || []).length, 3);
+  assert.equal((n.html.match(/class="vx-card[ "]/g) || []).length, 3);
   assert.match(n.html, /Laura P\./);
   assert.match(n.html, /Mejor inmobiliaria 2025/);
   assert.equal((n.html.match(/<h1/g) || []).length, 1);
@@ -66,4 +66,9 @@ test('elegir la N por chat', () => {
   assert.equal(interpretarEleccion('me quedo con la N').elegido, 'N');
   assert.equal(interpretarEleccion('la decimocuarta').elegido, 'N');
   assert.equal(interpretarEleccion('la 14').elegido, 'N');
+});
+
+test('la frase en negritas del cliente es la que se enciende', () => {
+  assert.equal(fraseResaltada('Hola, soy Ana. **Porque fotografiar es guardar un pedacito de tu historia.**'), 'Porque fotografiar es guardar un pedacito de tu historia.');
+  assert.equal(fraseResaltada('Con **12 años** de oficio. Otra cosa más larga aquí.'), 'Con 12 años de oficio. Otra cosa más larga aquí.');
 });
