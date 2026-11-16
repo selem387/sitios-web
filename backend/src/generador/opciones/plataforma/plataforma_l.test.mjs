@@ -85,3 +85,11 @@ test('sin diapositivas, cada servicio toma la foto cuya descripción se le parec
   const filas = [...l.html.matchAll(/<div class="ag-fila">.*?<h3>([^<]+)<\/h3>.*?alt="([^"]+)"/g)].map((x) => [x[1], x[2]]);
   assert.deepEqual(filas, [['Smash cake', 'Bebé frente a globos y pastel'], ['Maternidad', 'Mujer embarazada en estudio'], ['Bodas', 'Novios abrazados el día de su boda']]);
 });
+
+test('la paleta de la L cumple la regla de color con cualquier color de marca', async () => {
+  const { auditarPaleta } = await import('../../tipo_color.js');
+  const hx = (h, s, l) => { s /= 100; l /= 100; const k = (n) => (n + h / 30) % 12, a = s * Math.min(l, 1 - l), f = (n) => l - a * Math.max(-1, Math.min(k(n) - 3, Math.min(9 - k(n), 1))); return `#${[f(0), f(8), f(4)].map((v) => Math.round(v * 255).toString(16).padStart(2, '0')).join('')}`; };
+  const malos = [];
+  for (let h = 0; h < 360; h += 15) for (const s of [30, 60, 90]) for (const l of [30, 50, 65, 80]) { const c = hx(h, s, l); const e = auditarPaleta(paletaPlataforma([c])); if (e.length) malos.push(`${c}: ${e.join('; ')}`); }
+  assert.deepEqual(malos, []);
+});
