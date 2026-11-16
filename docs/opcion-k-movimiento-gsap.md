@@ -8,4 +8,4 @@ Plantilla con titulares partidos, bandas de texto, cifras animadas, tarjetas api
 
 **Integración:** letra K, `OPCION_K=1`, `backend/src/herramientas/generar_k.mjs` (mismo uso que generar_j). Foto de portada real del cliente; el resto de la página es la general con efectos (`conEfectosK`).
 
-**Licencia:** usa GSAP (Webflow). Su licencia prohíbe "productos competidores"; un constructor de sitios es zona gris. Resolver antes de usarla con clientes (consultar a GSAP o migrar a Motion + Lenis, MIT).
+**Licencia:** GSAP está permitido aquí (decisión de Sebastián, 14-nov-2026): no se publica un editor de animaciones; se ofrecen sitios a prospectos. La licencia solo restringe herramientas visuales de animación sin código que compitan con Webflow (https://gsap.com/standard-license/).
