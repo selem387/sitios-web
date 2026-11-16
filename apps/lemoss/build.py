@@ -373,7 +373,7 @@ def home():
 <ul>
 <li><strong>5 s</strong><span>primera respuesta a prospectos, antes 2 horas</span></li>
 <li><strong>30–60 días</strong><span>para medir un piloto con meta pactada</span></li>
-<li><strong>100%</strong><span>del diagnóstico se acredita si avanzamos</span></li>
+<li><strong>$0</strong><span>cuesta el diagnóstico inicial</span></li>
 <li><strong>+20 años</strong><span>en tecnología y sistemas críticos</span></li>
 </ul>
 </div></section>
