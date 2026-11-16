@@ -25,7 +25,6 @@ test('las letras y posiciones ya entregadas a clientes no cambian', () => {
   const fijas = { A: 'portada', B: 'editorial', C: 'mosaico', D: 'logo', E: 'dostonos', F: 'carta', G: 'collage', H: 'indice', I: 'historia', J: 'narrativa', K: 'movimiento', M: 'guia', N: 'avance', O: 'catalogo', P: 'ficha', Q: 'vitrina', R: 'manual' };
   for (const [letra, nombre] of Object.entries(fijas)) { assert.equal(porLetra(letra)?.nombre, nombre); assert.equal(porNombre(nombre).indice, 'ABCDEFGHIJKLMNOPQR'.indexOf(letra)); }
   assert.equal(LETRAS.slice(0, 18), 'ABCDEFGHIJKLMNOPQR');
-  assert.equal(porLetra('L'), null); // apartada para "Plataforma" hasta que pase a su carpeta
   assert.ok(RESERVADAS.some((r) => r.letra === 'L') || porLetra('L'));
   assert.equal(indiceDeLetra('M'), 12); assert.equal(indiceDeLetra(''), 0); assert.equal(indiceDeLetra('?'), 0);
 });

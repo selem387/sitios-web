@@ -14,6 +14,7 @@
 //   apta({brief, mat})   requisito para salir sola (por ejemplo, mínimo de fotos). Si falta, siempre es apta.
 //   pagina(d, kit)       arma su página completa y devuelve el HTML. Si falta, la arma la plantilla general.
 //   completa(ctx)        arma el resultado entero ({html, fuentes, paleta}) sin pasar por la plantilla general.
+//                        ctx: brief, mat, textos, v, titulos, wa, tel, coloresPropuesta, acento, fijo, letra, titulo.
 //   sinWordPress         true si no tiene versión WordPress (usa la composición de foto a pantalla completa).
 //   cssRevision          CSS para que la revisión visual la mida quieta y completa.
 //   esperaAlGenerarMs    milisegundos que la herramienta de generación manual espera al terminar (trabajo en cola).
@@ -24,7 +25,10 @@
 //     portada(c)                    HTML de la portada.
 //     secciones(c, s)               lista ordenada de secciones; s trae las comunes del kit (kit/secciones.js).
 //     claseHtml, css                clase del <html> (si no, la de efectos por letra) y CSS propio.
-//     trasBarra(c, {navs, contenido})   HTML después de la barra (índices, menús).
+//     head(c)                       HTML extra al final de <head> (librerías, fuentes).
+//     antesBarra(c)                 HTML al inicio de <body>, antes de la barra (avisos).
+//     logo(c)                       logo de la barra (si no, el de siempre).
+//     trasBarra(c, {navs, contenido})   HTML después de la barra (índices, menús). c.navs también está en el contexto.
 //     cierre(c)                     HTML al final de <main>.   js(c): scripts propios al final de <body>.
 //     final(html, c)                último retoque del HTML completo.
 //     paginaCompleta(c, {ft, fc})   arma la página entera con lo ya calculado (la I).
