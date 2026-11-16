@@ -168,7 +168,7 @@ ORG = {
     "description": "Consultoría en estrategia tecnológica por resultados para empresas medianas en México: hoja de ruta tecnológica, procesos, sistemas, ventas e inteligencia artificial, con diagnóstico, piloto con meta pactada, implementación y operación.",
     "email": EMAIL,
     "telephone": "+52 55 2706 9296",
-    "priceRange": "Desde $18,000 MXN",
+    "priceRange": "Diagnóstico sin costo; piloto desde $45,000 MXN",
     "address": {"@type": "PostalAddress", "addressLocality": "Mérida", "addressRegion": "Yucatán", "addressCountry": "MX"},
     "areaServed": [{"@type": "Country", "name": "México"}, {"@type": "City", "name": "Mérida"}, {"@type": "City", "name": "Ciudad de México"}],
     "openingHoursSpecification": [{"@type": "OpeningHoursSpecification", "dayOfWeek": ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"], "opens": "09:00", "closes": "18:00"}],
@@ -192,7 +192,7 @@ WEBSITE = {"@context": "https://schema.org", "@type": "WebSite", "@id": SITE + "
 
 ETAPAS = [
     ("Autodiagnóstico", "Gratis · 10 minutos", "Respondes ocho preguntas sobre tus procesos y sabes de inmediato qué tan listo está un proceso para automatizarse y por dónde conviene empezar.", "/autodiagnostico/", "Hacer el autodiagnóstico"),
-    ("Diagnóstico", "Desde $18,000 MXN · se acredita 100%", "Revisamos contigo procesos, datos y sistemas, calculamos cuánto te cuesta hoy cada proceso y te entregamos un plan priorizado con el retorno esperado de cada caso. El monto se descuenta completo si avanzamos al piloto.", None, None),
+    ("Diagnóstico", "Sin costo", "Revisamos contigo procesos, datos y sistemas, calculamos cuánto te cuesta hoy cada proceso y te entregamos un plan priorizado con el retorno esperado de cada caso.", None, None),
     ("Piloto con meta pactada", "Desde $45,000 MXN · 30 a 60 días", "Elegimos un proceso, fijamos por escrito una meta medible (por ejemplo tiempo de respuesta, prospectos atendidos o horas ahorradas) y lo ponemos a funcionar con tu equipo real.", None, None),
     ("Implementación", "Proyecto cerrado, honorario + bono o garantía", "Con el piloto probado, escalamos a más procesos o áreas. Tú eliges el modelo: precio cerrado, honorario base más bono por resultado, o garantía de resultado con condiciones por escrito.", None, None),
     ("Operación continua", "Mensualidad", "Monitoreo, ajustes, nuevas automatizaciones y reportes mensuales para que lo implementado siga rindiendo y crezca con tu operación.", None, None),
@@ -255,7 +255,7 @@ INDUSTRIAS = [
 
 FAQ = [
     ("¿Qué significa consultoría por resultados?", "Que antes de implementar acordamos por escrito una meta medible, como tiempo de respuesta, prospectos atendidos u horas ahorradas, y el trabajo se evalúa contra esa meta. En etapas avanzadas parte de nuestros honorarios puede depender de alcanzarla."),
-    ("¿Cuánto cuesta trabajar con Lemoss?", "El autodiagnóstico es gratis. El diagnóstico empieza en $18,000 MXN más IVA y se acredita al 100% si continuamos. Un piloto con meta pactada empieza en $45,000 MXN más IVA y dura de 30 a 60 días. La implementación se cotiza según el alcance, con precio cerrado, honorario más bono o garantía de resultado."),
+    ("¿Cuánto cuesta trabajar con Lemoss?", "El autodiagnóstico y el diagnóstico no tienen costo. Un piloto con meta pactada empieza en $45,000 MXN más IVA y dura de 30 a 60 días. La implementación se cotiza según el alcance, con precio cerrado, honorario más bono o garantía de resultado."),
     ("¿Cuánto tiempo tarda en verse un resultado?", "El piloto está diseñado para medir un resultado en 30 a 60 días sobre un proceso real de tu empresa."),
     ("¿Para qué tamaño de empresa es?", "Principalmente para empresas medianas, de 20 a 250 colaboradores, con venta consultiva o procesos operativos que hoy dependen de mucho trabajo manual."),
     ("¿Trabajan solo en Mérida?", "No. Nuestra sede está en Mérida y atendemos a empresas de la Ciudad de México y de todo el país de forma remota, con visitas presenciales cuando el proyecto lo requiere."),
@@ -314,7 +314,7 @@ def migas(*pares):
 # Slider del hero: servicios (s) y modelos de trabajo (m) intercalados
 SLIDES = [
     ("s", "Estrategia tecnológica y de negocio", "Hoja de ruta, prioridades y presupuesto con el retorno esperado de cada iniciativa, incluidos nuevos modelos de negocio de servicios tecnológicos.", "Diagnóstico y acompañamiento a dirección", "/servicios/"),
-    ("m", "Diagnóstico", "Revisamos procesos, datos y sistemas, calculamos cuánto te cuesta hoy cada proceso y te entregamos un plan priorizado.", "Desde $18,000 MXN · se acredita 100%", "/servicios/"),
+    ("m", "Diagnóstico", "Revisamos procesos, datos y sistemas, calculamos cuánto te cuesta hoy cada proceso y te entregamos un plan priorizado.", "Sin costo", "/servicios/"),
     ("s", "Procesos y operación", "Inventario, pedidos, cotizaciones y reportes conectados y automatizados de punta a punta, sin capturas manuales.", "ERP, CRM y hojas de cálculo integrados", "/servicios/"),
     ("m", "Piloto con meta pactada", "Un proceso, una meta medible por escrito y tu equipo real. En 30 a 60 días sabes si funciona.", "Desde $45,000 MXN · 30 a 60 días", "/servicios/"),
     ("s", "Sistemas y plataformas", "Cuando lo que necesitas no existe, diseñamos la arquitectura y construimos la plataforma, de sistemas de gestión a servicios financieros.", "PaaS, APIs y nube", "/servicios/"),
@@ -440,7 +440,7 @@ def servicios():
 </ul>"""
     oferta = {"@context": "https://schema.org", "@type": "OfferCatalog", "name": "Servicios de Lemoss", "itemListElement": [
         {"@type": "Offer", "itemOffered": {"@type": "Service", "name": "Autodiagnóstico de procesos", "provider": {"@id": SITE + "/#lemoss"}}, "price": "0", "priceCurrency": "MXN"},
-        {"@type": "Offer", "itemOffered": {"@type": "Service", "name": "Diagnóstico tecnológico y de procesos", "provider": {"@id": SITE + "/#lemoss"}}, "priceSpecification": {"@type": "PriceSpecification", "minPrice": 18000, "priceCurrency": "MXN", "valueAddedTaxIncluded": False}},
+        {"@type": "Offer", "itemOffered": {"@type": "Service", "name": "Diagnóstico tecnológico y de procesos", "provider": {"@id": SITE + "/#lemoss"}}, "price": 0, "priceCurrency": "MXN"},
         {"@type": "Offer", "itemOffered": {"@type": "Service", "name": "Piloto con meta pactada", "provider": {"@id": SITE + "/#lemoss"}}, "priceSpecification": {"@type": "PriceSpecification", "minPrice": 45000, "priceCurrency": "MXN", "valueAddedTaxIncluded": False}},
     ] + [{"@type": "Offer", "itemOffered": {"@type": "Service", "name": t, "description": d, "provider": {"@id": SITE + "/#lemoss"}}} for t, d, _ in SERVICIOS]}
     body = f"""
@@ -461,7 +461,7 @@ def servicios():
 {cta_final()}
 """
     return layout("/servicios/", "Servicios y precios de consultoría tecnológica | Lemoss",
-                  "Estrategia tecnológica, procesos, sistemas y plataformas, ventas y adopción de IA. Diagnóstico desde $18,000 MXN y piloto con meta pactada desde $45,000 MXN.",
+                  "Estrategia tecnológica, procesos, sistemas y plataformas, ventas y adopción de IA. Diagnóstico sin costo y piloto con meta pactada desde $45,000 MXN.",
                   body, [ORG, oferta, migas(("Servicios", "/servicios/"))])
 
 
