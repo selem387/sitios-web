@@ -18,6 +18,7 @@
 import { agruparOferta, giroCorto, redes } from '../../kit/utiles.js';
 import { direccionTexto } from '../../datos_brief.js';
 import { iconoRed } from '../../iconos_redes.js';
+import { cumple } from '../../tipo_color.js';
 
 const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 
@@ -45,13 +46,15 @@ const saturacion = (h) => { const c = hex(h); const mx = Math.max(...c), mn = Ma
 export function paletaPlataforma(colores = []) {
   const validos = colores.map((c) => (typeof c === 'string' ? c : c?.hex)).filter((c) => hex(c));
   const base = [...validos].sort((a, b) => saturacion(b) - saturacion(a))[0] || '#3B5BDB';
-  let marca = base; for (let i = 0; i < 14 && contraste(marca, '#FFFFFF') < 3; i++) marca = mezcla(marca, '#000000', 0.12);
+  // Regla dura de color (tipo_color.js): el color de marca va como texto (precios, enlaces) sobre blanco y como fondo del
+  // botón, así que se oscurece hasta que cumpla como texto secundario sobre el fondo (WCAG 4.5 y Lc 60).
+  let marca = base; for (let i = 0; i < 30 && !cumple(marca, '#FFFFFF', 'secundario'); i++) marca = mezcla(marca, '#000000', 0.08);
   const tinta = mezcla('#121317', base, 0.06);
   const gris = mezcla('#45474D', base, 0.05);
   return {
     bg: '#FFFFFF', fg: tinta, primary: marca, muted: mezcla('#F8F9FC', base, 0.035), soft: gris, border: mezcla('#E6E8EE', base, 0.04),
     surface: mezcla('#F8F9FC', base, 0.035), pill: mezcla('#F1F3F7', base, 0.05), base,
-    claro: mezcla(base, '#FFFFFF', 0.45), oscuro: mezcla(base, '#05060A', 0.82), onPrimary: contraste(marca, '#FFFFFF') >= 4.5 ? '#FFFFFF' : '#121317',
+    claro: mezcla(base, '#FFFFFF', 0.45), oscuro: mezcla(base, '#05060A', 0.82), onPrimary: cumple('#FFFFFF', marca, 'boton') || !cumple('#121317', marca, 'boton') ? '#FFFFFF' : '#121317',
   };
 }
 
