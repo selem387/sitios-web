@@ -11,26 +11,13 @@ import { esPastel, coloresDePalabras, articuloDe } from './materiales.js';
 import { waUrl, formatoTel } from './bloques.js';
 import { sliderHTML, diapositivasDe, emparejarFotos, CSS_MOVIMIENTO, JS_MOVIMIENTO, efectosDe, filaJustificada, CSS_JUSTIFICADA } from './movimiento.js';
 import { direccionTexto, testimoniosValidos } from './datos_brief.js';
-import { enlacesRedes, CSS_REDES } from './iconos_redes.js';
-import { collageHTML, CSS_COLLAGE, JS_COLLAGE } from './collage.js';
-import { escenaIndiceHTML, navIndiceHTML, monogramaHTML, CSS_INDICE, JS_INDICE } from './indice.js';
-import { fraseDe, paginaHistoria } from './historia.js';
-import { portadaMovimientoHTML, conEfectosK, CSS_MOVIMIENTO_K } from './movimiento_k.js';
-import { portadaNarrativaHTML, CSS_NARRATIVA, JS_NARRATIVA } from './narrativa.js';
-import { escenaGuiaHTML, cierreGuiaHTML, indiceGuiaHTML, CSS_GUIA, JS_GUIA } from './guia.js';
-import { portadaN, franjaN, vitrinaN, avanceN, tarjetasN, prensaN, contactoN, datosDe, fraseResaltada, CSS_AVANCE, JS_AVANCE, URL_MONO_N } from './avance.js';
-import { LAYOUTS, LETRAS as LETRAS_REGISTRO, NOMBRES, OPCIONES_EXTRA, porNombre } from './opciones/registro.js';
-import { portadaCatalogoHTML, bandaFotoHTML, cierreCatalogoHTML, tabsDeServicios, CSS_CATALOGO, JS_CATALOGO } from './catalogo.js';
+import { CSS_REDES } from './iconos_redes.js';
+import { LAYOUTS, LETRAS as LETRAS_REGISTRO, NOMBRES, OPCIONES_EXTRA, porNombre, indiceDeLetra } from './opciones/registro.js';
+import { esc, lum, logoLleno, logoHTML, pasoHTML, agruparOferta, giroCorto, parrafosHTML, detalleHTML, redes, JS_LOGO_UNICO } from './kit/utiles.js';
+import { seccionesComunes } from './kit/secciones.js';
+import { sobre, hsl, tono, conContraste } from './kit/color.js';
+export { logoLleno, logoHTML, pasoHTML, agruparOferta, giroCorto, parrafosHTML, detalleHTML, redes, JS_LOGO_UNICO };
 
-const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
-const lum = (h) => { const n = parseInt(h.slice(1), 16); const c = [(n >> 16) & 255, (n >> 8) & 255, n & 255].map((v) => v / 255).map((v) => (v <= 0.03928 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4)); return 0.2126 * c[0] + 0.7152 * c[1] + 0.0722 * c[2]; };
-const sobre = (bg, a = '#FFFFFF', b = '#16120F') => (contraste(a, bg) >= contraste(b, bg) ? a : b);
-const hsl = (h) => { let [r, g, b] = [1, 3, 5].map((i) => parseInt(h.slice(i, i + 2), 16) / 255); const mx = Math.max(r, g, b), mn = Math.min(r, g, b); let H = 0, S = 0; const L = (mx + mn) / 2;
-  if (mx !== mn) { const d = mx - mn; S = L > 0.5 ? d / (2 - mx - mn) : d / (mx + mn); H = mx === r ? (g - b) / d + (g < b ? 6 : 0) : mx === g ? (b - r) / d + 2 : (r - g) / d + 4; H /= 6; } return [H, S, L]; };
-const deHsl = (H, S, L) => { const f = (n) => { const k = (n + H * 12) % 12, a = S * Math.min(L, 1 - L); return Math.round(255 * (L - a * Math.max(-1, Math.min(k - 3, 9 - k, 1)))).toString(16).padStart(2, '0'); }; return `#${f(0)}${f(8)}${f(4)}`.toUpperCase(); };
-// Mismo matiz, saturación mínima y luminosidad dada: oscurecer sin volverse gris.
-const tono = (h, L, Smin = 0.32, Smax = 1) => { const [H, S] = hsl(h); return deHsl(H, Math.min(Smax, Math.max(S, Smin)), L); };
-const conContraste = (c, bg, min = 4.5, hacia = '#000000') => { let x = c; for (let i = 0; i < 12 && contraste(x, bg) < min; i++) x = mezclar(x, hacia, 0.15); return x; };
 
 // Las opciones se dan de alta solas: cada una vive en su carpeta dentro de generador/opciones/ (ver opciones/registro.js).
 // De ahí salen las letras, los nombres internos (layouts) y los nombres que ve el cliente; aquí ya no se enumeran.
@@ -89,32 +76,15 @@ function paletaGeneral(layout, colores, pastel, i, { acento = null, acentoCta = 
   }
   const papel = mezclar(tinte, '#FFFFFF', 0.72);
   const tinta = conContraste(tono(base, 0.17, 0.12, 0.3), papel, 8);
-  const p = {
-    portada: { bg: mezclar(papel, '#FFFFFF', 0.5), fg: tinta, primary: base, muted: papel },
-    editorial: { bg: '#FFFFFF', fg: tinta, primary: base, muted: mezclar(tinte, '#FFFFFF', 0.55) },
-    mosaico: { bg: papel, fg: tinta, primary: base, muted: mezclar(tinte, '#FFFFFF', 0.35) },
-    logo: { bg: mezclar(tinte, '#FFFFFF', 0.45), fg: tinta, primary: base, muted: '#FFFFFF' },
-    dostonos: { bg: '#FFFFFF', fg: tinta, primary: base, muted: papel, banda: conContraste(tono(base, 0.3, 0.2, 0.32), '#FFFFFF', 7) },
-    carta: { bg: mezclar(papel, '#FFFFFF', 0.65), fg: tinta, primary: base, muted: mezclar(tinte, '#FFFFFF', 0.5) },
-    collage: { bg: '#FFFFFF', fg: tinta, primary: base, muted: mezclar(tinte, '#FFFFFF', 0.6), banda: conContraste(tono(base, 0.24, 0.2, 0.32), '#FFFFFF', 8) },
-    indice: { bg: '#FFFFFF', fg: tinta, primary: base, muted: mezclar(tinte, '#FFFFFF', 0.6), banda: conContraste(tono(base, 0.24, 0.2, 0.32), '#FFFFFF', 8) },
-    historia: { bg: mezclar(papel, '#F6F1E8', 0.6), fg: tinta, primary: base, muted: mezclar(tinte, '#FFFFFF', 0.5), banda: conContraste(tono(base, 0.2, 0.18, 0.3), '#FFFFFF', 9) },
-    movimiento: { bg: mezclar(papel, '#FFFFFF', 0.7), fg: tinta, primary: base, muted: mezclar(tinte, '#FFFFFF', 0.6), banda: conContraste(tono(base, 0.22, 0.2, 0.3), '#FFFFFF', 8) },
-    guia: { bg: mezclar(papel, '#FFFFFF', 0.82), fg: tinta, primary: base, muted: mezclar(tinte, '#FFFFFF', 0.6), banda: conContraste(tono(base, 0.2, 0.18, 0.28), '#FFFFFF', 9) },
-    catalogo: { bg: '#FFFFFF', fg: tinta, primary: base, muted: mezclar(tinte, '#FFFFFF', 0.6), banda: conContraste(tono(base, 0.2, 0.18, 0.28), '#FFFFFF', 9) },
-    // N: neutros de la referencia (crema, grafito, arena); el acento es el color del cliente.
-    avance: { bg: '#FDFCF4', fg: '#2A2C2F', primary: base, muted: '#ECE8E3', banda: '#2A2C2F' },
-    ficha: (() => { const bg = tono(base, 0.09, 0.14, 0.3); const fg = conContraste('#F4EFE8', bg, 12, '#FFFFFF'); const pr = conContraste(tono(base, 0.66, 0.4, 0.9), bg, 4.6, '#FFFFFF'); return { bg, fg, primary: pr, muted: mezclar(bg, '#FFFFFF', 0.06), banda: mezclar(bg, '#000000', 0.35), crema: mezclar(papel, '#FFFFFF', 0.55), tinta: conContraste(tono(base, 0.12, 0.1, 0.25), mezclar(papel, '#FFFFFF', 0.55), 12) }; })(),
-    narrativa: { bg: '#FFFFFF', fg: conContraste(tono(base, 0.1, 0.1, 0.25), '#FFFFFF', 15), primary: base, muted: mezclar(tinte, '#FFFFFF', 0.7) },
-    // Q: negro sobre blanco como la referencia; el color del cliente solo queda guardado para el sitio en vivo.
-    vitrina: { bg: '#FFFFFF', fg: '#000000', primary: base, muted: '#EFEFEF' },
-  }[layout];
+  // Paleta propia de cada opción (opciones/<nombre>/opcion.js, campo paleta), a partir de los colores del cliente.
+  const op = porNombre(layout);
+  const p = op.paleta({ base, tinte, papel, tinta });
   p.primary = conContraste(p.primary, p.bg, 4.5);
   p.onPrimary = sobre(p.primary);
   p.soft = conContraste(mezclar(p.fg, p.bg, 0.3), p.bg, 4.6);
   p.border = mezclar(p.fg, p.bg, 0.86);
   p.card = mezclar(p.bg, '#FFFFFF', 0.6);
-  if (layout === 'ficha') p.card = mezclar(p.bg, '#FFFFFF', 0.08); // tema oscuro: tarjetas un poco más claras que el fondo
+  if (op.temaOscuro) p.card = mezclar(p.bg, '#FFFFFF', 0.08); // tema oscuro: tarjetas un poco más claras que el fondo
   p.tinte = tinte;
   // Tercer color (8-nov-2026): acento en el 10 % (viñetas, pasos, líneas) y, en B y E, también en el botón principal.
   // El acento nunca repite el tono del protagonista: si coincide (diferencia < 25°), se usa otro color del logo.
@@ -123,105 +93,8 @@ function paletaGeneral(layout, colores, pastel, i, { acento = null, acentoCta = 
   const distinto = (c) => c && /^#[0-9A-F]{6}$/i.test(c) && croma2(c) > 0.2 && lum(c) < 0.6 && c !== base && difTono(c, base) >= 25;
   const acc = distinto(acento) ? acento : (colores.filter((c) => /^#[0-9A-F]{6}$/i.test(c)).find(distinto) || null);
   if (acc) { p.accent = acc; p.accentUso = 'relleno'; p.acentoCta = !!acentoCta; }
-  if (layout === 'ficha') { if (!p.accent || contraste(p.accent, p.bg) < 4.5) { p.accent = p.primary; p.acentoCta = false; } p.onAccent = sobre(p.accent); } // tema oscuro: el acento siempre se lee sobre el fondo
+  if (op.temaOscuro) { if (!p.accent || contraste(p.accent, p.bg) < 4.5) { p.accent = p.primary; p.acentoCta = false; } p.onAccent = sobre(p.accent); } // tema oscuro: el acento siempre se lee sobre el fondo
   return p;
-}
-
-/* ---------------- Logo con contraste garantizado ---------------- */
-// Logo de un solo color que no contrasta con el fondo → se pinta con el color de la tinta (máscara CSS), así se ve siempre.
-// Logo a color que no contrasta → placa de color contrario. Devuelve HTML que siempre incluye la URL del logo.
-/** true si el logo es un sello relleno (más de 60% de su caja es opaco): trae su propio fondo y no se entinta. */
-export function logoLleno(logo) {
-  if (!logo?.opaco || !logo.ancho || !logo.alto) return false;
-  const r = logo.ancho / logo.alto; // tonoLogo mide sobre una versión que cabe en 96x96
-  const area = r >= 1 ? 96 * (96 / r) : (96 * r) * 96;
-  return logo.opaco / area > 0.6;
-}
-export function logoHTML(logo, bg, fg, { clase = 'logo', alt = '' } = {}) {
-  if (!logo?.url) return `<span class="nombre">${esc(alt)}</span>`;
-  const claroLogo = logo.tono === 'claro', fondoClaro = lum(bg) > 0.4;
-  const choca = claroLogo === fondoClaro;
-  const ratio = logo.ancho && logo.alto ? (logo.ancho / logo.alto).toFixed(3) : '3';
-  // Logo tipo sello (círculo o cuadro relleno, con su propio fondo): se muestra tal cual. Pintarlo de un color o
-  // oscurecerlo lo deja como una mancha (12-nov-2026, La Fondita de Celestún: el logo salía como un círculo negro).
-  if (logoLleno(logo)) return `<img class="${clase}" src="${esc(logo.url)}" alt="${esc(alt)}">`;
-  if (choca && logo.mono !== false) {
-    const t = logo.tenidos?.[fg];
-    if (t) return `<img class="${clase}" src="${esc(t)}" alt="${esc(alt)}">`;
-    // Sin versión pintada: la original oscurecida o aclarada con filtro (siempre visible).
-    return `<img class="${clase}" src="${esc(logo.url)}" alt="${esc(alt)}" style="filter:brightness(${fondoClaro ? 0 : 100})${fondoClaro ? ' opacity(.85)' : ''}">`;
-  }
-  if (choca) return `<span class="${clase}-placa" style="background:${fondoClaro ? '#1C1714' : '#FFFFFF'}"><img class="${clase}" src="${esc(logo.url)}" alt="${esc(alt)}"></span>`;
-  return `<img class="${clase}" src="${esc(logo.url)}" alt="${esc(alt)}">`;
-}
-
-/* ---------------- Datos ---------------- */
-// "Smash Cake (Primer Año) - Paquete #1" → grupo "Smash Cake (Primer Año)", opción "Paquete #1".
-/** Paso del proceso: "Título\nExplicación" (o {titulo, texto}) → título en negritas y explicación debajo. */
-export function pasoHTML(x) {
-  const o = typeof x === 'object' && x ? { a: x.titulo || '', b: x.texto || '' } : (() => { const [a, ...r] = String(x || '').split('\n'); return { a, b: r.join(' ').trim() }; })();
-  return o.b ? `<b class="paso-t">${esc(o.a.trim())}</b><span class="paso-d">${esc(o.b)}</span>` : esc(o.a.trim());
-}
-
-export function agruparOferta(items = []) {
-  const grupos = new Map();
-  for (const it of items) {
-    const nombre = String(it.nombre || '').trim();
-    if (!nombre) continue;
-    let g = nombre, op = '';
-    // Categoría explícita (la que escribió el cliente, p. ej. "🎂 Smash Cake | Primer Añito"): el nombre queda como opción.
-    if (it.grupo && String(it.grupo).trim()) {
-      g = String(it.grupo).trim(); op = nombre;
-      const k = g.toLowerCase();
-      const grupo = grupos.get(k) || { nombre: g, opciones: [] };
-      grupo.opciones.push({ nombre: op, precio: it.precio_o_rango || it.precio || '', detalle: it.descripcion_corta || it.descripcion || '', destacado: !!it.destacado });
-      grupos.set(k, grupo);
-      continue;
-    }
-    const sinPar = nombre.replace(/\([^)]*\)/g, (x) => x.replace(/[-–]/g, '\u0000'));
-    const m = (sinPar.match(/^(.*?)\s+[-–]\s+(.+)$/) || sinPar.match(/^(.*?)\s+(Paquete\s*#?\s*\d+.*)$/i))?.map((x) => x?.replace(/\u0000/g, '-'));
-    if (m && m[1].length > 2) { g = m[1].trim(); op = m[2].trim(); }
-    const k = g.toLowerCase();
-    const grupo = grupos.get(k) || { nombre: g, opciones: [] };
-    grupo.opciones.push({ nombre: op || null, precio: it.precio_o_rango || it.precio || '', detalle: it.descripcion_corta || it.descripcion || '', destacado: !!it.destacado });
-    grupos.set(k, grupo);
-  }
-  return [...grupos.values()];
-}
-
-/** Giro en una línea legible: su primera frase (antes de ":" ";" o "("), recortada en palabra completa. */
-export function giroCorto(giro, max = 48) {
-  let t = String(giro || '').split(/[:;(]/)[0].trim();
-  if (t.length > max) { t = t.slice(0, max); t = t.slice(0, Math.max(t.lastIndexOf(','), t.lastIndexOf(' '))).replace(/[,\s]+$/, ''); }
-  return t;
-}
-
-/** Texto largo del cliente: un <p> por párrafo (renglón en blanco), saltos simples respetados y **negritas** del chat como <strong>. */
-export function parrafosHTML(texto, clase = '') {
-  const ps = String(texto || '').replace(/\r/g, '').split(/\n\s*\n/).map((x) => x.trim()).filter(Boolean);
-  const neg = (x) => esc(x).replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>').replace(/\n/g, '<br>');
-  return ps.map((x) => `<p${clase ? ` class="${clase}"` : ''}>${neg(x)}</p>`).join('');
-}
-
-/** Descripción de un paquete tal cual la escribió el cliente: cada renglón con "- " o "• " va en su propio <li>; los demás, párrafos. */
-export function detalleHTML(texto) {
-  const lineas = String(texto || '').replace(/\r/g, '').split('\n').map((x) => x.trim()).filter(Boolean);
-  if (!lineas.length) return '';
-  let html = '', lista = [];
-  const cerrar = () => { if (lista.length) { html += `<ul class="inc">${lista.map((x) => `<li>${esc(x)}</li>`).join('')}</ul>`; lista = []; } };
-  for (const l of lineas) {
-    const m = l.match(/^[-•*]\s+(.+)$/);
-    if (m) lista.push(m[1]);
-    else { cerrar(); html += `<span>${esc(l)}</span>`; }
-  }
-  cerrar();
-  return html;
-}
-
-export function redes(c = {}) {
-  const r = c.redes || {};
-  const url = (v, base) => (!v ? null : /^https?:/i.test(v) ? v : `${base}${String(v).replace(/^@/, '')}`);
-  return [['Instagram', url(r.instagram, 'https://instagram.com/')], ['Facebook', url(/^\d{6,}$/.test(String(r.facebook || '')) ? `profile.php?id=${r.facebook}` : r.facebook, 'https://facebook.com/')], ['TikTok', url(r.tiktok, 'https://tiktok.com/@')], ['YouTube', url(r.youtube, 'https://youtube.com/@')], ['LinkedIn', url(r.linkedin, 'https://www.linkedin.com/company/')]].filter((x) => x[1]);
 }
 
 // Flechas del carrusel de "Nuestro trabajo": avanzan ~80% del ancho visible y se apagan en los extremos.
@@ -229,10 +102,6 @@ const JS_CAR_TRABAJO = `<script>(()=>{document.querySelectorAll('#trabajo').forE
 const est=()=>{a.disabled=g.scrollLeft<4;b.disabled=g.scrollLeft+g.clientWidth>=g.scrollWidth-4;sec.querySelector('.tr-nav').hidden=g.scrollWidth<=g.clientWidth+4};
 a.addEventListener('click',()=>g.scrollBy({left:-g.clientWidth*.8,behavior:'smooth'}));b.addEventListener('click',()=>g.scrollBy({left:g.clientWidth*.8,behavior:'smooth'}));
 g.addEventListener('scroll',est,{passive:true});addEventListener('resize',est,{passive:true});addEventListener('load',est);est()})})();</script>`;
-
-// Diseño "Tu logo al centro" (10-nov-2026): el logo grande de la portada y el de la barra no se ven a la vez;
-// el de la barra aparece cuando el grande sale de la pantalla.
-export const JS_LOGO_UNICO = `<script>(()=>{const g=document.querySelector('.h-logo .logo-grande,.h-logo .logo-grande-placa'),b=document.querySelector('.barra');if(!b)return;if(!g||!('IntersectionObserver'in window)){b.classList.add('ver-logo');return;}new IntersectionObserver(([e])=>b.classList.toggle('ver-logo',!e.isIntersecting),{rootMargin:'-70px 0px 0px 0px'}).observe(g);})();</script>`;
 
 /**
  * Fotos del cliente agrupadas por la sección donde pidió ponerlas (brief.fotos.ubicacion = {clave: sección}).
@@ -249,6 +118,7 @@ export function urlsPorUbicacion(mat = {}, brief = {}) {
 
 /* ---------------- Página ---------------- */
 function pagina(d) {
+  const op = porNombre(d.layout);
   const { pal: p, f, t, mat, brief } = d;
   const usadas = new Set();
   const img = (x, { cls = '', eager = false, sizes = '', extra = '' } = {}) => { usadas.add(x.url); return `<img${cls ? ` class="${cls}"` : ''} src="${esc(x.url)}" alt="${esc(x.alt || '')}" loading="${eager ? 'eager' : 'lazy'}"${x.ancho ? ` width="${x.ancho}" height="${x.alto}"` : ''}${sizes}${extra}>`; };
@@ -288,7 +158,7 @@ function pagina(d) {
   // las demás con otra foto de su trabajo para que no se vean iguales (si el dueño fijó portada, se respeta en todas).
   const variar = d.dref && d.letra !== 'A' && !brief.fotos?.portada_manual;
   const heroMat = mat.hero && fueraDeGaleria(mat.hero) ? mat.hero : null;
-  const heroBase = !variar && (d.layout === 'portada' || d.layout === 'logo' || d.layout === 'collage' || d.layout === 'indice' || d.layout === 'historia' || d.layout === 'narrativa' || d.layout === 'movimiento' || d.layout === 'guia' || d.layout === 'catalogo' || d.layout === 'ficha' || d.layout === 'avance' || (brief.fotos?.portada_manual && heroMat)) ? (heroMat || fotosT[0]) : (fotosT[0] || heroMat || (fueraDeGaleria(mat.fundador) ? mat.fundador : null));
+  const heroBase = !variar && (op?.conFotoPrincipal || (brief.fotos?.portada_manual && heroMat)) ? (heroMat || fotosT[0]) : (fotosT[0] || heroMat || (fueraDeGaleria(mat.fundador) ? mat.fundador : null));
   // Si el titular habla de un producto, abre con la foto de ese producto (la eligió la IA de textos por su descripción).
   const fotoTit = !brief.fotos?.portada_manual && t.foto_url ? [mat.hero, ...trabajos].find((x) => x?.url === t.foto_url) : null;
   const heroFoto = fotoTit || heroBase;
@@ -308,219 +178,19 @@ function pagina(d) {
   const slider = (o) => sliderHTML({ fotos: poolSl, diapos, img, cta: t.cta, href: wa, nombre: d.nombre, ...o }).html;
   const textoPortada = `<p class="kicker">${esc(neg.ciudad ? `${giroCorto(neg.giro_texto) || ''} · ${neg.ciudad}` : giroCorto(neg.giro_texto) || '')}</p><h1>${esc(t.titular)}</h1><p class="sub">${esc(t.subtitulo)}</p>${cta()}`;
 
-  /* --- Héroes --- */
-  const heros = {
-    portada: () => (heroFoto ? slider({ tag: 'section', clase: 'hero h-portada', envolver: true, primera: textoPortada })
-      : `<section class="hero h-portada"><div class="velo"></div><div class="wrap in">${textoPortada}</div></section>`),
-    editorial: () => `<section class="hero h-edit wrap"><div class="txt"><p class="kicker">${esc(giroCorto(neg.giro_texto) || '')}</p><h1>${esc(t.titular)}</h1><p class="sub">${esc(t.subtitulo)}</p>${cta()}<ul class="info">${info}</ul></div>${heroFoto ? slider({ tag: 'figure', clase: 'arco sl-marco' }) : ''}</section>`,
-    mosaico: () => { const s = poolSl.length ? slider({ tag: 'div', clase: 'mos-sl sl-marco' }) : ''; const m = fotosT.filter((x) => !usadas.has(x.url)).slice(0, s ? 4 : 5); return `<section class="hero h-mos wrap"><h1>${esc(t.titular)}</h1><p class="sub">${esc(t.subtitulo)}</p>${cta()}<div class="mos m${m.length + (s ? 1 : 0)}${s && m.length < 2 ? ' solo' : ''}">${s}${m.map((x, k) => { enPortada.add(x.url); return img(x, { eager: k < 1, cls: 'rep-ok' }); }).join('')}</div></section>`; },
-    logo: () => `<section class="hero h-logo wrap">${mat.logo ? logoHTML(mat.logo, p.bg, p.fg, { clase: 'logo-grande', alt: d.nombre }) : `<p class="nombre-grande">${esc(d.nombre)}</p>`}<h1>${esc(t.titular)}</h1><p class="sub">${esc(t.subtitulo)}</p>${cta()}${heroFoto ? slider({ tag: 'figure', clase: 'ovalo sl-marco' }) : ''}</section>`,
-    dostonos: () => `<section class="hero h-dos"><div class="wrap in"><div class="txt"><h1>${esc(t.titular)}</h1><p class="sub">${esc(t.subtitulo)}</p>${cta('inv')}</div>${heroFoto ? slider({ tag: 'figure', clase: 'marco sl-marco' }) : ''}</div></section>`,
-    // G: foto de fondo + texto a la izquierda + panel que cambia de acomodo (sin la foto de fondo; hasta 9 fotos).
-    collage: () => {
-      const vistas = new Set(heroFoto ? [heroFoto.url] : []);
-      const panelF = [...fijasSl, ...poolBase].filter((x) => x?.url && !vistas.has(x.url) && vistas.add(x.url));
-      const col = collageHTML({ fotos: panelF, img, nombre: d.nombre });
-      col.urls.forEach((u) => enPortada.add(u));
-      const fondo = heroFoto ? img(heroFoto, { cls: 'col-fondo rep-ok', eager: true, extra: ' fetchpriority="high" sizes="100vw"' }) + '<div class="col-velo"></div>' : '';
-      return `<section class="hero h-col${heroFoto ? '' : ' sin-fondo'}">${fondo}<div class="wrap col-in"><div class="txt">${textoPortada}${info ? `<ul class="info">${info}</ul>` : ''}</div>${col.html}</div></section>`;
-    },
-    // H: portada con recorrido (generador/indice.js). Foto de fondo y hasta 3 fotos en el túnel; todas pueden repetirse
-    // en "Nuestro trabajo". El lema sale del primer texto de diapositiva real del brief (diferenciador, oferta, prueba o visión).
-    indice: () => {
-      const vistas = new Set(heroFoto ? [heroFoto.url] : []);
-      const tunel = [...fijasSl, ...poolBase].filter((x) => x?.url && !vistas.has(x.url) && vistas.add(x.url));
-      const dp = diapos.find((x) => x?.titular) || null;
-      const giro = giroCorto(neg.giro_texto) || '';
-      const esc0 = escenaIndiceHTML({ heroFoto, tunel, img, kicker: [giro, neg.ciudad].filter(Boolean).join(' · '), titular: t.titular, subtitulo: t.subtitulo, cta: cta(), info: t.info || [],
-        lema: dp?.titular || d.nombre, apoyo: dp ? dp.apoyo : giro, logo: mat.logo ? logoHTML(mat.logo, '#141414', '#FFFFFF', { alt: d.nombre }) : '', nombre: d.nombre });
-      esc0.urls.forEach((u) => enPortada.add(u));
-      return esc0.html;
-    },
-    // I: página propia completa (generador/historia.js, reconstruida desde savor.it): aquí no se arma héroe.
-    historia: () => '',
-    // J: portada tipográfica (generador/narrativa.js). Titular enorme, foto a todo lo ancho debajo; si el cliente subió
-    // un video, ese video va encima de la foto como fondo vivo y ya no se repite en la sección de video.
-    narrativa: () => {
-      const na = portadaNarrativaHTML({ heroFoto, video: mat.videos?.[0] || null, img, kicker: [giroCorto(neg.giro_texto), neg.ciudad].filter(Boolean).join(' · '), titular: t.titular, subtitulo: t.subtitulo, cta: cta(), info: t.info || [] });
-      na.urls.forEach((u) => { enPortada.add(u); usadas.add(u); });
-      return na.html;
-    },
-    // K: portada en movimiento (generador/movimiento_k.js). Titular por letras, foto del cliente con paralaje y banda de texto
-    // con los textos reales de las diapositivas (si no hay, con el giro y la ciudad). Los efectos del resto se añaden al final.
-    movimiento: () => {
-      const frases = [...diapos.map((x) => x?.titular).filter(Boolean), giroCorto(neg.giro_texto), neg.ciudad].filter(Boolean);
-      const mv = portadaMovimientoHTML({ heroFoto, img, kicker: [giroCorto(neg.giro_texto), neg.ciudad].filter(Boolean).join(' · '), titular: t.titular, subtitulo: t.subtitulo, cta: cta(), frases: frases.length >= 2 ? frases : [d.nombre, ...frases] });
-      mv.urls.forEach((u) => { enPortada.add(u); usadas.add(u); });
-      return mv.html;
-    },
-    // M: guía en movimiento (generador/guia.js). Portada que se abre, recorrido fijo con las fotos del slider y sus textos,
-    // frase que se enciende y (al final de la página) cierre que crece. Todas las fotos pueden repetirse en "Nuestro trabajo".
-    guia: () => {
-      const pasos = poolSl.slice(1).map((foto, k) => ({ foto, titular: diapos[k]?.titular || '', apoyo: diapos[k]?.apoyo || '' }));
-      const giro = giroCorto(neg.giro_texto) || '';
-      const frases = [...diapos.map((x) => x?.titular).filter(Boolean), giro, neg.ciudad].filter(Boolean);
-      const frase = fraseDe(t.sobre || conf.historia_corta || '') || fraseDe(brief.oferta?.diferenciador || '') || '';
-      const gu = escenaGuiaHTML({ heroFoto, pasos, frases: frases.length >= 2 ? frases : [d.nombre, ...frases], frase, img, kicker: [giro, neg.ciudad].filter(Boolean).join(' · '), titular: t.titular, subtitulo: t.subtitulo, cta: cta() });
-      gu.urls.forEach((u) => { enPortada.add(u); usadas.add(u); });
-      return gu.html;
-    },
-    // O: catálogo en movimiento (generador/catalogo.js). Portada en carrusel con las fotos del slider y sus textos;
-    // "Nuestro trabajo" hace de estante deslizable y los servicios van en pestañas. Sin librerías de animación.
-    catalogo: () => {
-      const pasos = poolSl.slice(1).map((foto, k) => ({ foto, titular: diapos[k]?.titular || '', apoyo: diapos[k]?.apoyo || '' }));
-      const ct = portadaCatalogoHTML({ heroFoto, pasos, img, kicker: [giroCorto(neg.giro_texto), neg.ciudad].filter(Boolean).join(' · '), titular: t.titular, subtitulo: t.subtitulo, cta: cta() });
-      ct.urls.forEach((u) => { enPortada.add(u); usadas.add(u); });
-      return ct.html;
-    },
-    // N (vastspace.com): fotos del slider a pantalla completa con fundido, pausa y titular abajo a la izquierda.
-    avance: () => {
-      // Si la foto principal es la de la fundadora, va en "Sobre mí" y la portada usa las fotos de trabajo.
-      const otras = poolSl.filter((x) => x?.url && x.url !== heroFoto?.url);
-      const fP = heroFoto && (heroFoto.tipo === 'foto_fundador' || heroFoto.url === mat.fundador?.url) && otras.length ? otras : [heroFoto, ...otras];
-      const n = portadaN({ fotos: fP, img, titular: t.titular, subtitulo: t.subtitulo, cta: cta(), verMas: '#trabajo' });
-      n.urls.forEach((u) => { enPortada.add(u); usadas.add(u); });
-      return n.html;
-    },
-    carta: () => { const s = poolSl.length ? `<div class="wrap">${slider({ tag: 'figure', clase: 'sl-carta sl-marco' })}</div>` : ''; const resto = s ? [] : fotosT.filter((x) => !usadas.has(x.url)).slice(0, 8); return `<section class="hero h-carta wrap"><div class="tit"><p class="kicker">${esc(d.nombre)}</p><h1>${esc(t.titular)}</h1></div><div class="lado"><p class="sub">${esc(t.subtitulo)}</p>${cta()}</div></section>${s}${resto.length ? `<div class="wrap">${filaJustificada(resto, img)}</div>` : ''}`; },
-  };
-  const promo = brief.oferta?.promocion_actual ? `<section class="promo" id="promocion"><div class="wrap"><p><b>Promoción</b> ${esc(brief.oferta.promocion_actual)}</p></div></section>` : '';
-  const hero = heros[d.layout]() + promo;
-
-  /* --- Secciones --- */
   const T = d.titulos;
-  // "Nuestro trabajo" (10-nov-2026, decisión de Sebastián): lleva SIEMPRE todas las fotos de trabajo, aunque estén en el
-  // slider (única excepción a "ninguna foto se repite"), y nunca menos de 5: si faltan, se suman otras fotos del cliente.
-  // Solo se excluyen las que ya salieron fuera del slider (filas o mosaicos de la portada) para no duplicarlas.
-  const enSlider = new Set(poolSl.map((x) => x.url));
-  const secTrabajo = () => {
-    const libreT = (x) => !usadas.has(x.url) || enSlider.has(x.url) || enPortada.has(x.url);
-    const resto = fotosT.filter(libreT);
-    // Las que el cliente pidió aquí entran siempre (aunque sean de equipo u otras), al principio del carrusel.
-    for (const x of ub.fotos.filter((y) => ub.trabajo.has(y.url)).reverse()) if (!resto.some((y) => y.url === x.url) && libreT(x)) resto.unshift(x);
-    for (const x of [...mat.equipo, ...(mat.otras || []), ...poolSl]) {
-      if (resto.length >= 5) break;
-      if (x?.url && fueraDeGaleria(x) && /^(foto|imagen)/.test(x.tipo || 'foto') && !resto.some((y) => y.url === x.url) && libreT(x)) resto.push(x);
-    }
-    if (!resto.length) return '';
-    // Carrusel horizontal (10-nov-2026, pedido de Sebastián): todas las fotos una al lado de la otra, misma altura, se
-    // desliza con el dedo o con las flechas; cada foto lleva "+ info" que abre WhatsApp con la liga de esa foto.
-    return `<section class="sec" id="trabajo"><div class="wrap"><div class="tr-cab"><h2>${esc(T.trabajo)}</h2><div class="tr-nav"><button type="button" class="tr-b tr-ant" aria-label="Fotos anteriores">&#8249;</button><button type="button" class="tr-b tr-sig" aria-label="Más fotos">&#8250;</button></div></div><div class="galeria g-car" tabindex="0" aria-label="${esc(T.trabajo)}">${resto.map(figTr).join('')}</div></div></section>`;
-  };
   const grupos = agruparOferta(brief.oferta?.items || []);
   const mostrarPrecios = brief.oferta?.mostrar_precios !== false || brief.oferta?.mostrar_paquetes;
-  const secServicios = () => {
-    if (!grupos.length && !mat.catalogos.length && !mat.documentos.length) return '';
-    // Servicios con varios paquetes (y cantidades distintas): título con línea divisoria por servicio
-    // y debajo una rejilla con un cuadro por paquete. Si cada servicio es uno solo, un cuadro por servicio.
-    const conPaquetes = grupos.some((g) => g.opciones.length > 1);
-    const hN = conPaquetes ? 'h4' : 'h3'; // dentro de un servicio con título, cada paquete es un nivel abajo
-    const cuadro = (o, titulo = null) => `<article class="paq"><div class="paq-cab">${titulo || o.nombre ? `<${hN}>${esc(titulo || o.nombre)}</${hN}>` : ''}${mostrarPrecios && o.precio ? `<em>${esc(o.precio)}</em>` : ''}</div>${titulo && o.nombre ? `<b class="paq-op">${esc(o.nombre)}</b>` : ''}${o.detalle ? `<div class="paq-det">${detalleHTML(o.detalle)}</div>` : ''}</article>`;
-    const cards = conPaquetes
-      ? grupos.map((g) => `<div class="paq-grupo"><h3 class="grupo-t">${esc(g.nombre)}</h3><div class="paqs">${g.opciones.map((o) => cuadro(o)).join('')}</div></div>`).join('')
-      : grupos.map((g) => (g.opciones.length === 1 ? cuadro(g.opciones[0], g.nombre) : '')).join('');
-    const cat = mat.catalogos.map((x) => `<a class="catimg" href="${esc(x.url)}" target="_blank" rel="noopener">${img(x)}</a>`).join('');
-    const docs = mat.documentos.map((x) => `<a class="doc" href="${esc(x.url)}" target="_blank" rel="noopener">Ver ${esc(/pdf/i.test(x.url) ? 'catálogo (PDF)' : x.alt || 'documento')}</a>`).join('');
-    for (const x of mat.documentos) usadas.add(x.url);
-    // Intro, frase de cierre y texto del botón de esta sección los puede fijar el cliente por chat (10-nov-2026).
-    const btnServ = t.servicios_boton ? `<a class="btn"${wa}>${esc(t.servicios_boton)}</a>` : cta();
-    return `<section class="sec" id="servicios"><div class="wrap"><h2>${esc(T.servicios)}</h2>${t.servicios_intro ? `<p class="sec-intro">${esc(t.servicios_intro)}</p>` : ''}${cards ? (conPaquetes ? cards : `<div class="paqs">${cards}</div>`) : ''}${cat ? `<div class="cats">${cat}</div>` : ''}${docs}<div class="centro">${t.servicios_cierre ? `<p class="sec-cierre">${esc(t.servicios_cierre)}</p>` : ''}${btnServ}</div></div></section>`;
-  };
-  const secSobre = () => {
-    const otra = mat.equipo.find((x) => x.tipo === 'foto_fundador' && !usadas.has(x.url) && fueraDeGaleria(x));
-    // Si su foto ya está en la portada, aquí va otra suya o ninguna (nunca la misma dos veces).
-    const fund0 = mat.fundador && fueraDeGaleria(mat.fundador) ? mat.fundador : null;
-    const foto = fund0 && usadas.has(fund0.url) ? (otra || null) : (fund0 || otra || null);
-    if (!foto && !conf.historia_corta) return '';
-    const cifras = (conf.cifras || []).slice(0, 3).map((c) => `<li>${esc(c)}</li>`).join('');
-    const cred = (fund.credenciales || []).map((c) => esc(c)).join(' · ');
-    return `<section class="sec sobre" id="sobre"><div class="wrap s-in${foto ? '' : ' sin-foto'}">${foto ? `<figure class="retrato">${img(foto)}</figure>` : ''}<div><h2>${esc(T.sobre)}</h2>${fund.nombre ? `<p class="firma">${esc(fund.nombre)}${fund.rol ? ` · ${esc(fund.rol)}` : ''}</p>` : ''}<div class="historias">${parrafosHTML(t.sobre || conf.historia_corta || '', 'historia')}</div>${cred ? `<p class="cred">${cred}</p>` : ''}${cifras ? `<ul class="cifras">${cifras}</ul>` : ''}</div></div></section>`;
-  };
-  const secEquipo = () => { const eq = mat.equipo.filter((x) => !usadas.has(x.url) && fueraDeGaleria(x) && !ub.trabajo.has(x.url)); return eq.length ? `<div class="wrap"><div class="galeria g-eq">${eq.map((x) => `<figure>${img(x)}</figure>`).join('')}</div></div>` : ''; };
-  const secResenas = () => {
-    const tes = testimoniosValidos(brief, mat);
-    if (!tes.length && !mat.resenas.length) return '';
-    const limpio = (s) => String(s).replace(/\p{Extended_Pictographic}/gu, '').trim();
-    const cards = tes.map((x) => `<blockquote><p>${esc(limpio(x.texto))}</p>${x.nombre ? `<cite>${esc(x.nombre)}</cite>` : ''}</blockquote>`).join('');
-    const caps = mat.resenas.map((x) => `<figure class="cap">${img(x)}</figure>`).join('');
-    // Testimonios y capturas de reseñas en una sola fila a todo el ancho (hasta 4); más de 4 siguen en filas parejas.
-    const n = tes.length + mat.resenas.length;
-    const fila = `<div class="quotes q${Math.min(n, 4)}">${cards}${caps}</div>`;
-    return `<section class="sec resenas" id="resenas"><div class="wrap"><h2>${esc(T.resenas)}</h2>${fila}</div></section>`;
-  };
-  // Cada paso puede traer título y explicación ("Título\nTexto"), como lo escribe el cliente por chat (10-nov-2026).
-  const secProceso = () => { const ps = brief.oferta?.proceso_pasos || []; return ps.length >= 3 ? `<section class="sec" id="proceso"><div class="wrap"><h2>${esc(t.proceso || 'Cómo funciona')}</h2>${t.proceso_intro ? `<p class="sec-intro">${esc(t.proceso_intro)}</p>` : ''}<ol class="pasos">${ps.map((x) => `<li>${pasoHTML(x)}</li>`).join('')}</ol></div></section>` : ''; };
-  // Si el cliente fijó el título de "Cómo funciona" por chat, la sección aparece en cualquier diseño (10-nov-2026).
-  const procCli = () => (t.proceso ? secProceso() : '');
-  const secFaq = () => { const fq = (brief.faq || []).filter((x) => x.pregunta && x.respuesta); return fq.length ? `<section class="sec" id="faq"><div class="wrap"><div class="faq-l"><h2>${esc(T.faq)}</h2>${fq.map((x, k) => `<details${k === 0 ? ' open' : ''}><summary>${esc(x.pregunta)}</summary><p>${esc(x.respuesta)}</p></details>`).join('')}</div></div></section>` : ''; };
-  const secVideo = () => mat.videos.some((v) => !enPortada.has(v.url)) ? `<section class="sec"><div class="wrap">${mat.videos.filter((v) => !enPortada.has(v.url)).map((v) => { usadas.add(v.url); return `<video class="video" src="${esc(v.url)}" controls playsinline preload="metadata"></video>`; }).join('')}</div></section>` : '';
-  const secContacto = () => {
-    const c = brief.contacto || {};
-    const dir = direccionTexto(brief);
-    const zona = (brief.zona?.cobertura || []).join(' · ');
-    const rs = enlacesRedes(redes(c));
-    return `<section class="sec contacto" id="contacto"><div class="wrap"><h2>${esc(T.contacto)}</h2><div class="datos">${d.tel ? `<p><b>WhatsApp</b><a${wa}>${esc(d.tel)}</a></p>` : ''}${dir ? `<p><b>Dónde</b>${esc(dir)}</p>` : zona ? `<p><b>Dónde</b>${esc(zona)}</p>` : ''}${typeof c.horarios === 'string' ? `<p><b>Horario</b>${esc(c.horarios)}</p>` : ''}${c.email ? `<p><b>Correo</b><a href="mailto:${esc(c.email)}">${esc(c.email)}</a></p>` : ''}${rs ? `<p><b>Redes</b><span class="rs">${rs}</span></p>` : ''}</div>${cta()}</div></section>`;
-  };
+  // Lo propio de cada opción (portada, orden de secciones, estilos, scripts, cierre) vive en su carpeta: opciones/<nombre>/opcion.js.
+  const pl = op.plantilla;
+  const c = { d, p, f, t, mat, brief, usadas, img, wa, waFoto, figTr, logoBarra, neg, conf, fund, ub, fueraDeGaleria, buenaFoto, trabajos, fotosT, heroFoto, cta, info, extraSl, fijasSl, poolBase, poolSl, diapos, enPortada, slider, textoPortada, T, grupos, mostrarPrecios };
 
-  // O: banda de foto con una frase del cliente (su historia o diferenciador) y parallax; las fotos pueden repetirse (rep-ok).
-  const fotosCt = d.layout === 'catalogo' ? fotosT.filter((x) => x?.url && !enPortada.has(x.url) && x.url !== heroFoto?.url) : [];
-  const bandaCt = () => {
-    const frase = fraseDe(t.sobre || conf.historia_corta || '') || fraseDe(brief.oferta?.diferenciador || '') || '';
-    return bandaFotoHTML({ foto: fotosCt[1] || null, img, frase, cta: cta() });
-  };
-  // N: secciones propias (generador/avance.js). Solo datos reales; si falta el dato, la sección no aparece.
-  const libreVx = (x) => x?.url && !usadas.has(x.url) && !enPortada.has(x.url);
-  const franjaVx = () => franjaN(fraseResaltada(t.sobre || conf.historia_corta || brief.oferta?.diferenciador || ''));
-  const vitrinaVx = () => {
-    const rec = (mat.fotos || []).find((x) => x.recorte && libreVx(x));
-    const foto = rec || fotosT.find(libreVx) || null;
-    return vitrinaN({ foto, img, recorte: !!rec, nombre: d.nombre, etiqueta: [giroCorto(neg.giro_texto), neg.ciudad].filter(Boolean).join(' · '), apoyo: brief.oferta?.diferenciador || '', datos: datosDe(conf.cifras), href: '#servicios' });
-  };
-  const avanceVx = () => avanceN({ titulo: T.trabajo, img, nota: [giroCorto(neg.giro_texto), neg.ciudad].filter(Boolean).join(' · '), fotos: fotosT.filter(libreVx).map((foto) => ({ foto, texto: '' })) }).html;
-  const tarjetasVx = () => {
-    const ver = brief.oferta?.mostrar_precios !== false || brief.oferta?.mostrar_paquetes;
-    const items = agruparOferta(brief.oferta?.items || []).flatMap((g) => g.opciones.map((o) => ({ meta: [String(g.nombre).replace(/\p{Extended_Pictographic}|\uFE0F/gu, '').trim(), ...(ver && o.precio ? [o.precio] : [])].filter((x, k, a) => x && a.indexOf(x) === k), titulo: o.nombre || g.nombre, texto: String(o.detalle || '').split(/\n\s*\n/)[0].trim() })));
-    const sobra = [...mat.local, ...(mat.otras || []), ...mat.trabajos].filter((x) => libreVx(x) && fueraDeGaleria(x));
-    items.forEach((it, k) => { if (sobra[k]) it.foto = sobra[k]; });
-    return tarjetasN({ titulo: T.servicios, items, img, cta: cta() });
-  };
-  const prensaVx = () => {
-    const limpio = (x) => String(x).replace(/\p{Extended_Pictographic}/gu, '').trim();
-    const citas = testimoniosValidos(brief, mat).map((x) => ({ texto: limpio(x.texto), autor: x.nombre || '' }));
-    const nombres = [...new Set([...(conf.premios || []), ...(conf.certificaciones || [])].map((x) => String(x || '').trim()).filter(Boolean))];
-    return prensaN({ titulo: T.resenas, citas, nombres, tituloNombres: 'Reconocimientos' });
-  };
-  const contactoVx = () => {
-    const c = brief.contacto || {};
-    const dir = direccionTexto(brief) || (brief.zona?.cobertura || []).join(' · ');
-    const rs = enlacesRedes(redes(c));
-    return contactoN({ titulo: T.contacto, cta: cta(), columnas: [
-      { titulo: 'WhatsApp', html: d.tel ? `<a${wa}>${esc(d.tel)}</a>` : '' },
-      { titulo: 'Dónde', html: dir ? `<span>${esc(dir)}</span>` : '' },
-      { titulo: 'Horario', html: typeof c.horarios === 'string' ? `<span>${esc(c.horarios)}</span>` : '' },
-      { titulo: 'Correo', html: c.email ? `<a href="mailto:${esc(c.email)}">${esc(c.email)}</a>` : '' },
-      { titulo: 'Redes', html: rs ? `<span class="rs">${rs}</span>` : '' },
-    ] });
-  };
-  const ORDEN = {
-    portada: [secTrabajo, secServicios, secSobre, secEquipo, secResenas, secProceso, secFaq, secVideo, secContacto],
-    editorial: [secSobre, secTrabajo, secEquipo, secServicios, secResenas, procCli, secFaq, secVideo, secContacto],
-    mosaico: [secServicios, secTrabajo, secResenas, secSobre, secEquipo, secProceso, secFaq, secVideo, secContacto],
-    logo: [secTrabajo, secSobre, secEquipo, secServicios, secResenas, procCli, secFaq, secVideo, secContacto],
-    dostonos: [secServicios, secTrabajo, secSobre, secEquipo, secResenas, procCli, secFaq, secVideo, secContacto],
-    carta: [secServicios, secSobre, secEquipo, secResenas, secTrabajo, procCli, secFaq, secVideo, secContacto],
-    collage: [secServicios, secTrabajo, secSobre, secEquipo, secResenas, procCli, secFaq, secVideo, secContacto],
-    indice: [secSobre, secTrabajo, secServicios, secEquipo, secResenas, secProceso, secFaq, secVideo, secContacto],
-    historia: [secServicios, secTrabajo, secSobre, secEquipo, secResenas, procCli, secFaq, secVideo, secContacto],
-    movimiento: [secSobre, secTrabajo, secServicios, secEquipo, secResenas, secProceso, secFaq, secVideo, secContacto],
-    narrativa: [secSobre, secTrabajo, secServicios, secEquipo, secResenas, secProceso, secFaq, secVideo, secContacto],
-    guia: [secSobre, secTrabajo, secServicios, secEquipo, secResenas, secProceso, secFaq, secVideo, secContacto],
-    // O: estante de trabajo primero, banda con parallax, servicios en pestañas y el resto como en las demás.
-    // N: cifras justo después de la portada, serie de fotos, y reconocimientos reales antes de las preguntas.
-    // N (vastspace.com): franja que se enciende, vitrina, carrusel de avance, tarjetas, prensa y marco negro de contacto.
-    avance: [franjaVx, vitrinaVx, avanceVx, tarjetasVx, secSobre, secEquipo, prensaVx, secProceso, secFaq, secVideo, contactoVx],
-    catalogo: [secTrabajo, bandaCt, () => tabsDeServicios(secServicios()), secSobre, secEquipo, secResenas, secProceso, secFaq, secVideo, secContacto],
-  }[d.layout];
+  /* --- Héroes --- */
+  const promo = brief.oferta?.promocion_actual ? `<section class="promo" id="promocion"><div class="wrap"><p><b>Promoción</b> ${esc(brief.oferta.promocion_actual)}</p></div></section>` : '';
+  const hero = pl.portada(c) + promo;
+
+  /* --- Secciones --- */
+  const ORDEN = pl.secciones(c, seccionesComunes(c));
   const cuerpo = ORDEN.map((fn) => fn()).join('');
   // Galería final: TODO lo que el cliente mandó y aún no aparece (regla dura). Nada se queda fuera.
   const pendientes = [...mat.trabajos, ...mat.local, ...mat.equipo, mat.fundador, ...mat.resenas, ...mat.catalogos, ...mat.otras, ...mat.menus, ...mat.fotos.filter((x) => !x.recorte)]
@@ -544,41 +214,10 @@ function pagina(d) {
 
   const navs = [['trabajo', T.trabajo], ['servicios', T.servicios], ['sobre', T.sobre], ['contacto', T.contacto]].filter(([id]) => cuerpo.includes(`id="${id}"`));
   const ft = f.titulos, fc = f.cuerpo;
-  // H: el índice lateral lista "Inicio" y cada sección que sí existe, en el orden de la página.
-  const esIx = d.layout === 'indice';
-  const ETQ_IX = { sobre: T.sobre, trabajo: T.trabajo, servicios: T.servicios, resenas: T.resenas, proceso: t.proceso || 'Cómo funciona', faq: T.faq, galeria: T.galeria, contacto: T.contacto };
-  const seccionesIx = esIx ? [...`${cuerpoFinal}${galeria}`.matchAll(/<section[^>]*\bid="([a-z]+)"/g)].map((m) => [m[1], ETQ_IX[m[1]]]).filter((x) => x[1]) : [];
-  const esHs = d.layout === 'historia';
-  const esNa = d.layout === 'narrativa';
-  const esMv = d.layout === 'movimiento';
-  const esGu = d.layout === 'guia';
-  const esCt = d.layout === 'catalogo';
-  const esAv = d.layout === 'avance';
-  const cierreCt = esCt ? cierreCatalogoHTML({ foto: fotosCt[0] || heroFoto, img, titulo: d.nombre, apoyo: [giroCorto(neg.giro_texto), neg.ciudad].filter(Boolean).join(' · '), cta: cta() }) : '';
-  const cierreGu = esGu ? cierreGuiaHTML({ foto: fotosT.find((x) => x?.url && !enPortada.has(x.url)) || heroFoto, img, titulo: d.nombre, apoyo: [giroCorto(neg.giro_texto), neg.ciudad].filter(Boolean).join(' · '), cta: cta() }) : '';
-  // I (14-nov-2026): página completa propia hecha solo a partir de savor.it; de aquí solo toma los datos del cliente.
-  if (esHs) {
-    const c0 = brief.contacto || {};
-    const fund0 = mat.fundador && fueraDeGaleria(mat.fundador) ? mat.fundador : mat.equipo.find((x) => x.tipo === 'foto_fundador' && fueraDeGaleria(x)) || null;
-    const pasosHs = poolSl.slice(1).map((foto, k) => ({ foto, titular: diapos[k]?.titular || '', apoyo: diapos[k]?.apoyo || '' }));
-    const enRelato = new Set(pasosHs.slice(0, 4).map((x) => x.foto.url));
-    const vistasHs = new Set([heroFoto?.url, fund0?.url].filter(Boolean));
-    const trabajoHs = [...fotosT, ...extraSl, ...mat.equipo, ...poolSl].filter((x) => x?.url && fueraDeGaleria(x) && /^(foto|imagen)/.test(x.tipo || 'foto') && !vistasHs.has(x.url) && vistasHs.add(x.url))
-      .map((x) => (enRelato.has(x.url) ? { ...x, rep: true } : x));
-    const anchas = trabajoHs.filter((x) => buenaFoto(x) && (x.ancho || 0) >= (x.alto || 0) && (x.ancho || 0) >= 1200).sort((a0, b0) => (b0.ancho || 0) - (a0.ancho || 0));
-    const fotoBanda = anchas.find((x) => !enRelato.has(x.url)) || anchas[0] || heroFoto;
-    const redesHs = enlacesRedes(redes(c0));
-    return paginaHistoria({
-      nombre: d.nombre, letra: d.letra, p, ft, fc, t, T, brief, img, wa, heroFoto, pasos: pasosHs, trabajo: trabajoHs, retrato: fund0,
-      videos: mat.videos, catalogos: mat.catalogos, documentos: mat.documentos, resenasCap: mat.resenas, testimonios: testimoniosValidos(brief, mat),
-      grupos, mostrarPrecios, faq: (brief.faq || []).filter((q) => q.pregunta && q.respuesta),
-      datos: { whatsapp: d.tel, donde: direccionTexto(brief) || (brief.zona?.cobertura || []).join(' · '), horario: typeof c0.horarios === 'string' ? c0.horarios : '', correo: c0.email || '' },
-      redesHTML: redesHs ? `<div class="redes">${redesHs}</div>` : '',
-      logoClaro: logoHTML(mat.logo, '#141414', '#FFFFFF', { alt: d.nombre }), logoOscuro: logoHTML(mat.logo, p.bg, p.fg, { alt: d.nombre }),
-      logoPie: logoHTML(mat.logo, p.bg, p.fg, { alt: d.nombre, clase: 'logo-pie' }), fotoBanda,
-    });
-  }
-  const html = `<!doctype html><html lang="es" class="${esIx ? 'fx-zoom fx-hover' : esHs ? 'fx-zoom' : esNa ? 'fx-hover' : esMv || esGu || esCt || esAv ? 'fx-hover' : efectosDe(d.letra)}"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><meta name="robots" content="noindex">
+  const cierre = pl.cierre ? pl.cierre(c) : '';
+  // Opción que, con todo lo anterior ya calculado, arma su página completa (por ejemplo, la I).
+  if (pl.paginaCompleta) return pl.paginaCompleta(c, { ft, fc });
+  const html = `<!doctype html><html lang="es" class="${pl.claseHtml || efectosDe(indiceDeLetra(String(d.letra || 'A').toUpperCase()))}"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><meta name="robots" content="noindex">
 <title>${esc(d.nombre)} · Propuesta ${d.letra}</title>
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><!-- Tipografías sin bloquear la portada (7-nov-2026): la página se pinta con la letra de respaldo y cambia a la de Google en cuanto llega (display=swap). Lighthouse móvil ≥ 90. --><link rel="preload" as="style" href="${esc(d.fuentesUrl)}" onload="this.onload=null;this.rel='stylesheet'"><noscript><link href="${esc(d.fuentesUrl)}" rel="stylesheet"></noscript>
 <style>
@@ -650,22 +289,17 @@ a:focus-visible,summary:focus-visible{outline:3px solid var(--p);outline-offset:
 @media (min-width:900px){.h-portada .velo{background:linear-gradient(90deg,rgba(0,0,0,.6),rgba(0,0,0,.15) 70%)}.h-edit{grid-template-columns:1.1fr .9fr;align-items:center;padding-top:64px}.h-dos .in{grid-template-columns:1.1fr .9fr;align-items:end}.mos{grid-template-columns:repeat(4,1fr)}.mos>:first-child{grid-column:span 2;grid-row:span 2;aspect-ratio:auto}.mos-sl{min-height:380px}.mos.solo>.mos-sl{aspect-ratio:16/8!important;min-height:0}.h-portada .sl-d.con-txt::after{background:linear-gradient(90deg,rgba(0,0,0,.66),rgba(0,0,0,.18) 72%)}
 .s-in{grid-template-columns:.8fr 1.2fr}.galeria{columns:3 220px}.g-editorial{columns:4 220px}.contacto .datos{grid-template-columns:repeat(3,1fr)}}
 @media (prefers-reduced-motion:reduce){html{scroll-behavior:auto}}
-${CSS_MOVIMIENTO}${d.layout === 'collage' ? CSS_COLLAGE : ''}${esIx ? CSS_INDICE : ''}${esNa ? CSS_NARRATIVA : ''}${esMv ? CSS_MOVIMIENTO_K : ''}${esGu ? CSS_GUIA : ''}${esCt ? CSS_CATALOGO : ''}${esAv ? CSS_AVANCE : ''}
+${CSS_MOVIMIENTO}${pl.css || ''}
 </style></head>
 <body class="l-${d.layout}">
-<header class="barra"><div class="wrap in">${logoBarra}<nav>${navs.map(([id, n]) => `<a href="#${id}">${esc(n)}</a>`).join('')}</nav></div></header>${esIx ? navIndiceHTML(seccionesIx) : ''}${esGu ? indiceGuiaHTML(navs) : ''}
-<main>${heroFinal}${cuerpoFinal}${galeria}${esGu ? cierreGu : ''}${esCt ? cierreCt : ''}</main>
+<header class="barra"><div class="wrap in">${logoBarra}<nav>${navs.map(([id, n]) => `<a href="#${id}">${esc(n)}</a>`).join('')}</nav></div></header>${pl.trasBarra ? pl.trasBarra(c, { navs, contenido: `${cuerpoFinal}${galeria}` }) : ''}
+<main>${heroFinal}${cuerpoFinal}${galeria}${cierre}</main>
 <footer>${marcaPie ? `<div class="pie-marcas">${marcaPie}</div>` : ''}© ${new Date().getFullYear()} ${esc(d.nombre)} · Propuesta ${d.letra}: ${esc(NOMBRES_GENERAL[d.layout])}</footer>
-<span class="etq">Propuesta ${d.letra}</span>${JS_MOVIMIENTO}${JS_CAR_TRABAJO}${d.layout === 'logo' ? JS_LOGO_UNICO : ''}${d.layout === 'collage' ? JS_COLLAGE : ''}${esIx ? monogramaHTML({ logoUrl: mat.logo?.url, nombre: d.nombre }) + JS_INDICE : ''}${esNa ? JS_NARRATIVA : ''}${esGu ? JS_GUIA : ''}${esCt ? JS_CATALOGO : ''}
+<span class="etq">Propuesta ${d.letra}</span>${JS_MOVIMIENTO}${JS_CAR_TRABAJO}${pl.js ? pl.js(c) : ''}
 <a class="wa"${wa} aria-label="Escríbeme por WhatsApp"><svg viewBox="0 0 32 32" aria-hidden="true"><path d="M16 3a13 13 0 0 0-11.2 19.6L3 29l6.6-1.7A13 13 0 1 0 16 3Zm0 23.7c-2 0-4-.6-5.7-1.6l-.4-.2-3.9 1 1-3.8-.3-.4A10.7 10.7 0 1 1 16 26.7Zm5.9-8c-.3-.2-1.9-1-2.2-1-.3-.1-.5-.2-.7.1l-1 1.3c-.2.2-.4.2-.7.1a8.8 8.8 0 0 1-4.4-3.8c-.3-.6.3-.5.9-1.7.1-.2 0-.4 0-.6l-1-2.4c-.3-.6-.5-.5-.7-.5h-.6c-.2 0-.6.1-.9.4-.3.3-1.2 1.1-1.2 2.8s1.2 3.2 1.4 3.5c.2.2 2.4 3.6 5.7 5 2.1.9 3 1 4 .8.7-.1 1.9-.8 2.2-1.5.3-.8.3-1.4.2-1.5l-.6-.3Z"/></svg></a>
 </body></html>`;
-  // N: letra mono de etiquetas (Geist Mono) y script propio (GSAP + ScrollTrigger + Lenis, como la referencia).
-  if (esAv) return html.replace('</head>', `<link rel="stylesheet" href="${URL_MONO_N}"></head>`).replace(/<\/body>(?![\s\S]*<\/body>)/, `${JS_AVANCE}</body>`);
-  return esMv || esGu ? conEfectosK(html, p) : html;
+  return pl.final ? pl.final(html, c) : html;
 }
-
-/** ¿Sale la I con OPCION_I=1? Giro que se vende con fotos y al menos 4 fotos buenas del cliente. */
-export const historiaApta = (brief, mat) => porNombre('historia').apta({ brief, mat });
 
 // Piezas comunes que reciben las opciones con página propia (se ampliará al separar las secciones de la plantilla).
 const KIT = Object.freeze({ logoHTML, redes, direccionTexto, testimoniosValidos });

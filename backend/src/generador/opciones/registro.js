@@ -17,6 +17,17 @@
 //   sinWordPress         true si no tiene versión WordPress (usa la composición de foto a pantalla completa).
 //   cssRevision          CSS para que la revisión visual la mida quieta y completa.
 //   esperaAlGenerarMs    milisegundos que la herramienta de generación manual espera al terminar (trabajo en cola).
+//   paleta({base, tinte, papel, tinta})  colores propios de la opción (bg, fg, primary, muted, banda…); la plantilla completa el resto.
+//   temaOscuro           true si la paleta es de fondo oscuro (tarjetas y acento se ajustan).
+//   conFotoPrincipal     true si la portada abre con la foto principal del cliente.
+//   plantilla            cómo se arma con la plantilla general (propuestas_general.js). c es el contexto de la página:
+//     portada(c)                    HTML de la portada.
+//     secciones(c, s)               lista ordenada de secciones; s trae las comunes del kit (kit/secciones.js).
+//     claseHtml, css                clase del <html> (si no, la de efectos por letra) y CSS propio.
+//     trasBarra(c, {navs, contenido})   HTML después de la barra (índices, menús).
+//     cierre(c)                     HTML al final de <main>.   js(c): scripts propios al final de <body>.
+//     final(html, c)                último retoque del HTML completo.
+//     paginaCompleta(c, {ft, fc})   arma la página entera con lo ya calculado (la I).
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
