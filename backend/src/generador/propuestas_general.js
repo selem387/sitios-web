@@ -30,6 +30,7 @@ export const conOpcionH = () => conOpcion('H');
 export const conOpcionI = () => conOpcion('I');
 export const conOpcionJ = () => conOpcion('J');
 export const conOpcionK = () => conOpcion('K');
+export const conOpcionL = () => conOpcion('L');
 export const conOpcionM = () => conOpcion('M');
 export const conOpcionO = () => conOpcion('O');
 export const conOpcionN = () => conOpcion('N');
@@ -213,6 +214,7 @@ function pagina(d) {
   const marcaPie = (mat.logos_extra || []).filter((x) => x?.url).map((x) => `<img class="pie-marca" src="${esc(x.url)}" alt="${esc(d.nombre)}" loading="lazy"${x.ancho ? ` width="${x.ancho}" height="${x.alto}"` : ''}>`).join('');
 
   const navs = [['trabajo', T.trabajo], ['servicios', T.servicios], ['sobre', T.sobre], ['contacto', T.contacto]].filter(([id]) => cuerpo.includes(`id="${id}"`));
+  c.navs = navs; // secciones que salieron, en orden (para índices, menús y cierres de las opciones)
   const ft = f.titulos, fc = f.cuerpo;
   const cierre = pl.cierre ? pl.cierre(c) : '';
   // Opción que, con todo lo anterior ya calculado, arma su página completa (por ejemplo, la I).
@@ -290,9 +292,9 @@ a:focus-visible,summary:focus-visible{outline:3px solid var(--p);outline-offset:
 .s-in{grid-template-columns:.8fr 1.2fr}.galeria{columns:3 220px}.g-editorial{columns:4 220px}.contacto .datos{grid-template-columns:repeat(3,1fr)}}
 @media (prefers-reduced-motion:reduce){html{scroll-behavior:auto}}
 ${CSS_MOVIMIENTO}${pl.css || ''}
-</style></head>
-<body class="l-${d.layout}">
-<header class="barra"><div class="wrap in">${logoBarra}<nav>${navs.map(([id, n]) => `<a href="#${id}">${esc(n)}</a>`).join('')}</nav></div></header>${pl.trasBarra ? pl.trasBarra(c, { navs, contenido: `${cuerpoFinal}${galeria}` }) : ''}
+</style>${pl.head ? pl.head(c) : ''}</head>
+<body class="l-${d.layout}">${pl.antesBarra ? pl.antesBarra(c) : ''}
+<header class="barra"><div class="wrap in">${pl.logo ? pl.logo(c) : logoBarra}<nav>${navs.map(([id, n]) => `<a href="#${id}">${esc(n)}</a>`).join('')}</nav></div></header>${pl.trasBarra ? pl.trasBarra(c, { navs, contenido: `${cuerpoFinal}${galeria}` }) : ''}
 <main>${heroFinal}${cuerpoFinal}${galeria}${cierre}</main>
 <footer>${marcaPie ? `<div class="pie-marcas">${marcaPie}</div>` : ''}© ${new Date().getFullYear()} ${esc(d.nombre)} · Propuesta ${d.letra}: ${esc(NOMBRES_GENERAL[d.layout])}</footer>
 <span class="etq">Propuesta ${d.letra}</span>${JS_MOVIMIENTO}${JS_CAR_TRABAJO}${pl.js ? pl.js(c) : ''}
@@ -327,7 +329,7 @@ export function paginasGenerales({ brief, mat, textos, pares, urlFuentes, ronda 
     const wa = waUrl(c.whatsapp, c.mensaje_whatsapp_inicial);
     // Opción que arma su resultado entero, sin pasar por la plantilla general.
     if (op?.completa) {
-      const r = op.completa({ brief, mat, textos, v, titulos, wa, coloresPropuesta: cps[i % cps.length].colores, letra, titulo: op.titulo });
+      const r = op.completa({ brief, mat, textos, v, titulos, wa, tel: c.whatsapp ? formatoTel(c.whatsapp) : null, coloresPropuesta: cps[i % cps.length].colores, acento: cps[i % cps.length].acento, fijo, letra, titulo: op.titulo });
       return { letra, layout, nombre: op.titulo, html: r.html, fuentes: r.fuentes, paleta: r.paleta };
     }
     // Opción con diseño propio: conserva su letra y su paleta aunque el cliente tenga estilo de referencia.

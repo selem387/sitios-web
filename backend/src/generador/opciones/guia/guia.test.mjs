@@ -14,7 +14,6 @@ const gen = (o = {}) => paginasGenerales({ brief, mat: matDe(6), textos, pares, 
 
 test('la M sale como decimotercera, solo cuando se pide, y la L queda libre', () => {
   assert.deepEqual(gen({ solo: 'M' }).map((p) => [p.letra, p.layout]), [['M', 'guia']]);
-  assert.deepEqual(gen({ solo: 'L' }), []);
   assert.equal(gen().some((p) => p.layout === 'guia'), false);
   assert.equal(parGuia(pares).titulos, 'Hanken Grotesk');
   assert.equal(parGuia([{ titulos: 'Gloock', cuerpo: 'Petrona' }]).titulos, 'Instrument Sans');

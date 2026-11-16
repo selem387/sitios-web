@@ -11,7 +11,8 @@ export function seccionesComunes(c) {
   // slider (única excepción a "ninguna foto se repite"), y nunca menos de 5: si faltan, se suman otras fotos del cliente.
   // Solo se excluyen las que ya salieron fuera del slider (filas o mosaicos de la portada) para no duplicarlas.
   const enSlider = new Set(poolSl.map((x) => x.url));
-  const secTrabajo = () => {
+  // Fotos de "Nuestro trabajo" (las mismas que usa secTrabajo); una opción puede armar su propia sección con ellas.
+  const listaTrabajo = () => {
     const libreT = (x) => !usadas.has(x.url) || enSlider.has(x.url) || enPortada.has(x.url);
     const resto = fotosT.filter(libreT);
     // Las que el cliente pidió aquí entran siempre (aunque sean de equipo u otras), al principio del carrusel.
@@ -20,6 +21,10 @@ export function seccionesComunes(c) {
       if (resto.length >= 5) break;
       if (x?.url && fueraDeGaleria(x) && /^(foto|imagen)/.test(x.tipo || 'foto') && !resto.some((y) => y.url === x.url) && libreT(x)) resto.push(x);
     }
+    return resto;
+  };
+  const secTrabajo = () => {
+    const resto = listaTrabajo();
     if (!resto.length) return '';
     // Carrusel horizontal (10-nov-2026, pedido de Sebastián): todas las fotos una al lado de la otra, misma altura, se
     // desliza con el dedo o con las flechas; cada foto lleva "+ info" que abre WhatsApp con la liga de esa foto.
@@ -78,5 +83,5 @@ export function seccionesComunes(c) {
     return `<section class="sec contacto" id="contacto"><div class="wrap"><h2>${esc(T.contacto)}</h2><div class="datos">${d.tel ? `<p><b>WhatsApp</b><a${wa}>${esc(d.tel)}</a></p>` : ''}${dir ? `<p><b>Dónde</b>${esc(dir)}</p>` : zona ? `<p><b>Dónde</b>${esc(zona)}</p>` : ''}${typeof c.horarios === 'string' ? `<p><b>Horario</b>${esc(c.horarios)}</p>` : ''}${c.email ? `<p><b>Correo</b><a href="mailto:${esc(c.email)}">${esc(c.email)}</a></p>` : ''}${rs ? `<p><b>Redes</b><span class="rs">${rs}</span></p>` : ''}</div>${cta()}</div></section>`;
   };
 
-  return { secTrabajo, secServicios, secSobre, secEquipo, secResenas, secProceso, procCli, secFaq, secVideo, secContacto };
+  return { listaTrabajo, secTrabajo, secServicios, secSobre, secEquipo, secResenas, secProceso, procCli, secFaq, secVideo, secContacto };
 }
