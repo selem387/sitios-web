@@ -361,8 +361,8 @@ def home():
     body = f"""
 <section class="hero"><div class="wrap hero-in">
 <div>
-<p class="pill">Lemoss Consulting → Vender más gastando menos</p>
-<h1>Escalamiento con <span class="az">resultados medibles</span></h1>
+<p class="pill">Lemoss Consulting → Escalamiento con resultados</p>
+<h1>Vender más <span class="az">gastando menos</span></h1>
 <p class="lead lead-xl">Define cuánto desea generar y ahorrar tu empresa, y el resultado se evalúa con cada beneficio comprobado.</p>
 <div class="acciones"><a class="btn" href="{wa()}" rel="noopener">Escríbenos por WhatsApp</a><a class="btn btn-2" href="/autodiagnostico/">Autodiagnóstico</a></div>
 </div>
