@@ -70,3 +70,24 @@ test('ningún archivo fuera de generador/opciones/ lleva las letras escritas a m
   ver(SRC);
   assert.deepEqual(malos, [], 'usar generador/opciones/letras.js o registro.js en lugar de escribir las letras');
 });
+
+test('la plantilla general y el kit no conocen ninguna opción en particular', () => {
+  const leer = (f) => fs.readFileSync(path.join(SRC, 'generador', f), 'utf8');
+  const centrales = ['propuestas_general.js', ...fs.readdirSync(path.join(SRC, 'generador', 'kit')).map((f) => `kit/${f}`)];
+  // Módulos propios de una opción: solo los importa la carpeta de esa opción.
+  const deOpcion = ['collage', 'indice', 'historia', 'narrativa', 'movimiento_k', 'guia', 'avance', 'catalogo', 'ficha', 'vitrina', 'manual'];
+  for (const f of centrales) {
+    const s = leer(f);
+    for (const m of deOpcion) assert.doesNotMatch(s, new RegExp(`from '\\./${m}\\.js'`), `${f} importa ${m}.js`);
+    assert.doesNotMatch(s, /layout === '|d\.layout === /, `${f} decide por nombre de opción`);
+  }
+});
+
+test('cada opción armada con la plantilla general trae lo necesario', () => {
+  for (const o of OPCIONES) {
+    if (o.completa || o.pagina) continue;
+    assert.equal(typeof o.paleta, 'function', `${o.nombre}: falta paleta`);
+    assert.equal(typeof o.plantilla?.portada, 'function', `${o.nombre}: falta plantilla.portada`);
+    assert.equal(typeof o.plantilla?.secciones, 'function', `${o.nombre}: falta plantilla.secciones`);
+  }
+});

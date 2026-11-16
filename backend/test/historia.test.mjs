@@ -1,7 +1,10 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { fraseDe, aptaHistoria, servirVendor, VENDOR, CSS_REVISION_HISTORIA, botonSv, dosRenglones } from '../src/generador/historia.js';
-import { paginasGenerales, historiaApta } from '../src/generador/propuestas_general.js';
+import { paginasGenerales } from '../src/generador/propuestas_general.js';
+import { porNombre } from '../src/generador/opciones/registro.js';
+
+const historiaApta = (brief, mat) => porNombre('historia').apta({ brief, mat });
 import { fotosRepetidas } from '../src/generador/validar_material.js';
 import { interpretarEleccion } from '../src/generador/opciones.js';
 
