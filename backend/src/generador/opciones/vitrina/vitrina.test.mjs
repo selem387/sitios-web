@@ -1,10 +1,10 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { paginasGenerales, LETRAS } from '../src/generador/propuestas_general.js';
-import { interpretarEleccion } from '../src/generador/opciones.js';
-import { fotosRepetidas, validarMaterial } from '../src/generador/validar_material.js';
-import { conPisoTexto, fuenteUI } from '../src/generador/tipo_color.js';
-import { repartirPorProducto, intercalar, cssFundido, LETRA_Q } from '../src/generador/vitrina.js';
+import { paginasGenerales, LETRAS } from '../../propuestas_general.js';
+import { interpretarEleccion } from '../../opciones.js';
+import { fotosRepetidas, validarMaterial } from '../../validar_material.js';
+import { conPisoTexto, fuenteUI } from '../../tipo_color.js';
+import { repartirPorProducto, intercalar, cssFundido, LETRA_Q } from './vitrina.js';
 
 const foto = (n, nombre, extra = {}) => ({ url: `https://x/${n}.jpg`, ancho: 700, alto: 1400, alt: nombre, nombre, tipo: 'foto_producto', clave: `a${n}`, ...extra });
 const trabajos = [

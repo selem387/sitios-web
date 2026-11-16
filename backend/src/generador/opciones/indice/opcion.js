@@ -1,7 +1,7 @@
-// Opción H "Recorrido con índice" (generador/indice.js). Titulares en letra sin remates.
+// Opción H "Recorrido con índice" (generador/opciones/indice/indice.js). Titulares en letra sin remates.
 import { METRICAS } from '../../tipo_color.js';
 import { giroCorto, logoHTML } from '../../kit/utiles.js';
-import { escenaIndiceHTML, navIndiceHTML, monogramaHTML, CSS_INDICE, JS_INDICE } from '../../indice.js';
+import { escenaIndiceHTML, navIndiceHTML, monogramaHTML, CSS_INDICE, JS_INDICE } from './indice.js';
 import { mezclar } from '../../../entrevista/tema.js';
 import { tono, conContraste } from '../../kit/color.js';
 
@@ -17,7 +17,7 @@ export const opcion = {
   conFotoPrincipal: true,
   // Cómo se arma con la plantilla general (propuestas_general.js, función pagina): c es el contexto de la página.
   plantilla: {
-    // H: portada con recorrido (generador/indice.js). Foto de fondo y hasta 3 fotos en el túnel; todas pueden repetirse
+    // H: portada con recorrido (generador/opciones/indice/indice.js). Foto de fondo y hasta 3 fotos en el túnel; todas pueden repetirse
     // en "Nuestro trabajo". El lema sale del primer texto de diapositiva real del brief (diferenciador, oferta, prueba o visión).
     portada: (c) => {
       const { d, t, mat, img, neg, heroFoto, cta, fijasSl, poolBase, diapos, enPortada } = c;

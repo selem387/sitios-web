@@ -1,5 +1,5 @@
-// Opción G "Collage en movimiento" (generador/collage.js). La arma la plantilla general con su portada de collage.
-import { collageHTML, CSS_COLLAGE, JS_COLLAGE } from '../../collage.js';
+// Opción G "Collage en movimiento" (generador/opciones/collage/collage.js). La arma la plantilla general con su portada de collage.
+import { collageHTML, CSS_COLLAGE, JS_COLLAGE } from './collage.js';
 import { mezclar } from '../../../entrevista/tema.js';
 import { tono, conContraste } from '../../kit/color.js';
 

@@ -1,7 +1,7 @@
-// Opción N "Avance en el espacio" (generador/avance.js).
-import { parAvance, CSS_REVISION_AVANCE } from '../../avance.js';
+// Opción N "Avance en el espacio" (generador/opciones/avance/avance.js).
+import { parAvance, CSS_REVISION_AVANCE } from './avance.js';
 import { esc, giroCorto, agruparOferta, redes } from '../../kit/utiles.js';
-import { portadaN, franjaN, vitrinaN, avanceN, tarjetasN, prensaN, contactoN, datosDe, fraseResaltada, CSS_AVANCE, JS_AVANCE, URL_MONO_N } from '../../avance.js';
+import { portadaN, franjaN, vitrinaN, avanceN, tarjetasN, prensaN, contactoN, datosDe, fraseResaltada, CSS_AVANCE, JS_AVANCE, URL_MONO_N } from './avance.js';
 import { direccionTexto, testimoniosValidos } from '../../datos_brief.js';
 import { enlacesRedes } from '../../iconos_redes.js';
 
@@ -33,7 +33,7 @@ export const opcion = {
     secciones: (c, s) => {
       const { d, t, mat, brief, usadas, img, wa, neg, conf, fueraDeGaleria, fotosT, cta, enPortada, T } = c;
       const { secSobre, secEquipo, secProceso, secFaq, secVideo } = s;
-      // N: secciones propias (generador/avance.js). Solo datos reales; si falta el dato, la sección no aparece.
+      // N: secciones propias (generador/opciones/avance/avance.js). Solo datos reales; si falta el dato, la sección no aparece.
       const libreVx = (x) => x?.url && !usadas.has(x.url) && !enPortada.has(x.url);
       const franjaVx = () => franjaN(fraseResaltada(t.sobre || conf.historia_corta || brief.oferta?.diferenciador || ''));
       const vitrinaVx = () => {

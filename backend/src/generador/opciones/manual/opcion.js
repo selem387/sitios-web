@@ -1,5 +1,5 @@
-// Opción R "Manual de servicios" (generador/manual.js). Página propia: solo toma los datos del cliente.
-import { paginaManual, paletaManual, FUENTES_R, CSS_REVISION_MANUAL } from '../../manual.js';
+// Opción R "Manual de servicios" (generador/opciones/manual/manual.js). Página propia: solo toma los datos del cliente.
+import { paginaManual, paletaManual, FUENTES_R, CSS_REVISION_MANUAL } from './manual.js';
 
 export const opcion = {
   nombre: 'manual', letra: 'R', indice: 17, titulo: 'Manual de servicios',

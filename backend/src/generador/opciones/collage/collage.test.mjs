@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { acomodosCollage, rectsAcomodo } from '../src/generador/collage.js';
-import { paginasGenerales } from '../src/generador/propuestas_general.js';
+import { acomodosCollage, rectsAcomodo } from './collage.js';
+import { paginasGenerales } from '../../propuestas_general.js';
 
 test('acomodos del collage: sin fotos repetidas dentro de un acomodo y todas salen', () => {
   for (let n = 1; n <= 12; n++) {

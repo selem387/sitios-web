@@ -1,9 +1,9 @@
-// Opción M "Guía en movimiento" (generador/guia.js).
-import { parGuia, CSS_REVISION_GUIA } from '../../guia.js';
+// Opción M "Guía en movimiento" (generador/opciones/guia/guia.js).
+import { parGuia, CSS_REVISION_GUIA } from './guia.js';
 import { giroCorto } from '../../kit/utiles.js';
-import { fraseDe } from '../../historia.js';
-import { conEfectosK } from '../../movimiento_k.js';
-import { escenaGuiaHTML, cierreGuiaHTML, indiceGuiaHTML, CSS_GUIA, JS_GUIA } from '../../guia.js';
+import { fraseDe } from '../../kit/utiles.js';
+import { conEfectosGsap } from '../../efectos_gsap.js';
+import { escenaGuiaHTML, cierreGuiaHTML, indiceGuiaHTML, CSS_GUIA, JS_GUIA } from './guia.js';
 import { mezclar } from '../../../entrevista/tema.js';
 import { tono, conContraste } from '../../kit/color.js';
 
@@ -18,7 +18,7 @@ export const opcion = {
   conFotoPrincipal: true,
   // Cómo se arma con la plantilla general (propuestas_general.js, función pagina): c es el contexto de la página.
   plantilla: {
-    // M: guía en movimiento (generador/guia.js). Portada que se abre, recorrido fijo con las fotos del slider y sus textos,
+    // M: guía en movimiento (generador/opciones/guia/guia.js). Portada que se abre, recorrido fijo con las fotos del slider y sus textos,
     // frase que se enciende y (al final de la página) cierre que crece. Todas las fotos pueden repetirse en "Nuestro trabajo".
     portada: (c) => {
       const { d, t, brief, usadas, img, neg, conf, heroFoto, cta, poolSl, diapos, enPortada } = c;
@@ -45,6 +45,6 @@ export const opcion = {
       return cierreGuiaHTML({ foto: fotosT.find((x) => x?.url && !enPortada.has(x.url)) || heroFoto, img, titulo: d.nombre, apoyo: [giroCorto(neg.giro_texto), neg.ciudad].filter(Boolean).join(' · '), cta: cta() });
     },
     js: () => JS_GUIA,
-    final: (html, c) => conEfectosK(html, c.p),
+    final: (html, { p }) => conEfectosGsap(html, { paleta: { fondo: p.bg, tinta: p.fg, acento: p.accent || p.primary, banda: p.banda } }),
   },
 };

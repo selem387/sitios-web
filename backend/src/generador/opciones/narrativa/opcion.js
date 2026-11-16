@@ -1,7 +1,7 @@
-// Opción J "Narrativa por capítulos" (generador/narrativa.js).
-import { parNarrativa, CSS_REVISION_NARRATIVA } from '../../narrativa.js';
+// Opción J "Narrativa por capítulos" (generador/opciones/narrativa/narrativa.js).
+import { parNarrativa, CSS_REVISION_NARRATIVA } from './narrativa.js';
 import { giroCorto } from '../../kit/utiles.js';
-import { portadaNarrativaHTML, CSS_NARRATIVA, JS_NARRATIVA } from '../../narrativa.js';
+import { portadaNarrativaHTML, CSS_NARRATIVA, JS_NARRATIVA } from './narrativa.js';
 import { mezclar } from '../../../entrevista/tema.js';
 import { tono, conContraste } from '../../kit/color.js';
 
@@ -16,7 +16,7 @@ export const opcion = {
   conFotoPrincipal: true,
   // Cómo se arma con la plantilla general (propuestas_general.js, función pagina): c es el contexto de la página.
   plantilla: {
-    // J: portada tipográfica (generador/narrativa.js). Titular enorme, foto a todo lo ancho debajo; si el cliente subió
+    // J: portada tipográfica (generador/opciones/narrativa/narrativa.js). Titular enorme, foto a todo lo ancho debajo; si el cliente subió
     // un video, ese video va encima de la foto como fondo vivo y ya no se repite en la sección de video.
     portada: (c) => {
       const { t, mat, usadas, img, neg, heroFoto, cta, enPortada } = c;

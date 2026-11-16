@@ -1,11 +1,11 @@
 // Opción P reconstruida solo a partir de la referencia (onyxcoffeelab.com): página propia, sin piezas de otras opciones.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { paginasGenerales, LETRAS } from '../src/generador/propuestas_general.js';
-import { interpretarEleccion } from '../src/generador/opciones.js';
-import { fotosRepetidas } from '../src/generador/validar_material.js';
-import { auditarPaleta } from '../src/generador/tipo_color.js';
-import { datosFicha, paginaFicha } from '../src/generador/ficha.js';
+import { paginasGenerales, LETRAS } from '../../propuestas_general.js';
+import { interpretarEleccion } from '../../opciones.js';
+import { fotosRepetidas } from '../../validar_material.js';
+import { auditarPaleta } from '../../tipo_color.js';
+import { datosFicha, paginaFicha } from './ficha.js';
 
 const foto = (n, x = {}) => ({ url: `https://x/${n}.jpg`, ancho: 1200, alto: 800, alt: `foto ${n}`, tipo: 'foto_trabajo', clave: `a${n}`, ...x });
 const matDe = (n, extra = {}) => ({ logo: null, logos_extra: [], hero: foto(1), fundador: null, fotos: [], trabajos: Array.from({ length: n }, (_, k) => foto(k + 2, { nombre: `Trabajo ${k + 2}` })), equipo: [], local: [], resenas: [], catalogos: [], menus: [], otras: [], documentos: [], videos: [], ...extra });

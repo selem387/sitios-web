@@ -22,11 +22,10 @@
 // Técnica: Motion (scroll e inView, MIT) + Lenis (desplazamiento suave, MIT), servidos en /vendor/ del API. Solo
 // transform, opacity y clip-path. Sin JS, si no cargan las librerías, con "reducir movimiento" o en navegador
 // automatizado (revisión visual): todo quieto y completo.
-import { config } from '../config.js';
-import fs from 'node:fs/promises';
-import path from 'node:path';
-import { fileURLToPath } from 'node:url';
-import { METRICAS } from './tipo_color.js';
+import { config } from '../../../config.js';
+import { VENDOR } from '../../librerias.js';
+import { fraseDe } from '../../kit/utiles.js';
+import { METRICAS } from '../../tipo_color.js';
 
 const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 
@@ -38,34 +37,12 @@ export const MIN_FOTOS_HISTORIA = 4;
 export const SUBTIPOS_SIN_HISTORIA = ['plomero_electricista', 'servicio_local', 'legal', 'contador_consultor', 'servicio_b2b', 'medica', 'veterinaria', 'restaurante', 'cafeteria_panaderia'];
 export const ARQUETIPOS_SIN_HISTORIA = ['oficios', 'servicios', 'restaurante'];
 
-export const VENDOR = { motion: 'motion-14.14.0.min.js', lenis: 'lenis-1.3.27.min.js' };
-const DIR_VENDOR = path.join(path.dirname(fileURLToPath(import.meta.url)), 'vendor');
-
 /** ¿El negocio tiene giro y fotos para la historia? fotosBuenas: fotos del cliente que no son capturas ni de calidad regular. */
 export function aptaHistoria(brief = {}, fotosBuenas = 0) {
   const st = brief.negocio?.subtipo;
   if (brief.negocio?.arquetipo === 'restaurante') return false;
   if (st ? SUBTIPOS_SIN_HISTORIA.includes(st) : ARQUETIPOS_SIN_HISTORIA.includes(brief.negocio?.arquetipo)) return false;
   return fotosBuenas >= MIN_FOTOS_HISTORIA;
-}
-
-/** Frase corta: primera oración con cuerpo (se saltan saludos), hasta ~26 palabras. La usan también otras opciones. */
-export function fraseDe(texto = '') {
-  const limpio = String(texto || '').replace(/\s+/g, ' ').trim();
-  if (!limpio) return '';
-  const oraciones = limpio.match(/[^.!?]+[.!?]+(?=\s|$)|[^.!?]+$/g) || [limpio];
-  const primera = (oraciones.find((o) => o.trim().split(' ').length >= 6) || oraciones[0]).trim();
-  const ps = primera.split(' ');
-  return ps.length > 26 ? `${ps.slice(0, 24).join(' ').replace(/[,;:]$/, '')}…` : primera;
-}
-
-/** Sirve /vendor/<archivo> (solo los archivos de VENDOR), con caché larga: el nombre lleva la versión. */
-export async function servirVendor(c) {
-  const nombre = c.req.param('nombre');
-  if (!Object.values(VENDOR).includes(nombre)) return c.text('no', 404);
-  const buf = await fs.readFile(path.join(DIR_VENDOR, nombre)).catch(() => null);
-  if (!buf) return c.text('no', 404);
-  return c.body(buf, 200, { 'content-type': 'text/javascript; charset=utf-8', 'cache-control': 'public, max-age=31536000, immutable', 'access-control-allow-origin': '*', 'cross-origin-resource-policy': 'cross-origin' });
 }
 
 /** Botón como el de savor: "palabra —— resto" (la raya crece al pasar el cursor). */

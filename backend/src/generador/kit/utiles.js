@@ -103,3 +103,13 @@ export function redes(c = {}) {
 // Diseño "Tu logo al centro" (10-nov-2026): el logo grande de la portada y el de la barra no se ven a la vez;
 // el de la barra aparece cuando el grande sale de la pantalla.
 export const JS_LOGO_UNICO = `<script>(()=>{const g=document.querySelector('.h-logo .logo-grande,.h-logo .logo-grande-placa'),b=document.querySelector('.barra');if(!b)return;if(!g||!('IntersectionObserver'in window)){b.classList.add('ver-logo');return;}new IntersectionObserver(([e])=>b.classList.toggle('ver-logo',!e.isIntersecting),{rootMargin:'-70px 0px 0px 0px'}).observe(g);})();</script>`;
+
+/** Frase corta: primera oración con cuerpo (se saltan saludos), hasta ~26 palabras. */
+export function fraseDe(texto = '') {
+  const limpio = String(texto || '').replace(/\s+/g, ' ').trim();
+  if (!limpio) return '';
+  const oraciones = limpio.match(/[^.!?]+[.!?]+(?=\s|$)|[^.!?]+$/g) || [limpio];
+  const primera = (oraciones.find((o) => o.trim().split(' ').length >= 6) || oraciones[0]).trim();
+  const ps = primera.split(' ');
+  return ps.length > 26 ? `${ps.slice(0, 24).join(' ').replace(/[,;:]$/, '')}…` : primera;
+}

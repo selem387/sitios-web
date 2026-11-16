@@ -74,11 +74,9 @@ test('ningún archivo fuera de generador/opciones/ lleva las letras escritas a m
 test('la plantilla general y el kit no conocen ninguna opción en particular', () => {
   const leer = (f) => fs.readFileSync(path.join(SRC, 'generador', f), 'utf8');
   const centrales = ['propuestas_general.js', ...fs.readdirSync(path.join(SRC, 'generador', 'kit')).map((f) => `kit/${f}`)];
-  // Módulos propios de una opción: solo los importa la carpeta de esa opción.
-  const deOpcion = ['collage', 'indice', 'historia', 'narrativa', 'movimiento_k', 'guia', 'avance', 'catalogo', 'ficha', 'vitrina', 'manual'];
   for (const f of centrales) {
     const s = leer(f);
-    for (const m of deOpcion) assert.doesNotMatch(s, new RegExp(`from '\\./${m}\\.js'`), `${f} importa ${m}.js`);
+    assert.doesNotMatch(s, /from '\.{1,2}\/(?:\.\.\/)*opciones\/(?!registro\.js|letras\.js)/, `${f} importa algo de la carpeta de una opción`);
     assert.doesNotMatch(s, /layout === '|d\.layout === /, `${f} decide por nombre de opción`);
   }
 });
@@ -90,4 +88,22 @@ test('cada opción armada con la plantilla general trae lo necesario', () => {
     assert.equal(typeof o.plantilla?.portada, 'function', `${o.nombre}: falta plantilla.portada`);
     assert.equal(typeof o.plantilla?.secciones, 'function', `${o.nombre}: falta plantilla.secciones`);
   }
+});
+
+test('la carpeta de cada opción no importa nada de la carpeta de otra opción', () => {
+  const raiz = path.join(SRC, 'generador', 'opciones');
+  const malos = [];
+  for (const d of fs.readdirSync(raiz, { withFileTypes: true })) {
+    if (!d.isDirectory()) continue;
+    for (const f of fs.readdirSync(path.join(raiz, d.name))) {
+      if (!/\.(m?js)$/.test(f)) continue;
+      const s = fs.readFileSync(path.join(raiz, d.name, f), 'utf8');
+      for (const [, spec] of s.matchAll(/(?:from\s*|import\s*\(\s*)'(\.{1,2}\/[^']+)'/g)) {
+        const destino = path.relative(raiz, path.resolve(raiz, d.name, spec));
+        const carpeta = destino.split(path.sep)[0];
+        if (!destino.startsWith('..') && carpeta !== d.name && destino.includes(path.sep)) malos.push(`${d.name}/${f} → ${spec}`);
+      }
+    }
+  }
+  assert.deepEqual(malos, [], 'lo compartido va en generador/kit/');
 });

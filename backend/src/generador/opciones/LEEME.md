@@ -20,5 +20,7 @@ agregar una opción no requiere editar ningún archivo fuera de su carpeta.
 - **Una opción en el repositorio no le sale a ningún cliente por sí sola**: se genera a mano con
   `node src/herramientas/generar_opcion.mjs <letra o nombre> "<negocio o id>" [--aplicar]`.
 - Las letras no se escriben a mano en ningún archivo: usar `letras.js` (patrones) o `registro.js` (tablas).
+- Una opción no importa nada de la carpeta de otra opción (una prueba lo vigila). Lo que sirva a varias va en
+  `backend/src/generador/kit/`; las librerías de terceros se sirven con `backend/src/generador/librerias.js`.
 
 Decisiones completas: documento del proyecto `claude/reorganizacion-generadores-2026-11-15.md`.

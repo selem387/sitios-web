@@ -16,7 +16,7 @@ import { evaluarColoresCliente, asignarFuentes } from './asesor_color.js';
 import { coloresDePalabras, logoTenido } from './materiales.js';
 import { CSS_MOVIMIENTO, JS_MOVIMIENTO, sliderHTML, diapositivasDe, emparejarFotos, efectosDe, conSrcset } from './movimiento.js';
 import { waUrl, formatoTel } from './bloques.js';
-import { paginaFicha } from './ficha.js';
+import { paginaFicha } from './opciones/ficha/ficha.js';
 import { logoLleno, JS_LOGO_UNICO, paginasGenerales, logoHTML, redes, urlsPorUbicacion, conOpcionP, conOpcionG, conOpcionH, conOpcionI, conOpcionJ, conOpcionK, conOpcionM } from './propuestas_general.js';
 import { completarMaterial } from './validar_material.js';
 import { direccionTexto, testimoniosValidos } from './datos_brief.js';
@@ -358,7 +358,7 @@ export async function renderPropuestas(brief, mat, textos, { ronda = 0, fijo = n
     };
     const errColor = fijo ? [] : auditarPaleta(d.pal);
     if (errColor.length) throw new Error(`Propuesta ${letra} no cumple la regla de color: ${errColor.join('; ')}`);
-    // P (14-nov-2026): página propia hecha solo a partir de la referencia (generador/ficha.js), con el menú transcrito del cliente.
+    // P (14-nov-2026): página propia hecha solo a partir de la referencia (generador/opciones/ficha/ficha.js), con el menú transcrito del cliente.
     const base0 = layout === 'ficha'
       ? paginaFicha({ letra, nombre: d.nombre, brief, mat, pal: d.pal, f: d.f, fuentesUrl: d.fuentesUrl, wa: d.wa, tel: d.tel, direccion: dir, redes: d.redes, testimonios: d.testimonios,
         logoBarra: mat.logo?.url ? logoHTML(mat.logo, d.pal.bg, d.pal.fg, { alt: d.nombre }) : '',

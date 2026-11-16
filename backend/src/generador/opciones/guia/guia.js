@@ -13,9 +13,9 @@
 // - Solo fotos del cliente; nada de video generado. Solo transform, opacity y clip-path.
 // - Sin JS, si las librerías no cargan o con "reducir movimiento": todo queda quieto y completo (fotos una debajo de otra).
 // - Las fotos de la portada y del recorrido llevan rep-ok: pueden repetirse en "Nuestro trabajo", que siempre lleva todas.
-import { METRICAS } from './tipo_color.js';
-import { COMUNES as COMUNES_TITULOS } from './fuentes.js';
-import { bandaHTML } from './efectos_gsap.js';
+import { METRICAS } from '../../tipo_color.js';
+import { COMUNES as COMUNES_TITULOS } from '../../fuentes.js';
+import { bandaHTML } from '../../efectos_gsap.js';
 
 const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 

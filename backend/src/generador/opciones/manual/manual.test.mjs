@@ -1,10 +1,10 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { paginasGenerales, LETRAS, NOMBRES_GENERAL } from '../src/generador/propuestas_general.js';
-import { interpretarEleccion } from '../src/generador/opciones.js';
-import { validarMaterial, fotosRepetidas } from '../src/generador/validar_material.js';
-import { auditarPaleta } from '../src/generador/tipo_color.js';
-import { temasManual, gruposManual, marcaManual, fraseManual, paletaManual, contraste, CDN_R } from '../src/generador/manual.js';
+import { paginasGenerales, LETRAS, NOMBRES_GENERAL } from '../../propuestas_general.js';
+import { interpretarEleccion } from '../../opciones.js';
+import { validarMaterial, fotosRepetidas } from '../../validar_material.js';
+import { auditarPaleta } from '../../tipo_color.js';
+import { temasManual, gruposManual, marcaManual, fraseManual, paletaManual, contraste, CDN_R } from './manual.js';
 
 const foto = (n, extra = {}) => ({ url: `https://x/${n}.jpg`, ancho: 1200, alto: n % 2 ? 1500 : 800, alt: `foto ${n}`, tipo: 'foto_trabajo', clave: `a${n}`, ...extra });
 const matDe = (n) => ({ logo: { url: 'https://x/logo.png', ancho: 400, alto: 120 }, logos_extra: [], hero: foto(1, { tipo: 'foto_fundador' }), fundador: foto(1, { tipo: 'foto_fundador' }), fotos: [], trabajos: Array.from({ length: n }, (_, k) => foto(k + 2)), equipo: [foto(40, { tipo: 'foto_equipo' })], local: [], resenas: [foto(50, { tipo: 'captura_resena' })], catalogos: [], menus: [], otras: [], documentos: [], videos: [], colores: ['#FFFFFF', '#E8DCC4', '#B8913A'], usables: [] });

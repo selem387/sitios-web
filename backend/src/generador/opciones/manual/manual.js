@@ -22,8 +22,8 @@
 import { readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { waUrl, formatoTel } from './bloques.js';
-import { direccionTexto, testimoniosValidos } from './datos_brief.js';
+import { waUrl, formatoTel } from '../../bloques.js';
+import { direccionTexto, testimoniosValidos } from '../../datos_brief.js';
 
 const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const tres = (n) => String(n).padStart(3, '0');
@@ -39,7 +39,7 @@ export const CDN_R = {
 /** Letras: grotesca para todo (como Beatrice), serif para el nombre gigante (como el logotipo) y manuscrita (como Bright Clones). */
 export const FUENTES_R = { cuerpo: 'Hanken Grotesk', serif: 'Libre Caslon Display', mano: 'Caveat' };
 const URL_FUENTES = 'https://fonts.googleapis.com/css2?family=Hanken+Grotesk:wght@400;500;600;700&family=Libre+Caslon+Display&family=Caveat:wght@500;700&display=swap';
-const RUNTIME = readFileSync(join(dirname(fileURLToPath(import.meta.url)), 'fx', 'manual-runtime.js'), 'utf8');
+const RUNTIME = readFileSync(join(dirname(fileURLToPath(import.meta.url)), 'manual-runtime.js'), 'utf8');
 
 /* ---------------- color: tres temas pastel con su acento, desde los colores del cliente ---------------- */
 const hex2rgb = (h) => { const x = String(h).replace('#', ''); const n = parseInt(x.length === 3 ? x.replace(/./g, '$&$&') : x, 16); return [(n >> 16) & 255, (n >> 8) & 255, n & 255]; };

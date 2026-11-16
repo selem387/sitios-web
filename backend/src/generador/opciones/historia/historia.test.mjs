@@ -1,12 +1,14 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { fraseDe, aptaHistoria, servirVendor, VENDOR, CSS_REVISION_HISTORIA, botonSv, dosRenglones } from '../src/generador/historia.js';
-import { paginasGenerales } from '../src/generador/propuestas_general.js';
-import { porNombre } from '../src/generador/opciones/registro.js';
+import { aptaHistoria, CSS_REVISION_HISTORIA, botonSv, dosRenglones } from './historia.js';
+import { fraseDe } from '../../kit/utiles.js';
+import { servirVendor, VENDOR } from '../../librerias.js';
+import { paginasGenerales } from '../../propuestas_general.js';
+import { porNombre } from '../registro.js';
 
 const historiaApta = (brief, mat) => porNombre('historia').apta({ brief, mat });
-import { fotosRepetidas } from '../src/generador/validar_material.js';
-import { interpretarEleccion } from '../src/generador/opciones.js';
+import { fotosRepetidas } from '../../validar_material.js';
+import { interpretarEleccion } from '../../opciones.js';
 
 const foto = (n) => ({ url: `https://x/${n}.jpg`, ancho: 1600, alto: 1067, alt: `foto ${n}`, tipo: 'foto_trabajo', clave: `a${n}` });
 const matDe = (n) => ({ logo: null, logos_extra: [], hero: foto(1), fundador: null, fotos: [], trabajos: Array.from({ length: n }, (_, k) => foto(k + 2)), equipo: [], local: [], resenas: [], catalogos: [], menus: [], otras: [], documentos: [], videos: [] });
