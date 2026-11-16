@@ -20,7 +20,8 @@ const admin = async (method, path, body) => {
   return j;
 };
 
-test('flujo completo con el SDK', async () => {
+// Solo corre con el servidor encendido: BASE_URL=http://localhost:3100 npm run test:e2e
+test('flujo completo con el SDK', { skip: process.env.BASE_URL ? false : 'necesita el servidor corriendo (define BASE_URL)' }, async () => {
   await admin('POST', '/admin/tenants', { app_id: APP_ID, slug: SLUG, name: 'App de prueba', settings: { require_email_verification: false } });
   await admin('PUT', `/admin/tenants/${APP_ID}/schemas`, {
     schemas: [

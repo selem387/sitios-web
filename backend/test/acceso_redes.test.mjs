@@ -23,20 +23,24 @@ test('redesFaltantes y listaNombres', () => {
   assert.deepEqual(redesFaltantes({}), ['facebook', 'instagram', 'tiktok', 'youtube', 'linkedin']);
 });
 
-test('estado de verificación del correo', () => {
+// 5-nov-2026 (decisión de Sebastián): ya no se verifica el correo con código; el acceso al panel se entrega por chat
+// con enlace mágico. La verificación quedó apagada en src/entrevista/verificacion.js y estas pruebas describen eso.
+test('la verificación del correo por código está apagada', () => {
   const pendiente = { contacto: { email: 'a@b.com', email_verificacion: { estado: 'enviado', email: 'a@b.com' } } };
-  assert.equal(verificacionPendiente(pendiente), true);
+  assert.equal(verificacionPendiente(pendiente), false);
   assert.equal(emailVerificado(pendiente), false);
   const ok = { contacto: { email: 'A@b.com', email_verificado: true, email_verificacion: { estado: 'verificado', email: 'a@b.com' } } };
   assert.equal(emailVerificado(ok), true);
+  // El correo ya no bloquea el cierre de la entrevista, ni sin verificar ni mal escrito.
   assert.equal(faltaCorreo(ok), null);
-  assert.equal(faltaCorreo({ contacto: { email: 'no-es-correo' } }), 'sin_email');
+  assert.equal(faltaCorreo(pendiente), null);
+  assert.equal(faltaCorreo({ contacto: { email: 'no-es-correo' } }), null);
   // Si cambia el correo después de verificar, deja de contar como verificado.
   assert.equal(emailVerificado({ contacto: { ...ok.contacto, email: 'otro@b.com' } }), false);
 });
 
-test('correoCambio detecta correo nuevo o corregido', () => {
-  assert.equal(correoCambio({ contacto: {} }, { contacto: { email: 'a@b.com' } }), true);
+test('un correo nuevo o corregido ya no dispara el envío de código', () => {
+  assert.equal(correoCambio({ contacto: {} }, { contacto: { email: 'a@b.com' } }), false);
   assert.equal(correoCambio({ contacto: { email: 'a@b.com' } }, { contacto: { email: 'a@b.com' } }), false);
   assert.equal(correoCambio({ contacto: {} }, { contacto: { email: 'sin arroba' } }), false);
   assert.equal(correoCambio({ contacto: {} }, { contacto: { email: 'a@b.com', email_verificacion: { email: 'a@b.com' } } }), false);

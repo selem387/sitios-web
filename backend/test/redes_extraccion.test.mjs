@@ -22,7 +22,9 @@ test('llena solo lo vacío y no pisa al cliente', () => {
 
 test('requisito redes en B0 y atajo difiere cliente ideal y zona', () => {
   assert.ok(faltantes({ cliente: { nombre: 'Ana' } }, [], { hasta: 'B0' }).some((f) => f.id === 'redes'));
-  assert.ok(!faltantes({ cliente: { nombre: 'Ana' }, no_tiene: ['redes'] }, [], { hasta: 'B0' }).length);
+  // 10-nov-2026: en B0 Ari pide el WhatsApp del negocio antes de las redes, así que sin redes aún falta ese dato.
+  assert.deepEqual(faltantes({ cliente: { nombre: 'Ana' }, no_tiene: ['redes'] }, [], { hasta: 'B0' }).map((f) => f.id), ['whatsapp_negocio']);
+  assert.ok(!faltantes({ cliente: { nombre: 'Ana' }, no_tiene: ['redes'], contacto: { whatsapp: '5219990000000' } }, [], { hasta: 'B0' }).length);
   const ids = faltantes({ cliente: { nombre: 'Ana' }, redes_extraccion: { id: 'x' }, diferir: DIFERIR_ATAJO }, [], { hasta: 'B5' }).map((f) => f.id);
   assert.ok(!ids.includes('zona') && !ids.includes('cliente_ideal') && ids.includes('estilo'));
 });
