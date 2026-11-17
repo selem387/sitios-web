@@ -27,8 +27,8 @@ test('no usa nada de las opciones anteriores (solo el modelo)', () => {
   const [m] = gen({ solo: 'M' });
   assert.doesNotMatch(m.html, /data-fx=|data-fx-gsap|fx-runtime|SplitType|split-type/);
   assert.match(m.html, new RegExp(CDN_GUIA.gsap.replace(/[.]/g, '\\.')));
-  assert.match(m.html, /ScrollTrigger\.min\.js/);
-  assert.match(m.html, /lenis@1\.3\.27/);
+  assert.match(m.html, /\/vendor\/scrolltrigger-3\.12\.7\.min\.js/);
+  assert.match(m.html, /\/vendor\/lenis-1\.3\.27\.min\.js/);
 });
 
 test('portada: anillo con todas las fotos, tarjeta de frase, nombre de la tarjeta del frente, menú y bloque final', () => {

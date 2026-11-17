@@ -49,7 +49,7 @@ test('conEfectosGsap: inyecta una sola vez y marca títulos y bloques', () => {
   assert.match(a, /<html lang="es" data-fx-gsap>/);
   assert.match(a, /<h2 data-fx="titulo">/);
   assert.match(a, /data-fx="revela" data-fx-hijos="/);
-  assert.equal((a.match(/gsap\.min\.js/g) || []).length, 1);
+  assert.equal((a.match(/\/vendor\/gsap-[\d.]+\.min\.js/g) || []).length, 1);
   assert.ok(a.includes('--acento:#0066cc'));
   assert.equal(conEfectosGsap(a), a, 'idempotente');
   const sin = conEfectosGsap(html, { lenis: false });
@@ -77,6 +77,6 @@ test('plantilla: renderiza los 15 giros completos y sin "undefined"', () => {
 test('head y pie incluyen librerías con versión fija y defer', () => {
   assert.match(headFx(), /fx-pre/);
   const p = pieFx();
-  for (const lib of ['gsap.min.js', 'ScrollTrigger.min.js', 'split-type', 'lenis']) assert.ok(p.includes(lib), lib);
+  for (const lib of ['/vendor/gsap-3.12.5.min.js', '/vendor/scrolltrigger-3.12.5.min.js', '/vendor/split-type-0.3.4.min.js', '/vendor/lenis-1.1.20.min.js']) assert.ok(p.includes(lib), lib);
   assert.equal((p.match(/ defer>/g) || []).length, 4);
 });

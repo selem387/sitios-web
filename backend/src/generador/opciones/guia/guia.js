@@ -23,6 +23,7 @@
 // - Sin JS, si las librerías no cargan o con "reducir movimiento": todo visible, quieto y completo.
 import { METRICAS } from '../../tipo_color.js';
 import { COMUNES } from '../../fuentes.js';
+import { urlLibreria } from '../../librerias.js';
 
 const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 
@@ -125,9 +126,9 @@ export function menuGuiaHTML(secciones = [], cta = '') {
 export const HEAD_GUIA = `<script>(function(){var H=document.documentElement;H.classList.add('gu-js');if(!matchMedia('(prefers-reduced-motion: reduce)').matches){H.classList.add('gu-intro');setTimeout(function(){H.classList.remove('gu-intro')},3500)}})()</script>`;
 
 export const CDN_GUIA = {
-  gsap: 'https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.7/gsap.min.js',
-  st: 'https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.7/ScrollTrigger.min.js',
-  lenis: 'https://cdn.jsdelivr.net/npm/lenis@1.3.27/dist/lenis.min.js',
+  gsap: urlLibreria('gsap-3.12.7'),
+  st: urlLibreria('scrolltrigger-3.12.7'),
+  lenis: urlLibreria('lenis-1.3.27'),
 };
 
 export const CSS_GUIA = `
