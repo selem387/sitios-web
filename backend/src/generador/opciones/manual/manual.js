@@ -24,17 +24,18 @@ import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { waUrl, formatoTel } from '../../bloques.js';
 import { direccionTexto, testimoniosValidos } from '../../datos_brief.js';
+import { urlLibreria } from '../../librerias.js';
 
 const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const tres = (n) => String(n).padStart(3, '0');
 const sinEmoji = (s) => String(s || '').replace(/[\p{Extended_Pictographic}\u{FE0F}\u{200D}]/gu, '').replace(/\s+/g, ' ').trim();
 
 export const CDN_R = {
-  gsap: 'https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js',
-  scrolltrigger: 'https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/ScrollTrigger.min.js',
-  splittype: 'https://cdn.jsdelivr.net/npm/split-type@0.3.4/umd/index.min.js',
-  lenis: 'https://cdn.jsdelivr.net/npm/lenis@1.2.3/dist/lenis.min.js',
-  three: 'https://cdn.jsdelivr.net/npm/three@0.147.0/build/three.min.js',
+  gsap: urlLibreria('gsap-3.12.5'),
+  scrolltrigger: urlLibreria('scrolltrigger-3.12.5'),
+  splittype: urlLibreria('split-type-0.3.4'),
+  lenis: urlLibreria('lenis-1.2.3'),
+  three: urlLibreria('three-0.147.0'),
 };
 /** Letras: grotesca para todo (como Beatrice), serif para el nombre gigante (como el logotipo) y manuscrita (como Bright Clones). */
 export const FUENTES_R = { cuerpo: 'Hanken Grotesk', serif: 'Libre Caslon Display', mano: 'Caveat' };

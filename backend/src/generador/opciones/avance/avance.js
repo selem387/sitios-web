@@ -19,12 +19,13 @@
 //
 // Reglas: solo fotos del cliente y datos reales (sin cifras, testimonios o reconocimientos, su bloque no aparece).
 // Sin JS o con "reducir movimiento": todo visible y quieto (las animaciones se ponen solo desde el script).
+import { urlLibreria } from '../../librerias.js';
 const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 
 export const CDN_N = {
-  gsap: process.env.N_CDN_GSAP || 'https://cdn.jsdelivr.net/npm/gsap@3.14.2/dist/gsap.min.js',
-  scrolltrigger: process.env.N_CDN_SCROLLTRIGGER || 'https://cdn.jsdelivr.net/npm/gsap@3.14.2/dist/ScrollTrigger.min.js',
-  lenis: process.env.N_CDN_LENIS || 'https://cdn.jsdelivr.net/npm/lenis@1.3.18/dist/lenis.min.js',
+  gsap: process.env.N_CDN_GSAP || urlLibreria('gsap-3.14.2'),
+  scrolltrigger: process.env.N_CDN_SCROLLTRIGGER || urlLibreria('scrolltrigger-3.14.2'),
+  lenis: process.env.N_CDN_LENIS || urlLibreria('lenis-1.3.18'),
 };
 /** Letras de la N: Geist hace de Owners/Owners Text y Geist Mono de Phonic (las de la referencia son comerciales). */
 export const LETRA_N = 'Geist';

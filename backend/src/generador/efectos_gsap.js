@@ -13,17 +13,18 @@
 import { readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { urlLibreria } from './librerias.js';
 
 const dir = dirname(fileURLToPath(import.meta.url));
 const leer = (f) => readFileSync(join(dir, 'fx', f), 'utf8');
 const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 
-/** Versiones fijas (mismas que probó la demo). Se pueden cambiar con variables de entorno si hace falta un espejo propio. */
+/** Versiones fijas (mismas que probó la demo), servidas desde el propio API (librerias.js). Se pueden cambiar con variables de entorno. */
 export const CDN = {
-  gsap: process.env.FX_CDN_GSAP || 'https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js',
-  scrolltrigger: process.env.FX_CDN_SCROLLTRIGGER || 'https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/ScrollTrigger.min.js',
-  splittype: process.env.FX_CDN_SPLITTYPE || 'https://cdn.jsdelivr.net/npm/split-type@0.3.4/umd/index.min.js',
-  lenis: process.env.FX_CDN_LENIS || 'https://cdn.jsdelivr.net/npm/lenis@1.1.20/dist/lenis.min.js',
+  gsap: process.env.FX_CDN_GSAP || urlLibreria('gsap-3.12.5'),
+  scrolltrigger: process.env.FX_CDN_SCROLLTRIGGER || urlLibreria('scrolltrigger-3.12.5'),
+  splittype: process.env.FX_CDN_SPLITTYPE || urlLibreria('split-type-0.3.4'),
+  lenis: process.env.FX_CDN_LENIS || urlLibreria('lenis-1.1.20'),
 };
 
 export const FX_ACTIVO = process.env.EFECTOS_GSAP === '1';
