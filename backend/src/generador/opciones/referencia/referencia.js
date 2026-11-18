@@ -34,7 +34,7 @@ export function normalizarPlano(p0 = {}) {
   const p = p0 || {};
   const e = p.estilo || {};
   const col = e.colores || {};
-  const secs = (Array.isArray(p.secciones) ? p.secciones : []).map((s) => (BLOQUES[s?.tipo] ? { tipo: s.tipo, estilo: uno(s.estilo, BLOQUES[s.tipo], BLOQUES[s.tipo][0]), columnas: num(s.columnas, 1, 4, 3), fondo: uno(s.fondo, FONDOS, 'base') } : null)).filter(Boolean);
+  const secs = (Array.isArray(p.secciones) ? p.secciones : []).map((s) => (BLOQUES[s?.tipo] ? { tipo: s.tipo, estilo: uno(s.estilo, BLOQUES[s.tipo], BLOQUES[s.tipo][0]), columnas: num(s.columnas, 2, 4, 3), fondo: uno(s.fondo, FONDOS, 'base') } : null)).filter(Boolean);
   const vistos = new Set();
   return {
     v: 1,

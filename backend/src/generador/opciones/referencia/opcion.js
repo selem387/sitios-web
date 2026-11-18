@@ -6,8 +6,8 @@ import { paginaReferencia } from './referencia.js';
 
 export const opcion = {
   nombre: 'referencia', letra: 'S', indice: 18, titulo: 'Tu página de referencia',
-  // Se ve completa con cualquier material: lo que falte lo llenan los elementos ilustrativos.
-  requisitos: {},
+  // Las referencias suelen llevar foto principal, galería y servicios: lo que falte lo llenan los elementos ilustrativos.
+  requisitos: { fotoBuena: 1, fotosTrabajo: 4, servicios: 3 },
   apta: ({ brief }) => !!planoDe(brief),
   // Página propia: sigue el orden de la página de referencia y toma los nombres del giro (decisión 1 del 18-nov-2026).
   ordenPropio: true,
