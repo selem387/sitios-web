@@ -70,7 +70,7 @@ export function seccionesComunes(c) {
     return `<section class="sec resenas" id="resenas"><div class="wrap"><h2>${esc(T.resenas)}</h2>${fila}</div></section>`;
   };
   // Cada paso puede traer título y explicación ("Título\nTexto"), como lo escribe el cliente por chat (10-nov-2026).
-  const secProceso = () => { const ps = brief.oferta?.proceso_pasos || []; return ps.length >= 3 ? `<section class="sec" id="proceso"><div class="wrap"><h2>${esc(t.proceso || 'Cómo funciona')}</h2>${t.proceso_intro ? `<p class="sec-intro">${esc(t.proceso_intro)}</p>` : ''}<ol class="pasos">${ps.map((x) => `<li>${pasoHTML(x)}</li>`).join('')}</ol></div></section>` : ''; };
+  const secProceso = () => { const ps = brief.oferta?.proceso_pasos || []; return ps.length >= 3 ? `<section class="sec" id="proceso"><div class="wrap"><h2>${esc(t.proceso || T.proceso || 'Cómo funciona')}</h2>${t.proceso_intro ? `<p class="sec-intro">${esc(t.proceso_intro)}</p>` : ''}<ol class="pasos">${ps.map((x) => `<li>${pasoHTML(x)}</li>`).join('')}</ol></div></section>` : ''; };
   // Si el cliente fijó el título de "Cómo funciona" por chat, la sección aparece en cualquier diseño (10-nov-2026).
   const procCli = () => (t.proceso ? secProceso() : '');
   const secFaq = () => { const fq = (brief.faq || []).filter((x) => x.pregunta && x.respuesta); return fq.length ? `<section class="sec" id="faq"><div class="wrap"><div class="faq-l"><h2>${esc(T.faq)}</h2>${fq.map((x, k) => `<details${k === 0 ? ' open' : ''}><summary>${esc(x.pregunta)}</summary><p>${esc(x.respuesta)}</p></details>`).join('')}</div></div></section>` : ''; };
@@ -83,5 +83,7 @@ export function seccionesComunes(c) {
     return `<section class="sec contacto" id="contacto"><div class="wrap"><h2>${esc(T.contacto)}</h2><div class="datos">${d.tel ? `<p><b>WhatsApp</b><a${wa}>${esc(d.tel)}</a></p>` : ''}${dir ? `<p><b>Dónde</b>${esc(dir)}</p>` : zona ? `<p><b>Dónde</b>${esc(zona)}</p>` : ''}${typeof c.horarios === 'string' ? `<p><b>Horario</b>${esc(c.horarios)}</p>` : ''}${c.email ? `<p><b>Correo</b><a href="mailto:${esc(c.email)}">${esc(c.email)}</a></p>` : ''}${rs ? `<p><b>Redes</b><span class="rs">${rs}</span></p>` : ''}</div>${cta()}</div></section>`;
   };
 
-  return { listaTrabajo, secTrabajo, secServicios, secSobre, secEquipo, secResenas, secProceso, procCli, secFaq, secVideo, secContacto };
+  // Cada sección lleva su id (.seccion) para que el mapa del giro la ponga en su lugar (generador/giros/index.js).
+  const id = (seccion, fn) => Object.assign(fn, { seccion });
+  return { listaTrabajo, secTrabajo: id('trabajo', secTrabajo), secServicios: id('servicios', secServicios), secSobre: id('sobre', secSobre), secEquipo: id('equipo', secEquipo), secResenas: id('resenas', secResenas), secProceso: id('proceso', secProceso), procCli: id('proceso', procCli), secFaq: id('faq', secFaq), secVideo: id('video', secVideo), secContacto: id('contacto', secContacto) };
 }

@@ -4,9 +4,12 @@ import { esc, giroCorto, agruparOferta, redes } from '../../kit/utiles.js';
 import { portadaN, franjaN, vitrinaN, avanceN, tarjetasN, prensaN, contactoN, datosDe, fraseResaltada, CSS_AVANCE, JS_AVANCE, URL_MONO_N } from './avance.js';
 import { direccionTexto, testimoniosValidos } from '../../datos_brief.js';
 import { enlacesRedes } from '../../iconos_redes.js';
+import { comoSeccion } from '../../giros/index.js';
 
 export const opcion = {
   nombre: 'avance', letra: 'N', indice: 13, titulo: 'Avance en el espacio',
+  // Material con el que se ve completa (verificado el 17 y 18-nov-2026; doc claude/etapa2-mapa-por-giro-propuesta.md).
+  requisitos: { fotoBuena: 1, servicios: 3 },
   // N: neutros de la referencia (crema, grafito, arena); el acento es el color del cliente.
   // Colores de la opción a partir de los del cliente (la plantilla general completa el resto de la paleta).
   paleta: ({ base }) => ({ bg: '#FDFCF4', fg: '#2A2C2F', primary: base, muted: '#ECE8E3', banda: '#2A2C2F' }),
@@ -41,21 +44,21 @@ export const opcion = {
         const foto = rec || fotosT.find(libreVx) || null;
         return vitrinaN({ foto, img, recorte: !!rec, nombre: d.nombre, etiqueta: [giroCorto(neg.giro_texto), neg.ciudad].filter(Boolean).join(' · '), apoyo: brief.oferta?.diferenciador || '', datos: datosDe(conf.cifras), href: '#servicios' });
       };
-      const avanceVx = () => avanceN({ titulo: T.trabajo, img, nota: [giroCorto(neg.giro_texto), neg.ciudad].filter(Boolean).join(' · '), fotos: fotosT.filter(libreVx).map((foto) => ({ foto, texto: '' })) }).html;
-      const tarjetasVx = () => {
+      const avanceVx = comoSeccion('trabajo', () => avanceN({ titulo: T.trabajo, img, nota: [giroCorto(neg.giro_texto), neg.ciudad].filter(Boolean).join(' · '), fotos: fotosT.filter(libreVx).map((foto) => ({ foto, texto: '' })) }).html);
+      const tarjetasVx = comoSeccion('servicios', () => {
         const ver = brief.oferta?.mostrar_precios !== false || brief.oferta?.mostrar_paquetes;
         const items = agruparOferta(brief.oferta?.items || []).flatMap((g) => g.opciones.map((o) => ({ meta: [String(g.nombre).replace(/\p{Extended_Pictographic}|\uFE0F/gu, '').trim(), ...(ver && o.precio ? [o.precio] : [])].filter((x, k, a) => x && a.indexOf(x) === k), titulo: o.nombre || g.nombre, texto: String(o.detalle || '').split(/\n\s*\n/)[0].trim() })));
         const sobra = [...mat.local, ...(mat.otras || []), ...mat.trabajos].filter((x) => libreVx(x) && fueraDeGaleria(x));
         items.forEach((it, k) => { if (sobra[k]) it.foto = sobra[k]; });
         return tarjetasN({ titulo: T.servicios, items, img, cta: cta() });
-      };
-      const prensaVx = () => {
+      });
+      const prensaVx = comoSeccion('resenas', () => {
         const limpio = (x) => String(x).replace(/\p{Extended_Pictographic}/gu, '').trim();
         const citas = testimoniosValidos(brief, mat).map((x) => ({ texto: limpio(x.texto), autor: x.nombre || '' }));
         const nombres = [...new Set([...(conf.premios || []), ...(conf.certificaciones || [])].map((x) => String(x || '').trim()).filter(Boolean))];
         return prensaN({ titulo: T.resenas, citas, nombres, tituloNombres: 'Reconocimientos' });
-      };
-      const contactoVx = () => {
+      });
+      const contactoVx = comoSeccion('contacto', () => {
         const c = brief.contacto || {};
         const dir = direccionTexto(brief) || (brief.zona?.cobertura || []).join(' · ');
         const rs = enlacesRedes(redes(c));
@@ -66,7 +69,7 @@ export const opcion = {
           { titulo: 'Correo', html: c.email ? `<a href="mailto:${esc(c.email)}">${esc(c.email)}</a>` : '' },
           { titulo: 'Redes', html: rs ? `<span class="rs">${rs}</span>` : '' },
         ] });
-      };
+      });
       return [franjaVx, vitrinaVx, avanceVx, tarjetasVx, secSobre, secEquipo, prensaVx, secProceso, secFaq, secVideo, contactoVx];
     },
     claseHtml: 'fx-hover',

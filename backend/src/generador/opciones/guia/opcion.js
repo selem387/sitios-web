@@ -5,6 +5,7 @@ import { parGuia, CSS_REVISION_GUIA, anilloGuiaHTML, formaGuiaHTML, apiladasGuia
 import { esc, giroCorto, logoHTML } from '../../kit/utiles.js';
 import { mezclar } from '../../../entrevista/tema.js';
 import { tono, conContraste } from '../../kit/color.js';
+import { comoSeccion } from '../../giros/index.js';
 
 const frasesDe = (txt) => String(txt || '').replace(/\s+/g, ' ').trim().split(/(?<=[.!?])\s+(?=\S)/).filter(Boolean);
 // Lista que gira en la tarjeta de frase: los grupos de servicios (si hay 3 o más) o los titulares de las diapositivas.
@@ -12,6 +13,8 @@ const listaDe = ({ grupos, diapos }) => (grupos.length >= 3 ? grupos.map((g) => 
 
 export const opcion = {
   nombre: 'guia', letra: 'M', indice: 12, titulo: 'Guía en movimiento',
+  // Material con el que se ve completa (verificado el 17 y 18-nov-2026; doc claude/etapa2-mapa-por-giro-propuesta.md).
+  requisitos: { fotosTotal: 3 },
   // Como el modelo: portada casi negra con el color de la marca, interiores en tono crudo y bloque claro del color de la marca.
   paleta: ({ base, papel, tinta }) => ({ bg: mezclar(papel, '#F8F3F0', 0.65), fg: tinta, primary: base, muted: mezclar(base, '#FFFFFF', 0.74), banda: conContraste(tono(base, 0.1, 0.55, 1), '#FFFFFF', 13) }),
   propia: true, sinWordPress: true,
@@ -39,7 +42,7 @@ export const opcion = {
       const { t, mat, brief, usadas, img, conf, fund, fueraDeGaleria, T } = c;
       const { secTrabajo, secServicios, secSobre, secEquipo, secResenas, secProceso, secFaq, secVideo, secContacto } = s;
       const libres = () => [mat.fundador, ...mat.equipo, ...(mat.otras || [])].filter((x, k, a) => x?.url && fueraDeGaleria(x) && /^(foto|imagen)/.test(x.tipo || 'foto') && !usadas.has(x.url) && a.findIndex((y) => y?.url === x.url) === k);
-      const forma = () => {
+      const forma = comoSeccion('sobre', () => {
         const fotos = libres().slice(0, 6);
         if (!fotos.length) return secSobre();
         const fr = frasesDe(t.sobre || conf.historia_corta || '');
@@ -48,7 +51,7 @@ export const opcion = {
         const cifras = (conf.cifras || []).slice(0, 3).map((x) => `<li>${esc(x)}</li>`).join('');
         const extra = `${fund.nombre ? `<p class="firma"><b>${esc(fund.nombre)}</b>${fund.rol ? ` · ${esc(fund.rol)}` : ''}</p>` : ''}${cred ? `<p class="cred">${cred}</p>` : ''}${cifras ? `<ul class="cifras">${cifras}</ul>` : ''}`;
         return formaGuiaHTML({ fotos, titulo: T.sobre, textoA: fr.slice(0, mitad).join(' '), textoB: fr.slice(mitad).join(' '), extra, img });
-      };
+      });
       const apiladas = () => apiladasGuiaHTML({ titulo: 'Lo que nos distingue', palabras: (t.info?.length >= 2 ? t.info : listaDe(c)).slice(0, 4) });
       const color = () => {
         const fr = frasesDe(brief.oferta?.diferenciador || '');

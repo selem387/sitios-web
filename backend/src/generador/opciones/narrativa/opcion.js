@@ -7,6 +7,8 @@ import { tono, conContraste } from '../../kit/color.js';
 
 export const opcion = {
   nombre: 'narrativa', letra: 'J', indice: 9, titulo: 'Narrativa por capítulos',
+  // Material con el que se ve completa (verificado el 17 y 18-nov-2026; doc claude/etapa2-mapa-por-giro-propuesta.md).
+  requisitos: { secciones: 4 },
   // Colores de la opción a partir de los del cliente (la plantilla general completa el resto de la paleta).
   paleta: ({ base, tinte }) => ({ bg: '#FFFFFF', fg: conContraste(tono(base, 0.1, 0.1, 0.25), '#FFFFFF', 15), primary: base, muted: mezclar(tinte, '#FFFFFF', 0.7) }),
   propia: true, sinWordPress: true,

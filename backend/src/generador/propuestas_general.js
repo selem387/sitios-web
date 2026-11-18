@@ -12,7 +12,8 @@ import { waUrl, formatoTel } from './bloques.js';
 import { sliderHTML, diapositivasDe, emparejarFotos, CSS_MOVIMIENTO, JS_MOVIMIENTO, efectosDe, filaJustificada, CSS_JUSTIFICADA } from './movimiento.js';
 import { direccionTexto, testimoniosValidos } from './datos_brief.js';
 import { CSS_REDES } from './iconos_redes.js';
-import { LAYOUTS, LETRAS as LETRAS_REGISTRO, NOMBRES, OPCIONES_EXTRA, porNombre, indiceDeLetra } from './opciones/registro.js';
+import { LAYOUTS, LETRAS as LETRAS_REGISTRO, NOMBRES, OPCIONES_EXTRA, porNombre, porLetra, indiceDeLetra } from './opciones/registro.js';
+import { LEGADO, esLegado, ordenarPiezas } from './giros/index.js';
 import { esc, lum, logoLleno, logoHTML, pasoHTML, agruparOferta, giroCorto, parrafosHTML, detalleHTML, redes, JS_LOGO_UNICO } from './kit/utiles.js';
 import { seccionesComunes } from './kit/secciones.js';
 import { sobre, hsl, tono, conContraste } from './kit/color.js';
@@ -191,7 +192,8 @@ function pagina(d) {
   const hero = pl.portada(c) + promo;
 
   /* --- Secciones --- */
-  const ORDEN = pl.secciones(c, seccionesComunes(c));
+  // El giro manda en el orden (mapa de la propuesta); las opciones con orden propio y las propuestas de antes de la etapa 2, no.
+  const ORDEN = ordenarPiezas(pl.secciones(c, seccionesComunes(c)), op.ordenPropio ? LEGADO : d.mapa);
   const cuerpo = ORDEN.map((fn) => fn()).join('');
   // Galería final: TODO lo que el cliente mandó y aún no aparece (regla dura). Nada se queda fuera.
   const pendientes = [...mat.trabajos, ...mat.local, ...mat.equipo, mat.fundador, ...mat.resenas, ...mat.catalogos, ...mat.otras, ...mat.menus, ...mat.fotos.filter((x) => !x.recorte)]
@@ -307,9 +309,10 @@ ${CSS_MOVIMIENTO}${pl.css || ''}
 const KIT = Object.freeze({ logoHTML, redes, direccionTexto, testimoniosValidos });
 
 /** Datos de las 6 páginas generales. */
-export function paginasGenerales({ brief, mat, textos, pares, urlFuentes, ronda = 0, cps: cpsDados = null, fijo = null, solo = null }) {
+export function paginasGenerales({ brief, mat, textos, pares, urlFuentes, ronda = 0, cps: cpsDados = null, fijo = null, solo = null, mapa = LEGADO, letras = null }) {
   const arq = TITULOS[brief.negocio?.arquetipo] ? brief.negocio.arquetipo : 'generico';
-  const titulos = { ...TITULOS[arq], ...(textos.secciones || {}) };
+  // Nombres de las secciones: los del mapa del giro (etapa 2) y, encima, los que el cliente pidió cambiar con Ari.
+  const titulos = { ...TITULOS[arq], ...(esLegado(mapa) ? {} : mapa.nombres), ...(textos.secciones || {}) };
   const colores = [...new Set([...(mat.colores || [])])];
   const pastel = esPastel(brief);
   const evitarHex = coloresDePalabras(String(brief.marca?.evitar || '').split(/[,;y]+/));
@@ -320,7 +323,8 @@ export function paginasGenerales({ brief, mat, textos, pares, urlFuentes, ronda 
   // Opciones adicionales: van siempre con su letra fija, también con estilo de referencia (que define solo las 6 primeras).
   // Cada una sale si está encendida para todos (y cumple su requisito, si lo tiene), o si se pidió a mano (fijo o solo).
   const adicionales = OPCIONES_EXTRA.filter((o) => (conOpcion(o.letra) && (!o.apta || o.apta({ brief, mat }))) || fijo?.letra === o.letra || !!solo?.includes(o.letra));
-  const todas = [...(dref ? dref.layouts : LAYOUTS_GENERAL.slice(0, 6)).map((layout, i) => ({ layout, i })), ...adicionales.map((o) => ({ layout: o.nombre, i: o.indice }))]
+  // Etapa 2: las letras las decide la lista del giro (renderPropuestas → elegirLetras); con estilo de referencia, sus 6 variaciones.
+  const todas = (letras && !dref ? letras.map(porLetra).filter(Boolean).map((o) => ({ layout: o.nombre, i: o.indice })) : [...(dref ? dref.layouts : LAYOUTS_GENERAL.slice(0, 6)).map((layout, i) => ({ layout, i })), ...adicionales.map((o) => ({ layout: o.nombre, i: o.indice }))])
     .filter(({ i }) => (!fijo || LETRAS[i] === fijo.letra) && (!solo || solo.includes(LETRAS[i])));
   return todas.map(({ layout, i }) => {
     const letra = LETRAS[i];
@@ -337,7 +341,7 @@ export function paginasGenerales({ brief, mat, textos, pares, urlFuentes, ronda 
     const parH = op?.par ? op.par(pares, i) : null;
     const par = fijo?.fuentes || parH || (dref ? parPorNombres(dref.pares[i] || dref.pares[i % dref.pares.length]) : pares[i % pares.length]);
     const d = {
-      i: i + ronda * 3, letra, layout, dref: propia ? null : dref, nombre: brief.negocio?.nombre || '', brief, mat, titulos,
+      i: i + ronda * 3, letra, layout, dref: propia ? null : dref, nombre: brief.negocio?.nombre || '', brief, mat, titulos, mapa,
       pal: fijo?.paleta || (dref && !propia ? paletaRef(dref, dref.paletas?.[i] ? i : 0) : { ...corregirPaleta(paletaGeneral(layout, cps[i % cps.length].colores, pastel, i + ronda * 2, { acento: cps[i % cps.length].acento, acentoCta: cps[i % cps.length].acentoCta })).paleta, familia: cps[i % cps.length].familia, origen: cps[i % cps.length].origen }), f: par, fuentesUrl: op?.urlFuentes && !fijo?.fuentes ? op.urlFuentes : urlFuentes([par]),
       t: { titular: v.titular, subtitulo: v.subtitulo, foto_url: v.foto_url || null, cta: v.cta || 'Escríbeme por WhatsApp', info: (textos.info || []).slice(0, 3), sobre: textos.sobre, proceso: textos.proceso, proceso_intro: textos.proceso_intro, servicios_intro: textos.servicios_intro, servicios_cierre: textos.servicios_cierre, servicios_boton: textos.servicios_boton, diapositivas: textos.diapositivas },
       wa, tel: c.whatsapp ? formatoTel(c.whatsapp) : null,

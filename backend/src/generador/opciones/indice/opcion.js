@@ -7,6 +7,8 @@ import { tono, conContraste } from '../../kit/color.js';
 
 export const opcion = {
   nombre: 'indice', letra: 'H', indice: 7, titulo: 'Recorrido con índice',
+  // Material con el que se ve completa (verificado el 17 y 18-nov-2026; doc claude/etapa2-mapa-por-giro-propuesta.md).
+  requisitos: { fotosTotal: 3, secciones: 4 },
   // Colores de la opción a partir de los del cliente (la plantilla general completa el resto de la paleta).
   paleta: ({ base, tinte, tinta }) => ({ bg: '#FFFFFF', fg: tinta, primary: base, muted: mezclar(tinte, '#FFFFFF', 0.6), banda: conContraste(tono(base, 0.24, 0.2, 0.32), '#FFFFFF', 8) }),
   propia: true, sinWordPress: true,

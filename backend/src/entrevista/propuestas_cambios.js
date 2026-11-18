@@ -6,6 +6,7 @@ import * as db from './db.js';
 import { pedirJSON, interpretarImagenCambio } from './claude.js';
 import { procesarMateriales, coloresDePalabras } from '../generador/materiales.js';
 import { crearPropuestasHTML, textosPropuestas } from '../generador/propuestas_html.js';
+import { resolverMapa, esLegado } from '../generador/giros/index.js';
 import { revisarYCorregir } from '../generador/revision_visual.js';
 import { TITULOS } from '../generador/propuestas_general.js';
 import { esLetra } from '../generador/opciones/letras.js';
@@ -19,7 +20,8 @@ const esImagen = (a) => /\.(jpe?g|png|webp|heic)(\?|$)/i.test(a.url || '') || /^
 export function seccionesFotos(brief, textos = {}) {
   if (brief.negocio?.arquetipo === 'restaurante') return { portada: 'Portada', galeria: 'Más de nosotros' };
   const arq = TITULOS[brief.negocio?.arquetipo] ? brief.negocio.arquetipo : 'generico';
-  const T = { ...TITULOS[arq], ...(textos.secciones || {}) };
+  const mapa = resolverMapa(brief);
+  const T = { ...TITULOS[arq], ...(esLegado(mapa) ? {} : mapa.nombres), ...(textos.secciones || {}) };
   return { portada: 'Portada', trabajo: T.trabajo, galeria: T.galeria };
 }
 
@@ -141,8 +143,10 @@ MENSAJE NUEVO DEL CLIENTE: ${texto || '(solo mandó fotos)'}${nuevas.length ? ` 
 /** Vuelve a armar las MISMAS opciones (mismas ligas, mismo diseño) con el brief y materiales actuales. */
 async function rehacerMismas(e, brief, p, pedido, soloLetra = null) {
   const mat = await procesarMateriales(e.id, brief, { aceptarLoQueHay: true });
-  const textos = p.textos || await textosPropuestas(brief, mat);
-  const r = await crearPropuestasHTML(brief, mat, textos, { token: p.token, ronda: p.ronda || 0 });
+  // Las mismas 6 con el mismo mapa con que se generaron (etapa 2); las de antes de la etapa 2 siguen con el de antes.
+  const mapa = resolverMapa({ marca: { propuestas: p } });
+  const textos = p.textos || await textosPropuestas(brief, mat, { mapa });
+  const r = await crearPropuestasHTML(brief, mat, textos, { token: p.token, ronda: p.ronda || 0, mapa });
   const opciones = p.opciones.map((o) => {
     const n = r.opciones.find((x) => x.letra === o.letra);
     return n ? { ...o, url: n.url, paleta: n.paleta, estilo: n.fuentes.estilo, tipografia: { titulos: n.fuentes.titulos, cuerpo: n.fuentes.cuerpo } } : o;
