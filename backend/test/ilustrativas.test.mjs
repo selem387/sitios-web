@@ -89,3 +89,12 @@ test('sin llave de Pixabay todo sigue como antes (sin relleno)', async () => {
     assert.equal(r, null);
   } finally { if (antes !== undefined) process.env.PIXABAY_API_KEY = antes; }
 });
+
+test('en el slider las fotos ilustrativas van sin texto', async () => {
+  const { emparejarFotos } = await import('../src/generador/movimiento.js');
+  const hero = foto(1), il = foto(50, { ilustrativa: true, nombre: '' });
+  const r = emparejarFotos({ hero, pool: [il], diapos: [{ tipo: 'diferenciador', titular: 'Casas en privadas residenciales', apoyo: '' }], items: [{ nombre: 'Trabajo 50' }] });
+  const k = r.fotos.findIndex((x) => x.url === il.url);
+  assert.ok(k > 0);
+  assert.equal(r.diapos[k - 1].sin_texto, true);
+});

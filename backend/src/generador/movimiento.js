@@ -92,18 +92,21 @@ export function emparejarFotos({ hero, fotoTitular = null, pool = [], diapos = [
   const primera = (fotoTitular && todas.find((x) => x.url === fotoTitular)) || todas[0];
   const usadas = new Set([primera.url]);
   const libre = (x) => x && !usadas.has(x.url);
+  // Fotos ilustrativas (etapa 2, parte 3; decisión de Sebastián del 18-nov-2026): nunca llevan texto en el slider, para
+  // que ningún texto las presente como trabajo o producto del cliente.
+  const libreConTexto = (x) => libre(x) && !x.ilustrativa;
   const pedidas = new Set(diapos.map((d) => d.foto_url).filter(Boolean));
   const fotos = [primera], out = [];
   for (const d of diapos) {
-    let f = d.foto_url ? todas.find((x) => x.url === d.foto_url && libre(x)) : null;
+    let f = d.foto_url ? todas.find((x) => x.url === d.foto_url && libreConTexto(x)) : null;
     const texto = `${d.titular} ${d.apoyo || ''}`;
     if (!f && !d.foto_url) {
-      const mejor = todas.filter(libre).map((x) => [x, coincide(texto, x)]).sort((a, b) => b[1] - a[1])[0];
+      const mejor = todas.filter(libreConTexto).map((x) => [x, coincide(texto, x)]).sort((a, b) => b[1] - a[1])[0];
       if (mejor && mejor[1] > 0) f = mejor[0];
     }
     if (!f && d.tipo === 'oferta') continue; // producto sin su foto: mejor omitir que mostrar otro producto
     // texto general: una foto libre que no esté reservada para otro texto y que no muestre un producto mencionado en otra diapositiva
-    if (!f) f = todas.find((x) => libre(x) && !pedidas.has(x.url) && !diapos.some((o) => o !== d && o.tipo === 'oferta' && coincide(`${o.titular} ${o.apoyo || ''}`, x) > 0));
+    if (!f) f = todas.find((x) => libreConTexto(x) && !pedidas.has(x.url) && !diapos.some((o) => o !== d && o.tipo === 'oferta' && coincide(`${o.titular} ${o.apoyo || ''}`, x) > 0));
     if (!f) continue;
     usadas.add(f.url); fotos.push(f); out.push(d);
   }
@@ -113,7 +116,7 @@ export function emparejarFotos({ hero, fotoTitular = null, pool = [], diapos = [
   const libres = todas.filter(libre);
   for (const f of libres) {
     if (fotos.length >= MAX_DIAPOSITIVAS) break;
-    const it = items.map((x) => [x, coincide(`${x?.nombre || ''} ${x?.descripcion_corta || x?.descripcion || ''}`, f)])
+    const it = f.ilustrativa ? null : items.map((x) => [x, coincide(`${x?.nombre || ''} ${x?.descripcion_corta || x?.descripcion || ''}`, f)])
       .filter(([x, n]) => n > 0 && x?.nombre && !out.some((d) => d.titular === x.nombre.trim())).sort((a, b) => b[1] - a[1])[0]?.[0];
     usadas.add(f.url); fotos.push(f);
     out.push(it ? { tipo: 'producto', titular: corto(it.nombre.trim(), 60), apoyo: corto(it.descripcion_corta || '', 110), cta } : { tipo: 'foto', titular: '', apoyo: '', sin_texto: true });
