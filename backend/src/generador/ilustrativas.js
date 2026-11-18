@@ -147,10 +147,10 @@ export async function buscarPixabay(q, { fetchImpl = fetch, orientacion = 'horiz
   return hits;
 }
 
-/** SVG de la marca de agua: banda centrada en el tercio inferior (sobrevive a los recortes de "cover"). */
+/** SVG de la marca de agua: banda centrada a un cuarto de la altura (sobrevive a los recortes de "cover" y no queda bajo los textos de portada, que van abajo). */
 export function svgMarca(W, H) {
   const fs = Math.max(18, Math.round(W * 0.034));
-  const w = Math.round(fs * 10.2), h = Math.round(fs * 1.9), x = Math.round((W - w) / 2), y = Math.round(H * 0.6 - h / 2);
+  const w = Math.round(fs * 10.2), h = Math.round(fs * 1.9), x = Math.round((W - w) / 2), y = Math.round(H * 0.26 - h / 2);
   return `<svg xmlns="http://www.w3.org/2000/svg" width="${W}" height="${H}"><rect x="${x}" y="${y}" width="${w}" height="${h}" rx="${h / 2}" fill="rgba(0,0,0,0.5)"/><text x="${W / 2}" y="${y + h / 2}" font-family="DejaVu Sans, sans-serif" font-size="${fs}" font-weight="bold" fill="#fff" text-anchor="middle" dominant-baseline="central">${MARCA_FOTO}</text></svg>`;
 }
 
