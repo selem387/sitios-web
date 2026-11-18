@@ -176,7 +176,7 @@ export function paginaReferencia({ plano: p0, brief = {}, mat = {}, textos = {},
     },
     proceso: (s) => {
       if (pasos.length < 3) return '';
-      const p = (x) => { const [a, ...b] = String(x).split('\n'); return `<h3>${esc(a)}</h3>${b.length ? `<p>${esc(b.join(' '))}</p>` : ''}`; };
+      const p = (x) => { const [a, ...b] = String(x).replace(/^\s*(paso\s*)?\d+\s*[.)\-:]\s*/i, '').split('\n'); return `<h3>${esc(a)}</h3>${b.length ? `<p>${esc(b.join(' '))}</p>` : ''}`; };
       return sec('proceso', s.fondo, `<h2>${esc(textos.proceso || T('proceso', 'Cómo funciona'))}</h2><ol class="${s.estilo === 'linea' ? 'linea' : 'pasos'}">${pasos.map((x) => `<li>${p(x)}</li>`).join('')}</ol>`);
     },
     faq: (s) => (faq.length ? sec('faq', s.fondo, `<h2>${esc(T('faq', 'Preguntas frecuentes'))}</h2><div class="faq">${faq.map((x, k) => `<details${k ? '' : ' open'}><summary>${esc(x.pregunta)}</summary><p>${esc(x.respuesta)}</p></details>`).join('')}</div>`) : ''),
@@ -230,7 +230,7 @@ img{display:block;max-width:100%}a{color:inherit}h1,h2,h3{font-family:'${par.tit
 .linea{list-style:none;padding:0 0 0 28px;margin:0;border-left:2px solid var(--acc)}.linea li{position:relative;padding:0 0 28px 8px}.linea li::before{content:'';position:absolute;left:-37px;top:6px;width:16px;height:16px;border-radius:50%;background:var(--acc)}.linea p,.pasos p{margin:0}
 .faq details{border-bottom:1px solid color-mix(in srgb,currentColor 20%,transparent);padding:18px 0}.faq summary{cursor:pointer;font-weight:600}.faq p{margin:10px 0 0}
 .banda-cta .wrap{display:flex;flex-wrap:wrap;gap:24px;align-items:center;justify-content:space-between}.banda-cta .frase{font-family:'${par.titulos}',serif;font-size:clamp(24px,3vw,38px);margin:0;max-width:30ch;${tit}}
-.datos{list-style:none;padding:0;margin:0}.datos li{padding:12px 0;border-bottom:1px solid color-mix(in srgb,currentColor 18%,transparent)}.datos span{display:block;font-size:15px;opacity:.75}.ct .sub{color:inherit;opacity:.85}.rs{margin-top:18px;--p:var(--fg);--on:var(--bg)}.f-osc .rs{--p:var(--sobre-osc);--on:var(--osc)}.f-acc .rs{--p:var(--sobre-acc);--on:var(--acc)}
+.datos{list-style:none;padding:0;margin:0}.datos li{padding:12px 0;border-bottom:1px solid color-mix(in srgb,currentColor 18%,transparent)}.datos span{display:block;font-size:15px;opacity:.75}.ct .sub{color:inherit;opacity:.85}.centro .rs{justify-content:center}.centro .datos{text-align:left;max-width:420px;margin:24px auto 0}.rs{margin-top:18px;--p:var(--fg);--on:var(--bg)}.f-osc .rs{--p:var(--sobre-osc);--on:var(--osc)}.f-acc .rs{--p:var(--sobre-acc);--on:var(--acc)}
 .pie{padding:28px 0;font-size:16px}.vh{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)}
 @media(min-width:900px){.h-div .h-grid{grid-template-columns:1.05fr .95fr}.h-div.lado-izquierda .h-grid>.fg{order:-1}.h-mos .h-grid{grid-template-columns:1fr 1fr}.mos{grid-auto-rows:220px}.s-tarjetas.c2{grid-template-columns:repeat(2,1fr)}.s-tarjetas.c3{grid-template-columns:repeat(3,1fr)}.s-tarjetas.c4{grid-template-columns:repeat(4,1fr)}.g.c2{grid-template-columns:repeat(2,1fr)}.g.c3{grid-template-columns:repeat(3,1fr)}.g.c4{grid-template-columns:repeat(4,1fr)}.g-mos{grid-template-columns:repeat(4,1fr);grid-auto-rows:230px}.banda-f{grid-template-columns:repeat(4,1fr)}.dos{grid-template-columns:1fr 1fr}.pasos{grid-template-columns:repeat(auto-fit,minmax(220px,1fr))}}
 @media(max-width:899px){.cab nav{display:none}.cab .btn.chico{margin-left:auto}}
