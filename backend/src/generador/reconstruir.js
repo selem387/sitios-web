@@ -80,7 +80,7 @@ async function planoInicial({ estudio, capturas }) {
 
 /** Compara la página armada contra la referencia y devuelve el plano corregido + parecido. */
 async function compararYCorregir({ plano, capturas, propias }) {
-  const contenido = [{ type: 'text', text: `${CATALOGO_TXT()}\n\nPLANO ACTUAL: ${JSON.stringify(plano)}\n\nAbajo: primero la página de REFERENCIA, después la página ARMADA con el plano (con los datos de otro negocio: textos y fotos distintos son correctos). Califica "parecido" (1–5) en estructura y estilo, y devuelve el plano corregido para parecerse más (si ya se parece, devuelve el mismo).` }];
+  const contenido = [{ type: 'text', text: `${CATALOGO_TXT()}\n\nPLANO ACTUAL: ${JSON.stringify(plano)}\n\nAbajo: primero la página de REFERENCIA, después la página ARMADA con el plano (con los datos de otro negocio: textos y fotos distintos son correctos). Califica "parecido" (1–5) SOLO en estructura y estilo: acomodo de bloques, tipo de portada, proporciones, letra, colores, aire y forma. NO bajes la calificación porque el contenido sea distinto: otros textos, otras fotos, menos fotos o menos secciones son normales (es otro negocio con su propio material). y devuelve el plano corregido para parecerse más (si ya se parece, devuelve el mismo).` }];
   capturas.escritorio.slice(0, 3).forEach((u, i) => contenido.push({ type: 'text', text: `REFERENCIA, escritorio ${i + 1}` }, { type: 'image', source: { type: 'url', url: u } }));
   propias.escritorio.slice(0, 3).forEach((u, i) => contenido.push({ type: 'text', text: `ARMADA, escritorio ${i + 1}` }, { type: 'image', source: { type: 'url', url: u } }));
   if (propias.celular) contenido.push({ type: 'text', text: 'ARMADA, celular' }, { type: 'image', source: { type: 'url', url: propias.celular } });
@@ -119,10 +119,10 @@ export async function reconstruirReferencia(url, { brief = {}, mat = {}, titulos
     const propias = await capt(urlPrueba, { tramos: 3 });
     const r = await (deps.compararYCorregir || compararYCorregir)({ plano, capturas, propias });
     parecido = Number(r.parecido) || 0;
-    if (parecido > mejor.parecido) mejor = { plano, parecido, muestra: urlPrueba };
+    if (parecido > mejor.parecido || !mejor.muestra) mejor = { plano, parecido: Math.max(parecido, mejor.parecido), muestra: parecido >= mejor.parecido ? urlPrueba : mejor.muestra };
     if (parecido >= 4 || k === correcciones) break;
     plano = normalizarPlano(r.plano);
   }
-  if (mejor.parecido < PARECIDO_MIN) throw Object.assign(new Error(`La reconstrucción no se parece lo suficiente (${mejor.parecido}/5)`), { code: 'REFERENCIA_SIN_PARECIDO', plano: mejor.plano });
+  if (mejor.parecido < PARECIDO_MIN) throw Object.assign(new Error(`La reconstrucción no se parece lo suficiente (${mejor.parecido}/5)`), { code: 'REFERENCIA_SIN_PARECIDO', plano: mejor.plano, muestra: mejor.muestra, parecido: mejor.parecido });
   return { plano: mejor.plano, parecido: mejor.parecido, capturas, url, muestra: mejor.muestra };
 }
