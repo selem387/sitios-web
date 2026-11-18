@@ -8,6 +8,8 @@ import { interpretarEleccion } from '../generador/opciones.js';
 import { crearPropuestasHTML, textosPropuestas } from '../generador/propuestas_html.js';
 import { resolverMapa } from '../generador/giros/index.js';
 import { ilustrativasActivas } from '../generador/ilustrativas.js';
+import { reconstruirReferencia } from '../generador/reconstruir.js';
+import { guardarCandidata } from '../generador/plantillas_ref.js';
 import { revisarYCorregir } from '../generador/revision_visual.js';
 import { coloresDePalabras } from '../generador/materiales.js';
 import * as db from './db.js';
@@ -75,6 +77,14 @@ export function avisoIlustrativas(relleno, mat, brief = {}) {
   return [puse.length ? `Para que veas cada diseño completo puse ${y(puse)}.` : '', sinLogo ? 'Como no tengo tu logo, va el nombre de tu negocio en letra.' : '', `Si me mandas ${y(pide)}, los cambio por los tuyos.`].filter(Boolean).join(' ');
 }
 
+// Decisión 9 (18-nov-2026): si la página de referencia no se pudo reconstruir, Ari lo dice y siguen las opciones normales.
+export function avisoReferencia(r) {
+  if (!r) return null;
+  if (r.sale) return 'La *S* está hecha a partir de la página que me mandaste: tomé su estructura y su estilo, con tus textos y tus fotos.';
+  if (r.fallo || r.plano_ref) return 'No pude reproducir la página que me mandaste, así que te preparé tus opciones de siempre. Si quieres, mándame otra página que te guste y lo intento con esa.';
+  return null;
+}
+
 function mensajeOpciones(op, brief, mat, ronda = 0) {
   const lista = op.opciones.map((o) => `*${o.letra}* · ${o.nombre}\n${o.url}`).join('\n\n');
   // Asesor de color: si sus colores no siguen las mejores prácticas, se avisa una vez con la razón y la F muestra el ajuste.
@@ -87,6 +97,7 @@ function mensajeOpciones(op, brief, mat, ronda = 0) {
       lista,
       ...(nota ? [nota] : []),
       ...(avisoIlustrativas(op.relleno, mat, brief) ? [avisoIlustrativas(op.relleno, mat, brief)] : []),
+      ...(avisoReferencia(op.referencia) ? [avisoReferencia(op.referencia)] : []),
       `¿Cuál te gusta más? Respóndeme con la letra (${op.opciones.map((o) => `*${o.letra}*`).join(', ')}). También puedes pedir mezclas, por ejemplo _la B con los colores de la E_. Si ninguna te convence, dime *ninguna* y qué te gustaría distinto.`,
     ],
     media: [],
@@ -160,9 +171,33 @@ async function aplicarRechazo(brief, d, comentarios) {
   return { ...brief, marca };
 }
 
+// Página de referencia (decisiones del 18-nov-2026, doc claude/pagina-referencia-plantilla.md): si el cliente mandó una
+// liga (en la entrevista o al rechazar), se reconstruye su estructura y estilo como opción S, que va primero.
+// Se intenta una vez por liga; si falla, Ari lo dice y siguen las opciones normales.
+const ligaReferencia = (brief) => [...(brief.marca?.referencias_sitios || [])].reverse().find((u) => /^https?:\/\//.test(u) && !/figma\.com/i.test(u)) || null;
+export async function prepararReferencia(e, brief, mat, mapa, { reconstruir = reconstruirReferencia } = {}) {
+  const url = ligaReferencia(brief);
+  const prev = brief.marca?.propuestas || {};
+  if (!url) return { brief, plano_ref: null, fallo: null };
+  if (prev.plano_ref?.origen === 'propia' && prev.plano_ref.url === url) return { brief: { ...brief, marca: { ...brief.marca, plano_ref: prev.plano_ref } }, plano_ref: prev.plano_ref, fallo: null };
+  if (prev.referencia_fallo?.url === url) return { brief, plano_ref: null, fallo: null };
+  try {
+    const r = await reconstruir(url, { brief, mat, titulos: mapa?.nombres || {} });
+    const plano_ref = { plano: r.plano, url, origen: 'propia', parecido: r.parecido };
+    if (e?.id) await db.evento(e.id, 'referencia_reconstruida', { url, parecido: r.parecido }).catch(() => {});
+    return { brief: { ...brief, marca: { ...brief.marca, plano_ref } }, plano_ref, fallo: null };
+  } catch (err) {
+    console.warn('[propuestas] referencia', url, err.message);
+    if (e?.id) await db.evento(e.id, 'referencia_fallida', { url, motivo: err.message, code: err.code || null }).catch(() => {});
+    return { brief, plano_ref: null, fallo: { url, motivo: err.code || 'error' } };
+  }
+}
+
 export async function mostrar(e, brief, mat, { ronda = 0 } = {}) {
   // Etapa 2: propuestas desde cero con el mapa de su giro de hoy; se guarda en la propuesta y los cambios lo reutilizan.
   const mapa = resolverMapa(brief, 'nuevo');
+  const ref = brief.negocio?.arquetipo === 'restaurante' ? { brief, plano_ref: null, fallo: null } : await prepararReferencia(e, brief, mat, mapa);
+  brief = ref.brief;
   const textos = await textosPropuestas(brief, mat, { mapa });
   const prev = brief.marca?.propuestas || {};
   // Agente de revisión visual y corrección (10-nov-2026): antes de mandarlas, cada opción se revisa (código + IA) y las
@@ -198,7 +233,10 @@ export async function mostrar(e, brief, mat, { ronda = 0 } = {}) {
     throw err;
   }
   const opciones = limpias;
-  return { propuestas: { ...prev, estado: 'mostradas', token: r.token, opciones, textos, mapa: r.mapa, relleno: r.relleno || null, ronda: mejor.ronda, asesor_color: r.asesor?.hallazgos || [], usados: [...(prev.usados || []), r.token] }, salida: mensajeOpciones({ opciones, asesor: r.asesor, relleno: r.relleno }, brief, mat, mejor.ronda) };
+  // Plantilla candidata para otros clientes del giro (decisión 5): se guarda y se avisa a Sebastián por Telegram.
+  const s = opciones.find((o) => o.letra === 'S');
+  if (s && ref.plano_ref && ref.plano_ref !== prev.plano_ref) guardarCandidata({ giro: brief.negocio?.arquetipo || 'generico', subtipo: brief.negocio?.subtipo_resuelto || brief.negocio?.subtipo || null, plano: ref.plano_ref.plano, urlOrigen: ref.plano_ref.url, urlMuestra: s.url, entrevistaId: e?.id, parecido: ref.plano_ref.parecido, negocio: brief.negocio?.nombre }).catch(() => {});
+  return { propuestas: { ...prev, estado: 'mostradas', token: r.token, opciones, textos, mapa: r.mapa, relleno: r.relleno || null, plano_ref: ref.plano_ref || r.plano_ref || null, referencia_fallo: ref.fallo || prev.referencia_fallo || null, ronda: mejor.ronda, asesor_color: r.asesor?.hallazgos || [], usados: [...(prev.usados || []), r.token] }, salida: mensajeOpciones({ opciones, asesor: r.asesor, relleno: r.relleno, referencia: { ...ref, sale: opciones.some((o) => o.letra === 'S' && ref.plano_ref) } }, brief, mat, mejor.ronda) };
 }
 
 /**

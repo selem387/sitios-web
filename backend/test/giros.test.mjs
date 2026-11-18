@@ -14,7 +14,7 @@ test('cada mapa por giro es válido', () => {
       assert.deepEqual(Object.keys(v.nombres).filter((k) => !v.orden.includes(k)), [], `${n}: nombre de una sección que no está en el orden`);
       assert.ok(v.lista.length >= 6, `${n}: la lista necesita al menos 6 opciones`);
       assert.equal(new Set(v.lista).size, v.lista.length, `${n}: opción repetida en la lista`);
-      assert.deepEqual(v.lista.filter((l) => !porLetra(l)), [], `${n}: letras sin opción`);
+      assert.deepEqual(v.lista.filter((l) => !porLetra(l) && !/^ref:\d+$/.test(l)), [], `${n}: letras sin opción`); // ref:<id> = plantilla de referencia aprobada
     }
   }
 });

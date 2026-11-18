@@ -317,7 +317,11 @@ export function paginasGenerales({ brief, mat, textos, pares, urlFuentes, ronda 
   // Cada una sale si está encendida para todos (y cumple su requisito, si lo tiene), o si se pidió a mano (fijo o solo).
   const adicionales = OPCIONES_EXTRA.filter((o) => (conOpcion(o.letra) && (!o.apta || o.apta({ brief, mat }))) || fijo?.letra === o.letra || !!solo?.includes(o.letra));
   // Etapa 2: las letras las decide la lista del giro (renderPropuestas → elegirLetras); con estilo de referencia, sus 6 variaciones.
-  const todas = (letras && !dref ? letras.map(porLetra).filter(Boolean).map((o) => ({ layout: o.nombre, i: o.indice })) : [...(dref ? dref.layouts : LAYOUTS_GENERAL.slice(0, 6)).map((layout, i) => ({ layout, i })), ...adicionales.map((o) => ({ layout: o.nombre, i: o.indice }))])
+  // Página de referencia reconstruida (opción S, 18-nov-2026): con estilo de referencia va primero y la acompañan 5 variaciones.
+  const conRef = !!dref && !fijo && !solo && !!porLetra('S')?.apta?.({ brief, mat });
+  const todas = (letras && !dref ? letras.map(porLetra).filter(Boolean).map((o) => ({ layout: o.nombre, i: o.indice }))
+    : conRef ? [{ layout: porLetra('S').nombre, i: porLetra('S').indice }, ...dref.layouts.slice(0, 5).map((layout, i) => ({ layout, i }))]
+      : [...(dref ? dref.layouts : LAYOUTS_GENERAL.slice(0, 6)).map((layout, i) => ({ layout, i })), ...adicionales.map((o) => ({ layout: o.nombre, i: o.indice }))])
     .filter(({ i }) => (!fijo || LETRAS[i] === fijo.letra) && (!solo || solo.includes(LETRAS[i])));
   return todas.map(({ layout, i }) => {
     const letra = LETRAS[i];

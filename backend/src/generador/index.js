@@ -377,6 +377,14 @@ export async function encolar(entrevista, { slug, forzarWordpress }) {
 export function registerGeneradorRoutes(app, wrap) {
   const auth = (c) => { if (!igual(c.req.header('x-api-key'), config.entrevistaApiKey)) throw new HttpError(401, 'X-API-Key inválida'); };
 
+  // Bot de Telegram de Sebastián (plantillas desde páginas de referencia, 18-nov-2026): botones Aprobar / Descartar.
+  app.post('/telegram/webhook', async (c) => {
+    const { atenderTelegram } = await import('./plantillas_ref.js');
+    const r = await atenderTelegram(await c.req.json().catch(() => ({})), c.req.header('x-telegram-bot-api-secret-token') || '').catch((err) => ({ ok: false, motivo: err.message }));
+    return c.json({ ok: !!r.ok }, r.motivo === 'secreto' ? 401 : 200);
+  });
+  import('./plantillas_ref.js').then((m) => { m.configurarWebhook(config.publicUrl); m.refrescarAprobadas(); }).catch(() => {});
+
   app.post('/entrevista/v1/sesiones/:id/generar', wrap(async (c) => {
     auth(c);
     const b = await c.req.json().catch(() => ({}));

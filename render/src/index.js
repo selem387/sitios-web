@@ -117,7 +117,7 @@ app.post('/v1/mockups', async (c) => {
   return c.json({ opciones: res, ms: Date.now() - t0 });
 });
 
-// Captura de una URL pública (QA post-publicación). Cuerpo: {url, ancho?:390|1280, completa?:boolean}
+// Captura de una URL pública (QA post-publicación). Cuerpo: {url, ancho?:390|1280, completa?:boolean, tramos?:n}
 app.post('/v1/captura', async (c) => {
   const b = await c.req.json().catch(() => null);
   if (!b || !/^https?:\/\//.test(b.url || '')) return c.json({ error: 'falta url' }, 400);
@@ -140,8 +140,30 @@ app.post('/v1/captura', async (c) => {
         return el.screenshot({ type: 'png' });
       }
     }
+    // tramos: n capturas de pantalla bajando por la página (para que una IA vea la página completa sin una imagen gigante).
+    if (b.tramos) {
+      await page.evaluate(() => document.querySelectorAll('img[loading=lazy]').forEach((i) => { i.loading = 'eager'; }));
+      const alto = await page.evaluate(() => document.documentElement.scrollHeight);
+      const vp = movil ? 844 : 800;
+      const n = Math.max(1, Math.min(8, Number(b.tramos) || 4));
+      const paso = Math.max(vp, Math.ceil((alto - vp) / Math.max(1, n - 1)));
+      const bufs = [];
+      for (let k = 0; k < n; k++) {
+        const y = Math.min(k * paso, Math.max(0, alto - vp));
+        await page.evaluate((yy) => window.scrollTo(0, yy), y);
+        await page.waitForTimeout(700);
+        bufs.push(await page.screenshot({ type: 'png' }));
+        if (y >= alto - vp) break;
+      }
+      return bufs;
+    }
     return page.screenshot({ type: 'png', fullPage: Boolean(b.completa) });
   });
+  if (Array.isArray(buf)) {
+    const urls = [];
+    for (const x of buf) urls.push((await guardarPNG(x, movil ? 'movil' : 'desktop')).url);
+    return c.json({ urls, ms: Date.now() - t0 });
+  }
   if (!buf) return c.json({ error: 'no existe', selector: b.selector }, 404);
   const f = await guardarPNG(buf, movil ? 'movil' : 'desktop');
   return c.json({ ...f, ms: Date.now() - t0 });
