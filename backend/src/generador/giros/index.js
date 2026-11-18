@@ -87,17 +87,18 @@ export function contarMaterial({ brief = {}, mat = {}, textos = {} } = {}) {
     logo: !!mat.logo?.url,
     servicios: items.filter((x) => String(x?.descripcion_corta || '').trim()).length,
     grupos: new Set(items.map((x) => String(x?.grupo || '').trim()).filter(Boolean)).size,
-    productos: items.filter((x) => String(x?.precio_o_rango || '').trim()).length,
-    producto: items.some((x) => String(x?.precio_o_rango || '').trim()) && trabajos + hero > 0,
+    // Los productos de ejemplo (sin precio, etapa 2 parte 3) cuentan como productos.
+    productos: items.filter((x) => x?.ejemplo || String(x?.precio_o_rango || '').trim()).length,
+    producto: items.some((x) => x?.ejemplo || String(x?.precio_o_rango || '').trim()) && trabajos + hero > 0,
     secciones,
   };
 }
 
 /** ¿El material del cliente alcanza para que la opción se vea completa? (requisitos de su opcion.js y su regla apta). */
-export function cumple(op, cuenta, { brief, mat } = {}) {
+export function cumple(op, cuenta, { brief, mat, ignorar = [] } = {}) {
   if (!op) return false;
   if (op.apta && !op.apta({ brief, mat })) return false;
-  return Object.entries(op.requisitos || {}).every(([k, v]) => (typeof v === 'boolean' ? !v || cuenta[k] === true : (cuenta[k] || 0) >= v));
+  return Object.entries(op.requisitos || {}).filter(([k]) => !ignorar.includes(k)).every(([k, v]) => (typeof v === 'boolean' ? !v || cuenta[k] === true : (cuenta[k] || 0) >= v));
 }
 
 /**
@@ -105,11 +106,12 @@ export function cumple(op, cuenta, { brief, mat } = {}) {
  * se juntan 6, se completa con E y F (no piden nada) y luego con el resto de la lista. Devuelve también el respaldo
  * (las siguientes de la lista), por si alguna falla al generarse.
  */
-export function elegirLetras(mapa, { brief, mat, textos, porLetra }) {
+export function elegirLetras(mapa, { brief, mat, textos, porLetra, rellenables = [] }) {
   const cuenta = contarMaterial({ brief, mat, textos });
   const existe = (l) => !!porLetra(l);
   const lista = mapa.lista.filter(existe);
-  const elegidas = lista.filter((l) => cumple(porLetra(l), cuenta, { brief, mat })).slice(0, 6);
+  // Con elementos ilustrativos (rellenables = requisitos que el relleno cubre), salen las primeras 6 de la lista.
+  const elegidas = lista.filter((l) => cumple(porLetra(l), cuenta, { brief, mat, ignorar: rellenables })).slice(0, 6);
   for (const l of ['E', 'F', ...lista, 'A', 'B', 'C', 'D']) if (elegidas.length < 6 && existe(l) && !elegidas.includes(l)) elegidas.push(l);
   const respaldo = [...lista, 'E', 'F', 'A', 'B', 'C', 'D'].filter((l, k, a) => existe(l) && !elegidas.includes(l) && a.indexOf(l) === k);
   // Se muestran en el orden de preferencia de la lista (las que no están en ella, al final).

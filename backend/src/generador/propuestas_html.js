@@ -23,6 +23,7 @@ import { logoLleno, JS_LOGO_UNICO, paginasGenerales, logoHTML, redes, urlsPorUbi
 import { completarMaterial } from './validar_material.js';
 import { direccionTexto, testimoniosValidos } from './datos_brief.js';
 import { indiceDeLetra, porLetra } from './opciones/registro.js';
+import { ilustrativasActivas, RELLENABLES, construirRelleno, dependenciasReales, aplicarRelleno, conCredito } from './ilustrativas.js';
 
 // Regla dura de tipografía: la escala, el interlineado y la medida se agregan al final del CSS (mandan sobre la plantilla).
 const conReglaTipo = (html, par, estilo) => {
@@ -266,15 +267,15 @@ a.onclick=function(){ir(idx()-1)};b.onclick=function(){ir(idx()+1)};d.forEach(fu
  * @param {object} mat     procesarMateriales(...)
  * @param {object} textos  {variantes:[{titular, subtitulo, cta}], info:[], destacados, categorias, visita}
  */
-export async function crearPropuestasHTML(brief, mat, textos, { token = crypto.randomBytes(9).toString('base64url').replace(/[_-]/g, 'x'), ronda = 0, mapa = null } = {}) {
-  const r = await renderPropuestas(brief, mat, textos, { ronda, mapa });
+export async function crearPropuestasHTML(brief, mat, textos, { token = crypto.randomBytes(9).toString('base64url').replace(/[_-]/g, 'x'), ronda = 0, mapa = null, depsIlustrativas = null } = {}) {
+  const r = await renderPropuestas(brief, mat, textos, { ronda, mapa, depsIlustrativas });
   await fs.mkdir(path.join(DIR_PROPUESTAS, token), { recursive: true });
   const opciones = [];
   for (const pg of r.paginas) {
     await fs.writeFile(path.join(DIR_PROPUESTAS, token, `${pg.letra}.html`), pg.html);
     opciones.push({ letra: pg.letra, layout: pg.layout, nombre: pg.nombre, url: `${config.publicUrl}/p/${token}/${pg.letra}`, fuentes: pg.fuentes, paleta: pg.paleta });
   }
-  return { token, opciones, avisos_color: r.avisos_color, asesor: r.asesor, mapa: r.mapa };
+  return { token, opciones, avisos_color: r.avisos_color, asesor: r.asesor, mapa: r.mapa, relleno: r.relleno || null };
 }
 
 /**
@@ -285,7 +286,7 @@ export async function crearPropuestasHTML(brief, mat, textos, { token = crypto.r
  * y, si una falla al armarse, entra la siguiente de la lista.
  * → {paginas:[{letra, layout, nombre, html, fuentes, paleta}], avisos_color, asesor, faltan, mapa}
  */
-export async function renderPropuestas(brief, mat, textos, { ronda = 0, fijo = null, solo = null, mapa: mapaPedido = null } = {}) {
+export async function renderPropuestas(brief, mat, textos, { ronda = 0, fijo = null, solo = null, mapa: mapaPedido = null, depsIlustrativas = null } = {}) {
   const mapa = resolverMapa(brief, mapaPedido);
   const faltanTodas = [];
   // Cada ronda ("ninguna me gustó") usa otras tipografías y otro orden de color/fotos.
@@ -305,7 +306,19 @@ export async function renderPropuestas(brief, mat, textos, { ronda = 0, fijo = n
     // Logo de un color: versión pintada con la tinta de cada propuesta (contraste garantizado sobre fondos claros u oscuros).
     // Etapa 2: con mapa nuevo (y sin estilo de referencia ni letra pedida), las opciones salen de la lista del giro.
     const conLista = !esLegado(mapa) && !fijo && !solo && !esDireccionRef(brief.marca?.direccion_ref);
-    const eleccion = conLista ? elegirLetras(mapa, { brief, mat, textos, porLetra }) : null;
+    let eleccion = conLista ? elegirLetras(mapa, { brief, mat, textos, porLetra }) : null;
+    // Elementos ilustrativos (etapa 2, parte 3): en propuestas desde cero salen las primeras 6 de la lista del giro y lo
+    // que les falte se llena (fotos de Pixabay con marca, ejemplos sin precio, logo con letras). El relleno se guarda en
+    // la propuesta; los cambios, el sitio en vivo y el rediseño lo vuelven a aplicar (solo lo que siga faltando).
+    let relleno = brief.marca?.propuestas?.relleno || null;
+    if (conLista && mapaPedido === 'nuevo' && ilustrativasActivas(brief)) {
+      const conRelleno = elegirLetras(mapa, { brief, mat, textos, porLetra, rellenables: RELLENABLES });
+      try {
+        relleno = await construirRelleno(conRelleno.letras.map(porLetra), { brief, mat, textos }, depsIlustrativas || await dependenciasReales());
+        eleccion = conRelleno;
+      } catch (err) { console.warn('[propuestas] ilustrativas:', err.message); relleno = null; }
+    }
+    if (relleno) ({ brief, mat } = aplicarRelleno(brief, mat, relleno));
     let matP = mat;
     const armar = async (letras) => {
       let pags = paginasGenerales({ brief, mat: matP, textos, pares, urlFuentes, ronda, cps, fijo, solo, mapa, letras });
@@ -324,7 +337,7 @@ export async function renderPropuestas(brief, mat, textos, { ronda = 0, fijo = n
       if (faltan.length && !fijo) throw new Error(`Propuesta ${pg.letra} sin material del cliente: ${faltan.map((f) => f.clave).join(', ')}`);
       if (repetidas.length && !fijo) throw new Error(`Propuesta ${pg.letra} con fotos repetidas: ${repetidas.map((f) => f.url.split('/').pop()).join(', ')}`);
       faltanTodas.push(...faltan);
-      return { letra: pg.letra, layout: pg.layout, nombre: pg.nombre, html: conPisoTexto(await conImagenesOptimizadas(conContacto(conMenuMovil(html), brief))), fuentes: pg.fuentes, paleta: pg.paleta };
+      return { letra: pg.letra, layout: pg.layout, nombre: pg.nombre, html: conCredito(conPisoTexto(await conImagenesOptimizadas(conContacto(conMenuMovil(html), brief)))), fuentes: pg.fuentes, paleta: pg.paleta };
     };
     const out = [];
     if (!conLista) {
@@ -349,7 +362,7 @@ export async function renderPropuestas(brief, mat, textos, { ronda = 0, fijo = n
       if (fallidas.length) console.warn('[propuestas] opciones que no se armaron y se reemplazaron:', fallidas.map((f) => `${f.letra}: ${f.error}`).join(' | '));
       if (!out.length) throw new Error(`Ninguna opción se pudo armar: ${fallidas.map((f) => `${f.letra}: ${f.error}`).join(' | ')}`);
     }
-    return { mapa, paginas: out, faltan: faltanTodas, avisos_color: avisosDeGiro({ arquetipo: brief.negocio?.arquetipo, subtipo: brief.negocio?.subtipo_resuelto || brief.negocio?.subtipo, colores: coloresCliente }), asesor };
+    return { mapa, relleno, paginas: out, faltan: faltanTodas, avisos_color: avisosDeGiro({ arquetipo: brief.negocio?.arquetipo, subtipo: brief.negocio?.subtipo_resuelto || brief.negocio?.subtipo, colores: coloresCliente }), asesor };
   }
   const colores = coloresCliente;
   const prods = productos(mat, mat.menu_texto).sort((x, y) => (y.precio ? 1 : 0) - (x.precio ? 1 : 0));
