@@ -391,7 +391,7 @@ export function registerGeneradorRoutes(app, wrap) {
     auth(c);
     const b = await c.req.json().catch(() => ({}));
     if (!/^https?:\/\//.test(b.url || '')) throw new HttpError(400, 'falta url');
-    const e = b.entrevista_id ? await db.obtener(b.entrevista_id) : null;
+    const e = b.entrevista_id ? await db.obtener(b.entrevista_id) : b.negocio ? await db.q("SELECT id FROM entrevistas WHERE brief->'negocio'->>'nombre' ILIKE $1 ORDER BY actualizado DESC LIMIT 1", [`%${b.negocio}%`]).then((r) => (r.rows[0] ? db.obtener(r.rows[0].id) : null)) : null;
     const brief = e?.brief || { negocio: { nombre: 'Negocio de prueba', arquetipo: 'generico' }, contacto: {} };
     const id = crypto.randomUUID().slice(0, 8);
     pruebasRef.set(id, { estado: 'trabajando', t0: Date.now() });
@@ -402,7 +402,7 @@ export function registerGeneradorRoutes(app, wrap) {
       const mat = e ? await procesarMateriales(e.id, brief) : { colores: [], trabajos: [], local: [], otras: [] };
       const r = await reconstruirReferencia(b.url, { brief, mat, titulos: resolverMapa(brief, 'nuevo').nombres || {} });
       pruebasRef.set(id, { estado: 'lista', parecido: r.parecido, muestra: r.muestra, referencia: r.capturas, plano: r.plano, ms: Date.now() - pruebasRef.get(id).t0 });
-    })().catch((err) => pruebasRef.set(id, { estado: 'fallo', error: err.message, code: err.code || null }));
+    })().catch((err) => pruebasRef.set(id, { estado: 'fallo', error: err.message, code: err.code || null, muestra: err.muestra || null, plano: err.plano || null }));
     return c.json({ id }, 202);
   }));
   app.get('/entrevista/v1/referencia/probar/:id', wrap(async (c) => { auth(c); return c.json(pruebasRef.get(c.req.param('id')) || { estado: 'no existe' }); }));
