@@ -45,6 +45,8 @@ test('el mapa ordena las secciones y cada pieza propia viaja con la sección que
   const mapa = { version: 'giros-1', orden: ['servicios', 'trabajo', 'sobre', 'contacto'] };
   assert.deepEqual(ordenarPiezas(piezas, mapa).map((f) => f()), ['intro', 'servicios', 'tras-servicios', 'trabajo', 'sobre', 'tras-sobre', 'contacto']);
   assert.equal(ordenarPiezas(piezas, LEGADO), piezas);
+  // Una sección que el mapa no trae (p. ej. proceso en tienda) va antes de contacto.
+  assert.deepEqual(ordenarPiezas([s('proceso'), s('sobre'), s('contacto')], { version: 'giros-1', orden: ['sobre', 'contacto'] }).map((f) => f()), ['sobre', 'proceso', 'contacto']);
 });
 
 test('las 6 opciones salen de la lista del giro según el material del cliente', () => {
@@ -57,6 +59,6 @@ test('las 6 opciones salen de la lista del giro según el material del cliente',
   // Con 1 foto de trabajo y sin grupos: se saltan el mosaico, el collage y el catálogo, y entran las siguientes.
   const pobre = { ...rico, trabajos: [foto(1)] };
   const r2 = elegirLetras(mapa, { brief: { oferta: { items: [] } }, mat: pobre, textos: {}, porLetra });
-  assert.deepEqual(r2.letras, ['A', 'K', 'B', 'E', 'D', 'F']);
+  assert.deepEqual(r2.letras, ['A', 'K', 'B', 'E', 'D', 'F']); // F no está en la lista de inmobiliaria: va al final
   assert.ok(r2.respaldo.includes('C'));
 });

@@ -60,7 +60,8 @@ export function ordenarPiezas(piezas, mapa) {
     if (p?.seccion) grupos.push({ id: p.seccion, piezas: [p], k: grupos.length });
     else (grupos.length ? grupos[grupos.length - 1].piezas : inicio).push(p);
   }
-  const pos = (id) => { const i = mapa.orden.indexOf(id); return i >= 0 ? i : id === 'contacto' ? 1e6 : mapa.orden.length + 0.5; };
+  const fin = mapa.orden.includes('contacto') ? mapa.orden.indexOf('contacto') - 0.5 : mapa.orden.length;
+  const pos = (id) => { const i = mapa.orden.indexOf(id); return i >= 0 ? i : id === 'contacto' ? 1e6 : fin; };
   grupos.sort((a, b) => pos(a.id) - pos(b.id) || a.k - b.k);
   return [...inicio, ...grupos.flatMap((g) => g.piezas)];
 }
@@ -111,5 +112,7 @@ export function elegirLetras(mapa, { brief, mat, textos, porLetra }) {
   const elegidas = lista.filter((l) => cumple(porLetra(l), cuenta, { brief, mat })).slice(0, 6);
   for (const l of ['E', 'F', ...lista, 'A', 'B', 'C', 'D']) if (elegidas.length < 6 && existe(l) && !elegidas.includes(l)) elegidas.push(l);
   const respaldo = [...lista, 'E', 'F', 'A', 'B', 'C', 'D'].filter((l, k, a) => existe(l) && !elegidas.includes(l) && a.indexOf(l) === k);
-  return { letras: elegidas, respaldo, cuenta };
+  // Se muestran en el orden de preferencia de la lista (las que no están en ella, al final).
+  const lugar = (l) => (lista.includes(l) ? lista.indexOf(l) : 99);
+  return { letras: elegidas.sort((a, b) => lugar(a) - lugar(b)), respaldo, cuenta };
 }
