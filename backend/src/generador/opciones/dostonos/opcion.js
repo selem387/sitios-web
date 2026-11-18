@@ -4,6 +4,8 @@ import { tono, conContraste } from '../../kit/color.js';
 
 export const opcion = {
   nombre: 'dostonos', letra: 'E', indice: 4, titulo: 'Dos tonos',
+  // Material con el que se ve completa (verificado el 17 y 18-nov-2026; doc claude/etapa2-mapa-por-giro-propuesta.md).
+  requisitos: {},
   // Colores de la opción a partir de los del cliente (la plantilla general completa el resto de la paleta).
   paleta: ({ base, papel, tinta }) => ({ bg: '#FFFFFF', fg: tinta, primary: base, muted: papel, banda: conContraste(tono(base, 0.3, 0.2, 0.32), '#FFFFFF', 7) }),
   base: true,

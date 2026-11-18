@@ -3,6 +3,8 @@ import { mezclar } from '../../../entrevista/tema.js';
 
 export const opcion = {
   nombre: 'portada', letra: 'A', indice: 0, titulo: 'Foto a pantalla completa',
+  // Material con el que se ve completa (verificado el 17 y 18-nov-2026; doc claude/etapa2-mapa-por-giro-propuesta.md).
+  requisitos: { fotoBuena: 1 },
   // Colores de la opción a partir de los del cliente (la plantilla general completa el resto de la paleta).
   paleta: ({ base, papel, tinta }) => ({ bg: mezclar(papel, '#FFFFFF', 0.5), fg: tinta, primary: base, muted: papel }),
   base: true,

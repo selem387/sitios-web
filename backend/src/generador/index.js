@@ -17,6 +17,7 @@ import { procesarMateriales } from './materiales.js';
 import { asignarDominio } from './dominios.js';
 import { apuntarDominio, registros as registrosDns } from './dns_godaddy.js';
 import { crearPropuestasHTML, textosPropuestas } from './propuestas_html.js';
+import { resolverMapa } from './giros/index.js';
 import * as wp from './wp.js';
 import { sitioDePropuesta } from './sitio_propuesta.js';
 import { NOMBRES_GENERAL } from './propuestas_general.js';
@@ -414,9 +415,11 @@ export function registerGeneradorRoutes(app, wrap) {
     const b = await c.req.json().catch(() => ({}));
     const mat = await procesarMateriales(e.id, e.brief || {}, { aceptarLoQueHay: true });
     if (b.logo_url) mat.logo = { ...(mat.logo || {}), url: b.logo_url };
-    const textos = await textosPropuestas(e.brief || {}, mat);
-    // token opcional: regenerar sobre las mismas ligas que ya tiene el cliente.
-    const r = await crearPropuestasHTML(e.brief || {}, mat, textos, /^[A-Za-z0-9]{8,40}$/.test(b.token || '') ? { token: b.token } : {});
+    // token opcional: regenerar sobre las mismas ligas que ya tiene el cliente (con su mismo mapa); sin token, desde cero.
+    const conToken = /^[A-Za-z0-9]{8,40}$/.test(b.token || '');
+    const mapa = resolverMapa(e.brief || {}, conToken ? null : 'nuevo');
+    const textos = await textosPropuestas(e.brief || {}, mat, { mapa });
+    const r = await crearPropuestasHTML(e.brief || {}, mat, textos, conToken ? { token: b.token, mapa } : { mapa });
     const todas = r.opciones.map((o) => ({ etiqueta: o.letra, letra: o.letra, layout: o.layout, nombre: o.nombre, url: o.url, estilo: o.fuentes.estilo, tipografia: { titulos: o.fuentes.titulos, cuerpo: o.fuentes.cuerpo }, paleta: o.paleta }));
     // Agente de revisión y corrección antes de guardarlas como mostradas ({revisar:false} para saltarlo).
     const rev = b.revisar === false ? { pasan: todas, revision: [] } : await revisarYCorregir(todas, { referencia: (e.brief?.marca?.referencias_sitios || [])[0] || null });
@@ -425,7 +428,7 @@ export function registerGeneradorRoutes(app, wrap) {
     // La revisión solo corrige las páginas; con token nuevo, se guardan solo las que pasan (como en mostrar()).
     const mismasLigas = !!b.token && b.token === r.token;
     const opciones = mismasLigas || rev.pasan.length < 2 ? todas : rev.pasan;
-    const brief = { ...e.brief, marca: { ...e.brief.marca, propuestas: { ...(mismasLigas ? (e.brief?.marca?.propuestas || {}) : {}), estado: 'mostradas', token: r.token, opciones, textos, usados: [...new Set([...(mismasLigas ? (e.brief?.marca?.propuestas?.usados || []) : []), r.token])] } } };
+    const brief = { ...e.brief, marca: { ...e.brief.marca, propuestas: { ...(mismasLigas ? (e.brief?.marca?.propuestas || {}) : {}), estado: 'mostradas', token: r.token, opciones, textos, mapa: r.mapa, usados: [...new Set([...(mismasLigas ? (e.brief?.marca?.propuestas?.usados || []) : []), r.token])] } } };
     await db.guardar(e.id, { brief });
     return { token: r.token, opciones: opciones.map((o) => ({ letra: o.letra, nombre: o.nombre, url: o.url, fuentes: o.tipografia })), revision: (rev.revision || []).map(({ letra, ok, problemas }) => ({ letra, ok, problemas })) };
   }));

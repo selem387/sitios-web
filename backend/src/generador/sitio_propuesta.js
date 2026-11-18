@@ -13,6 +13,7 @@ import fs from 'node:fs/promises';
 import path from 'node:path';
 import { enlacesRedes, CSS_REDES } from './iconos_redes.js';
 import { indiceDeLetra, porNombre } from './opciones/registro.js';
+import { esLegado } from './giros/index.js';
 
 const esc = (s) => String(s ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 // JSON de atributos dentro de un comentario HTML: no puede contener "--".
@@ -201,7 +202,8 @@ export async function sitioDePropuesta({ brief, mat, prop, elegida, deColores = 
   const v = textos.variantes?.[indice] || textos.variantes?.[0] || {};
   const t = { titular: v.titular, subtitulo: v.subtitulo, cta: v.cta || 'Escríbeme por WhatsApp', info: (textos.info || []).slice(0, 3), sobre: textos.sobre, proceso: textos.proceso, proceso_intro: textos.proceso_intro, servicios_intro: textos.servicios_intro, servicios_cierre: textos.servicios_cierre, servicios_boton: textos.servicios_boton };
   const arq = TITULOS[brief.negocio?.arquetipo] ? brief.negocio.arquetipo : 'generico';
-  const T = { ...TITULOS[arq], ...(textos.secciones || {}) };
+  // Nombres del mapa con que se generó la propuesta elegida (etapa 2) y, encima, los que pidió el cliente.
+  const T = { ...TITULOS[arq], ...(esLegado(prop.mapa) ? {} : prop.mapa.nombres), ...(textos.secciones || {}) };
   const c = brief.contacto || {};
   const wa = waUrl(c.whatsapp, c.mensaje_whatsapp_inicial) || '#contacto';
   const tel = c.whatsapp ? formatoTel(c.whatsapp) : null;

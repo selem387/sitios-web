@@ -4,6 +4,8 @@ import { mezclar } from '../../../entrevista/tema.js';
 
 export const opcion = {
   nombre: 'logo', letra: 'D', indice: 3, titulo: 'Tu logo al centro',
+  // Material con el que se ve completa (verificado el 17 y 18-nov-2026; doc claude/etapa2-mapa-por-giro-propuesta.md).
+  requisitos: { logo: true },
   // Colores de la opción a partir de los del cliente (la plantilla general completa el resto de la paleta).
   paleta: ({ base, tinte, tinta }) => ({ bg: mezclar(tinte, '#FFFFFF', 0.45), fg: tinta, primary: base, muted: '#FFFFFF' }),
   base: true,

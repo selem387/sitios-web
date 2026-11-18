@@ -10,6 +10,10 @@ import { tono, conContraste } from '../../kit/color.js';
 
 export const opcion = {
   nombre: 'historia', letra: 'I', indice: 8, titulo: 'Historia con scroll',
+  // Material con el que se ve completa (verificado el 17 y 18-nov-2026; doc claude/etapa2-mapa-por-giro-propuesta.md).
+  requisitos: {},
+  // Página propia con el orden de su referencia (excepción aprobada el 16-nov-2026): del giro solo toma los nombres.
+  ordenPropio: true,
   // Colores de la opción a partir de los del cliente (la plantilla general completa el resto de la paleta).
   paleta: ({ base, tinte, papel, tinta }) => ({ bg: mezclar(papel, '#F6F1E8', 0.6), fg: tinta, primary: base, muted: mezclar(tinte, '#FFFFFF', 0.5), banda: conContraste(tono(base, 0.2, 0.18, 0.3), '#FFFFFF', 9) }),
   propia: true, sinWordPress: true,

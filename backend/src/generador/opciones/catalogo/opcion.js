@@ -5,11 +5,14 @@ import { giroCorto, fraseDe } from '../../kit/utiles.js';
 import { anuncioHTML, portadaHTML, estanteHTML, bloqueHTML, categoriasHTML, conIdsGrupos, cierreHTML, relacionarFotos, CSS_CATALOGO, JS_CATALOGO } from './catalogo.js';
 import { mezclar } from '../../../entrevista/tema.js';
 import { tono, conContraste } from '../../kit/color.js';
+import { comoSeccion } from '../../giros/index.js';
 
 const lineaDe = (neg) => [giroCorto(neg.giro_texto), neg.ciudad].filter(Boolean).join(' · ');
 
 export const opcion = {
   nombre: 'catalogo', letra: 'O', indice: 14, titulo: 'Catálogo en movimiento',
+  // Material con el que se ve completa (verificado el 17 y 18-nov-2026; doc claude/etapa2-mapa-por-giro-propuesta.md).
+  requisitos: { grupos: 2, fotosTrabajo: 1 },
   // Colores de la opción a partir de los del cliente (la plantilla general completa el resto de la paleta).
   paleta: ({ base, tinte, tinta }) => ({ bg: '#FFFFFF', fg: tinta, primary: base, muted: mezclar(tinte, '#FFFFFF', 0.6), banda: conContraste(tono(base, 0.2, 0.18, 0.28), '#FFFFFF', 9) }),
   propia: true, sinWordPress: true,
@@ -37,10 +40,10 @@ export const opcion = {
       const frases = [fraseDe(t.sobre || conf.historia_corta || ''), fraseDe(brief.oferta?.diferenciador || '')].filter((x, k, a) => x && a.indexOf(x) === k);
       const trabajo = listaTrabajo();
       const rel = relacionarFotos(trabajo, grupos, { precios: mostrarPrecios });
-      const estante = () => estanteHTML({ titulo: T.trabajo, fotos: trabajo, rel, grupos, img, attrs: waFoto });
+      const estante = comoSeccion('trabajo', () => estanteHTML({ titulo: T.trabajo, fotos: trabajo, rel, grupos, img, attrs: waFoto }));
       const bloque = (k) => () => bloqueHTML({ foto: fotosCt[k + 1] || null, img, titular: frases[k] || '', cta: k === 0 ? cta() : '', centro: k === 1 });
       const categorias = () => categoriasHTML({ titulo: 'Elige por categoría', grupos, img, precios: mostrarPrecios, fotoDe: (gi) => { const i = rel.findIndex((r) => r.grupo === gi); return i >= 0 ? trabajo[i] : null; }, ancla: (i) => (grupos.some((g) => g.opciones.length > 1) ? `#g-${i}` : '#servicios') });
-      return [estante, bloque(0), categorias, () => conIdsGrupos(secServicios()), bloque(1), secSobre, secEquipo, secResenas, secProceso, secFaq, secVideo, secContacto];
+      return [estante, bloque(0), categorias, comoSeccion('servicios', () => conIdsGrupos(secServicios())), bloque(1), secSobre, secEquipo, secResenas, secProceso, secFaq, secVideo, secContacto];
     },
     claseHtml: 'fx-hover',
     css: CSS_CATALOGO,

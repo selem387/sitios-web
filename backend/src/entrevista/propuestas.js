@@ -6,6 +6,7 @@
 import { procesarMateriales } from '../generador/materiales.js';
 import { interpretarEleccion } from '../generador/opciones.js';
 import { crearPropuestasHTML, textosPropuestas } from '../generador/propuestas_html.js';
+import { resolverMapa } from '../generador/giros/index.js';
 import { revisarYCorregir } from '../generador/revision_visual.js';
 import { coloresDePalabras } from '../generador/materiales.js';
 import * as db from './db.js';
@@ -144,7 +145,9 @@ async function aplicarRechazo(brief, d, comentarios) {
 }
 
 export async function mostrar(e, brief, mat, { ronda = 0 } = {}) {
-  const textos = await textosPropuestas(brief, mat);
+  // Etapa 2: propuestas desde cero con el mapa de su giro de hoy; se guarda en la propuesta y los cambios lo reutilizan.
+  const mapa = resolverMapa(brief, 'nuevo');
+  const textos = await textosPropuestas(brief, mat, { mapa });
   const prev = brief.marca?.propuestas || {};
   // Agente de revisión visual y corrección (10-nov-2026): antes de mandarlas, cada opción se revisa (código + IA) y las
   // que fallan se corrigen y se vuelven a revisar. Solo se mandan las que pasan; con menos de 4, se intenta otra ronda.
@@ -161,7 +164,7 @@ export async function mostrar(e, brief, mat, { ronda = 0 } = {}) {
   // Tope de tiempo: el cliente está esperando en el chat. Pasado el tope no se empieza otro intento.
   const t0 = Date.now(), TOPE_MS = 9 * 60000;
   for (let intento = 0; intento < INTENTOS && (intento === 0 || Date.now() - t0 < TOPE_MS); intento++) {
-    const r = await crearPropuestasHTML(brief, mat, textos, { ronda: ronda + intento });
+    const r = await crearPropuestasHTML(brief, mat, textos, { ronda: ronda + intento, mapa });
     const opciones = r.opciones.map(aOpcion);
     const rev = await revisarYCorregir(opciones, { referencia: (brief.marca?.referencias_sitios || [])[0] || null }).catch((err) => { console.error('[propuestas] revisión', err.message); return { pasan: opciones, revision: [] }; });
     const de = (l) => (rev.revision || []).find((x) => x.letra === l);
@@ -179,7 +182,7 @@ export async function mostrar(e, brief, mat, { ronda = 0 } = {}) {
     throw err;
   }
   const opciones = limpias;
-  return { propuestas: { ...prev, estado: 'mostradas', token: r.token, opciones, textos, ronda: mejor.ronda, asesor_color: r.asesor?.hallazgos || [], usados: [...(prev.usados || []), r.token] }, salida: mensajeOpciones({ opciones, asesor: r.asesor }, brief, mat, mejor.ronda) };
+  return { propuestas: { ...prev, estado: 'mostradas', token: r.token, opciones, textos, mapa: r.mapa, ronda: mejor.ronda, asesor_color: r.asesor?.hallazgos || [], usados: [...(prev.usados || []), r.token] }, salida: mensajeOpciones({ opciones, asesor: r.asesor }, brief, mat, mejor.ronda) };
 }
 
 /**

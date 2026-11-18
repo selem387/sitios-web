@@ -4,6 +4,8 @@ import { mezclar } from '../../../entrevista/tema.js';
 
 export const opcion = {
   nombre: 'editorial', letra: 'B', indice: 1, titulo: 'Editorial',
+  // Material con el que se ve completa (verificado el 17 y 18-nov-2026; doc claude/etapa2-mapa-por-giro-propuesta.md).
+  requisitos: { fotoBuena: 1 },
   // Colores de la opción a partir de los del cliente (la plantilla general completa el resto de la paleta).
   paleta: ({ base, tinte, tinta }) => ({ bg: '#FFFFFF', fg: tinta, primary: base, muted: mezclar(tinte, '#FFFFFF', 0.55) }),
   base: true,
