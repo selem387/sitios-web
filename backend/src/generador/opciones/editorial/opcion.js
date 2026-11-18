@@ -11,6 +11,13 @@ export const opcion = {
   base: true,
   // Cómo se arma con la plantilla general (propuestas_general.js, función pagina): c es el contexto de la página.
   plantilla: {
+    // CSS propio (etapa 2, parte 2): portada → con los héroes; galeria → tras las reglas de galería; ancho → dentro de @media (min-width:900px).
+    cssBase: {
+      portada: `.h-edit{display:grid;gap:28px;padding-top:36px}.arco{border-radius:999px 999px 24px 24px;overflow:hidden;aspect-ratio:4/5;max-height:620px}.arco img{width:100%;height:100%;object-fit:cover}
+`,
+      galeria: `.g-editorial{columns:2 150px}`,
+      ancho: `.h-edit{grid-template-columns:1.1fr .9fr;align-items:center;padding-top:64px}.g-editorial{columns:4 220px}`,
+    },
     portada: (c) => {
       const { t, neg, heroFoto, cta, info, slider } = c;
       const armar = () => `<section class="hero h-edit wrap"><div class="txt"><p class="kicker">${esc(giroCorto(neg.giro_texto) || '')}</p><h1>${esc(t.titular)}</h1><p class="sub">${esc(t.subtitulo)}</p>${cta()}<ul class="info">${info}</ul></div>${heroFoto ? slider({ tag: 'figure', clase: 'arco sl-marco' }) : ''}</section>`;
