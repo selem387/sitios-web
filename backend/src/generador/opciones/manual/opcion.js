@@ -5,6 +5,8 @@ export const opcion = {
   nombre: 'manual', letra: 'R', indice: 17, titulo: 'Manual de servicios',
   // Material con el que se ve completa (verificado el 17 y 18-nov-2026; doc claude/etapa2-mapa-por-giro-propuesta.md).
   requisitos: { servicios: 3 },
+  // Página propia: excepción aprobada por Sebastián el 16-nov-2026 (sigue su orden; toma los nombres del giro).
+  ordenPropio: true,
   sinWordPress: true,
   completa: ({ brief, mat, textos, v, titulos, wa, coloresPropuesta, letra, titulo }) => ({
     html: paginaManual({ brief, mat, textos, v, titulos, wa, colores: [...(mat.colores || []), ...(coloresPropuesta || [])], nombreOpcion: titulo, letra }),

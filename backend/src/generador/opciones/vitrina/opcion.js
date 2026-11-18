@@ -5,6 +5,8 @@ export const opcion = {
   nombre: 'vitrina', letra: 'Q', indice: 16, titulo: 'Vitrina',
   // Material con el que se ve completa (verificado el 17 y 18-nov-2026; doc claude/etapa2-mapa-por-giro-propuesta.md).
   requisitos: { productos: 4 },
+  // Página propia: excepción aprobada por Sebastián el 16-nov-2026 (sigue su orden; toma los nombres del giro).
+  ordenPropio: true,
   // Q: negro sobre blanco como la referencia; el color del cliente solo queda guardado para el sitio en vivo.
   // Colores de la opción a partir de los del cliente (la plantilla general completa el resto de la paleta).
   paleta: ({ base }) => ({ bg: '#FFFFFF', fg: '#000000', primary: base, muted: '#EFEFEF' }),
