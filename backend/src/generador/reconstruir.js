@@ -12,6 +12,8 @@ import { PORTADAS, BLOQUES, FONDOS, PARES, normalizarPlano, paginaReferencia } f
 
 const RENDER = () => (config.renderUrl || '').replace(/\/$/, '');
 const PARECIDO_MIN = 3;
+// Avisos de cookies y ventanas emergentes de la referencia: no son parte de su diseño.
+const CSS_SIN_AVISOS = '[id*=cookie i],[class*=cookie i],[id*=consent i],[class*=consent i],#onetrust-banner-sdk,#CybotCookiebotDialog,.cc-window,[aria-modal=true]{display:none!important}';
 
 async function render(ruta, cuerpo, ms = 120000) {
   if (!RENDER()) throw new Error('RENDER_URL no configurada');
@@ -80,7 +82,7 @@ async function planoInicial({ estudio, capturas }) {
 
 /** Compara la página armada contra la referencia y devuelve el plano corregido + parecido. */
 async function compararYCorregir({ plano, capturas, propias }) {
-  const contenido = [{ type: 'text', text: `${CATALOGO_TXT()}\n\nPLANO ACTUAL: ${JSON.stringify(plano)}\n\nAbajo: primero la página de REFERENCIA, después la página ARMADA con el plano (con los datos de otro negocio: textos y fotos distintos son correctos). Califica "parecido" (1–5) SOLO en estructura y estilo: acomodo de bloques, tipo de portada, proporciones, letra, colores, aire y forma. NO bajes la calificación porque el contenido sea distinto: otros textos, otras fotos, menos fotos o menos secciones son normales (es otro negocio con su propio material). y devuelve el plano corregido para parecerse más (si ya se parece, devuelve el mismo).` }];
+  const contenido = [{ type: 'text', text: `${CATALOGO_TXT()}\n\nPLANO ACTUAL: ${JSON.stringify(plano)}\n\nAbajo: primero la página de REFERENCIA, después la página ARMADA con el plano (con los datos de otro negocio: textos y fotos distintos son correctos). Sé estricta: 5 solo si alguien que conoce la referencia la reconocería al instante; 3 si se reconoce el estilo pero el acomodo cambia; 1–2 si parece otra página. Califica "parecido" (1–5) SOLO en estructura y estilo: acomodo de bloques, tipo de portada, proporciones, letra, colores, aire y forma. NO bajes la calificación porque el contenido sea distinto: otros textos, otras fotos, menos fotos o menos secciones son normales (es otro negocio con su propio material). y devuelve el plano corregido para parecerse más (si ya se parece, devuelve el mismo).` }];
   capturas.escritorio.slice(0, 3).forEach((u, i) => contenido.push({ type: 'text', text: `REFERENCIA, escritorio ${i + 1}` }, { type: 'image', source: { type: 'url', url: u } }));
   propias.escritorio.slice(0, 3).forEach((u, i) => contenido.push({ type: 'text', text: `ARMADA, escritorio ${i + 1}` }, { type: 'image', source: { type: 'url', url: u } }));
   if (propias.celular) contenido.push({ type: 'text', text: 'ARMADA, celular' }, { type: 'image', source: { type: 'url', url: propias.celular } });
@@ -96,7 +98,14 @@ async function paginaDePrueba({ plano, brief, mat, titulos }) {
   const c = brief.contacto || {};
   const v = { titular: brief.negocio?.lema || brief.negocio?.nombre || 'Tu negocio', subtitulo: brief.negocio?.giro_texto || '', cta: 'Escríbenos por WhatsApp' };
   const wa = c.whatsapp ? ` href="${waUrl(c.whatsapp, 'Hola')}" target="_blank" rel="noopener"` : '';
-  const { html } = paginaReferencia({ plano, brief, mat, textos: {}, v, titulos, wa, colores: mat.colores || [] });
+  // Con los mismos elementos ilustrativos que llevará en sus opciones (fotos y ejemplos donde falte).
+  let b = brief, m = mat;
+  try {
+    const il = await import('./ilustrativas.js');
+    const { porLetra } = await import('./opciones/registro.js');
+    if (il.ilustrativasActivas(brief)) { const relleno = await il.construirRelleno([porLetra('S')], { brief, mat }, await il.dependenciasReales()); if (relleno) ({ brief: b, mat: m } = il.aplicarRelleno(brief, mat, relleno)); }
+  } catch (err) { console.warn('[reconstruir] ilustrativas', err.message); }
+  const { html } = paginaReferencia({ plano, brief: b, mat: m, textos: {}, v, titulos, wa, colores: mat.colores || [] });
   await fs.mkdir(path.join(DIR_PROPUESTAS, token), { recursive: true });
   await fs.writeFile(path.join(DIR_PROPUESTAS, token, 'S.html'), html);
   return `${config.publicUrl}/p/${token}/S`;
@@ -109,7 +118,7 @@ async function paginaDePrueba({ plano, brief, mat, titulos }) {
 export async function reconstruirReferencia(url, { brief = {}, mat = {}, titulos = {}, estudio = null, correcciones = 2, deps = {} } = {}) {
   const capt = deps.capturasDe || capturasDe;
   const estudiar = deps.estudiar || ((u) => render('/v1/estudiar', { url: u }, 90000).catch(() => null));
-  const [capturas, est] = await Promise.all([capt(url), estudio ? Promise.resolve(estudio) : estudiar(url)]);
+  const [capturas, est] = await Promise.all([capt(url, { css: CSS_SIN_AVISOS }), estudio ? Promise.resolve(estudio) : estudiar(url)]);
   if (!capturas.escritorio.length) throw Object.assign(new Error('No se pudo capturar la página de referencia'), { code: 'REFERENCIA_ILEGIBLE' });
   const ini = await (deps.planoInicial || planoInicial)({ estudio: est, capturas });
   if (ini.legible === false) throw Object.assign(new Error('La página de referencia no se deja leer'), { code: 'REFERENCIA_ILEGIBLE' });
