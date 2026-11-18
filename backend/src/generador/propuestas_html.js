@@ -23,6 +23,7 @@ import { logoLleno, JS_LOGO_UNICO, paginasGenerales, logoHTML, redes, urlsPorUbi
 import { completarMaterial } from './validar_material.js';
 import { direccionTexto, testimoniosValidos } from './datos_brief.js';
 import { indiceDeLetra, porLetra } from './opciones/registro.js';
+import { refrescarAprobadas, aprobadasDe, listaConPlantillas } from './plantillas_ref.js';
 import { ilustrativasActivas, RELLENABLES, construirRelleno, dependenciasReales, aplicarRelleno, conCredito } from './ilustrativas.js';
 
 // Regla dura de tipografía: la escala, el interlineado y la medida se agregan al final del CSS (mandan sobre la plantilla).
@@ -275,7 +276,7 @@ export async function crearPropuestasHTML(brief, mat, textos, { token = crypto.r
     await fs.writeFile(path.join(DIR_PROPUESTAS, token, `${pg.letra}.html`), pg.html);
     opciones.push({ letra: pg.letra, layout: pg.layout, nombre: pg.nombre, url: `${config.publicUrl}/p/${token}/${pg.letra}`, fuentes: pg.fuentes, paleta: pg.paleta });
   }
-  return { token, opciones, avisos_color: r.avisos_color, asesor: r.asesor, mapa: r.mapa, relleno: r.relleno || null };
+  return { token, opciones, avisos_color: r.avisos_color, asesor: r.asesor, mapa: r.mapa, relleno: r.relleno || null, plano_ref: r.plano_ref || null };
 }
 
 /**
@@ -287,7 +288,7 @@ export async function crearPropuestasHTML(brief, mat, textos, { token = crypto.r
  * → {paginas:[{letra, layout, nombre, html, fuentes, paleta}], avisos_color, asesor, faltan, mapa}
  */
 export async function renderPropuestas(brief, mat, textos, { ronda = 0, fijo = null, solo = null, mapa: mapaPedido = null, depsIlustrativas = null } = {}) {
-  const mapa = resolverMapa(brief, mapaPedido);
+  let mapa = resolverMapa(brief, mapaPedido);
   const faltanTodas = [];
   // Cada ronda ("ninguna me gustó") usa otras tipografías y otro orden de color/fotos.
   const estilo = brief.marca?.estilo || 'calido';
@@ -306,13 +307,27 @@ export async function renderPropuestas(brief, mat, textos, { ronda = 0, fijo = n
     // Logo de un color: versión pintada con la tinta de cada propuesta (contraste garantizado sobre fondos claros u oscuros).
     // Etapa 2: con mapa nuevo (y sin estilo de referencia ni letra pedida), las opciones salen de la lista del giro.
     const conLista = !esLegado(mapa) && !fijo && !solo && !esDireccionRef(brief.marca?.direccion_ref);
-    let eleccion = conLista ? elegirLetras(mapa, { brief, mat, textos, porLetra }) : null;
+    // Página de referencia (opción S, 18-nov-2026): la reconstrucción del cliente va primero + las 5 primeras de su lista.
+    // Sin reconstrucción propia, una plantilla aprobada de su giro entra en el lugar que Sebastián le dio o al final.
+    let plano_ref = brief.marca?.propuestas?.plano_ref || null;
+    const propia = !!brief.marca?.plano_ref?.plano;
+    if (conLista && mapaPedido === 'nuevo') {
+      plano_ref = null;
+      if (!propia) {
+        await refrescarAprobadas().catch(() => {});
+        const { lista, plantilla } = listaConPlantillas(mapa.lista, brief.negocio?.arquetipo || 'generico', aprobadasDe(brief.negocio?.arquetipo || 'generico'));
+        if (plantilla) { plano_ref = { plano: plantilla.plano, plantilla_id: plantilla.id, origen: 'plantilla' }; mapa = { ...mapa, lista }; }
+      }
+      if (plano_ref) brief = { ...brief, marca: { ...(brief.marca || {}), propuestas: { ...(brief.marca?.propuestas || {}), plano_ref } } };
+    }
+    const primeroS = (e) => (conLista && propia ? { ...e, letras: ['S', ...e.letras.filter((l) => l !== 'S')].slice(0, 6), respaldo: [...e.letras.filter((l) => l !== 'S').slice(5), ...e.respaldo.filter((l) => l !== 'S')] } : e);
+    let eleccion = conLista ? primeroS(elegirLetras(mapa, { brief, mat, textos, porLetra })) : null;
     // Elementos ilustrativos (etapa 2, parte 3): en propuestas desde cero salen las primeras 6 de la lista del giro y lo
     // que les falte se llena (fotos de Pixabay con marca, ejemplos sin precio, logo con letras). El relleno se guarda en
     // la propuesta; los cambios, el sitio en vivo y el rediseño lo vuelven a aplicar (solo lo que siga faltando).
     let relleno = brief.marca?.propuestas?.relleno || null;
     if (conLista && mapaPedido === 'nuevo' && ilustrativasActivas(brief)) {
-      const conRelleno = elegirLetras(mapa, { brief, mat, textos, porLetra, rellenables: RELLENABLES });
+      const conRelleno = primeroS(elegirLetras(mapa, { brief, mat, textos, porLetra, rellenables: RELLENABLES }));
       try {
         relleno = await construirRelleno(conRelleno.letras.map(porLetra), { brief, mat, textos }, depsIlustrativas || await dependenciasReales());
         eleccion = conRelleno;
@@ -362,7 +377,7 @@ export async function renderPropuestas(brief, mat, textos, { ronda = 0, fijo = n
       if (fallidas.length) console.warn('[propuestas] opciones que no se armaron y se reemplazaron:', fallidas.map((f) => `${f.letra}: ${f.error}`).join(' | '));
       if (!out.length) throw new Error(`Ninguna opción se pudo armar: ${fallidas.map((f) => `${f.letra}: ${f.error}`).join(' | ')}`);
     }
-    return { mapa, relleno, paginas: out, faltan: faltanTodas, avisos_color: avisosDeGiro({ arquetipo: brief.negocio?.arquetipo, subtipo: brief.negocio?.subtipo_resuelto || brief.negocio?.subtipo, colores: coloresCliente }), asesor };
+    return { mapa, relleno, plano_ref, paginas: out, faltan: faltanTodas, avisos_color: avisosDeGiro({ arquetipo: brief.negocio?.arquetipo, subtipo: brief.negocio?.subtipo_resuelto || brief.negocio?.subtipo, colores: coloresCliente }), asesor };
   }
   const colores = coloresCliente;
   const prods = productos(mat, mat.menu_texto).sort((x, y) => (y.precio ? 1 : 0) - (x.precio ? 1 : 0));

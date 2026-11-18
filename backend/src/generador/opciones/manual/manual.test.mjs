@@ -18,7 +18,7 @@ const pares = [{ titulos: 'Gloock', cuerpo: 'Hanken Grotesk', estilo: 'elegante'
 const gen = (o = {}) => paginasGenerales({ brief, mat: matDe(6), textos, pares, urlFuentes: () => '', ...o });
 
 test('la R sale como decimoctava solo cuando se pide; la Q sigue igual', () => {
-  assert.equal(LETRAS, 'ABCDEFGHIJKLMNOPQR');
+  assert.ok(LETRAS.startsWith('ABCDEFGHIJKLMNOPQR'));
   assert.equal(NOMBRES_GENERAL.manual, 'Manual de servicios');
   assert.deepEqual(gen({ solo: 'R' }).map((p) => [p.letra, p.layout]), [['R', 'manual']]);
   assert.deepEqual(gen({ solo: 'Q' }).map((p) => [p.letra, p.layout]), [['Q', 'vitrina']]);
