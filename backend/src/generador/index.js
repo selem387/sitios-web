@@ -385,6 +385,28 @@ export function registerGeneradorRoutes(app, wrap) {
   });
   import('./plantillas_ref.js').then((m) => { m.configurarWebhook(config.publicUrl); m.refrescarAprobadas(); }).catch(() => {});
 
+  // Prueba de la reconstrucción de una página de referencia con los datos de una entrevista (no toca la entrevista).
+  const pruebasRef = new Map();
+  app.post('/entrevista/v1/referencia/probar', wrap(async (c) => {
+    auth(c);
+    const b = await c.req.json().catch(() => ({}));
+    if (!/^https?:\/\//.test(b.url || '')) throw new HttpError(400, 'falta url');
+    const e = b.entrevista_id ? await db.obtener(b.entrevista_id) : null;
+    const brief = e?.brief || { negocio: { nombre: 'Negocio de prueba', arquetipo: 'generico' }, contacto: {} };
+    const id = crypto.randomUUID().slice(0, 8);
+    pruebasRef.set(id, { estado: 'trabajando', t0: Date.now() });
+    (async () => {
+      const { procesarMateriales } = await import('./materiales.js');
+      const { reconstruirReferencia } = await import('./reconstruir.js');
+      const { resolverMapa } = await import('./giros/index.js');
+      const mat = e ? await procesarMateriales(e.id, brief) : { colores: [], trabajos: [], local: [], otras: [] };
+      const r = await reconstruirReferencia(b.url, { brief, mat, titulos: resolverMapa(brief, 'nuevo').nombres || {} });
+      pruebasRef.set(id, { estado: 'lista', parecido: r.parecido, muestra: r.muestra, referencia: r.capturas, plano: r.plano, ms: Date.now() - pruebasRef.get(id).t0 });
+    })().catch((err) => pruebasRef.set(id, { estado: 'fallo', error: err.message, code: err.code || null }));
+    return c.json({ id }, 202);
+  }));
+  app.get('/entrevista/v1/referencia/probar/:id', wrap(async (c) => { auth(c); return c.json(pruebasRef.get(c.req.param('id')) || { estado: 'no existe' }); }));
+
   app.post('/entrevista/v1/sesiones/:id/generar', wrap(async (c) => {
     auth(c);
     const b = await c.req.json().catch(() => ({}));

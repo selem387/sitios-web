@@ -113,16 +113,16 @@ export async function reconstruirReferencia(url, { brief = {}, mat = {}, titulos
   if (!capturas.escritorio.length) throw Object.assign(new Error('No se pudo capturar la página de referencia'), { code: 'REFERENCIA_ILEGIBLE' });
   const ini = await (deps.planoInicial || planoInicial)({ estudio: est, capturas });
   if (ini.legible === false) throw Object.assign(new Error('La página de referencia no se deja leer'), { code: 'REFERENCIA_ILEGIBLE' });
-  let plano = normalizarPlano(ini.plano), parecido = 0, mejor = { plano, parecido: 0 };
+  let plano = normalizarPlano(ini.plano), parecido = 0, mejor = { plano, parecido: 0, muestra: null };
   for (let k = 0; k <= correcciones; k++) {
     const urlPrueba = await (deps.paginaDePrueba || paginaDePrueba)({ plano, brief, mat, titulos });
     const propias = await capt(urlPrueba, { tramos: 3 });
     const r = await (deps.compararYCorregir || compararYCorregir)({ plano, capturas, propias });
     parecido = Number(r.parecido) || 0;
-    if (parecido > mejor.parecido) mejor = { plano, parecido };
+    if (parecido > mejor.parecido) mejor = { plano, parecido, muestra: urlPrueba };
     if (parecido >= 4 || k === correcciones) break;
     plano = normalizarPlano(r.plano);
   }
   if (mejor.parecido < PARECIDO_MIN) throw Object.assign(new Error(`La reconstrucción no se parece lo suficiente (${mejor.parecido}/5)`), { code: 'REFERENCIA_SIN_PARECIDO', plano: mejor.plano });
-  return { plano: mejor.plano, parecido: mejor.parecido, capturas, url };
+  return { plano: mejor.plano, parecido: mejor.parecido, capturas, url, muestra: mejor.muestra };
 }
