@@ -7,6 +7,7 @@ import { procesarMateriales } from '../generador/materiales.js';
 import { interpretarEleccion } from '../generador/opciones.js';
 import { crearPropuestasHTML, textosPropuestas } from '../generador/propuestas_html.js';
 import { resolverMapa } from '../generador/giros/index.js';
+import { ilustrativasActivas } from '../generador/ilustrativas.js';
 import { revisarYCorregir } from '../generador/revision_visual.js';
 import { coloresDePalabras } from '../generador/materiales.js';
 import * as db from './db.js';
@@ -60,6 +61,20 @@ function queIncluye(brief, mat) {
   return partes.length > 1 ? `${partes.slice(0, -1).join(', ')} y ${partes.at(-1)}` : partes[0] || 'tu información';
 }
 
+// Elementos ilustrativos (etapa 2, parte 3; decisiones 2, 4 y 5 del 18-nov-2026): al mostrar las opciones, Ari dice qué
+// puso de ejemplo y ofrece cambiarlo por lo del cliente.
+export function avisoIlustrativas(relleno, mat, brief = {}) {
+  const fotos = !!(relleno?.hero || relleno?.fotos?.length);
+  const items = !!relleno?.items?.length;
+  const sinLogo = !mat?.logo && brief.marca?.tiene_logo !== false && ilustrativasActivas(brief);
+  if (!fotos && !items && !sinLogo) return null;
+  const que = brief.negocio?.arquetipo === 'tienda' ? 'productos' : 'servicios';
+  const puse = [fotos && 'fotos de ejemplo donde me faltaron las tuyas (llevan la marca *Imagen ilustrativa*)', items && `algunos ${que} de ejemplo, sin precio (marcados *Ejemplo ilustrativo*)`].filter(Boolean);
+  const pide = [fotos && 'tus fotos', items && `tus ${que} con una descripción corta`, sinLogo && 'tu logo'].filter(Boolean);
+  const y = (l) => (l.length > 1 ? `${l.slice(0, -1).join(', ')} y ${l.at(-1)}` : l[0]);
+  return [puse.length ? `Para que veas cada diseño completo puse ${y(puse)}.` : '', sinLogo ? 'Como no tengo tu logo, va el nombre de tu negocio en letra.' : '', `Si me mandas ${y(pide)}, los cambio por los tuyos.`].filter(Boolean).join(' ');
+}
+
 function mensajeOpciones(op, brief, mat, ronda = 0) {
   const lista = op.opciones.map((o) => `*${o.letra}* · ${o.nombre}\n${o.url}`).join('\n\n');
   // Asesor de color: si sus colores no siguen las mejores prácticas, se avisa una vez con la razón y la F muestra el ajuste.
@@ -71,6 +86,7 @@ function mensajeOpciones(op, brief, mat, ronda = 0) {
       `${ronda ? `Aquí van ${op.opciones.length} propuestas nuevas, con otros colores, letras y acomodo` : `Te preparé ${op.opciones.length} propuestas de tu página`}, con ${queIncluye(brief, mat)}. Ábrelas en tu celular y recórrelas completas 👇`,
       lista,
       ...(nota ? [nota] : []),
+      ...(avisoIlustrativas(op.relleno, mat, brief) ? [avisoIlustrativas(op.relleno, mat, brief)] : []),
       `¿Cuál te gusta más? Respóndeme con la letra (${op.opciones.map((o) => `*${o.letra}*`).join(', ')}). También puedes pedir mezclas, por ejemplo _la B con los colores de la E_. Si ninguna te convence, dime *ninguna* y qué te gustaría distinto.`,
     ],
     media: [],
@@ -182,7 +198,7 @@ export async function mostrar(e, brief, mat, { ronda = 0 } = {}) {
     throw err;
   }
   const opciones = limpias;
-  return { propuestas: { ...prev, estado: 'mostradas', token: r.token, opciones, textos, mapa: r.mapa, ronda: mejor.ronda, asesor_color: r.asesor?.hallazgos || [], usados: [...(prev.usados || []), r.token] }, salida: mensajeOpciones({ opciones, asesor: r.asesor }, brief, mat, mejor.ronda) };
+  return { propuestas: { ...prev, estado: 'mostradas', token: r.token, opciones, textos, mapa: r.mapa, relleno: r.relleno || null, ronda: mejor.ronda, asesor_color: r.asesor?.hallazgos || [], usados: [...(prev.usados || []), r.token] }, salida: mensajeOpciones({ opciones, asesor: r.asesor, relleno: r.relleno }, brief, mat, mejor.ronda) };
 }
 
 /**
@@ -192,7 +208,8 @@ export async function mostrar(e, brief, mat, { ronda = 0 } = {}) {
 export async function atenderPropuestas(e, brief, { texto = '', huboMedia = false, clavesNuevas = [] }) {
   const p = brief.marca?.propuestas || {};
   if (p.estado === 'pendiente_material') {
-    const aceptar = NO_TENGO.test(texto) || (p.pedidos || 0) >= 2;
+    // Con elementos ilustrativos ya no se espera material: lo que falte va de ejemplo (decisión 4 del 18-nov-2026).
+    const aceptar = ilustrativasActivas(brief) || NO_TENGO.test(texto) || (p.pedidos || 0) >= 2;
     if (!aceptar && !huboMedia) return { responder: { textos: ['Cuando tengas las fotos mándamelas por aquí. Si no las tienes, escríbeme *no las tengo* y sigo con lo que ya me mandaste.'] }, brief, seguirConAri: false };
     const mat = await procesarMateriales(e.id, brief, { aceptarLoQueHay: aceptar });
     if (!mat.material_suficiente && !aceptar) {
@@ -312,7 +329,8 @@ export async function atenderPropuestas(e, brief, { texto = '', huboMedia = fals
 /** Se llama DESPUÉS del turno de Ari cuando el cliente terminó las fotos (sale de B6). */
 export async function iniciarPropuestas(e, brief) {
   const mat = await procesarMateriales(e.id, brief);
-  if (!mat.material_suficiente) {
+  // Etapa 2, parte 3: con elementos ilustrativos se genera de inmediato (sin pedir antes foto principal ni logo).
+  if (!mat.material_suficiente && !ilustrativasActivas(brief)) {
     const nb = { ...brief, marca: { ...brief.marca, propuestas: { estado: 'pendiente_material', pedidos: 1, faltan: mat.faltan } } };
     return { responder: { textos: [mensajeFaltan(mat)] }, brief: nb };
   }

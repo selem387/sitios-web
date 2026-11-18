@@ -428,7 +428,7 @@ export function registerGeneradorRoutes(app, wrap) {
     // La revisión solo corrige las páginas; con token nuevo, se guardan solo las que pasan (como en mostrar()).
     const mismasLigas = !!b.token && b.token === r.token;
     const opciones = mismasLigas || rev.pasan.length < 2 ? todas : rev.pasan;
-    const brief = { ...e.brief, marca: { ...e.brief.marca, propuestas: { ...(mismasLigas ? (e.brief?.marca?.propuestas || {}) : {}), estado: 'mostradas', token: r.token, opciones, textos, mapa: r.mapa, usados: [...new Set([...(mismasLigas ? (e.brief?.marca?.propuestas?.usados || []) : []), r.token])] } } };
+    const brief = { ...e.brief, marca: { ...e.brief.marca, propuestas: { ...(mismasLigas ? (e.brief?.marca?.propuestas || {}) : {}), estado: 'mostradas', token: r.token, opciones, textos, mapa: r.mapa, relleno: r.relleno || null, usados: [...new Set([...(mismasLigas ? (e.brief?.marca?.propuestas?.usados || []) : []), r.token])] } } };
     await db.guardar(e.id, { brief });
     return { token: r.token, opciones: opciones.map((o) => ({ letra: o.letra, nombre: o.nombre, url: o.url, fuentes: o.tipografia })), revision: (rev.revision || []).map(({ letra, ok, problemas }) => ({ letra, ok, problemas })) };
   }));

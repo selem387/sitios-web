@@ -144,6 +144,7 @@ const caja = (b, W, H, margen = 0) => {
   return w > 10 && h > 10 ? { left: x, top: y, width: w, height: h } : null;
 };
 
+export async function guardarImagen(img, prefijo, formato = 'jpg') { return guardar(img, prefijo, formato); }
 async function guardar(img, prefijo, formato = 'jpg') {
   await fs.mkdir(DIR, { recursive: true });
   const nombre = `${prefijo}-${crypto.randomBytes(9).toString('base64url').replace(/_/g, '-')}.${formato}`;
