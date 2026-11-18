@@ -24,7 +24,10 @@
 //   plantilla            cómo se arma con la plantilla general (propuestas_general.js). c es el contexto de la página:
 //     portada(c)                    HTML de la portada.
 //     secciones(c, s)               lista ordenada de secciones; s trae las comunes del kit (kit/secciones.js).
-//     claseHtml, css                clase del <html> (si no, la de efectos por letra) y CSS propio.
+//     claseHtml, css                clase del <html> (si no, la de efectos por letra) y CSS propio (va al final del <style>).
+//     cssBase {portada, galeria, ancho}  CSS propio que debe ir en su lugar del <style> general: portada → junto a las
+//                                   reglas de héroes; galeria → tras las de galería; ancho → dentro de @media (min-width:900px).
+//                                   Lo usan A–F; el CSS de una opción solo sale en su página.
 //     head(c)                       HTML extra al final de <head> (librerías, fuentes).
 //     antesBarra(c)                 HTML al inicio de <body>, antes de la barra (avisos).
 //     logo(c)                       logo de la barra (si no, el de siempre).

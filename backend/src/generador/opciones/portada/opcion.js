@@ -12,6 +12,13 @@ export const opcion = {
   conFotoPrincipal: true,
   // Cómo se arma con la plantilla general (propuestas_general.js, función pagina): c es el contexto de la página.
   plantilla: {
+    // CSS propio (etapa 2, parte 2): portada → con los héroes; galeria → tras las reglas de galería; ancho → dentro de @media (min-width:900px).
+    cssBase: {
+      portada: `.h-portada{position:relative;min-height:72vh;min-height:calc(100svh - 190px);display:flex;align-items:flex-end;color:#fff;overflow:hidden}.h-portada .fondo{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
+.h-portada .velo{position:absolute;inset:0;background:linear-gradient(180deg,rgba(0,0,0,.05) 30%,rgba(0,0,0,.62))}.h-portada .in{position:relative;padding-bottom:56px;width:100%}.h-portada .sub,.h-portada .kicker{color:rgba(255,255,255,.88)}
+`,
+      ancho: `.h-portada .velo{background:linear-gradient(90deg,rgba(0,0,0,.6),rgba(0,0,0,.15) 70%)}.h-portada .sl-d.con-txt::after{background:linear-gradient(90deg,rgba(0,0,0,.66),rgba(0,0,0,.18) 72%)}`,
+    },
     portada: (c) => {
       const { heroFoto, slider, textoPortada } = c;
       const armar = () => (heroFoto ? slider({ tag: 'section', clase: 'hero h-portada', envolver: true, primera: textoPortada })
