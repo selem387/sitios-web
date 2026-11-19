@@ -104,6 +104,19 @@ export function registerChatRoutes(app, wrap) {
     catch { return c.text('Propuesta no encontrada', 404); }
   });
 
+  // Página aparte del menú de un restaurante (etapa 3, 19-nov-2026): la que abre el QR de las mesas.
+  app.get('/p/:token/:letra/menu', async (c) => {
+    const { token, letra } = c.req.param();
+    if (!/^[A-Za-z0-9]{8,40}$/.test(token) || !esLetra(letra)) return c.text('no', 404);
+    const { paginaMenu } = await import('../generador/restaurante/pagina_menu.js');
+    try {
+      const html = await fs.readFile(path.join(DIR_PROPUESTAS, token, `${letra}.html`), 'utf8');
+      const nombre = (html.match(/<title>([\s\S]*?) · Propuesta/) || [])[1] || '';
+      const out = paginaMenu(html, { nombre, inicio: `/p/${token}/${letra}` });
+      return out ? c.html(out, 200, { 'cache-control': 'no-store', 'x-robots-tag': 'noindex' }) : c.text('Esta propuesta no tiene menú', 404);
+    } catch { return c.text('Propuesta no encontrada', 404); }
+  });
+
   // Barra borrador (generador/barra_borrador.js): "Me gusta con cambios" · "Me gusta como está" · "No me gusta".
   // Se le pasa a Ari como mensaje del cliente y su respuesta le llega por su canal (WhatsApp o chat web).
   app.post('/r/:token/:letra/:reaccion', async (c) => {

@@ -14,8 +14,9 @@ export const MARCA_EJEMPLO = 'Ejemplo ilustrativo';
 export const PREFIJO = 'ilus'; // nombre de archivo de las fotos ilustrativas (sirve para detectarlas en el HTML)
 export const CREDITO = 'Imágenes ilustrativas de Pixabay';
 
-/** ¿Se usan ilustrativas? Con llave de Pixabay; los restaurantes siguen su flujo (etapa 3). */
-export const ilustrativasActivas = (brief = {}) => !!process.env.PIXABAY_API_KEY && process.env.ILUSTRATIVAS !== 'no' && brief.negocio?.arquetipo !== 'restaurante';
+/** ¿Se usan ilustrativas? Con llave de Pixabay (y sin ILUSTRATIVAS=no). */
+// Restaurantes y cafeterías también (etapa 3, decisión 6 del 19-nov-2026).
+export const ilustrativasActivas = (brief = {}) => !!process.env.PIXABAY_API_KEY && process.env.ILUSTRATIVAS !== 'no';
 
 // Requisitos que el relleno puede cubrir (los demás, como "secciones" o la regla apta de la I, siguen decidiendo).
 export const RELLENABLES = ['fotosTrabajo', 'fotoBuena', 'fotosTotal', 'logo', 'servicios', 'grupos', 'productos', 'producto'];
@@ -30,6 +31,7 @@ const TERMINOS = {
   educacion: { _: ['salón de clases', 'estudiantes', 'aprendizaje'] },
   turismo: { hotel: ['habitación de hotel', 'hotel alberca'], _: ['cenote', 'viaje méxico', 'tour'] },
   generico: { _: ['negocio local', 'emprendedor'] },
+  restaurante: { cafeteria: ['café latte', 'cafetería', 'postre'], _: ['platillo mexicano', 'comida restaurante', 'tacos', 'postre', 'bebida refrescante'] },
 };
 
 // Servicios o productos de ejemplo por giro (el nombre lleva la marca; nunca precio).
@@ -42,6 +44,7 @@ const EJEMPLOS = {
   educacion: ['Curso básico', 'Curso intermedio', 'Clases particulares', 'Taller intensivo'],
   turismo: ['Tour de un día', 'Experiencia privada', 'Paquete fin de semana', 'Recorrido al atardecer'],
   generico: ['Servicio principal', 'Servicio a la medida', 'Paquete completo', 'Asesoría'],
+  restaurante: ['Platillo de la casa', 'Entrada', 'Plato fuerte', 'Postre', 'Bebida de temporada'],
 };
 
 const giroDe = (brief) => (TERMINOS[brief.negocio?.arquetipo] ? brief.negocio.arquetipo : 'generico');
@@ -85,6 +88,18 @@ export function necesidades(ops, { brief = {}, mat = {}, textos = {} } = {}) {
   return n;
 }
 
+/**
+ * Restaurantes (etapa 3): portada, "Lo más pedido" (fotos de platillos), el slider (≥ 2 fotos reales) y el menú.
+ * → {hero, fotos, fotosProducto, menu}
+ */
+export function necesidadesRestaurante({ brief = {}, mat = {} } = {}) {
+  const productos = (mat.fotos || []).filter((f) => f.sin_fondo || f.tipo === 'foto_producto').length;
+  const reales = [mat.hero, ...(mat.local || []), ...(mat.trabajos || []), ...(mat.fotos || []).filter((x) => !x.sin_fondo && x.tipo !== 'foto_producto')].filter((x) => x?.url).length;
+  const hero = !mat.hero?.url;
+  const conMenu = (mat.menu_texto || []).some((s) => (s.items || []).length) || (mat.menus || []).length > 0 || (brief.oferta?.items || []).some((x) => !x?.ejemplo && (x?.nombre || typeof x === 'string'));
+  return { hero, fotos: Math.max(0, 2 - reales - (hero ? 1 : 0)), fotosProducto: Math.max(0, 3 - productos), menu: !conMenu };
+}
+
 /** Servicios o productos de ejemplo (sin precio, marcados en el nombre y la descripción). */
 export function ejemplosDe(brief = {}, { servicios = 0, grupos = 0, productos = 0 } = {}) {
   const base = EJEMPLOS[giroDe(brief)];
@@ -96,7 +111,7 @@ export function ejemplosDe(brief = {}, { servicios = 0, grupos = 0, productos = 
   const sinGrupoCliente = !gruposCliente.length;
   return Array.from({ length: total }, (_, k) => ({
     nombre: `${base[k % base.length]} · ${MARCA_EJEMPLO}`,
-    descripcion_corta: `${MARCA_EJEMPLO}: aquí va la descripción de tu ${giroDe(brief) === 'tienda' ? 'producto' : 'servicio'}.`,
+    descripcion_corta: `${MARCA_EJEMPLO}: aquí va la descripción de tu ${({ tienda: 'producto', restaurante: 'platillo' })[giroDe(brief)] || 'servicio'}.`,
     precio_o_rango: '',
     ...(nombresGrupo.length ? { grupo: nombresGrupo[sinGrupoCliente ? k % Math.min(2, nombresGrupo.length) : 0] } : {}),
     ejemplo: true,
@@ -117,8 +132,19 @@ export function aplicarRelleno(brief = {}, mat = {}, relleno = null) {
   const faltanFotos = Math.max(0, objetivo - propias);
   if (faltanFotos) m.trabajos = [...(m.trabajos || []), ...(relleno.fotos || []).slice(0, faltanFotos)];
   if (!m.logo?.url && relleno.logoLetras) m.logoLetras = relleno.logoLetras;
-  if ((relleno.fotos || []).length || relleno.hero) m.ilustrativas = true;
+  // Restaurantes: fotos de platillos para "Lo más pedido", solo las que sigan faltando.
+  if ((relleno.fotosProducto || []).length) {
+    const tiene = (m.fotos || []).filter((f) => f.sin_fondo || f.tipo === 'foto_producto').length;
+    const faltan = Math.max(0, (n.productosFotoObjetivo ?? 3) - tiene);
+    if (faltan) m.fotos = [...(m.fotos || []), ...relleno.fotosProducto.slice(0, faltan)];
+  }
+  if ((relleno.fotos || []).length || relleno.hero || (relleno.fotosProducto || []).length) m.ilustrativas = true;
   let b = brief;
+  // Restaurantes sin menú: platillos de ejemplo mientras no mande el suyo.
+  if (n.menu && (relleno.items || []).length) {
+    if (!necesidadesRestaurante({ brief, mat: m }).menu) return { brief, mat: m };
+    return { brief: { ...brief, oferta: { ...(brief.oferta || {}), items: [...(brief.oferta?.items || []).filter((x) => !x?.ejemplo), ...relleno.items] } }, mat: m };
+  }
   if ((relleno.items || []).length) {
     const propios = (brief.oferta?.items || []).filter((x) => !x?.ejemplo);
     const con = (items) => ({ ...brief, oferta: { ...(brief.oferta || {}), items } });
@@ -167,6 +193,7 @@ export function svgLogoLetras(nombre = '', color = '#333333') {
  * → relleno {necesita, hero, fotos[], items[], logoLetras} o null si no falta nada.
  */
 export async function construirRelleno(ops, { brief = {}, mat = {}, textos = {} } = {}, deps) {
+  if (brief.negocio?.arquetipo === 'restaurante') return construirRellenoRestaurante({ brief, mat }, deps);
   const n = necesidades(ops, { brief, mat, textos });
   const nFotos = n.fotos + (n.hero ? 1 : 0);
   const relleno = { v: 1, necesita: {}, hero: null, fotos: [], items: [], logoLetras: null };
@@ -195,6 +222,37 @@ export async function construirRelleno(ops, { brief = {}, mat = {}, textos = {} 
   }
   if (n.logoLetras && !mat.logo?.url) relleno.logoLetras = await deps.logoLetras(brief.negocio?.nombre || '', (mat.colores || [])[0] || '#333333').catch(() => null);
   return relleno.hero || relleno.fotos.length || relleno.items.length || relleno.logoLetras ? relleno : null;
+}
+
+async function fotosPixabay(brief, cuantas, deps) {
+  const vistos = new Set(), hits = [], listas = [];
+  for (const q of terminosBusqueda(brief)) {
+    if (hits.length >= cuantas * 2) break;
+    try { for (const h of await deps.buscar(q)) if (!vistos.has(h.id)) { vistos.add(h.id); hits.push(h); } } catch (err) { console.warn('[ilustrativas] búsqueda', q, err.message); }
+  }
+  for (const h of hits) {
+    if (listas.length >= cuantas) break;
+    try { listas.push(await deps.descargarConMarca(h)); } catch (err) { console.warn('[ilustrativas] descarga', h.id, err.message); }
+  }
+  return listas;
+}
+
+/** Relleno de un restaurante (decisión 6 del 19-nov-2026). */
+async function construirRellenoRestaurante({ brief, mat }, deps) {
+  const n = necesidadesRestaurante({ brief, mat });
+  const total = (n.hero ? 1 : 0) + n.fotos + n.fotosProducto;
+  const relleno = { v: 1, necesita: { productosFotoObjetivo: 3, menu: n.menu }, hero: null, fotos: [], fotosProducto: [], items: [], logoLetras: null };
+  if (total) {
+    const listas = await fotosPixabay(brief, total, deps);
+    const alt = `${MARCA_FOTO} de comida`;
+    const ficha = (f, tipo) => ({ ...f, alt, nombre: tipo === 'foto_producto' ? MARCA_EJEMPLO : '', tipo, ilustrativa: true, clave: `ilus-${f.pixabay}` });
+    if (n.hero && listas.length) relleno.hero = ficha(listas.shift(), 'foto_local');
+    relleno.fotos = listas.splice(0, n.fotos).map((f) => ficha(f, 'foto_local'));
+    relleno.fotosProducto = listas.splice(0, n.fotosProducto).map((f) => ficha(f, 'foto_producto'));
+    relleno.necesita.fotosObjetivo = (mat.trabajos || []).length + relleno.fotos.length;
+  }
+  if (n.menu) relleno.items = ejemplosDe(brief, { servicios: 5 });
+  return relleno.hero || relleno.fotos.length || relleno.fotosProducto.length || relleno.items.length ? relleno : null;
 }
 
 /** Dependencias reales (Pixabay + sharp + disco), con caché de fotos ya marcadas por id de Pixabay. */

@@ -66,13 +66,14 @@ function queIncluye(brief, mat) {
 // Elementos ilustrativos (etapa 2, parte 3; decisiones 2, 4 y 5 del 18-nov-2026): al mostrar las opciones, Ari dice qué
 // puso de ejemplo y ofrece cambiarlo por lo del cliente.
 export function avisoIlustrativas(relleno, mat, brief = {}) {
-  const fotos = !!(relleno?.hero || relleno?.fotos?.length);
+  const fotos = !!(relleno?.hero || relleno?.fotos?.length || relleno?.fotosProducto?.length);
   const items = !!relleno?.items?.length;
   const sinLogo = !mat?.logo && brief.marca?.tiene_logo !== false && ilustrativasActivas(brief);
   if (!fotos && !items && !sinLogo) return null;
-  const que = brief.negocio?.arquetipo === 'tienda' ? 'productos' : 'servicios';
+  const que = ({ tienda: 'productos', restaurante: 'platillos' })[brief.negocio?.arquetipo] || 'servicios';
+  const restaurante = brief.negocio?.arquetipo === 'restaurante';
   const puse = [fotos && 'fotos de ejemplo donde me faltaron las tuyas (llevan la marca *Imagen ilustrativa*)', items && `algunos ${que} de ejemplo, sin precio (marcados *Ejemplo ilustrativo*)`].filter(Boolean);
-  const pide = [fotos && 'tus fotos', items && `tus ${que} con una descripción corta`, sinLogo && 'tu logo'].filter(Boolean);
+  const pide = [fotos && (restaurante ? 'fotos de tus platillos y de tu local' : 'tus fotos'), items && (restaurante ? 'tu menú (foto o PDF)' : `tus ${que} con una descripción corta`), sinLogo && 'tu logo'].filter(Boolean);
   const y = (l) => (l.length > 1 ? `${l.slice(0, -1).join(', ')} y ${l.at(-1)}` : l[0]);
   return [puse.length ? `Para que veas cada diseño completo puse ${y(puse)}.` : '', sinLogo ? 'Como no tengo tu logo, va el nombre de tu negocio en letra.' : '', `Si me mandas ${y(pide)}, los cambio por los tuyos.`].filter(Boolean).join(' ');
 }
@@ -372,7 +373,10 @@ export async function iniciarPropuestas(e, brief) {
     const nb = { ...brief, marca: { ...brief.marca, propuestas: { estado: 'pendiente_material', pedidos: 1, faltan: mat.faltan } } };
     return { responder: { textos: [mensajeFaltan(mat)] }, brief: nb };
   }
-  const m = await mostrar(e, brief, mat);
+  // Sin foto principal: primero la mejor foto del propio cliente (aunque no sea perfecta); la ilustrativa solo si no hay
+  // ninguna (las ilustrativas nunca desplazan material del cliente).
+  const matFinal = mat.material_suficiente ? mat : await procesarMateriales(e.id, brief, { aceptarLoQueHay: true });
+  const m = await mostrar(e, brief, matFinal);
   return { responder: m.salida, brief: { ...brief, marca: { ...brief.marca, propuestas: m.propuestas } } };
 }
 
