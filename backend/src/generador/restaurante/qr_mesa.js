@@ -44,12 +44,14 @@ export async function pngQR(url, { lado = 1200, logo = null, nombre = '', color 
 export async function pngTarjeta({ qr, nombre, url, colores }) {
   const W = 1275, H = 1650, q = 860;
   const dom = String(url).replace(/^https?:\/\//, '').replace(/\/$/, '');
+  // La dirección cabe en el ancho de la tarjeta; si es demasiado larga (p. ej. la dirección provisional) no se pone.
+  const fzDom = Math.min(40, Math.floor((W - 160) / (dom.length * 0.6)));
   const fz = nombre.length > 22 ? 64 : 84;
   const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${W}" height="${H}"><rect width="${W}" height="${H}" fill="${colores.fondo}"/><rect x="40" y="40" width="${W - 80}" height="${H - 80}" rx="36" fill="none" stroke="${colores.acento}" stroke-width="6"/>
 <text x="${W / 2}" y="230" font-family="DejaVu Serif, serif" font-size="${fz}" font-weight="bold" fill="${colores.tinta}" text-anchor="middle">${esc(nombre)}</text>
 <rect x="${(W - q - 60) / 2}" y="${330 - 30}" width="${q + 60}" height="${q + 60}" rx="28" fill="#FFFFFF"/>
 <text x="${W / 2}" y="${330 + q + 150}" font-family="DejaVu Sans, sans-serif" font-size="70" font-weight="bold" fill="${colores.tinta}" text-anchor="middle">Escanea para ver el menú</text>
-<text x="${W / 2}" y="${330 + q + 240}" font-family="DejaVu Sans, sans-serif" font-size="40" fill="${colores.tinta}" text-anchor="middle" opacity="0.8">${esc(dom)}</text></svg>`;
+${fzDom >= 26 ? `<text x="${W / 2}" y="${330 + q + 240}" font-family="DejaVu Sans, sans-serif" font-size="${fzDom}" fill="${colores.tinta}" text-anchor="middle" opacity="0.8">${esc(dom)}</text>` : ''}</svg>`;
   const qrBuf = await sharp(qr).resize(q, q).png().toBuffer();
   return sharp(Buffer.from(svg)).composite([{ input: qrBuf, top: 330, left: Math.round((W - q) / 2) }]).png().toBuffer();
 }
