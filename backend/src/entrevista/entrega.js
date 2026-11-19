@@ -244,14 +244,22 @@ export async function atenderRedes(e, texto) {
 }
 
 /** Genera el QR de la página del menú y las tarjetas de mesa, los guarda en la entrevista y se los manda a Ari. */
-export async function entregarQrMesa(e, sv, dominio) {
+/** Genera (o reutiliza) el QR y las tarjetas de mesa de la página del menú. urlBase: 'https://dominio' o la dirección /s/<slug>. */
+export async function generarQrMesa(e, urlBase, { forzar = false } = {}) {
+  const urlMenu = `${String(urlBase).replace(/\/$/, '')}/menu`;
+  const previo = e.brief?.marca?.qr_menu;
+  if (!forzar && previo?.url_menu === urlMenu && previo.qr && previo.tarjetas) return previo;
   const { crearQrMesa } = await import('../generador/restaurante/qr_mesa.js');
   const { disenoElegido } = await import('../panel/sitios.js');
-  const urlMenu = `https://${String(dominio).replace(/^https?:\/\//, '').replace(/\/$/, '')}/menu`;
   const { procesarMateriales } = await import('../generador/materiales.js');
   const mat = await procesarMateriales(e.id, e.brief, { aceptarLoQueHay: true }).catch(() => ({}));
-  const r = await crearQrMesa({ urlMenu, nombre: e.brief?.negocio?.nombre || '', logo: mat.logo?.url || null, paleta: disenoElegido(e.brief)?.paleta || {} });
-  await patchBrief(e.id, ['marca', 'qr_menu'], { ...r, creado: new Date().toISOString() });
+  const r = { ...(await crearQrMesa({ urlMenu, nombre: e.brief?.negocio?.nombre || '', logo: mat.logo?.url || null, paleta: disenoElegido(e.brief)?.paleta || {} })), creado: new Date().toISOString() };
+  await patchBrief(e.id, ['marca', 'qr_menu'], r);
+  return r;
+}
+
+export async function entregarQrMesa(e, sv, dominio) {
+  const r = await generarQrMesa(e, `https://${String(dominio).replace(/^https?:\/\//, '').replace(/\/$/, '')}`, { forzar: true });
   await avisar(e.id, [
     `Para las mesas: esta es la página de tu menú 👉 ${r.url_menu}\nCuando tus clientes escaneen el código QR, les abre directo el menú.`,
     `Tu código QR (con tu logo) en buena resolución: ${r.qr}`,
