@@ -21,7 +21,7 @@ import * as S from './sitios.js';
 import * as A from './sesion.js';
 import { paginaPanel } from './pagina.js';
 import { enviarCodigo } from '../correo_codigos.js';
-import { entregarAcceso } from '../entrevista/entrega.js';
+import { entregarAcceso, generarQrMesa } from '../entrevista/entrega.js';
 import * as P from './propiedades.js';
 import * as PUB from './publicador.js';
 
@@ -154,6 +154,13 @@ async function atenderPanel(c, sv, base, ruta) {
       if (b.portada === true && !a.usar) await q(`UPDATE assets SET usar=true WHERE id=$1`, [a.id]);
       const nuevo = await S.subirVersion(sv, parche);
       return json(c, { ok: true, version: nuevo.version, fotos: await fotosDe(e, nuevo) });
+    }
+    /* ---------- QR de mesa (restaurantes) ---------- */
+    if (api === '/qr-menu' && (c.req.method === 'GET' || c.req.method === 'POST')) {
+      if (e.brief?.negocio?.arquetipo !== 'restaurante') return json(c, { error: 'Solo para restaurantes' }, 404);
+      const urlBase = sv.dominio ? `https://${sv.dominio}` : `${config.publicUrl}/s/${sv.slug}`;
+      const r = await generarQrMesa(e, urlBase, { forzar: c.req.method === 'POST' });
+      return json(c, { url_menu: r.url_menu, qr: r.qr, tarjetas: r.tarjetas });
     }
     /* ---------- Propiedades (inmobiliarias) ---------- */
     if (api.startsWith('/propiedades') || api.startsWith('/redes')) {

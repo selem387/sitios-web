@@ -105,6 +105,7 @@ function seccion(id,titulo,sub,construir,guardar){var cuerpo=el('div',{class:'cu
 
 function pintar(){var S=$('#secciones');S.innerHTML='';var k=C;
  if(k.es_inmobiliaria)S.appendChild(propiedadesSec());
+ if(k.es_menu)S.appendChild(qrSec());
  if(k.es_menu){var ms=JSON.parse(JSON.stringify(k.menu.secciones||[]));S.appendChild(seccion('menu','Menú y precios','Secciones, platillos y bebidas',function(c){var cont=el('div');c.appendChild(cont);
    function pinta(){cont.innerHTML='';ms.forEach(function(s,i){var f=el('div',{class:'fila'});f.appendChild(campo({l:'Nombre de la sección',ph:'Ej. Bebidas calientes'},s.seccion,function(v){s.seccion=v}));var it=el('div');f.appendChild(it);
      listaEd(it,s.items,[{k:'nombre',l:'Nombre'},{k:'precio',l:'Precio',ph:'$55',op:1},{k:'descripcion',l:'Descripción',op:1}],function(){return{nombre:'',precio:'',descripcion:''}},'platillo');
@@ -144,6 +145,14 @@ var CND={'':'—',nuevo:'Nueva',usado:'Usada',en_construccion:'En construcción'
 var USO={'':'—',habitacional:'Habitacional',comercial:'Comercial',industrial:'Industrial',mixto:'Mixto',rustico:'Rústico',turistico:'Turístico'};
 function opciones(def,val,on,ops){var id='c'+Math.random().toString(36).slice(2,9);var s=el('select',{id:id});Object.keys(ops).forEach(function(k){s.appendChild(el('option',{value:k,text:ops[k]}))});s.value=val==null?'':val;s.onchange=function(){on(s.value)};return el('div',null,[el('label',{for:id},[def.l]),s])}
 function precioTxt(d){if(d.precio==null||d.precio==='')return 'Precio a consultar';return '$'+Number(d.precio).toLocaleString('es-MX')+' '+(d.moneda||'MXN')+(d.operacion==='renta'?' al mes':'')}
+function qrSec(){var cuerpo=el('div',{class:'cuerpo'});var caja=el('div');var msg=el('p',{class:'msg',role:'status',"aria-live":'polite'});
+ cuerpo.appendChild(el('p',{class:'ayuda',text:'Pon este código en tus mesas: al escanearlo, tus clientes ven directo tu menú.'}));cuerpo.appendChild(caja);cuerpo.appendChild(msg);
+ function pinta(r){caja.innerHTML='';caja.appendChild(el('img',{src:r.qr,alt:'Código QR de tu menú',style:'width:180px;height:180px;display:block;margin:8px 0;border-radius:8px'}));
+  caja.appendChild(el('div',{class:'acc'},[el('a',{class:'btn',href:r.qr,download:'qr-menu.png',target:'_blank',rel:'noopener'},['Descargar QR (imagen)']),el('a',{class:'btn',href:r.tarjetas,download:'tarjetas-de-mesa.pdf',target:'_blank',rel:'noopener'},['Descargar tarjetas de mesa (PDF)'])]));
+  caja.appendChild(el('p',{class:'ayuda'},['Página del menú: ',el('a',{class:'lnk',href:r.url_menu,target:'_blank',rel:'noopener',text:r.url_menu})]));
+  var re=el('button',{type:'button',class:'sec2 mini'},['Volver a generar con mi logo y colores actuales']);re.onclick=function(){re.disabled=true;aviso(msg,'Generando…',true);api('POST','/qr-menu',{}).then(function(r){pinta(r);aviso(msg,'Listo, ya están actualizados.',true)}).catch(function(e){aviso(msg,e.message,false)}).finally(function(){re.disabled=false})};caja.appendChild(el('div',{class:'pie'},[re]))}
+ aviso(msg,'Preparando tu código…',true);api('GET','/qr-menu').then(function(r){msg.textContent='';pinta(r)}).catch(function(e){aviso(msg,e.message,false)});
+ return el('details',{class:'card',id:'s-qr-menu'},[el('summary',null,[el('span',{class:'sumtxt'},['Código QR para tus mesas',el('small',{text:'Descarga el QR y las tarjetas para imprimir'})])]),cuerpo])}
 function propiedadesSec(){var cuerpo=el('div',{class:'cuerpo'});var lista=el('div');var redesBox=el('div',{class:'subir'});var msg=el('p',{class:'msg',role:'status',"aria-live":'polite'});var PR=[],RD={activo:false,cuentas:[]};
  function cargarP(){return api('GET','/propiedades').then(function(r){PR=r.propiedades;RD=r.redes;pintaRedes();pintaLista()}).catch(function(e){aviso(msg,e.message,false)})}
  function pintaRedes(){redesBox.innerHTML='';redesBox.appendChild(el('b',{text:'Publicar en redes sociales'}));
