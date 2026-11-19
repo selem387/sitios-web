@@ -19,14 +19,16 @@ test('cada mapa por giro es válido', () => {
   }
 });
 
-test('cada subtipo de la base cae en su variante y sin giro es genérico; restaurante no tiene mapa todavía', () => {
+test('cada subtipo de la base cae en su variante y sin giro es genérico; restaurante tiene su mapa aparte', () => {
   const casos = { dental: 'clinica/resultados', estetica_spa: 'clinica/resultados', medica: 'clinica/espacio', veterinaria: 'clinica/espacio', legal: 'servicios/profesionales', contador_consultor: 'servicios/profesionales', agencia_marketing: 'servicios/profesionales', fotografia: 'servicios/visual', arquitectura_construccion: 'servicios/proyectos', hotel: 'turismo/hotel', tours: 'turismo/tours' };
   const arq = { dental: 'clinica', estetica_spa: 'clinica', medica: 'clinica', veterinaria: 'clinica', legal: 'servicios', contador_consultor: 'servicios', agencia_marketing: 'servicios', fotografia: 'servicios', arquitectura_construccion: 'servicios', hotel: 'turismo', tours: 'turismo' };
   for (const [sub, esperado] of Object.entries(casos)) { const v = varianteDe({ arquetipo: arq[sub], subtipo: sub }); assert.equal(`${v.giro}/${v.variante}`, esperado, sub); }
   assert.equal(varianteDe({}).giro, 'generico');
   assert.equal(varianteDe({ arquetipo: 'tienda', subtipo: 'floreria' }).giro, 'tienda');
   assert.equal(varianteDe({ arquetipo: 'restaurante' }), null);
-  assert.ok(esLegado(resolverMapa({ negocio: { arquetipo: 'restaurante' } }, 'nuevo')));
+  const mr = resolverMapa({ negocio: { arquetipo: 'restaurante' } }, 'nuevo');
+  assert.equal(mr.giro, 'restaurante');
+  assert.deepEqual(mr.orden, ['destacados', 'menu', 'categorias', 'resenas', 'contacto']);
 });
 
 test('las propuestas de antes de la etapa 2 se arman con el mapa legado; las nuevas guardan el suyo', () => {

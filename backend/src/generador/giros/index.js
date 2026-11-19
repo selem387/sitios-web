@@ -6,7 +6,7 @@
 // Cada propuesta guarda el mapa con el que se generó (brief.marca.propuestas.mapa), y los cambios que pide el cliente
 // lo reutilizan. Las propuestas generadas antes de la etapa 2 no lo tienen: se arman con el mapa LEGADO (el orden
 // propio de cada opción y los títulos de siempre).
-// Restaurantes y cafeterías no tienen mapa todavía (etapa 3).
+// Restaurantes y cafeterías tienen su mapa aparte (giros/restaurante.js, etapa 3): sus secciones son las de su plantilla.
 import { giro as servicios } from './servicios.js';
 import { giro as clinica } from './clinica.js';
 import { giro as inmobiliaria } from './inmobiliaria.js';
@@ -15,6 +15,7 @@ import { giro as oficios } from './oficios.js';
 import { giro as educacion } from './educacion.js';
 import { giro as turismo } from './turismo.js';
 import { giro as generico } from './generico.js';
+import { giro as restaurante } from './restaurante.js';
 
 export const VERSION = 'giros-1';
 export const GIROS = Object.freeze({ servicios, clinica, inmobiliaria, tienda, oficios, educacion, turismo, generico });
@@ -33,8 +34,9 @@ export function varianteDe(negocio = {}) {
   return { giro: g.id, variante: id, ...v };
 }
 
-/** Mapa nuevo para un negocio (se guarda tal cual en la propuesta). null para restaurantes. */
+/** Mapa nuevo para un negocio (se guarda tal cual en la propuesta). */
 export function mapaNuevo(brief = {}) {
+  if (brief.negocio?.arquetipo === 'restaurante') { const v = restaurante.variantes.base; return { version: VERSION, giro: 'restaurante', variante: 'base', orden: [...v.orden], nombres: { ...v.nombres }, lista: [...v.lista] }; }
   const v = varianteDe(brief.negocio || {});
   if (!v) return null;
   return { version: VERSION, giro: v.giro, variante: v.variante, orden: [...v.orden], nombres: { ...v.nombres }, lista: [...v.lista] };

@@ -98,3 +98,23 @@ test('en el slider las fotos ilustrativas van sin texto', async () => {
   assert.ok(k > 0);
   assert.equal(r.diapos[k - 1].sin_texto, true);
 });
+
+test('restaurante sin material: portada, "Lo más pedido" y menú de ejemplo, marcados; orden del giro', async () => {
+  const antes = process.env.PIXABAY_API_KEY; process.env.PIXABAY_API_KEY = 'prueba';
+  try {
+    const b = { negocio: { nombre: 'La Cocina de Prueba', arquetipo: 'restaurante', ciudad: 'Mérida' }, contacto: { whatsapp: '5219990000000' }, marca: { estilo: 'calido' }, oferta: {} };
+    const mat = { ...matPobre(), trabajos: [], menu_texto: [], menus: [] };
+    const textos = { variantes: Array.from({ length: 6 }, () => ({ titular: 'Comida casera', subtitulo: 'Hecha al momento', cta: 'Pide por WhatsApp' })), info: [] };
+    const r = await renderPropuestas(b, mat, textos, { mapa: 'nuevo', depsIlustrativas: deps });
+    assert.equal(r.mapa.giro, 'restaurante');
+    assert.deepEqual(r.paginas.map((p) => p.letra), ['A', 'B', 'C', 'D', 'E', 'F']);
+    assert.ok(r.relleno?.hero && r.relleno.fotosProducto.length === 3 && r.relleno.items.length === 5);
+    for (const p of r.paginas) {
+      assert.match(p.html, /\/ilus-\d+\.jpg/);
+      assert.ok(p.html.includes(MARCA_EJEMPLO), `${p.letra} sin platillos de ejemplo`);
+      assert.match(p.html, /Pixabay/);
+      const ids = [...p.html.matchAll(/<section[^>]*\bid="(destacados|menu|resenas|contacto)"/g)].map((m) => m[1]);
+      assert.deepEqual(ids, ids.slice().sort((x, y) => ['destacados', 'menu', 'resenas', 'contacto'].indexOf(x) - ['destacados', 'menu', 'resenas', 'contacto'].indexOf(y)), `${p.letra}: ${ids}`);
+    }
+  } finally { if (antes === undefined) delete process.env.PIXABAY_API_KEY; else process.env.PIXABAY_API_KEY = antes; }
+});

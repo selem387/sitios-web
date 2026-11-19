@@ -156,8 +156,16 @@ export async function renderPropuestas(brief, mat, textos, { ronda = 0, fijo = n
     return { mapa, relleno, plano_ref, paginas: out, faltan: faltanTodas, avisos_color: avisosDeGiro({ arquetipo: brief.negocio?.arquetipo, subtipo: brief.negocio?.subtipo_resuelto || brief.negocio?.subtipo, colores: coloresCliente }), asesor };
   }
   // Restaurantes y cafeterías (etapa 3): plantilla común + una carpeta por opción (opciones/restaurante/<nombre>/).
-  const { paginas: out, colores } = await paginasRestaurante({ brief, mat, textos, fijo, solo, cps, pares, estilo, coloresCliente, conReglaTipo, faltanTodas });
-  return { mapa, paginas: out, faltan: faltanTodas, avisos_color: avisosDeGiro({ arquetipo: brief.negocio?.arquetipo, subtipo: brief.negocio?.subtipo_resuelto || brief.negocio?.subtipo, colores }), asesor };
+  // Elementos ilustrativos también en restaurantes (etapa 3, decisión 6 del 19-nov-2026): solo en propuestas desde cero;
+  // después se reaplica el relleno guardado (solo lo que siga faltando).
+  let rellenoR = brief.marca?.propuestas?.relleno || null;
+  if (mapaPedido === 'nuevo' && ilustrativasActivas(brief)) {
+    rellenoR = await construirRelleno([], { brief, mat, textos }, depsIlustrativas || await dependenciasReales()).catch((err) => { console.warn('[propuestas] ilustrativas restaurante:', err.message); return null; });
+  }
+  if (rellenoR) ({ brief, mat } = aplicarRelleno(brief, mat, rellenoR));
+  const { paginas: out0, colores } = await paginasRestaurante({ brief, mat, textos, fijo, solo, cps, pares, estilo, coloresCliente, conReglaTipo, faltanTodas, mapa });
+  const out = out0.map((pg) => ({ ...pg, html: conCredito(pg.html) }));
+  return { mapa, relleno: rellenoR, paginas: out, faltan: faltanTodas, avisos_color: avisosDeGiro({ arquetipo: brief.negocio?.arquetipo, subtipo: brief.negocio?.subtipo_resuelto || brief.negocio?.subtipo, colores }), asesor };
 }
 
 /** Textos de las 6 propuestas con Claude (JSON en texto). Solo datos reales del brief y del menú. */

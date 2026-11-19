@@ -78,6 +78,8 @@ export async function entregarAcceso(entrevistaId, destino, { forzar = false } =
   await patchBrief(e.id, ['administracion'], { ...adm, email, panel: destino.panel, url: urlAdmin, estado: 'entregado', entregado: new Date().toISOString() });
   if (destino.sitio_vivo_id) await q(`UPDATE sitios_vivos SET acceso_entregado=now() WHERE id=$1`, [destino.sitio_vivo_id]).catch(() => {});
   await avisar(e.id, textoEntrega({ dominio: destino.dominio, urlAdmin: llave || urlAdmin, email, llave: !!llave }), { evento: 'acceso_entregado', datos: { dominio: destino.dominio, panel: destino.panel } });
+  // Restaurantes (etapa 3, decisión 4 del 19-nov-2026): QR de su página del menú y tarjetas de mesa para imprimir.
+  if (e.brief?.negocio?.arquetipo === 'restaurante' && sv) entregarQrMesa(e, sv, destino.dominio).catch((err) => console.error('qr mesa', e.id, err.message));
 
   // Redes: solo si dijo que sí quería ayuda y le sigue faltando alguna.
   const faltan = redesPorCrear(e.brief);
@@ -239,4 +241,21 @@ export async function atenderRedes(e, texto) {
   else if (r.omitir_red && actual !== f.actual) textos.push(`Va, sin ${NOMBRE_RED[r.omitir_red]}. Sigue *${NOMBRE_RED[actual]}*. ¿Le seguimos?`);
   else textos.push(r.reply);
   return textos;
+}
+
+/** Genera el QR de la página del menú y las tarjetas de mesa, los guarda en la entrevista y se los manda a Ari. */
+export async function entregarQrMesa(e, sv, dominio) {
+  const { crearQrMesa } = await import('../generador/restaurante/qr_mesa.js');
+  const { disenoElegido } = await import('../panel/sitios.js');
+  const urlMenu = `https://${String(dominio).replace(/^https?:\/\//, '').replace(/\/$/, '')}/menu`;
+  const { procesarMateriales } = await import('../generador/materiales.js');
+  const mat = await procesarMateriales(e.id, e.brief, { aceptarLoQueHay: true }).catch(() => ({}));
+  const r = await crearQrMesa({ urlMenu, nombre: e.brief?.negocio?.nombre || '', logo: mat.logo?.url || null, paleta: disenoElegido(e.brief)?.paleta || {} });
+  await patchBrief(e.id, ['marca', 'qr_menu'], { ...r, creado: new Date().toISOString() });
+  await avisar(e.id, [
+    `Para las mesas: esta es la página de tu menú 👉 ${r.url_menu}\nCuando tus clientes escaneen el código QR, les abre directo el menú.`,
+    `Tu código QR (con tu logo) en buena resolución: ${r.qr}`,
+    `Y tus tarjetas de mesa listas para imprimir en hoja carta y recortar (4 por hoja): ${r.tarjetas}`,
+  ], { evento: 'qr_menu', datos: { ...r, media: [{ url: r.qr, tipo: 'imagen', nombre: 'qr-menu.png' }, { url: r.tarjetas, tipo: 'documento', nombre: 'tarjetas-de-mesa.pdf' }] } });
+  return r;
 }

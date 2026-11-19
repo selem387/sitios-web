@@ -250,6 +250,21 @@ async function servirPropiedad(c, sv, slug, { previa }) {
   }
 }
 
+/** Página aparte del menú (restaurantes, etapa 3): la que abre el QR de las mesas. */
+async function servirMenu(c, sv, { previa }) {
+  try {
+    const e = await db.obtener(sv.entrevista_id);
+    const { paginaMenu } = await import('../generador/restaurante/pagina_menu.js');
+    const html = await S.renderSitio(sv, { previa });
+    const out = paginaMenu(html, { nombre: e?.brief?.negocio?.nombre || '', inicio: S.rutaBase(sv, { previa }) || '/', url: `${S.urlPublica(sv, { previa })}menu` });
+    if (!out) return c.redirect(S.rutaBase(sv, { previa }) || '/', 302);
+    return c.html(out, 200, { 'cache-control': 'no-cache', ...(previa ? { 'x-robots-tag': 'noindex' } : {}) });
+  } catch (x) {
+    console.error('[menu]', sv.id, x);
+    return c.redirect(S.rutaBase(sv, { previa }) || '/', 302);
+  }
+}
+
 async function servirSitio(c, sv, { previa }) {
   try {
     const html = await S.renderSitio(sv, { previa });
@@ -285,6 +300,7 @@ async function modoVivo(c, reg, next, host) {
   const mprop = ruta.match(/^\/propiedad\/([a-z0-9-]{1,80})$/);
   if (mprop) return servirPropiedad(c, sv, mprop[1], { previa: false });
   if (ruta === '/aviso-de-privacidad') return servirAviso(c, sv, { previa: false });
+  if (ruta === '/menu') return servirMenu(c, sv, { previa: false });
   if (ruta === '/robots.txt') return c.text(`User-agent: *\nDisallow: /admin\nAllow: /\n\n# Motores de IA bienvenidos\nUser-agent: GPTBot\nAllow: /\nUser-agent: ClaudeBot\nAllow: /\nUser-agent: PerplexityBot\nAllow: /\nUser-agent: Google-Extended\nAllow: /\n\nSitemap: https://${host}/sitemap.xml\n`);
   if (ruta === '/llms.txt') {
     const e = await db.obtener(sv.entrevista_id);
@@ -316,6 +332,7 @@ export function registerPanelRoutes(app, wrap) {
     const mprop = ruta.match(/^\/propiedad\/([a-z0-9-]{1,80})$/);
     if (mprop) return servirPropiedad(c, sv, mprop[1], { previa: !sv.url_publica });
     if (ruta === '/aviso-de-privacidad') return servirAviso(c, sv, { previa: !sv.url_publica });
+    if (ruta === '/menu') return servirMenu(c, sv, { previa: !sv.url_publica });
     return (await atenderPanel(c, sv, base, ruta)) || c.text('No encontrado', 404);
   });
   app.get('/s/:slug', async (c) => {

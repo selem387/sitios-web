@@ -132,7 +132,10 @@ function pagina(d) {
   const menuLista = listaOferta.length ? `<ul class="mlista">${listaOferta.map((x) => `<li><span><b>${esc(x.nombre)}</b>${x.descripcion_corta ? `<small>${esc(x.descripcion_corta)}</small>` : ''}</span>${x.precio_o_rango && d.brief?.oferta?.mostrar_precios !== false ? `<em>${esc(x.precio_o_rango)}</em>` : ''}</li>`).join('')}</ul>` : '';
   const menuDocs = (d.menuDocs || []).map((u, i, arr) => `<a class="btn menu-doc" href="${esc(u)}" target="_blank" rel="noopener">${arr.length > 1 ? `Ver el menú completo (${i + 1})` : 'Ver el menú completo'}</a>`).join('');
   const secMenu = `<section class="sec menu" id="menu"><h2>Menú</h2>${menuImgs}<div class="mtxt">${menuTxt}${menuLista}</div>${menuDocs}</section>`;
-  const orden = op.orden({ secDest, secCats, secMenu, secRes, vis });
+  // Etapa 3 (orden aprobado por Sebastián el 18-nov-2026): con el mapa de restaurante todas las opciones siguen su orden;
+  // las propuestas generadas antes conservan el orden propio de cada opción (mapa LEGADO).
+  const secPorId = { destacados: secDest, menu: secMenu, categorias: secCats, resenas: secRes, contacto: vis };
+  const orden = d.mapa?.giro === 'restaurante' ? d.mapa.orden.map((id) => secPorId[id] ?? '') : op.orden({ secDest, secCats, secMenu, secRes, vis });
 
   return `<!doctype html><html lang="es" class="${efectosDe(indiceDeLetra(String(d.letra || 'A').toUpperCase()))}"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><meta name="robots" content="noindex">
 <title>${esc(d.nombre)} · Propuesta ${d.letra}</title>
@@ -227,7 +230,7 @@ a.onclick=function(){ir(idx()-1)};b.onclick=function(){ir(idx()+1)};d.forEach(fu
 }
 
 /** Las páginas de restaurante (A–F y la P). ctx: lo que calcula renderPropuestas. → {paginas, faltan} */
-export async function paginasRestaurante({ brief, mat, textos, fijo, solo, cps, pares, estilo, coloresCliente, conReglaTipo, faltanTodas }) {
+export async function paginasRestaurante({ brief, mat, textos, fijo, solo, cps, pares, estilo, coloresCliente, conReglaTipo, faltanTodas, mapa = null }) {
   const colores = coloresCliente;
   const prods = productos(mat, mat.menu_texto).sort((x, y) => (y.precio ? 1 : 0) - (x.precio ? 1 : 0));
   // Imágenes de portada: productos sin fondo más altos (vasos completos), distintos por propuesta.
@@ -258,7 +261,7 @@ export async function paginasRestaurante({ brief, mat, textos, fijo, solo, cps, 
     const b = base(cp.colores);
     const rot = (k) => altos.length ? altos[(i * 2 + k) % altos.length].img : (mat.hero?.url || '');
     const d = {
-      letra, layout, nombre: brief.negocio?.nombre || '', logo: mat.logo?.url || null, logoObj: mat.logo || null,
+      letra, layout, mapa, nombre: brief.negocio?.nombre || '', logo: mat.logo?.url || null, logoObj: mat.logo || null,
       pal: fijo?.paleta || conBotonAcento(corregirPaleta(paleta(layout, b)).paleta, cp), f: fijo?.fuentes || pares[i % pares.length], fuentesUrl: urlFuentes([fijo?.fuentes || pares[i % pares.length]]),
       textos: { titular: v.titular, subtitulo: v.subtitulo, foto_url: v.foto_url || null, cta: v.cta || 'Pide por WhatsApp', destacados: textos.destacados, categorias: textos.categorias, visita: textos.visita },
       fotosSl: reales.length ? reales.slice(i % reales.length).concat(reales.slice(0, i % reales.length)) : [], diapos, brief,
