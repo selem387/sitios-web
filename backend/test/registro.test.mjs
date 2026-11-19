@@ -11,7 +11,7 @@ import { interpretarEleccion } from '../src/generador/opciones.js';
 const SRC = path.join(path.dirname(fileURLToPath(import.meta.url)), '..', 'src');
 
 test('el registro carga una opción por carpeta, sin letras ni posiciones repetidas', () => {
-  const carpetas = fs.readdirSync(path.join(SRC, 'generador', 'opciones'), { withFileTypes: true }).filter((d) => d.isDirectory()).map((d) => d.name).sort();
+  const carpetas = fs.readdirSync(path.join(SRC, 'generador', 'opciones'), { withFileTypes: true }).filter((d) => d.isDirectory() && d.name !== 'restaurante').map((d) => d.name).sort();
   assert.deepEqual(OPCIONES.map((o) => o.nombre).sort(), carpetas);
   assert.equal(new Set(OPCIONES.map((o) => o.letra)).size, OPCIONES.length);
   assert.equal(OPCIONES_BASE.length, 6);
@@ -105,4 +105,11 @@ test('la carpeta de cada opción no importa nada de la carpeta de otra opción',
     }
   }
   assert.deepEqual(malos, [], 'lo compartido va en generador/kit/');
+});
+
+test('restaurantes: una carpeta por opción con su propia tabla de letras (A–F), que no cambian', async () => {
+  const { OPCIONES_RESTAURANTE } = await import('../src/generador/opciones/restaurante/registro.js');
+  const carpetas = fs.readdirSync(path.join(SRC, 'generador', 'opciones', 'restaurante'), { withFileTypes: true }).filter((d) => d.isDirectory()).map((d) => d.name).sort();
+  assert.deepEqual(OPCIONES_RESTAURANTE.map((o) => o.nombre).sort(), carpetas);
+  assert.deepEqual(Object.fromEntries(OPCIONES_RESTAURANTE.map((o) => [o.letra, o.nombre])), { A: 'protagonista', B: 'menu', C: 'fresco', D: 'mascota', E: 'dostonos', F: 'lista' });
 });
