@@ -373,7 +373,10 @@ export async function iniciarPropuestas(e, brief) {
     const nb = { ...brief, marca: { ...brief.marca, propuestas: { estado: 'pendiente_material', pedidos: 1, faltan: mat.faltan } } };
     return { responder: { textos: [mensajeFaltan(mat)] }, brief: nb };
   }
-  const m = await mostrar(e, brief, mat);
+  // Sin foto principal: primero la mejor foto del propio cliente (aunque no sea perfecta); la ilustrativa solo si no hay
+  // ninguna (las ilustrativas nunca desplazan material del cliente).
+  const matFinal = mat.material_suficiente ? mat : await procesarMateriales(e.id, brief, { aceptarLoQueHay: true });
+  const m = await mostrar(e, brief, matFinal);
   return { responder: m.salida, brief: { ...brief, marca: { ...brief.marca, propuestas: m.propuestas } } };
 }
 
