@@ -117,7 +117,6 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
 <link rel="icon" href="/assets/favicon-192.png" type="image/png" sizes="192x192">
 <link rel="apple-touch-icon" href="/assets/favicon-180.png">
 <link rel="preload" href="/assets/fonts/inter-var.woff2" as="font" type="font/woff2" crossorigin>
-<link rel="preload" href="/assets/fonts/poppins-bold.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="stylesheet" href="/assets/site.css?v={CSS_V}">
 <link rel="alternate" type="text/plain" href="/llms.txt" title="llms.txt">
 {extra_head}{ld}</head>
