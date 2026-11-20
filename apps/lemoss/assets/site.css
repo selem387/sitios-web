@@ -350,3 +350,5 @@ p{margin:0 0 1em;max-width:64ch;text-wrap:pretty}
 .calc-anio{display:flex;align-items:baseline;gap:12px;flex-wrap:wrap}
 .calc-anio strong{color:#ff5a5a;margin:0}
 .calc-anio .calc-flecha{width:clamp(1.9rem,1.3rem + 2.2vw,2.7rem)}
+.calc-total strong{font-size:clamp(2.21rem,1.36rem + 3.4vw,3.4rem)}
+.calc-anio strong{font-size:clamp(1.96rem,1.28rem + 2.89vw,2.98rem)}
