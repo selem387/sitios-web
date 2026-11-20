@@ -352,3 +352,10 @@ p{margin:0 0 1em;max-width:64ch;text-wrap:pretty}
 .calc-anio .calc-flecha{width:clamp(1.9rem,1.3rem + 2.2vw,2.7rem)}
 .calc-total strong{font-size:clamp(2.21rem,1.36rem + 3.4vw,3.4rem)}
 .calc-anio strong{font-size:clamp(1.96rem,1.28rem + 2.89vw,2.98rem)}
+/* Resultado: textos de apoyo 50% más grandes en escritorio */
+.calc-res p,.calc-como li,.calc-como summary{font-size:clamp(1.3rem,1rem + 1.2vw,1.59rem);line-height:1.5}
+.calc-res .kicker{font-size:1.17rem}
+.calc-res .calc-nota{font-size:clamp(1.1rem,.9rem + .8vw,1.32rem)}
+.calc-res .campo>span{font-size:clamp(1.15rem,.95rem + .8vw,1.38rem)}
+.calc-res h2{font-size:clamp(1.5rem,1.2rem + 1.2vw,1.9rem)}
+.calc-res h3{font-size:clamp(1.4rem,1.15rem + 1vw,1.7rem)}
