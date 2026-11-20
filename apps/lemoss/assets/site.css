@@ -8,7 +8,7 @@
   --accent:#2e6bff;--accent-h:#5a8bff;--accent-2:#22d3ee;
   --grad:linear-gradient(100deg,#2e6bff 0%,#22d3ee 100%);
   --radius:20px;--gap:40px;--sec:120px;
-  --head:Poppins,Inter,system-ui,sans-serif;--body:Inter,system-ui,-apple-system,"Segoe UI",sans-serif
+  --head:Inter,system-ui,-apple-system,"Segoe UI",sans-serif;--body:Inter,system-ui,-apple-system,"Segoe UI",sans-serif
 }
 *{box-sizing:border-box}
 html{-webkit-text-size-adjust:100%;scroll-behavior:smooth}
@@ -270,3 +270,97 @@ p{margin:0 0 1em;max-width:64ch;text-wrap:pretty}
 .lead-xl{font-size:2.2rem;line-height:1.35;max-width:30ch}
 .lead-xl strong{color:var(--fg);font-weight:700}
 @media (max-width:640px){.lead-xl{font-size:1.6rem}}
+
+/* Paquetes y tablas de participación */
+.paqs{list-style:none;margin:0 0 24px;padding:0;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:16px}
+.paqs>li{padding:30px;display:flex;flex-direction:column}
+.paqs h3{font-size:1.25rem;margin-bottom:.8em}
+.paqs p{font-size:.95rem}
+.paq-cuota{display:flex;flex-direction:column;gap:4px;margin-bottom:1.2em}
+.paq-cuota strong{font-family:var(--head);font-size:2.3rem;line-height:1;letter-spacing:-.03em;background:var(--grad);-webkit-background-clip:text;background-clip:text;color:transparent}
+.paq-cuota span{color:var(--muted);font-size:.85rem}
+.paqs .puntos{margin-top:auto;font-size:.95rem}
+.paqs .puntos strong,.tabla td{color:var(--fg)}
+.tabla-x{overflow-x:auto;margin:0 0 28px;border:1px solid var(--line);border-radius:16px;background:var(--panel)}
+.tabla{width:100%;border-collapse:collapse;font-size:.95rem;font-variant-numeric:tabular-nums}
+.tabla th,.tabla td{padding:14px 18px;text-align:right;white-space:nowrap;border-bottom:1px solid var(--line)}
+.tabla th:first-child{text-align:left}
+.tabla thead th{color:var(--muted);font-weight:600;font-size:.8rem;letter-spacing:.04em;text-transform:uppercase;white-space:normal}
+.tabla tbody th{color:var(--fg);font-weight:500}
+.tabla tbody tr:last-child th,.tabla tbody tr:last-child td{border-bottom:0}
+.pasos-txt{margin:0 0 28px;padding-left:1.3em}
+.pasos-txt li{margin-bottom:.7em;padding-left:.3em}
+.pasos-txt strong{color:var(--fg)}
+@media (max-width:960px){.paqs{grid-template-columns:1fr}}
+.dos>*{min-width:0}
+
+/* Portada: titular que alterna entre dos mensajes */
+.hero-rot{display:grid}
+.hr-s .h1{color:var(--fg);font-family:var(--head);font-weight:700;line-height:1.12;letter-spacing:-.025em;font-size:clamp(2.1rem,1.2rem + 2.9vw,3.5rem);max-width:17ch;margin:0 0 .5em;text-wrap:balance}
+.js .hr-s{grid-area:1/1;opacity:0;visibility:hidden;transition:opacity .7s ease,visibility .7s}
+.js .hr-s.on{opacity:1;visibility:visible}
+.hr-dots{display:flex;gap:8px;margin:6px 0 0}
+.hr-s .lead-xl{margin-bottom:.6em}
+.no-js .hr-s+.hr-s{margin-top:1.2em}
+.hr-dots button{width:34px;height:4px;padding:0;border:0;border-radius:4px;background:var(--line-2);cursor:pointer;transition:background .3s}
+.hr-dots button[aria-current="true"]{background:var(--accent)}
+.no-js .hr-dots{display:none}
+@media (prefers-reduced-motion:reduce){.js .hr-s{transition:none}}
+
+/* Diagnóstico gratuito: calculadora de costo por proceso */
+.oculto{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+.calc label.campo,.campo{display:block;border:0;background:none;padding:0;margin:0;cursor:default}
+.campo>span{display:block;color:var(--muted);font-size:.92rem;line-height:1.4;margin-bottom:8px}
+.campo select,.campo input,.calc .campo select{width:100%;height:auto;font:inherit;font-size:1rem;color:var(--fg);background:var(--panel);border:1px solid var(--line-2);border-radius:12px;padding:12px 14px;color-scheme:dark}
+.campo select:focus-visible,.campo input:focus-visible{outline:2px solid var(--accent-2);outline-offset:2px}
+.calc-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:18px;align-items:end}
+.calc-cab{display:flex;align-items:center;color:var(--fg);font-weight:500;font-size:1.08rem;border-top:1px solid var(--line);padding:28px 0 4px}
+.calc-proc{border-top:0!important;padding-top:20px!important}
+.calc-proc legend{color:var(--accent-2);font-size:1rem}
+.calc label:has(input:disabled){opacity:.45;cursor:not-allowed}
+.calc-err{color:#ff9d9d;font-size:.95rem;margin:12px 0 0}
+.calc-res h2{font-size:1.35rem;margin-bottom:.6em}
+.calc-res h3{font-size:1.15rem;margin:0 0 .6em}
+.calc-total{display:flex;align-items:baseline;gap:12px;flex-wrap:wrap;margin:0 0 .4em}
+.calc-total strong{font-family:var(--head);font-size:clamp(2.6rem,1.6rem + 4vw,4rem);line-height:1;letter-spacing:-.03em;background:var(--grad);-webkit-background-clip:text;background-clip:text;color:transparent}
+.calc-total span{color:var(--muted)}
+.calc-sub{font-size:1.08rem}
+.calc-sub strong,#calc-det p strong{color:var(--fg)}
+.calc-gate,#calc-det{border-top:1px solid var(--line);margin-top:28px;padding-top:28px}
+.calc-gate .btn{margin-top:20px}
+.calc-nota{font-size:.88rem;margin:14px 0 0}
+.calc-como{border:1px solid var(--line);border-radius:16px;padding:16px 20px;margin:0 0 24px;background:var(--panel)}
+.calc-como summary{cursor:pointer;color:var(--fg);font-weight:500}
+.calc-como[open] summary{margin-bottom:14px}
+.calc-sup{grid-template-columns:repeat(3,minmax(0,1fr))}
+@media (max-width:700px){.calc-grid,.calc-sup{grid-template-columns:1fr}.resultado{padding:24px 20px}}
+#calc-res,#calc-det{scroll-margin-top:92px}
+.calc-res .tabla th,.calc-res .tabla td{padding:12px}
+.calc-res .tabla tbody th{white-space:normal;min-width:11ch}
+.calc-total .calc-costo{color:#ff5a5a;font-family:var(--head);font-weight:700;font-size:clamp(1.3rem,1rem + 1.4vw,1.9rem);letter-spacing:-.01em}
+.calc-flecha{flex:0 0 auto;align-self:center;width:clamp(2.2rem,1.5rem + 2.6vw,3.2rem);height:auto;color:#ff5a5a;animation:calc-baja 1.6s ease-in-out infinite}
+@keyframes calc-baja{0%,100%{transform:translateY(-4px)}50%{transform:translateY(5px)}}
+@media (prefers-reduced-motion:reduce){.calc-flecha{animation:none}}
+.calc-total>span:last-child{font-size:clamp(1.25rem,1rem + 1vw,1.7rem);color:var(--fg);font-weight:500}
+.calc-anio{font-size:clamp(1.15rem,1rem + .6vw,1.4rem);color:var(--fg);margin:0 0 .5em}
+.calc-anio strong{font-family:var(--head);font-size:clamp(1.9rem,1.3rem + 2.4vw,2.7rem);line-height:1;letter-spacing:-.02em;color:#ff2e63;margin:0 .15em}
+.calc-total strong{background:none;-webkit-background-clip:border-box;background-clip:border-box;color:#ff5a5a}
+.calc-total .calc-costo{font-size:clamp(1.9rem,1.3rem + 2.6vw,3rem);line-height:1}
+.calc-anio strong{font-size:clamp(2.3rem,1.5rem + 3.4vw,3.5rem)}
+.calc-anio{display:flex;align-items:baseline;gap:12px;flex-wrap:wrap}
+.calc-anio strong{color:#ff5a5a;margin:0}
+.calc-anio .calc-flecha{width:clamp(1.9rem,1.3rem + 2.2vw,2.7rem)}
+.calc-total strong{font-size:clamp(2.21rem,1.36rem + 3.4vw,3.4rem)}
+.calc-anio strong{font-size:clamp(1.96rem,1.28rem + 2.89vw,2.98rem)}
+/* Resultado: textos de apoyo 50% más grandes en escritorio */
+.calc-res p,.calc-como li,.calc-como summary{font-size:clamp(1.3rem,1rem + 1.2vw,1.59rem);line-height:1.5}
+.calc-res .kicker{font-size:1.17rem}
+.calc-res .calc-nota{font-size:clamp(1.1rem,.9rem + .8vw,1.32rem)}
+.calc-res .campo>span{font-size:clamp(1.15rem,.95rem + .8vw,1.38rem)}
+.calc-res h2{font-size:clamp(1.5rem,1.2rem + 1.2vw,1.9rem)}
+.calc-res h3{font-size:clamp(1.4rem,1.15rem + 1vw,1.7rem)}
+
+/* Tipografía: títulos en Inter (sobria y neutra); Poppins queda solo en el logotipo */
+.logo{font-family:Poppins,Inter,system-ui,sans-serif}
+h1,h2,h3,.hr-s .h1,.slide h3{font-weight:600;letter-spacing:-.032em}
+.cifras strong,.cifra strong,.paq-cuota strong,.calc-total strong,.calc-anio strong,.calc-total .calc-costo{font-weight:600;letter-spacing:-.035em}
