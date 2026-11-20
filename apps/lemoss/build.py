@@ -204,7 +204,7 @@ PERSONA = {
 WEBSITE = {"@context": "https://schema.org", "@type": "WebSite", "@id": SITE + "/#web", "url": SITE + "/", "name": "Lemoss", "inLanguage": "es-MX", "publisher": {"@id": SITE + "/#lemoss"}}
 
 ETAPAS = [
-    ("Diagnóstico gratuito", "En línea · 10 minutos", "Respondes ocho preguntas sobre tus procesos y sabes de inmediato qué tan listo está un proceso para automatizarse y por dónde conviene empezar.", "/autodiagnostico/", "Hacer el diagnóstico gratuito"),
+    ("Diagnóstico gratuito", "En línea · 5 minutos", "Eliges hasta tres procesos, respondes con rangos y ves al instante cuánto te cuestan hoy, al mes y al año.", "/autodiagnostico/", "Hacer el diagnóstico gratuito"),
     ("Sesión de línea base", "Sin costo", "Revisamos contigo procesos, datos y sistemas, validamos cuánto te cuesta hoy cada proceso y fijamos por escrito una sola métrica y su línea base, firmada por ambas partes.", None, None),
     ("Paquete de resultados", "Cuota mensual + participación · mínimo 3 meses", "Eliges cuánto riesgo compartimos: a menor cuota fija, mayor es nuestra participación en las ventas que generamos y en los costos que reducimos.", "/servicios/#paquetes", "Ver los paquetes"),
 ]
@@ -585,47 +585,191 @@ def casos():
                   body, [ORG, migas(("Casos", "/casos/"))])
 
 
-PREGUNTAS = [
-    ("¿Cuántas veces a la semana se repite el proceso que quieres mejorar?", ["Menos de 5", "Entre 5 y 50", "Más de 50"]),
-    ("¿Puedes describir paso a paso cómo se hace bien?", ["No, cada quien lo hace distinto", "Más o menos", "Sí, está claro o documentado"]),
-    ("¿La información que usa ese proceso ya está en algún sistema?", ["Vive en la cabeza de alguien", "En hojas de cálculo o correos", "En un CRM, ERP o base de datos"]),
-    ("¿Sabes cuánto te cuesta hoy ese proceso al mes?", ["No tengo idea", "Tengo una idea aproximada", "Sí, lo tengo calculado"]),
-    ("¿Qué pasa si la automatización se equivoca una vez?", ["Sería grave (cobros, contratos)", "Molesto pero corregible", "Poco impacto (clasificar, resumir)"]),
-    ("¿Hay alguien en tu equipo que pueda ser responsable del proyecto?", ["No", "Sí, pero con poco tiempo", "Sí, con tiempo asignado"]),
-    ("¿Qué tan rápido responden hoy a un prospecto o cliente nuevo?", ["Más de un día", "Unas horas", "Menos de una hora"]),
-    ("¿Qué tan urgente es resolverlo?", ["Puede esperar", "Este trimestre", "Este mes"]),
+# Diagnóstico gratuito: calculadora del costo mensual de cada proceso.
+# Las opciones son rangos; el segundo valor es el punto medio que usa la fórmula.
+PROCESOS = [
+    ("prospectos", "Atender prospectos y clientes nuevos", True),
+    ("cotizaciones", "Cotizar y dar seguimiento", True),
+    ("cobranza", "Cobranza y facturación", False),
+    ("inventario", "Inventario y compras", False),
+    ("reportes", "Reportes y captura de datos", False),
+    ("soporte", "Soporte y atención posventa", False),
 ]
+CALC_PREGUNTAS = {
+    "personas": ("¿Cuántas personas participan?", [("1", 1), ("2 a 3", 2.5), ("4 a 6", 5), ("7 a 10", 8.5), ("Más de 10", 12)]),
+    "horas": ("¿Cuántas horas a la semana le dedica cada una?", [("Menos de 5", 3), ("5 a 10", 7.5), ("10 a 20", 15), ("20 a 30", 25), ("Más de 30", 35)]),
+    "errores": ("¿Cuántos errores o retrabajos hay al mes?", [("Ninguno o casi ninguno", 0), ("1 a 5", 3), ("6 a 15", 10), ("16 a 30", 23), ("Más de 30", 35)]),
+    "costo_error": ("¿Cuánto cuesta corregir cada uno?", [("Menos de $500", 250), ("$500 a $2,000", 1250), ("$2,000 a $5,000", 3500), ("$5,000 a $15,000", 10000), ("Más de $15,000", 20000)]),
+    "perdidos": ("¿Cuántos prospectos o solicitudes se quedan sin respuesta o sin seguimiento al mes?", [("Ninguno o casi ninguno", 0), ("1 a 10", 5), ("11 a 30", 20), ("31 a 60", 45), ("Más de 60", 70)]),
+    "ticket": ("¿De cuánto es tu venta promedio?", [("Menos de $2,000", 1000), ("$2,000 a $10,000", 6000), ("$10,000 a $50,000", 30000), ("$50,000 a $200,000", 125000), ("Más de $200,000", 250000)]),
+    "cierre": ("De cada 10 que sí atiendes, ¿cuántos compran?", [("1", 0.1), ("2 a 3", 0.25), ("4 a 5", 0.45), ("6 o más", 0.65)]),
+}
+CALC_BASE = ["personas", "horas", "errores", "costo_error"]   # se preguntan en todos los procesos
+CALC_VENTAS = ["perdidos", "ticket", "cierre"]                # solo en procesos de venta
+CALC_SUELDO = ("¿Cuál es el sueldo mensual promedio de quienes hacen estos procesos?", [("Menos de $10,000", 8000), ("$10,000 a $15,000", 12500), ("$15,000 a $25,000", 20000), ("$25,000 a $40,000", 32500), ("Más de $40,000", 45000)])
+# Supuestos de la fórmula; el visitante puede cambiarlos en "Así lo calculamos"
+CALC_SUPUESTOS = {"carga": 30, "horas_mes": 190, "margen": 30}
+# Qué tan listo está el negocio para fijar una línea base (0 a 2 puntos por pregunta)
+CALC_LISTO = [
+    ("¿Puedes describir paso a paso cómo se hacen bien estos procesos?", ["No, cada quien lo hace distinto", "Más o menos", "Sí, está claro o documentado"]),
+    ("¿Dónde vive la información que usan?", ["En la cabeza de alguien", "En hojas de cálculo o correos", "En un CRM, ERP o base de datos"]),
+    ("¿Hay alguien en tu equipo que pueda ser responsable del proyecto?", ["No", "Sí, pero con poco tiempo", "Sí, con tiempo asignado"]),
+]
+CALC_MAX = 3            # procesos que se pueden medir a la vez
+CALC_VECES_CUOTA = 3    # si el costo no rebasa tantas veces la cuota mínima, decimos que un paquete no conviene
+DIAG_WEBHOOK = ""       # URL que recibirá cada diagnóstico en JSON; vacío = solo WhatsApp
+
+
+JS_CALC = r"""(function(){
+var C=__CFG__,f=document.getElementById('calc');if(!f)return;
+var caja=document.getElementById('calc-procs'),res=document.getElementById('calc-res'),det=document.getElementById('calc-det'),gate=document.getElementById('calc-gate'),err=document.getElementById('calc-err');
+var fmt=new Intl.NumberFormat('es-MX',{style:'currency',currency:'MXN',maximumFractionDigits:0});
+function mxn(n){return fmt.format(Math.round(n/100)*100)}
+function el(t,c,x){var e=document.createElement(t);if(c)e.className=c;if(x!=null)e.textContent=x;return e}
+function campo(nombre,q){var l=el('label','campo'),s=el('select');l.appendChild(el('span',null,q[0]));s.name=nombre;s.required=true;
+var o=el('option',null,'Elige una opción');o.value='';s.appendChild(o);
+q[1].forEach(function(op,i){var p=el('option',null,op[0]);p.value=i;s.appendChild(p)});l.appendChild(s);return l}
+function elegidos(){return [].slice.call(f.querySelectorAll('input[name=proc]:checked')).map(function(c){return c.value})}
+function pintar(){var ids=elegidos(),prev={};
+[].forEach.call(caja.querySelectorAll('select'),function(s){prev[s.name]=s.value});
+caja.textContent='';
+C.procesos.forEach(function(p){if(ids.indexOf(p.id)<0)return;
+var fs=el('fieldset','calc-proc'),g=el('div','calc-grid');fs.appendChild(el('legend',null,p.nombre));
+C.base.concat(p.ventas?C.ventas:[]).forEach(function(k){g.appendChild(campo(p.id+'_'+k,C.preguntas[k]))});
+fs.appendChild(g);caja.appendChild(fs)});
+[].forEach.call(caja.querySelectorAll('select'),function(s){if(prev[s.name])s.value=prev[s.name]});
+[].forEach.call(f.querySelectorAll('input[name=proc]'),function(c){c.disabled=!c.checked&&ids.length>=C.max});
+document.getElementById('calc-resto').hidden=!ids.length}
+function val(nombre,q){var s=f.querySelector('select[name="'+nombre+'"]');return s&&s.value!==''?q[1][+s.value][1]:null}
+function sup(k){var i=document.getElementById('sup-'+k),n=i?parseFloat(i.value):NaN;return isFinite(n)&&n>0?n:C.supuestos[k]}
+var ult=null;
+function calcular(){var ids=elegidos(),S={carga:sup('carga'),horas_mes:sup('horas_mes'),margen:sup('margen')};
+var sueldo=val('sueldo',C.sueldo),hora=sueldo*(1+S.carga/100)/S.horas_mes,filas=[],total=0;
+C.procesos.forEach(function(p){if(ids.indexOf(p.id)<0)return;var v={};
+C.base.concat(p.ventas?C.ventas:[]).forEach(function(k){v[k]=val(p.id+'_'+k,C.preguntas[k])});
+var t=v.personas*v.horas*4.33*hora,e=v.errores*v.costo_error,x=p.ventas?v.perdidos*v.cierre*v.ticket*S.margen/100:0;
+filas.push({id:p.id,nombre:p.nombre,tiempo:t,errores:e,ventas:x,total:t+e+x});total+=t+e+x});
+filas.sort(function(a,b){return b.total-a.total});
+var listo=0;C.listo.forEach(function(_,i){var r=f.querySelector('input[name=listo'+i+']:checked');listo+=r?+r.value:0});
+ult={filas:filas,total:total,hora:hora,sueldo:sueldo,S:S,listo:listo};return ult}
+function mostrar(){var R=ult;
+document.getElementById('r-mes').textContent=mxn(R.total);
+document.getElementById('r-anio').textContent=mxn(R.total*12);
+document.getElementById('r-diez').textContent=mxn(R.total*.1);
+document.getElementById('r-n').textContent=R.filas.length===1?'el proceso que elegiste':'los '+R.filas.length+' procesos que elegiste';
+var tb=document.getElementById('r-filas');tb.textContent='';
+R.filas.forEach(function(x){var tr=el('tr'),th=el('th',null,x.nombre);th.scope='row';tr.appendChild(th);
+[x.tiempo,x.errores,x.ventas,x.total].forEach(function(n){tr.appendChild(el('td',null,mxn(n)))});tb.appendChild(tr)});
+document.getElementById('r-hora').textContent=fmt.format(Math.round(R.hora));
+var conviene=R.total>=C.minCuota*C.veces;
+document.getElementById('r-encaje').textContent=conviene?'Con esta cifra hay espacio para trabajar por resultados. El siguiente paso es la sesión de línea base, sin costo, donde validamos estos números con tus datos reales.':'Con esta cifra, hoy un paquete no te conviene: la cuota se llevaría buena parte de lo que se puede recuperar. Si quieres, lo platicamos por WhatsApp y te orientamos sin costo.';
+var max=C.listo.length*2;
+document.getElementById('r-listo').textContent=R.listo>=max-1?'Tus procesos están claros, con datos y con un responsable: es el mejor escenario para fijar una línea base que nadie discuta.':R.listo>=max/2?'Vas bien, con un par de huecos por cerrar. Normalmente son documentar cómo se hace bien el proceso o reunir sus datos en un solo lugar.':'Antes de automatizar conviene ordenar: definir cómo se hace bien cada proceso y dónde vive su información. En la sesión te decimos por dónde empezar.'}
+function mensaje(n,e){var R=ult,t='Hola, soy '+n+' de '+e+'. Hice el diagnóstico gratuito en lemoss.co. Costo estimado: '+mxn(R.total)+' al mes ('+mxn(R.total*12)+' al año). ';
+t+=R.filas.map(function(x){return x.nombre+': '+mxn(x.total)}).join('; ')+'. Quiero agendar mi sesión de línea base.';
+return 'https://wa.me/'+C.wa+'?text='+encodeURIComponent(t)}
+f.addEventListener('change',function(ev){if(ev.target.name==='proc')pintar()});
+f.addEventListener('submit',function(ev){ev.preventDefault();
+if(!elegidos().length){err.hidden=false;err.focus();return}err.hidden=true;
+if(!f.reportValidity())return;
+calcular();mostrar();res.hidden=false;res.scrollIntoView({behavior:'smooth',block:'start'});res.focus({preventScroll:true});
+window.dataLayer=window.dataLayer||[];dataLayer.push({event:'diagnostico_completado',costo_mensual:Math.round(ult.total),procesos:ult.filas.length});});
+gate.addEventListener('submit',function(ev){ev.preventDefault();if(!gate.reportValidity())return;
+var n=gate.nombre.value.trim(),e=gate.empresa.value.trim(),u=mensaje(n,e);
+document.getElementById('r-wa').href=u;det.hidden=false;gate.hidden=true;
+window.dataLayer=window.dataLayer||[];dataLayer.push({event:'diagnostico_desglose',costo_mensual:Math.round(ult.total),procesos:ult.filas.length});
+if(C.webhook){try{fetch(C.webhook,{method:'POST',headers:{'Content-Type':'application/json'},keepalive:true,body:JSON.stringify({nombre:n,empresa:e,total_mensual:Math.round(ult.total),procesos:ult.filas,sueldo:ult.sueldo,supuestos:ult.S,listo:ult.listo,origen:location.href})})}catch(_){}}
+window.open(u,'_blank','noopener');det.scrollIntoView({behavior:'smooth',block:'start'})});
+[].forEach.call(document.querySelectorAll('[data-sup]'),function(i){i.addEventListener('input',function(){if(!ult)return;calcular();mostrar();
+if(!det.hidden)document.getElementById('r-wa').href=mensaje(gate.nombre.value.trim(),gate.empresa.value.trim())})});
+pintar();
+})();"""
 
 
 def autodiagnostico():
-    preg = ""
-    for i, (q, ops) in enumerate(PREGUNTAS):
-        radios = "".join(f'<label><input type="radio" name="p{i}" value="{v}" required> {o}</label>' for v, o in enumerate(ops))
-        preg += f'<fieldset><legend><span class="paso" aria-hidden="true">{i+1}</span>{q}</legend>{radios}</fieldset>'
-    js = """<script>
-(function(){var f=document.getElementById('diag'),r=document.getElementById('res');
-f.addEventListener('submit',function(ev){ev.preventDefault();var t=0,n=%d;for(var i=0;i<n;i++){var s=f.querySelector('input[name=p'+i+']:checked');if(!s){f.querySelector('input[name=p'+i+']').focus();return}t+=+s.value}
-var pct=Math.round(t/(n*2)*100),h,p;
-if(pct>=70){h='Tu proceso está listo para trabajar por resultados';p='Tiene volumen, está claro y hay datos. Es el escenario ideal para fijar una línea base y elegir un paquete.'}
-else if(pct>=45){h='Vas bien, con un par de huecos por cerrar';p='Conviene resolver primero las respuestas más bajas (normalmente documentar el proceso o calcular su costo). En la sesión de línea base, sin costo, te decimos exactamente cuáles.'}
-else{h='Primero conviene ordenar el proceso';p='Antes de invertir en tecnología, define cómo se hace bien y dónde vive la información. Te podemos orientar en una llamada sin costo.'}
-r.querySelector('h2').textContent=h+' ('+pct+'%%)';r.querySelector('p').textContent=p;
-var msg='Hola, hice el diagnóstico gratuito en lemoss.co y obtuve '+pct+'%%: '+h+'. Quiero platicar.';
-r.querySelector('a').href='https://wa.me/%s?text='+encodeURIComponent(msg);r.hidden=false;r.focus();
-window.dataLayer=window.dataLayer||[];dataLayer.push({event:'diagnostico_completado',puntaje:pct,resultado:pct>=70?'listo_piloto':pct>=45?'huecos':'ordenar_proceso'});});})();
-</script>""" % (len(PREGUNTAS), WA)
+    checks = "".join(f'<label><input type="checkbox" name="proc" value="{i}"> {n}</label>' for i, n, _v in PROCESOS)
+    ops = "".join(f'<option value="{i}">{o}</option>' for i, (o, _v) in enumerate(CALC_SUELDO[1]))
+    listo = ""
+    for i, (q, resp) in enumerate(CALC_LISTO):
+        radios = "".join(f'<label><input type="radio" name="listo{i}" value="{v}" required> {o}</label>' for v, o in enumerate(resp))
+        listo += f'<fieldset><legend>{q}</legend>{radios}</fieldset>'
+    s = CALC_SUPUESTOS
+    cfg = {
+        "procesos": [{"id": i, "nombre": n, "ventas": v} for i, n, v in PROCESOS],
+        "preguntas": {k: [q, [[o, v] for o, v in r]] for k, (q, r) in CALC_PREGUNTAS.items()},
+        "base": CALC_BASE, "ventas": CALC_VENTAS,
+        "sueldo": [CALC_SUELDO[0], [[o, v] for o, v in CALC_SUELDO[1]]],
+        "listo": [q for q, _r in CALC_LISTO],
+        "supuestos": s, "max": CALC_MAX, "minCuota": min(p[1] for p in PAQUETES), "veces": CALC_VECES_CUOTA,
+        "wa": WA, "webhook": DIAG_WEBHOOK,
+    }
+    js = "<script>" + JS_CALC.replace("__CFG__", json.dumps(cfg, ensure_ascii=False)) + "</script>"
     body = f"""
 <section class="hero hero-sm"><div class="wrap">
-<h1>Diagnóstico gratuito de procesos</h1>
-<p class="lead">Piensa en un proceso concreto de tu empresa (atender prospectos, cotizar, inventario, cobranza) y responde ocho preguntas. Toma 5 minutos y no guardamos tus respuestas.</p>
+<p class="kicker">Diagnóstico gratuito</p>
+<h1>¿Cuánto te cuesta hoy cada proceso?</h1>
+<p class="lead">Elige hasta {CALC_MAX} procesos y responde con rangos; no necesitas cifras exactas. Toma unos 5 minutos y el total lo ves al instante.</p>
 </div></section>
 <section class="sec"><div class="wrap estrecho">
-<form id="diag" class="diag">{preg}<button class="btn" type="submit">Ver mi resultado</button></form>
-<div id="res" class="resultado" hidden tabindex="-1" aria-live="polite"><h2></h2><p></p><a class="btn" href="{wa()}" rel="noopener">Platicarlo por WhatsApp</a></div>
+<noscript><p class="resultado">Esta calculadora necesita JavaScript. Si prefieres, <a href="{wa()}" rel="noopener">escríbenos por WhatsApp</a> y la hacemos contigo.</p></noscript>
+<form id="calc" class="diag calc" novalidate>
+<fieldset><legend><span class="paso" aria-hidden="true">1</span>¿Qué procesos quieres medir? Elige hasta {CALC_MAX}.</legend>{checks}
+<p id="calc-err" class="calc-err" hidden tabindex="-1">Elige al menos un proceso para calcular.</p></fieldset>
+<div id="calc-resto" hidden>
+<div class="calc-cab"><span class="paso" aria-hidden="true">2</span>Cuéntanos de cada proceso</div>
+<div id="calc-procs"></div>
+<fieldset><legend><span class="paso" aria-hidden="true">3</span>{CALC_SUELDO[0]}</legend>
+<label class="campo"><span class="oculto">Sueldo mensual promedio</span><select name="sueldo" required><option value="">Elige una opción</option>{ops}</select></label></fieldset>
+<div class="calc-cab"><span class="paso" aria-hidden="true">4</span>Tres preguntas sobre cómo trabajan hoy</div>
+{listo}
+<button class="btn" type="submit">Calcular mi costo</button>
+</div>
+</form>
+
+<div id="calc-res" class="resultado calc-res" hidden tabindex="-1" aria-live="polite">
+<p class="kicker">Tu resultado</p>
+<h2>Hoy <span id="r-n">los procesos que elegiste</span> te cuestan alrededor de</h2>
+<p class="calc-total"><strong id="r-mes"></strong><span>al mes</span></p>
+<p class="calc-sub">Son <strong id="r-anio"></strong> al año. Cada 10% que se reduzca son <strong id="r-diez"></strong> al mes.</p>
+<p class="muted">Es una estimación hecha con tus respuestas. La cifra definitiva se valida con tus datos reales en la sesión de línea base.</p>
+
+<form id="calc-gate" class="calc-gate">
+<h3>Ver el desglose por proceso</h3>
+<p>Te mostramos cuánto cuesta cada proceso, de dónde sale cada peso y cómo lo calculamos.</p>
+<div class="calc-grid">
+<label class="campo"><span>Tu nombre</span><input type="text" name="nombre" autocomplete="name" required maxlength="80"></label>
+<label class="campo"><span>Tu empresa</span><input type="text" name="empresa" autocomplete="organization" required maxlength="80"></label>
+</div>
+<button class="btn" type="submit">Ver mi desglose</button>
+<p class="muted calc-nota">Al continuar se abre WhatsApp con tu diagnóstico listo para enviárnoslo; así lo recibimos y te respondemos ahí mismo. Consulta el <a href="/privacidad/">aviso de privacidad</a>.</p>
+</form>
+
+<div id="calc-det" hidden>
+<h3>Desglose por proceso, al mes</h3>
+{tabla(["Proceso", "Tiempo del equipo", "Errores y retrabajo", "Ventas que se pierden", "Total"], []).replace("<tbody>", '<tbody id="r-filas">').replace(" rv", "")}
+<p id="r-encaje"></p>
+<p id="r-listo"></p>
+<details class="calc-como"><summary>Así lo calculamos</summary>
+<ul class="puntos">
+<li><strong>Tiempo del equipo:</strong> personas × horas a la semana × 4.33 semanas × costo por hora. Con tus respuestas, la hora cuesta <strong id="r-hora"></strong>.</li>
+<li><strong>Errores y retrabajo:</strong> errores al mes × costo de corregir cada uno.</li>
+<li><strong>Ventas que se pierden:</strong> prospectos sin atender × los que suelen comprar × venta promedio × margen.</li>
+<li>En cada rango usamos su punto medio.</li>
+</ul>
+<p class="muted">Puedes cambiar estos supuestos y el resultado se recalcula:</p>
+<div class="calc-grid calc-sup">
+<label class="campo"><span>Prestaciones e impuestos sobre el sueldo (%)</span><input type="number" id="sup-carga" data-sup value="{s['carga']}" min="0" max="100" step="1" inputmode="decimal"></label>
+<label class="campo"><span>Horas trabajadas al mes por persona</span><input type="number" id="sup-horas_mes" data-sup value="{s['horas_mes']}" min="80" max="260" step="1" inputmode="decimal"></label>
+<label class="campo"><span>Margen sobre la venta (%)</span><input type="number" id="sup-margen" data-sup value="{s['margen']}" min="1" max="100" step="1" inputmode="decimal"></label>
+</div>
+</details>
+<a id="r-wa" class="btn" href="{wa()}" rel="noopener">Enviar mi diagnóstico y agendar la sesión de línea base</a>
+</div>
+</div>
 </div></section>
 """
-    return layout("/autodiagnostico/", "Diagnóstico gratuito: ¿tu proceso está listo para automatizarse? | Lemoss",
-                  "Ocho preguntas para saber si un proceso de tu empresa está listo para automatizarse, con o sin inteligencia artificial, y por dónde empezar. Gratis, sin registro.",
+    return layout("/autodiagnostico/", "Diagnóstico gratuito: calcula cuánto te cuesta hoy cada proceso | Lemoss",
+                  "Calculadora gratuita: elige hasta tres procesos de tu empresa, responde con rangos y conoce cuánto te cuestan hoy al mes y al año en tiempo, errores y ventas perdidas.",
                   body + js, [ORG, migas(("Diagnóstico gratuito", "/autodiagnostico/"))])
 
 
@@ -678,7 +822,7 @@ ARTICULOS = [
 <p>Si el riesgo es bajo (clasificar correos, resumir llamadas), automatiza completo. Si es alto (cotizar, cobrar, prometer fechas), que la IA prepare y una persona apruebe.</p>
 <h2>Regla práctica</h2>
 <p>Con cuatro o cinco respuestas afirmativas tienes un buen candidato para una prueba de 30 días con una meta medible. Con tres, resuelve primero la que falló. Con dos o menos, ordena el proceso antes de pensar en IA.</p>
-<p>¿Quieres hacerlo con más detalle? Prueba el <a href="/autodiagnostico/">diagnóstico gratuito de ocho preguntas</a>.</p>"""},
+<p>¿Quieres hacerlo con más detalle? Prueba el <a href="/autodiagnostico/">diagnóstico gratuito, que lo calcula por ti</a>.</p>"""},
     {"slug": "como-medir-si-la-ia-funciona-en-ventas", "titulo": "Cómo saber si la IA le está funcionando a tu equipo comercial",
      "desc": "Cuatro métricas para medir el efecto de la inteligencia artificial en ventas desde la primera semana: tiempo de respuesta, contacto, citas y horas liberadas.",
      "fecha": "2026-11-03",

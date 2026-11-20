@@ -306,3 +306,34 @@ p{margin:0 0 1em;max-width:64ch;text-wrap:pretty}
 .hr-dots button[aria-current="true"]{background:var(--accent)}
 .no-js .hr-dots{display:none}
 @media (prefers-reduced-motion:reduce){.js .hr-s{transition:none}}
+
+/* Diagnóstico gratuito: calculadora de costo por proceso */
+.oculto{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+.calc label.campo,.campo{display:block;border:0;background:none;padding:0;margin:0;cursor:default}
+.campo>span{display:block;color:var(--muted);font-size:.92rem;line-height:1.4;margin-bottom:8px}
+.campo select,.campo input,.calc .campo select{width:100%;height:auto;font:inherit;font-size:1rem;color:var(--fg);background:var(--panel);border:1px solid var(--line-2);border-radius:12px;padding:12px 14px;color-scheme:dark}
+.campo select:focus-visible,.campo input:focus-visible{outline:2px solid var(--accent-2);outline-offset:2px}
+.calc-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:18px;align-items:end}
+.calc-cab{display:flex;align-items:center;color:var(--fg);font-weight:500;font-size:1.08rem;border-top:1px solid var(--line);padding:28px 0 4px}
+.calc-proc{border-top:0!important;padding-top:20px!important}
+.calc-proc legend{color:var(--accent-2);font-size:1rem}
+.calc label:has(input:disabled){opacity:.45;cursor:not-allowed}
+.calc-err{color:#ff9d9d;font-size:.95rem;margin:12px 0 0}
+.calc-res h2{font-size:1.35rem;margin-bottom:.6em}
+.calc-res h3{font-size:1.15rem;margin:0 0 .6em}
+.calc-total{display:flex;align-items:baseline;gap:12px;flex-wrap:wrap;margin:0 0 .4em}
+.calc-total strong{font-family:var(--head);font-size:clamp(2.6rem,1.6rem + 4vw,4rem);line-height:1;letter-spacing:-.03em;background:var(--grad);-webkit-background-clip:text;background-clip:text;color:transparent}
+.calc-total span{color:var(--muted)}
+.calc-sub{font-size:1.08rem}
+.calc-sub strong,#calc-det p strong{color:var(--fg)}
+.calc-gate,#calc-det{border-top:1px solid var(--line);margin-top:28px;padding-top:28px}
+.calc-gate .btn{margin-top:20px}
+.calc-nota{font-size:.88rem;margin:14px 0 0}
+.calc-como{border:1px solid var(--line);border-radius:16px;padding:16px 20px;margin:0 0 24px;background:var(--panel)}
+.calc-como summary{cursor:pointer;color:var(--fg);font-weight:500}
+.calc-como[open] summary{margin-bottom:14px}
+.calc-sup{grid-template-columns:repeat(3,minmax(0,1fr))}
+@media (max-width:700px){.calc-grid,.calc-sup{grid-template-columns:1fr}.resultado{padding:24px 20px}}
+#calc-res,#calc-det{scroll-margin-top:92px}
+.calc-res .tabla th,.calc-res .tabla td{padding:12px}
+.calc-res .tabla tbody th{white-space:normal;min-width:11ch}
