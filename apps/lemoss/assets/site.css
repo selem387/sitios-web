@@ -364,3 +364,10 @@ p{margin:0 0 1em;max-width:64ch;text-wrap:pretty}
 .logo{font-family:Poppins,Inter,system-ui,sans-serif}
 h1,h2,h3,.hr-s .h1,.slide h3{font-weight:600;letter-spacing:-.032em}
 .cifras strong,.cifra strong,.paq-cuota strong,.calc-total strong,.calc-anio strong,.calc-total .calc-costo{font-weight:600;letter-spacing:-.035em}
+
+/* Slider de portada: lámina "Cómo funciona" */
+.tag-c{color:#fff;background:rgba(46,107,255,.32);border:1px solid rgba(46,107,255,.6)}
+.sl-pasos{list-style:none;margin:0 0 18px;padding:0;counter-reset:paso;display:grid;gap:11px}
+.sl-pasos li{counter-increment:paso;position:relative;padding-left:38px;font-size:.96rem;line-height:1.45;color:var(--txt)}
+.sl-pasos li::before{content:counter(paso);position:absolute;left:0;top:0;width:26px;height:26px;border-radius:50%;display:grid;place-items:center;font-size:.8rem;font-weight:600;color:var(--fg);background:rgba(46,107,255,.2);border:1px solid rgba(46,107,255,.45)}
+.sl-pasos strong{color:var(--fg);font-weight:600}
