@@ -627,7 +627,8 @@ CALC_LISTO = [
 ]
 CALC_MAX = 3            # procesos que se pueden medir a la vez
 CALC_VECES_CUOTA = 3    # si el costo no rebasa tantas veces la cuota mínima, decimos que un paquete no conviene
-DIAG_WEBHOOK = ""       # URL que recibirá cada diagnóstico en JSON; vacío = solo WhatsApp
+# Flujo de n8n "Diagnóstico gratuito - Guarda calculadora" (proyecto lemoss_consulting): valida y guarda en la tabla calc_diagnosticos
+DIAG_WEBHOOK = "https://diagnostico.lemoss.co/webhook/calculadora/diagnostico"
 
 
 JS_CALC = r"""(function(){
@@ -684,11 +685,13 @@ if(!elegidos().length){err.hidden=false;err.focus();return}err.hidden=true;
 if(!f.reportValidity())return;
 calcular();mostrar();res.hidden=false;res.scrollIntoView({behavior:'smooth',block:'start'});res.focus({preventScroll:true});
 window.dataLayer=window.dataLayer||[];dataLayer.push({event:'diagnostico_completado',costo_mensual:Math.round(ult.total),procesos:ult.filas.length});});
+gate.whatsapp.addEventListener('input',function(){gate.whatsapp.setCustomValidity('')});
 gate.addEventListener('submit',function(ev){ev.preventDefault();if(!gate.reportValidity())return;
-var n=gate.nombre.value.trim(),e=gate.empresa.value.trim(),u=mensaje(n,e);
+var n=gate.nombre.value.trim(),e=gate.empresa.value.trim(),w=gate.whatsapp.value.replace(/\D/g,''),u=mensaje(n,e);
+if(w.length<10){gate.whatsapp.setCustomValidity('Escribe tu número a 10 dígitos');gate.reportValidity();return}
 document.getElementById('r-wa').href=u;det.hidden=false;gate.hidden=true;
 window.dataLayer=window.dataLayer||[];dataLayer.push({event:'diagnostico_desglose',costo_mensual:Math.round(ult.total),procesos:ult.filas.length});
-if(C.webhook){try{fetch(C.webhook,{method:'POST',headers:{'Content-Type':'application/json'},keepalive:true,body:JSON.stringify({nombre:n,empresa:e,total_mensual:Math.round(ult.total),procesos:ult.filas,sueldo:ult.sueldo,supuestos:ult.S,listo:ult.listo,origen:location.href})})}catch(_){}}
+if(C.webhook){try{fetch(C.webhook,{method:'POST',mode:'no-cors',headers:{'Content-Type':'text/plain'},keepalive:true,body:JSON.stringify({nombre:n,empresa:e,whatsapp:w,total_mensual:Math.round(ult.total),procesos:ult.filas.map(function(x){return{id:x.id,nombre:x.nombre,tiempo:Math.round(x.tiempo),errores:Math.round(x.errores),ventas:Math.round(x.ventas),total:Math.round(x.total)}}),sueldo:ult.sueldo,supuestos:ult.S,listo:ult.listo,origen:location.origin+location.pathname})}).catch(function(){})}catch(_){}}
 window.open(u,'_blank','noopener');det.scrollIntoView({behavior:'smooth',block:'start'})});
 [].forEach.call(document.querySelectorAll('[data-sup]'),function(i){i.addEventListener('input',function(){if(!ult)return;calcular();mostrar();
 if(!det.hidden)document.getElementById('r-wa').href=mensaje(gate.nombre.value.trim(),gate.empresa.value.trim())})});
@@ -750,9 +753,10 @@ def autodiagnostico():
 <div class="calc-grid">
 <label class="campo"><span>Tu nombre</span><input type="text" name="nombre" autocomplete="name" required maxlength="80"></label>
 <label class="campo"><span>Tu empresa</span><input type="text" name="empresa" autocomplete="organization" required maxlength="80"></label>
+<label class="campo"><span>Tu WhatsApp, con lada</span><input type="tel" name="whatsapp" autocomplete="tel" inputmode="tel" required minlength="10" maxlength="20"></label>
 </div>
 <button class="btn" type="submit">Ver mi desglose</button>
-<p class="muted calc-nota">Al continuar se abre WhatsApp con tu diagnóstico listo para enviárnoslo; así lo recibimos y te respondemos ahí mismo. Consulta el <a href="/privacidad/">aviso de privacidad</a>.</p>
+<p class="muted calc-nota">Guardamos estos datos y tus respuestas para darle seguimiento a tu diagnóstico. Al continuar también se abre WhatsApp con el resumen listo para enviárnoslo. Consulta el <a href="/privacidad/">aviso de privacidad</a>.</p>
 </form>
 
 <div id="calc-det" hidden>

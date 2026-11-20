@@ -371,3 +371,5 @@ h1,h2,h3,.hr-s .h1,.slide h3{font-weight:600;letter-spacing:-.032em}
 .sl-pasos li{counter-increment:paso;position:relative;padding-left:38px;font-size:.96rem;line-height:1.45;color:var(--txt)}
 .sl-pasos li::before{content:counter(paso);position:absolute;left:0;top:0;width:26px;height:26px;border-radius:50%;display:grid;place-items:center;font-size:.8rem;font-weight:600;color:var(--fg);background:rgba(46,107,255,.2);border:1px solid rgba(46,107,255,.45)}
 .sl-pasos strong{color:var(--fg);font-weight:600}
+.calc-gate .calc-grid{grid-template-columns:repeat(3,minmax(0,1fr))}
+@media (max-width:900px){.calc-gate .calc-grid{grid-template-columns:1fr}}
