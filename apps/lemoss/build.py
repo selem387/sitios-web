@@ -398,8 +398,14 @@ def migas(*pares):
 
 
 # ---------- Páginas ----------
-# Slider del hero: servicios (s) y modelos de trabajo (m) intercalados
+# Slider del hero: cómo funciona (c, con lista de pasos), servicios (s) y modelos de trabajo (m) intercalados
 SLIDES = [
+    ("c", "Del diagnóstico al resultado, en cuatro pasos", [
+        ("Diagnóstico gratuito.", "En 5 minutos ves cuánto te cuesta hoy cada proceso."),
+        ("Sesión de línea base.", "Validamos las cifras con tus datos y firmamos la métrica. Sin costo."),
+        ("Paquete.", "Eliges cuánta cuota fija y cuánta participación."),
+        ("Resultados.", "Medimos cada mes y cobramos solo sobre lo que se comprueba."),
+    ], "Los dos primeros pasos no cuestan", "/autodiagnostico/"),
     ("s", "Estrategia tecnológica y de negocio", "Hoja de ruta, prioridades y presupuesto con el retorno esperado de cada iniciativa, incluidos nuevos modelos de negocio de servicios tecnológicos.", "Diagnóstico y acompañamiento a dirección", "/servicios/"),
     ("m", "Sesión de línea base", "Revisamos contigo procesos, datos y sistemas, validamos cuánto te cuesta hoy cada proceso y fijamos una métrica con su línea base.", "Sin costo", "/servicios/"),
     ("s", "Procesos y operación", "Inventario, pedidos, cotizaciones y reportes conectados y automatizados de punta a punta, sin capturas manuales.", "ERP, CRM y hojas de cálculo integrados", "/servicios/"),
@@ -429,12 +435,17 @@ def slider_html():
     n = len(SLIDES)
     items = ""
     for i, (tipo, t, d, meta, href) in enumerate(SLIDES):
-        tag = '<span class="tag tag-s">Servicio</span>' if tipo == "s" else '<span class="tag tag-m">Modelo de trabajo</span>'
-        items += f'<li class="slide" role="group" aria-roledescription="diapositiva" aria-label="{i+1} de {n}">{tag}<h3>{t}</h3><p>{d}</p><div class="meta"><span>{meta}</span><a href="{href}">Ver más</a></div></li>'
+        tag = {"s": '<span class="tag tag-s">Servicio</span>', "m": '<span class="tag tag-m">Modelo de trabajo</span>', "c": '<span class="tag tag-c">Cómo funciona</span>'}[tipo]
+        if tipo == "c":
+            cuerpo = '<ol class="sl-pasos">' + "".join(f"<li><strong>{a}</strong> {b}</li>" for a, b in d) + "</ol>"
+            enlace = "Empezar"
+        else:
+            cuerpo, enlace = f"<p>{d}</p>", "Ver más"
+        items += f'<li class="slide" role="group" aria-roledescription="diapositiva" aria-label="{i+1} de {n}">{tag}<h3>{t}</h3>{cuerpo}<div class="meta"><span>{meta}</span><a href="{href}">{enlace}</a></div></li>'
     barras = "".join(f'<button type="button" aria-label="Ir a {SLIDES[j][1]}"></button>' for j in range(n))
     flecha = lambda d: f'<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="{d}"/></svg>'
-    return f"""<div class="slider" data-slider role="region" aria-roledescription="carrusel" aria-label="Servicios y modelos de trabajo">
-<div class="sl-cab"><strong>Servicios y modelos de trabajo</strong><span data-num>01 / {n:02d}</span></div>
+    return f"""<div class="slider" data-slider role="region" aria-roledescription="carrusel" aria-label="Cómo funciona, servicios y paquetes">
+<div class="sl-cab"><strong>Cómo funciona, servicios y paquetes</strong><span data-num>01 / {n:02d}</span></div>
 <ul class="sl-pista">{items}</ul>
 <div class="sl-pie"><button type="button" class="sl-btn" data-prev aria-label="Anterior">{flecha("M15 18l-6-6 6-6")}</button><div class="sl-barras">{barras}</div><button type="button" class="sl-btn" data-next aria-label="Siguiente">{flecha("M9 18l6-6-6-6")}</button></div>
 </div>"""
