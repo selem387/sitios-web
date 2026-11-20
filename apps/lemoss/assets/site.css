@@ -347,3 +347,6 @@ p{margin:0 0 1em;max-width:64ch;text-wrap:pretty}
 .calc-total strong{background:none;-webkit-background-clip:border-box;background-clip:border-box;color:#ff5a5a}
 .calc-total .calc-costo{font-size:clamp(1.9rem,1.3rem + 2.6vw,3rem);line-height:1}
 .calc-anio strong{font-size:clamp(2.3rem,1.5rem + 3.4vw,3.5rem)}
+.calc-anio{display:flex;align-items:baseline;gap:12px;flex-wrap:wrap}
+.calc-anio strong{color:#ff5a5a;margin:0}
+.calc-anio .calc-flecha{width:clamp(1.9rem,1.3rem + 2.2vw,2.7rem)}
