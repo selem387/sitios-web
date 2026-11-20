@@ -62,6 +62,18 @@ document.addEventListener('visibilitychange',function(){document.hidden?clearTim
 if(rm)sl.classList.add('pausa');marcar(0);prog();
 })();"""
 
+# Titular de portada: alterna solo entre los mensajes de .hero-rot; se detiene con el cursor encima y con movimiento reducido
+JS_ROT = """(function(){
+var r=document.querySelector('[data-rot]');if(!r)return;
+var s=r.querySelectorAll('.hr-s'),d=document.querySelectorAll('[data-rot-dots] button'),i=0,t,enc=false,rm=matchMedia('(prefers-reduced-motion: reduce)').matches,DUR=7000;
+function prog(){clearTimeout(t);if(!rm&&!enc&&!document.hidden)t=setTimeout(function(){ir(i+1)},DUR)}
+function ir(k){i=(k+s.length)%s.length;s.forEach(function(x,j){x.classList.toggle('on',j===i)});d.forEach(function(b,j){b.setAttribute('aria-current',j===i?'true':'false')});prog()}
+d.forEach(function(b,j){b.onclick=function(){ir(j)}});
+r.addEventListener('mouseenter',function(){enc=true;clearTimeout(t)});r.addEventListener('mouseleave',function(){enc=false;prog()});
+document.addEventListener('visibilitychange',prog);
+ir(0);
+})();"""
+
 GTM_ID = "GTM-WWSJ3Q4P"  # Google Tag Manager, cuenta Lemoss (contacto@lemoss.co)
 
 NAV = [("/servicios/", "Servicios"), ("/casos/", "Casos"), ("/autodiagnostico/", "Autodiagnóstico"), ("/blog/", "Blog"), ("/sobre/", "Nosotros")]
@@ -148,6 +160,7 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
   <div class="wrap legal"><span>© {datetime.date.today().year} Lemoss</span><a href="/privacidad/">Aviso de privacidad</a><a href="/terminos/">Términos y condiciones</a></div>
 </footer>
 <script>{JS_MEDICION}</script>
+<script>{JS_ROT}</script>
 <script>{JS_GLOBAL}</script>
 <a class="wa-flot" href="{wa()}" rel="noopener" aria-label="Escribir por WhatsApp"><svg viewBox="0 0 24 24" width="26" height="26" aria-hidden="true"><path fill="currentColor" d="M12 2a10 10 0 0 0-8.6 15.1L2 22l5-1.3A10 10 0 1 0 12 2Zm0 18.2a8.2 8.2 0 0 1-4.2-1.1l-.3-.2-3 .8.8-2.9-.2-.3A8.2 8.2 0 1 1 12 20.2Zm4.5-6.1c-.2-.1-1.5-.7-1.7-.8-.2-.1-.4-.1-.6.1l-.8 1c-.1.2-.3.2-.5.1a6.7 6.7 0 0 1-3.3-2.9c-.3-.4.2-.4.7-1.3.1-.2 0-.3 0-.4l-.8-1.8c-.2-.5-.4-.4-.6-.4h-.5a1 1 0 0 0-.7.3 3 3 0 0 0-.9 2.2 5.2 5.2 0 0 0 1.1 2.8 11.9 11.9 0 0 0 4.6 4c1.7.7 2.4.8 3.2.7a2.8 2.8 0 0 0 1.8-1.3 2.3 2.3 0 0 0 .2-1.3c-.1-.1-.2-.2-.4-.3Z"/></svg></a>
 </body>
@@ -437,8 +450,12 @@ def home():
 <section class="hero"><div class="wrap hero-in">
 <div>
 <p class="pill">Lemoss Consulting → Socio de resultados</p>
-<h1>Somos tu socio <span class="az">de resultados</span></h1>
-<p class="lead lead-xl">Aumentamos tus ventas y reducimos tus costos con tecnología. <strong>Ganamos cuando tú ganas.</strong></p>
+<div class="hero-rot" data-rot>
+<div class="hr-s on"><h1>Crece con menos riesgo y <span class="az">resultados medibles</span></h1></div>
+<div class="hr-s"><p class="h1">Vende más, gasta menos, <span class="az">arriesga menos</span></p></div>
+</div>
+<div class="hr-dots" data-rot-dots><button type="button" aria-label="Ver el primer mensaje" aria-current="true"></button><button type="button" aria-label="Ver el segundo mensaje"></button></div>
+<p class="lead lead-xl">Una cuota mínima de operación y participación solo sobre lo que se comprueba.</p>
 <div class="acciones"><a class="btn" href="{wa()}" rel="noopener">Escríbenos por WhatsApp</a><a class="btn btn-2" href="/autodiagnostico/">Autodiagnóstico</a></div>
 </div>
 {slider_html()}
