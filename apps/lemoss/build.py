@@ -76,7 +76,7 @@ ir(0);
 
 GTM_ID = "GTM-WWSJ3Q4P"  # Google Tag Manager, cuenta Lemoss (contacto@lemoss.co)
 
-NAV = [("/servicios/", "Servicios"), ("/casos/", "Casos"), ("/autodiagnostico/", "Autodiagnóstico"), ("/blog/", "Blog"), ("/sobre/", "Nosotros")]
+NAV = [("/servicios/", "Servicios"), ("/casos/", "Casos"), ("/autodiagnostico/", "Diagnóstico gratuito"), ("/blog/", "Blog"), ("/sobre/", "Nosotros")]
 
 
 def layout(path, title, desc, body, schema=None, og_type="website", extra_head=""):
@@ -204,8 +204,8 @@ PERSONA = {
 WEBSITE = {"@context": "https://schema.org", "@type": "WebSite", "@id": SITE + "/#web", "url": SITE + "/", "name": "Lemoss", "inLanguage": "es-MX", "publisher": {"@id": SITE + "/#lemoss"}}
 
 ETAPAS = [
-    ("Autodiagnóstico", "Gratis · 10 minutos", "Respondes ocho preguntas sobre tus procesos y sabes de inmediato qué tan listo está un proceso para automatizarse y por dónde conviene empezar.", "/autodiagnostico/", "Hacer el autodiagnóstico"),
-    ("Diagnóstico", "Sin costo", "Revisamos contigo procesos, datos y sistemas, calculamos cuánto te cuesta hoy cada proceso y fijamos por escrito una sola métrica y su línea base, firmada por ambas partes.", None, None),
+    ("Diagnóstico gratuito", "En línea · 10 minutos", "Respondes ocho preguntas sobre tus procesos y sabes de inmediato qué tan listo está un proceso para automatizarse y por dónde conviene empezar.", "/autodiagnostico/", "Hacer el diagnóstico gratuito"),
+    ("Sesión de línea base", "Sin costo", "Revisamos contigo procesos, datos y sistemas, validamos cuánto te cuesta hoy cada proceso y fijamos por escrito una sola métrica y su línea base, firmada por ambas partes.", None, None),
     ("Paquete de resultados", "Cuota mensual + participación · mínimo 3 meses", "Eliges cuánto riesgo compartimos: a menor cuota fija, mayor es nuestra participación en las ventas que generamos y en los costos que reducimos.", "/servicios/#paquetes", "Ver los paquetes"),
 ]
 
@@ -213,7 +213,7 @@ ETAPAS = [
 PAQUETES = [
     ("Operación", 18000, 10, 3, "La cuota más alta y la participación más baja. Para quien prefiere un costo previsible y quedarse con casi todo el resultado."),
     ("Equilibrio", 12000, 25, 5, "El punto medio entre cuota fija y participación en resultados."),
-    ("Socio", 6500, 40, 8, "La cuota más baja y la participación más alta. Lo ofrecemos cuando el diagnóstico encuentra una línea base clara y medible."),
+    ("Socio", 6500, 40, 8, "La cuota más baja y la participación más alta. Lo ofrecemos cuando hay una línea base clara y medible."),
 ]
 MESES_AHORRO = 12  # meses durante los que se cobra la participación en ahorro
 
@@ -287,9 +287,9 @@ INDUSTRIAS = [
 
 FAQ = [
     ("¿Qué significa ser socio de resultados?", "Que antes de empezar acordamos por escrito una métrica y su línea base, y una parte de lo que cobramos depende de lo que logremos: un porcentaje del ahorro comprobado o una comisión sobre los pedidos que generamos. Ganamos cuando tú ganas."),
-    ("¿Cuánto cuesta trabajar con Lemoss?", "El autodiagnóstico y el diagnóstico no tienen costo. Después eliges un paquete: una cuota mensual de $6,500 a $18,000 MXN más IVA y una participación en los resultados. A menor cuota, mayor participación. El compromiso mínimo es de tres meses."),
-    ("¿Cómo saben qué ventas o ahorros generó Lemoss?", "En ahorro, comparamos el costo real de cada mes contra la línea base firmada en el diagnóstico. En ventas, solo contamos los pedidos que entran por nuestro agente de WhatsApp, por una liga con seguimiento o con un código. Las ventas que tu equipo cierra por su cuenta no generan comisión."),
-    ("¿Cuánto tiempo tarda en verse un resultado?", "El resultado se mide cada mes contra la línea base que fijamos en el diagnóstico. El compromiso mínimo es de tres meses; después continúas mes a mes."),
+    ("¿Cuánto cuesta trabajar con Lemoss?", "El diagnóstico gratuito en línea y la sesión de línea base no tienen costo. Después eliges un paquete: una cuota mensual de $6,500 a $18,000 MXN más IVA y una participación en los resultados. A menor cuota, mayor participación. El compromiso mínimo es de tres meses."),
+    ("¿Cómo saben qué ventas o ahorros generó Lemoss?", "En ahorro, comparamos el costo real de cada mes contra la línea base firmada antes de empezar. En ventas, solo contamos los pedidos que entran por nuestro agente de WhatsApp, por una liga con seguimiento o con un código. Las ventas que tu equipo cierra por su cuenta no generan comisión."),
+    ("¿Cuánto tiempo tarda en verse un resultado?", "El resultado se mide cada mes contra la línea base que fijamos antes de empezar. El compromiso mínimo es de tres meses; después continúas mes a mes."),
     ("¿Para qué tamaño de empresa es?", "Principalmente para empresas medianas, de 20 a 250 colaboradores, con venta consultiva o procesos operativos que hoy dependen de mucho trabajo manual."),
     ("¿Trabajan solo en Mérida?", "No. Nuestra sede está en Mérida y atendemos a empresas de la Ciudad de México y de todo el país de forma remota, con visitas presenciales cuando el proyecto lo requiere."),
     ("¿Tengo que cambiar mis sistemas actuales?", "Normalmente no. Primero conectamos lo que ya usas (CRM, ERP, hojas de cálculo, WhatsApp, correo) y solo proponemos cambiar una herramienta cuando el ahorro lo justifica."),
@@ -302,7 +302,7 @@ FAQ = [
 def cta_final(titulo="¿Platicamos de tu proyecto?", texto="Cuéntanos qué proceso te quita más tiempo o dinero. En una llamada de 30 minutos te decimos si la tecnología puede resolverlo y cómo lo mediríamos."):
     return f"""<section class="sec cta-fin"><div class="wrap"><div class="cta-in rv"><p class="kicker">Siguiente paso</p>
 <h2>{titulo}</h2><p class="lead">{texto}</p>
-<div class="acciones"><a class="btn" href="{wa()}" rel="noopener">Escríbenos por WhatsApp</a><a class="btn btn-2" href="/autodiagnostico/">Hacer el autodiagnóstico</a></div>
+<div class="acciones"><a class="btn" href="{wa()}" rel="noopener">Escríbenos por WhatsApp</a><a class="btn btn-2" href="/autodiagnostico/">Hacer el diagnóstico gratuito</a></div>
 </div></div></section>"""
 
 
@@ -343,7 +343,7 @@ def calculo_html():
 <section class="sec" id="ahorros"><div class="wrap dos">
 <div class="rv"><p class="kicker">Reducción de costos</p><h2>Cómo participamos en tus ahorros</h2></div>
 <div><ol class="pasos-txt rv">
-<li><strong>Línea base.</strong> El costo promedio mensual del proceso antes de empezar. Se calcula en el diagnóstico y la firmamos ambas partes.</li>
+<li><strong>Línea base.</strong> El costo promedio mensual del proceso antes de empezar. La calculamos contigo en la sesión de línea base y la firmamos ambas partes.</li>
 <li><strong>Ahorro del mes.</strong> La línea base menos el costo real de ese mes.</li>
 <li><strong>Participación.</strong> El porcentaje de tu paquete sobre ese ahorro, durante {MESES_AHORRO} meses.</li>
 </ol>
@@ -402,7 +402,7 @@ def migas(*pares):
 # Slider del hero: servicios (s) y modelos de trabajo (m) intercalados
 SLIDES = [
     ("s", "Estrategia tecnológica y de negocio", "Hoja de ruta, prioridades y presupuesto con el retorno esperado de cada iniciativa, incluidos nuevos modelos de negocio de servicios tecnológicos.", "Diagnóstico y acompañamiento a dirección", "/servicios/"),
-    ("m", "Diagnóstico", "Revisamos procesos, datos y sistemas, calculamos cuánto te cuesta hoy cada proceso y fijamos una métrica con su línea base.", "Sin costo", "/servicios/"),
+    ("m", "Sesión de línea base", "Revisamos contigo procesos, datos y sistemas, validamos cuánto te cuesta hoy cada proceso y fijamos una métrica con su línea base.", "Sin costo", "/servicios/"),
     ("s", "Procesos y operación", "Inventario, pedidos, cotizaciones y reportes conectados y automatizados de punta a punta, sin capturas manuales.", "ERP, CRM y hojas de cálculo integrados", "/servicios/"),
     ("m", "Paquete Operación", "La cuota más alta y la participación más baja: 10% del ahorro comprobado y 3% de cada pedido atribuido.", "$18,000 MXN al mes", "/servicios/#paquetes"),
     ("s", "Sistemas y plataformas", "Cuando lo que necesitas no existe, diseñamos la arquitectura y construimos la plataforma, de sistemas de gestión a servicios financieros.", "PaaS, APIs y nube", "/servicios/"),
@@ -456,7 +456,7 @@ def home():
 <div class="hr-s"><p class="h1">Diagnóstico gratuito y <span class="az">sin compromiso</span></p><p class="lead lead-xl">Medimos cuánto te cuesta hoy cada proceso, antes de que pagues un peso.</p></div>
 </div>
 <div class="hr-dots" data-rot-dots><button type="button" aria-label="Ver el primer mensaje" aria-current="true"></button><button type="button" aria-label="Ver el segundo mensaje"></button><button type="button" aria-label="Ver el tercer mensaje"></button></div>
-<div class="acciones"><a class="btn" href="{wa()}" rel="noopener">Escríbenos por WhatsApp</a><a class="btn btn-2" href="/autodiagnostico/">Autodiagnóstico</a></div>
+<div class="acciones"><a class="btn" href="{wa()}" rel="noopener">Escríbenos por WhatsApp</a><a class="btn btn-2" href="/autodiagnostico/">Diagnóstico gratuito</a></div>
 </div>
 {slider_html()}
 </div></section>
@@ -530,14 +530,14 @@ def servicios():
         lis = "".join(f"<li>{x}</li>" for x in items)
         bloques += f'<section class="serv card rv"><h2>{t}</h2><p>{d}</p><ul class="puntos">{lis}</ul></section>'
     criterios = """<ul class="puntos">
-<li>El diagnóstico encontró una línea base clara: sabemos cuánto cuesta o cuánto vende hoy el proceso.</li>
+<li>La sesión de línea base encontró una cifra clara: sabemos cuánto cuesta o cuánto vende hoy el proceso.</li>
 <li>La métrica se puede leer en tus propios sistemas (CRM, ERP, facturación) o en los nuestros.</li>
 <li>Hay acceso a los datos necesarios para medirla cada mes.</li>
 <li>Las reglas de cálculo quedan firmadas antes de empezar.</li>
 </ul>"""
     oferta = {"@context": "https://schema.org", "@type": "OfferCatalog", "name": "Servicios de Lemoss", "itemListElement": [
-        {"@type": "Offer", "itemOffered": {"@type": "Service", "name": "Autodiagnóstico de procesos", "provider": {"@id": SITE + "/#lemoss"}}, "price": "0", "priceCurrency": "MXN"},
-        {"@type": "Offer", "itemOffered": {"@type": "Service", "name": "Diagnóstico tecnológico y de procesos", "provider": {"@id": SITE + "/#lemoss"}}, "price": 0, "priceCurrency": "MXN"},
+        {"@type": "Offer", "itemOffered": {"@type": "Service", "name": "Diagnóstico gratuito en línea", "provider": {"@id": SITE + "/#lemoss"}}, "price": "0", "priceCurrency": "MXN"},
+        {"@type": "Offer", "itemOffered": {"@type": "Service", "name": "Sesión de línea base", "provider": {"@id": SITE + "/#lemoss"}}, "price": 0, "priceCurrency": "MXN"},
     ] + [
         {"@type": "Offer", "itemOffered": {"@type": "Service", "name": f"Paquete {n}", "description": f"{txt} Cuota mensual más {ahorro}% del ahorro comprobado y {b2b}% de cada pedido atribuido en venta a empresas.", "provider": {"@id": SITE + "/#lemoss"}},
          "priceSpecification": {"@type": "UnitPriceSpecification", "price": cuota, "priceCurrency": "MXN", "unitText": "mes", "valueAddedTaxIncluded": False}}
@@ -606,17 +606,17 @@ def autodiagnostico():
 (function(){var f=document.getElementById('diag'),r=document.getElementById('res');
 f.addEventListener('submit',function(ev){ev.preventDefault();var t=0,n=%d;for(var i=0;i<n;i++){var s=f.querySelector('input[name=p'+i+']:checked');if(!s){f.querySelector('input[name=p'+i+']').focus();return}t+=+s.value}
 var pct=Math.round(t/(n*2)*100),h,p;
-if(pct>=70){h='Tu proceso está listo para trabajar por resultados';p='Tiene volumen, está claro y hay datos. Es el escenario ideal para fijar una línea base en el diagnóstico y elegir un paquete.'}
-else if(pct>=45){h='Vas bien, con un par de huecos por cerrar';p='Conviene resolver primero las respuestas más bajas (normalmente documentar el proceso o calcular su costo). Un diagnóstico te dice exactamente cuáles.'}
+if(pct>=70){h='Tu proceso está listo para trabajar por resultados';p='Tiene volumen, está claro y hay datos. Es el escenario ideal para fijar una línea base y elegir un paquete.'}
+else if(pct>=45){h='Vas bien, con un par de huecos por cerrar';p='Conviene resolver primero las respuestas más bajas (normalmente documentar el proceso o calcular su costo). En la sesión de línea base, sin costo, te decimos exactamente cuáles.'}
 else{h='Primero conviene ordenar el proceso';p='Antes de invertir en tecnología, define cómo se hace bien y dónde vive la información. Te podemos orientar en una llamada sin costo.'}
 r.querySelector('h2').textContent=h+' ('+pct+'%%)';r.querySelector('p').textContent=p;
-var msg='Hola, hice el autodiagnóstico en lemoss.co y obtuve '+pct+'%%: '+h+'. Quiero platicar.';
+var msg='Hola, hice el diagnóstico gratuito en lemoss.co y obtuve '+pct+'%%: '+h+'. Quiero platicar.';
 r.querySelector('a').href='https://wa.me/%s?text='+encodeURIComponent(msg);r.hidden=false;r.focus();
 window.dataLayer=window.dataLayer||[];dataLayer.push({event:'diagnostico_completado',puntaje:pct,resultado:pct>=70?'listo_piloto':pct>=45?'huecos':'ordenar_proceso'});});})();
 </script>""" % (len(PREGUNTAS), WA)
     body = f"""
 <section class="hero hero-sm"><div class="wrap">
-<h1>Autodiagnóstico de procesos</h1>
+<h1>Diagnóstico gratuito de procesos</h1>
 <p class="lead">Piensa en un proceso concreto de tu empresa (atender prospectos, cotizar, inventario, cobranza) y responde ocho preguntas. Toma 5 minutos y no guardamos tus respuestas.</p>
 </div></section>
 <section class="sec"><div class="wrap estrecho">
@@ -624,9 +624,9 @@ window.dataLayer=window.dataLayer||[];dataLayer.push({event:'diagnostico_complet
 <div id="res" class="resultado" hidden tabindex="-1" aria-live="polite"><h2></h2><p></p><a class="btn" href="{wa()}" rel="noopener">Platicarlo por WhatsApp</a></div>
 </div></section>
 """
-    return layout("/autodiagnostico/", "Autodiagnóstico gratis: ¿tu proceso está listo para automatizarse? | Lemoss",
+    return layout("/autodiagnostico/", "Diagnóstico gratuito: ¿tu proceso está listo para automatizarse? | Lemoss",
                   "Ocho preguntas para saber si un proceso de tu empresa está listo para automatizarse, con o sin inteligencia artificial, y por dónde empezar. Gratis, sin registro.",
-                  body + js, [ORG, migas(("Autodiagnóstico", "/autodiagnostico/"))])
+                  body + js, [ORG, migas(("Diagnóstico gratuito", "/autodiagnostico/"))])
 
 
 def sobre():
@@ -678,7 +678,7 @@ ARTICULOS = [
 <p>Si el riesgo es bajo (clasificar correos, resumir llamadas), automatiza completo. Si es alto (cotizar, cobrar, prometer fechas), que la IA prepare y una persona apruebe.</p>
 <h2>Regla práctica</h2>
 <p>Con cuatro o cinco respuestas afirmativas tienes un buen candidato para una prueba de 30 días con una meta medible. Con tres, resuelve primero la que falló. Con dos o menos, ordena el proceso antes de pensar en IA.</p>
-<p>¿Quieres hacerlo con más detalle? Prueba el <a href="/autodiagnostico/">autodiagnóstico de ocho preguntas</a>.</p>"""},
+<p>¿Quieres hacerlo con más detalle? Prueba el <a href="/autodiagnostico/">diagnóstico gratuito de ocho preguntas</a>.</p>"""},
     {"slug": "como-medir-si-la-ia-funciona-en-ventas", "titulo": "Cómo saber si la IA le está funcionando a tu equipo comercial",
      "desc": "Cuatro métricas para medir el efecto de la inteligencia artificial en ventas desde la primera semana: tiempo de respuesta, contacto, citas y horas liberadas.",
      "fecha": "2026-11-03",
@@ -781,7 +781,7 @@ Lemoss (también Lemoss Consulting) se presenta como socio de resultados: aument
 {giros}
 
 ## Cómo se mide
-- Ahorro: línea base firmada en el diagnóstico menos el costo real de cada mes.
+- Ahorro: línea base firmada antes de empezar menos el costo real de cada mes.
 - Ventas: pedidos pagados que entran por el agente de WhatsApp, una liga con seguimiento o un código. Las ventas que el equipo del cliente cierra por su cuenta no generan comisión.
 
 ## Casos
@@ -795,7 +795,7 @@ Lemoss (también Lemoss Consulting) se presenta como socio de resultados: aument
 ## Páginas
 - [Servicios y precios]({SITE}/servicios/)
 - [Casos]({SITE}/casos/)
-- [Autodiagnóstico]({SITE}/autodiagnostico/)
+- [Diagnóstico gratuito]({SITE}/autodiagnostico/)
 - [Nosotros]({SITE}/sobre/)
 - [Blog]({SITE}/blog/)
 
