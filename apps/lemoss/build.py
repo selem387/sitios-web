@@ -451,11 +451,11 @@ def home():
 <div>
 <p class="pill">Lemoss Consulting → Socio de resultados</p>
 <div class="hero-rot" data-rot>
-<div class="hr-s on"><h1>Crece con menos riesgo y <span class="az">resultados medibles</span></h1></div>
-<div class="hr-s"><p class="h1">Vende más, gasta menos, <span class="az">arriesga menos</span></p></div>
+<div class="hr-s on"><h1>Crece con menos riesgo y <span class="az">resultados medibles</span></h1><p class="lead lead-xl">Una cuota mínima de operación y participación solo sobre lo que se comprueba.</p></div>
+<div class="hr-s"><p class="h1">Vende más, gasta menos, <span class="az">arriesga menos</span></p><p class="lead lead-xl">Una cuota mínima de operación y participación solo sobre lo que se comprueba.</p></div>
+<div class="hr-s"><p class="h1">Diagnóstico gratuito y <span class="az">sin compromiso</span></p><p class="lead lead-xl">Medimos cuánto te cuesta hoy cada proceso, antes de que pagues un peso.</p></div>
 </div>
-<div class="hr-dots" data-rot-dots><button type="button" aria-label="Ver el primer mensaje" aria-current="true"></button><button type="button" aria-label="Ver el segundo mensaje"></button></div>
-<p class="lead lead-xl">Una cuota mínima de operación y participación solo sobre lo que se comprueba.</p>
+<div class="hr-dots" data-rot-dots><button type="button" aria-label="Ver el primer mensaje" aria-current="true"></button><button type="button" aria-label="Ver el segundo mensaje"></button><button type="button" aria-label="Ver el tercer mensaje"></button></div>
 <div class="acciones"><a class="btn" href="{wa()}" rel="noopener">Escríbenos por WhatsApp</a><a class="btn btn-2" href="/autodiagnostico/">Autodiagnóstico</a></div>
 </div>
 {slider_html()}

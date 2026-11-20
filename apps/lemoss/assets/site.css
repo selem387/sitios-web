@@ -299,7 +299,9 @@ p{margin:0 0 1em;max-width:64ch;text-wrap:pretty}
 .hr-s .h1{color:var(--fg);font-family:var(--head);font-weight:700;line-height:1.12;letter-spacing:-.025em;font-size:clamp(2.1rem,1.2rem + 2.9vw,3.5rem);max-width:17ch;margin:0 0 .5em;text-wrap:balance}
 .js .hr-s{grid-area:1/1;opacity:0;visibility:hidden;transition:opacity .7s ease,visibility .7s}
 .js .hr-s.on{opacity:1;visibility:visible}
-.hr-dots{display:flex;gap:8px;margin:0 0 26px}
+.hr-dots{display:flex;gap:8px;margin:6px 0 0}
+.hr-s .lead-xl{margin-bottom:.6em}
+.no-js .hr-s+.hr-s{margin-top:1.2em}
 .hr-dots button{width:34px;height:4px;padding:0;border:0;border-radius:4px;background:var(--line-2);cursor:pointer;transition:background .3s}
 .hr-dots button[aria-current="true"]{background:var(--accent)}
 .no-js .hr-dots{display:none}
