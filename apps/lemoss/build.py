@@ -730,7 +730,8 @@ def autodiagnostico():
 <p class="kicker">Tu resultado</p>
 <h2>Hoy <span id="r-n">los procesos que elegiste</span> te cuestan alrededor de</h2>
 <p class="calc-total"><span class="calc-costo">Costo</span><strong id="r-mes"></strong><svg class="calc-flecha" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M12 3v16m0 0l-7-7m7 7l7-7" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/></svg><span>al mes</span></p>
-<p class="calc-sub">Son <strong id="r-anio"></strong> al año. Cada 10% que se reduzca son <strong id="r-diez"></strong> al mes.</p>
+<p class="calc-anio">Son <strong id="r-anio"></strong> al año</p>
+<p class="calc-sub">Cada 10% que se reduzca son <strong id="r-diez"></strong> al mes.</p>
 <p class="muted">Es una estimación hecha con tus respuestas. La cifra definitiva se valida con tus datos reales en la sesión de línea base.</p>
 
 <form id="calc-gate" class="calc-gate">
