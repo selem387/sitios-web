@@ -337,3 +337,7 @@ p{margin:0 0 1em;max-width:64ch;text-wrap:pretty}
 #calc-res,#calc-det{scroll-margin-top:92px}
 .calc-res .tabla th,.calc-res .tabla td{padding:12px}
 .calc-res .tabla tbody th{white-space:normal;min-width:11ch}
+.calc-total .calc-costo{color:#ff5a5a;font-family:var(--head);font-weight:700;font-size:clamp(1.3rem,1rem + 1.4vw,1.9rem);letter-spacing:-.01em}
+.calc-flecha{flex:0 0 auto;align-self:center;width:clamp(2.2rem,1.5rem + 2.6vw,3.2rem);height:auto;color:#ff5a5a;animation:calc-baja 1.6s ease-in-out infinite}
+@keyframes calc-baja{0%,100%{transform:translateY(-4px)}50%{transform:translateY(5px)}}
+@media (prefers-reduced-motion:reduce){.calc-flecha{animation:none}}
