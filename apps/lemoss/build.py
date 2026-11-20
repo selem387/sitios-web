@@ -165,10 +165,10 @@ ORG = {
     "url": SITE + "/",
     "logo": SITE + "/assets/lemoss-logo-1024.png",
     "image": SITE + "/assets/og.png",
-    "description": "Consultoría en estrategia tecnológica por resultados para empresas medianas en México: hoja de ruta tecnológica, procesos, sistemas, ventas e inteligencia artificial, con diagnóstico, piloto con meta pactada, implementación y operación.",
+    "description": "Consultoría en estrategia tecnológica por resultados para empresas medianas en México: hoja de ruta tecnológica, procesos, sistemas, ventas e inteligencia artificial, con diagnóstico sin costo y paquetes de cuota mensual más participación en resultados.",
     "email": EMAIL,
     "telephone": "+52 55 2706 9296",
-    "priceRange": "Diagnóstico sin costo; piloto desde $45,000 MXN",
+    "priceRange": "Diagnóstico sin costo; paquetes desde $6,500 MXN al mes más participación en resultados",
     "address": {"@type": "PostalAddress", "addressLocality": "Mérida", "addressRegion": "Yucatán", "addressCountry": "MX"},
     "areaServed": [{"@type": "Country", "name": "México"}, {"@type": "City", "name": "Mérida"}, {"@type": "City", "name": "Ciudad de México"}],
     "openingHoursSpecification": [{"@type": "OpeningHoursSpecification", "dayOfWeek": ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"], "opens": "09:00", "closes": "18:00"}],
@@ -192,12 +192,31 @@ WEBSITE = {"@context": "https://schema.org", "@type": "WebSite", "@id": SITE + "
 
 ETAPAS = [
     ("Autodiagnóstico", "Gratis · 10 minutos", "Respondes ocho preguntas sobre tus procesos y sabes de inmediato qué tan listo está un proceso para automatizarse y por dónde conviene empezar.", "/autodiagnostico/", "Hacer el autodiagnóstico"),
-    ("Diagnóstico", "Sin costo", "Revisamos contigo procesos, datos y sistemas, calculamos cuánto te cuesta hoy cada proceso y te entregamos un plan priorizado con el retorno esperado de cada caso.", None, None),
-    ("Piloto con meta pactada", "Desde $45,000 MXN · 30 a 60 días", "Elegimos un proceso, fijamos por escrito una meta medible (por ejemplo tiempo de respuesta, prospectos atendidos o horas ahorradas) y lo ponemos a funcionar con tu equipo real.", None, None),
-    ("Implementación", "Proyecto cerrado, honorario + bono o garantía", "Con el piloto probado, escalamos a más procesos o áreas. Tú eliges el modelo: precio cerrado, honorario base más bono por resultado, o garantía de resultado con condiciones por escrito.", None, None),
-    ("Operación continua", "Mensualidad", "Monitoreo, ajustes, nuevas automatizaciones y reportes mensuales para que lo implementado siga rindiendo y crezca con tu operación.", None, None),
-    ("Socio estratégico", "Participación en resultados", "Para procesos ya probados con una métrica que se puede medir en tus propios sistemas, podemos compartir el resultado en lugar de cobrar honorarios fijos.", None, None),
+    ("Diagnóstico", "Sin costo", "Revisamos contigo procesos, datos y sistemas, calculamos cuánto te cuesta hoy cada proceso y fijamos por escrito una sola métrica y su línea base, firmada por ambas partes.", None, None),
+    ("Paquete de resultados", "Cuota mensual + participación · mínimo 3 meses", "Eliges cuánto riesgo compartimos: a menor cuota fija, mayor es nuestra participación en las ventas que generamos y en los costos que reducimos.", "/servicios/#paquetes", "Ver los paquetes"),
 ]
+
+# Paquetes: (nombre, cuota mensual MXN, % del ahorro, % de comisión B2B, descripción)
+PAQUETES = [
+    ("Operación", 18000, 10, 3, "La cuota más alta y la participación más baja. Para quien prefiere un costo previsible y quedarse con casi todo el resultado."),
+    ("Equilibrio", 12000, 25, 5, "El punto medio entre cuota fija y participación en resultados."),
+    ("Socio", 6500, 40, 8, "La cuota más baja y la participación más alta. Lo ofrecemos cuando el diagnóstico encuentra una línea base clara y medible."),
+]
+MESES_AHORRO = 12  # meses durante los que se cobra la participación en ahorro
+
+# Comisión sobre pedido atribuido en venta al consumidor, por giro: (giro, Operación, Equilibrio, Socio)
+GIROS_B2C = [
+    ("Moda y accesorios", 4, 6, 9),
+    ("Belleza y suplementos", 5, 8, 12),
+    ("Hogar y muebles", 3, 5, 8),
+    ("Electrónica", 1, 2, 3),
+    ("Alimentos y restaurantes", 4, 6, 10),
+]
+AHORRO_EJEMPLO = 60000  # ahorro mensual del ejemplo de cálculo
+
+
+def pesos(n):
+    return f"${n:,.0f}"
 
 SERVICIOS = [
     ("Estrategia tecnológica y de negocio", "Diagnóstico de cómo la tecnología puede hacer crecer tu negocio: hoja de ruta, prioridades, presupuesto y modelos de negocio de servicios tecnológicos, con el retorno esperado de cada iniciativa.", ["Diagnóstico y hoja de ruta tecnológica", "Modelos de negocio de servicios tecnológicos", "Evaluación y selección de proveedores", "Acompañamiento a dirección"]),
@@ -254,9 +273,10 @@ INDUSTRIAS = [
 ]
 
 FAQ = [
-    ("¿Qué significa consultoría por resultados?", "Que antes de implementar acordamos por escrito una meta medible, como tiempo de respuesta, prospectos atendidos u horas ahorradas, y el trabajo se evalúa contra esa meta. En etapas avanzadas parte de nuestros honorarios puede depender de alcanzarla."),
-    ("¿Cuánto cuesta trabajar con Lemoss?", "El autodiagnóstico y el diagnóstico no tienen costo. Un piloto con meta pactada empieza en $45,000 MXN más IVA y dura de 30 a 60 días. La implementación se cotiza según el alcance, con precio cerrado, honorario más bono o garantía de resultado."),
-    ("¿Cuánto tiempo tarda en verse un resultado?", "El piloto está diseñado para medir un resultado en 30 a 60 días sobre un proceso real de tu empresa."),
+    ("¿Qué significa ser socio de resultados?", "Que antes de empezar acordamos por escrito una métrica y su línea base, y una parte de lo que cobramos depende de lo que logremos: un porcentaje del ahorro comprobado o una comisión sobre los pedidos que generamos. Ganamos cuando tú ganas."),
+    ("¿Cuánto cuesta trabajar con Lemoss?", "El autodiagnóstico y el diagnóstico no tienen costo. Después eliges un paquete: una cuota mensual de $6,500 a $18,000 MXN más IVA y una participación en los resultados. A menor cuota, mayor participación. El compromiso mínimo es de tres meses."),
+    ("¿Cómo saben qué ventas o ahorros generó Lemoss?", "En ahorro, comparamos el costo real de cada mes contra la línea base firmada en el diagnóstico. En ventas, solo contamos los pedidos que entran por nuestro agente de WhatsApp, por una liga con seguimiento o con un código. Las ventas que tu equipo cierra por su cuenta no generan comisión."),
+    ("¿Cuánto tiempo tarda en verse un resultado?", "El resultado se mide cada mes contra la línea base que fijamos en el diagnóstico. El compromiso mínimo es de tres meses; después continúas mes a mes."),
     ("¿Para qué tamaño de empresa es?", "Principalmente para empresas medianas, de 20 a 250 colaboradores, con venta consultiva o procesos operativos que hoy dependen de mucho trabajo manual."),
     ("¿Trabajan solo en Mérida?", "No. Nuestra sede está en Mérida y atendemos a empresas de la Ciudad de México y de todo el país de forma remota, con visitas presenciales cuando el proyecto lo requiere."),
     ("¿Tengo que cambiar mis sistemas actuales?", "Normalmente no. Primero conectamos lo que ya usas (CRM, ERP, hojas de cálculo, WhatsApp, correo) y solo proponemos cambiar una herramienta cuando el ahorro lo justifica."),
@@ -277,8 +297,63 @@ def etapas_html(detalle=False):
     items = ""
     for i, (n, precio, txt, href, link) in enumerate(ETAPAS):
         enlace = f'<p><a href="{href}">{link}</a></p>' if href else ""
-        items += f'<li class="card rv"><span class="paso" aria-hidden="true">{i}</span><h3>{n}</h3><p class="precio">{precio}</p><p>{txt}</p>{enlace}</li>'
+        items += f'<li class="card rv"><span class="paso" aria-hidden="true">{i + 1}</span><h3>{n}</h3><p class="precio">{precio}</p><p>{txt}</p>{enlace}</li>'
     return f'<ol class="ruta">{items}</ol>'
+
+
+def paquetes_html():
+    items = ""
+    for n, cuota, ahorro, b2b, txt in PAQUETES:
+        items += f"""<li class="card rv"><h3>{n}</h3>
+<p class="paq-cuota"><strong>{pesos(cuota)}</strong><span>MXN al mes, más IVA</span></p>
+<p>{txt}</p>
+<ul class="puntos"><li><strong>{ahorro}%</strong> del ahorro comprobado</li><li><strong>{b2b}%</strong> de cada pedido atribuido, en venta a empresas</li><li>Comisión por giro, en venta al consumidor</li></ul></li>"""
+    return f'<ul class="paqs">{items}</ul>'
+
+
+def tabla(cab, filas):
+    th = "".join(f'<th scope="col">{c}</th>' for c in cab)
+    trs = "".join("<tr>" + f'<th scope="row">{f[0]}</th>' + "".join(f"<td>{c}</td>" for c in f[1:]) + "</tr>" for f in filas)
+    return f'<div class="tabla-x rv"><table class="tabla"><thead><tr>{th}</tr></thead><tbody>{trs}</tbody></table></div>'
+
+
+def calculo_html():
+    nombres = [p[0] for p in PAQUETES]
+    ej = []
+    for n, cuota, ahorro, _b, _t in PAQUETES:
+        part = AHORRO_EJEMPLO * ahorro // 100
+        ej.append((n, pesos(cuota), f"{pesos(cuota)} + {pesos(part)} = {pesos(cuota + part)}", pesos(AHORRO_EJEMPLO - cuota - part)))
+    t_ahorro = tabla(["Paquete", "Si no hay ahorro pagas", f"Con {pesos(AHORRO_EJEMPLO)} de ahorro pagas", "Te quedan"], ej)
+    t_b2b = tabla(["Tipo de venta"] + nombres, [("A otras empresas",) + tuple(f"{p[3]}%" for p in PAQUETES)])
+    t_b2c = tabla(["Giro"] + nombres, [(g, f"{a}%", f"{b}%", f"{c}%") for g, a, b, c in GIROS_B2C])
+    return f"""
+<section class="sec" id="ahorros"><div class="wrap dos">
+<div class="rv"><p class="kicker">Reducción de costos</p><h2>Cómo participamos en tus ahorros</h2></div>
+<div><ol class="pasos-txt rv">
+<li><strong>Línea base.</strong> El costo promedio mensual del proceso antes de empezar. Se calcula en el diagnóstico y la firmamos ambas partes.</li>
+<li><strong>Ahorro del mes.</strong> La línea base menos el costo real de ese mes.</li>
+<li><strong>Participación.</strong> El porcentaje de tu paquete sobre ese ahorro, durante {MESES_AHORRO} meses.</li>
+</ol>
+<p class="muted">Ejemplo con un proceso en el que reducimos {pesos(AHORRO_EJEMPLO)} MXN al mes:</p>
+{t_ahorro}
+</div>
+</div></section>
+
+<section class="sec" id="ventas"><div class="wrap dos">
+<div class="rv"><p class="kicker">Más ventas</p><h2>Cómo participamos en tus ventas</h2></div>
+<div><p class="rv">Cobramos una comisión sobre cada <strong>pedido atribuido</strong>: un pedido pagado que llegó por un canal que operamos nosotros. Si no hay pedidos, solo pagas la cuota.</p>
+{t_b2b}
+<p class="muted rv">En venta al consumidor la comisión depende del giro, porque el margen de cada producto es distinto:</p>
+{t_b2c}
+<h3 class="rv">Qué cuenta como pedido atribuido</h3>
+<ul class="puntos rv">
+<li><strong>Pedido tomado por el agente en WhatsApp.</strong> Cuando la venta puede cerrarse en el chat: catálogo, recompras y pedidos repetidos.</li>
+<li><strong>Liga con seguimiento.</strong> Cuando tu cliente paga en tu tienda o cobro en línea.</li>
+<li><strong>Cupón o código.</strong> Cuando la venta se cierra en mostrador, por teléfono o con un vendedor.</li>
+</ul>
+<p class="muted rv">Las ventas que tu equipo cierra por su cuenta, sin pasar por alguno de estos tres canales, no generan comisión.</p>
+</div>
+</div></section>"""
 
 
 def caso_tarjeta(c, completo=False):
@@ -314,15 +389,15 @@ def migas(*pares):
 # Slider del hero: servicios (s) y modelos de trabajo (m) intercalados
 SLIDES = [
     ("s", "Estrategia tecnológica y de negocio", "Hoja de ruta, prioridades y presupuesto con el retorno esperado de cada iniciativa, incluidos nuevos modelos de negocio de servicios tecnológicos.", "Diagnóstico y acompañamiento a dirección", "/servicios/"),
-    ("m", "Diagnóstico", "Revisamos procesos, datos y sistemas, calculamos cuánto te cuesta hoy cada proceso y te entregamos un plan priorizado.", "Sin costo", "/servicios/"),
+    ("m", "Diagnóstico", "Revisamos procesos, datos y sistemas, calculamos cuánto te cuesta hoy cada proceso y fijamos una métrica con su línea base.", "Sin costo", "/servicios/"),
     ("s", "Procesos y operación", "Inventario, pedidos, cotizaciones y reportes conectados y automatizados de punta a punta, sin capturas manuales.", "ERP, CRM y hojas de cálculo integrados", "/servicios/"),
-    ("m", "Piloto con meta pactada", "Un proceso, una meta medible por escrito y tu equipo real. En 30 a 60 días sabes si funciona.", "Desde $45,000 MXN · 30 a 60 días", "/servicios/"),
+    ("m", "Paquete Operación", "La cuota más alta y la participación más baja: 10% del ahorro comprobado y 3% de cada pedido atribuido.", "$18,000 MXN al mes", "/servicios/#paquetes"),
     ("s", "Sistemas y plataformas", "Cuando lo que necesitas no existe, diseñamos la arquitectura y construimos la plataforma, de sistemas de gestión a servicios financieros.", "PaaS, APIs y nube", "/servicios/"),
-    ("m", "Implementación", "Con el piloto probado escalamos a más procesos. Tú eliges: precio cerrado, honorario más bono o garantía de resultado.", "Proyecto cerrado · bono · garantía", "/servicios/"),
+    ("m", "Paquete Equilibrio", "El punto medio entre cuota fija y participación: 25% del ahorro comprobado y 5% de cada pedido atribuido.", "$12,000 MXN al mes", "/servicios/#paquetes"),
     ("s", "Ventas y atención", "Respuesta inmediata a cada prospecto, calificación automática y seguimiento por WhatsApp con un CRM que se actualiza solo.", "De 2 horas a 5 segundos de respuesta", "/casos/#angeles-alatorre"),
-    ("m", "Operación continua", "Monitoreo, ajustes, nuevas automatizaciones y reportes mensuales para que lo implementado siga rindiendo.", "Mensualidad", "/servicios/"),
+    ("m", "Paquete Socio", "La cuota más baja y la participación más alta: 40% del ahorro comprobado y 8% de cada pedido atribuido.", "$6,500 MXN al mes", "/servicios/#paquetes"),
     ("s", "Adopción de inteligencia artificial", "Agentes, contenido y análisis con IA en procesos reales y con supervisión humana, de la mano de timewins.ai.", "Agentes de IA en WhatsApp y web", "/servicios/"),
-    ("m", "Socio estratégico", "En procesos probados y medibles en tus propios sistemas, compartimos el resultado en lugar de cobrar honorarios fijos.", "Participación en resultados", "/servicios/"),
+    ("m", "Resultados que se pueden comprobar", "El ahorro se mide contra una línea base firmada. Las ventas, por los pedidos que entran por nuestro agente, una liga o un código.", "Ganamos cuando tú ganas", "/servicios/#ahorros"),
 ]
 
 ICONOS = [
@@ -361,9 +436,9 @@ def home():
     body = f"""
 <section class="hero"><div class="wrap hero-in">
 <div>
-<p class="pill">Lemoss Consulting → Escalamiento con IA por resultados</p>
-<h1>Vender más <span class="az">gastando menos</span></h1>
-<p class="lead lead-xl">Defina cuánto desea generar y ahorrar su empresa, y el resultado se remunera con cada beneficio comprobado.</p>
+<p class="pill">Lemoss Consulting → Socio de resultados</p>
+<h1>Somos tu socio <span class="az">de resultados</span></h1>
+<p class="lead lead-xl">Aumentamos tus ventas y reducimos tus costos con tecnología. <strong>Ganamos cuando tú ganas.</strong></p>
 <div class="acciones"><a class="btn" href="{wa()}" rel="noopener">Escríbenos por WhatsApp</a><a class="btn btn-2" href="/autodiagnostico/">Autodiagnóstico</a></div>
 </div>
 {slider_html()}
@@ -372,7 +447,7 @@ def home():
 <section class="cifras" aria-label="Resultados"><div class="wrap">
 <ul>
 <li><strong>5 s</strong><span>primera respuesta a prospectos, antes 2 horas</span></li>
-<li><strong>30–60 días</strong><span>para medir un piloto con meta pactada</span></li>
+<li><strong>3 meses</strong><span>de compromiso mínimo, después mes a mes</span></li>
 <li><strong>$0</strong><span>cuesta el diagnóstico inicial</span></li>
 <li><strong>+20 años</strong><span>en tecnología y sistemas críticos</span></li>
 </ul>
@@ -382,7 +457,7 @@ def home():
 <section class="sec"><div class="wrap dos">
 <div class="rv"><p class="kicker">Nuestro enfoque</p><h2>El problema rara vez es la herramienta</h2></div>
 <div class="rv"><p>La mayoría de los proyectos de tecnología que no dan resultados fallan por otra razón: se eligió un proceso que no estaba listo, nadie midió cuánto costaba antes, o no había un responsable dentro de la empresa.</p>
-<p>Por eso trabajamos al revés de lo habitual: primero el costo del problema y la meta, después la herramienta. Y avanzamos por etapas, para que solo inviertas más cuando ya viste un resultado.</p></div>
+<p>Por eso trabajamos al revés de lo habitual: primero el costo del problema y la meta, después la herramienta. Y ligamos una parte de lo que cobramos al resultado, para ganar solo cuando tú ganas.</p></div>
 </div></section>
 
 <section class="sec"><div class="wrap">
@@ -391,8 +466,13 @@ def home():
 </div></section>
 
 <section class="sec"><div class="wrap">
-<div class="sec-cab rv"><div><p class="kicker">Modelos de trabajo</p><h2>Una ruta para ganar confianza paso a paso</h2></div><p class="lead">Cada etapa tiene un entregable claro. Si una no te convence, te detienes ahí sin compromiso de seguir.</p></div>
+<div class="sec-cab rv"><div><p class="kicker">Cómo trabajamos</p><h2>Tres pasos, y los dos primeros no cuestan</h2></div><p class="lead">Primero medimos cuánto te cuesta hoy el problema. Después eliges cuánto riesgo compartimos.</p></div>
 {etapas_html()}
+</div></section>
+
+<section class="sec"><div class="wrap">
+<div class="sec-cab rv"><div><p class="kicker">Paquetes</p><h2>A menor cuota fija, mayor participación</h2></div><a class="mas" href="/servicios/#ahorros">Ver cómo se calcula</a></div>
+{paquetes_html()}
 </div></section>
 
 <section class="sec"><div class="wrap">
@@ -433,35 +513,44 @@ def servicios():
         lis = "".join(f"<li>{x}</li>" for x in items)
         bloques += f'<section class="serv card rv"><h2>{t}</h2><p>{d}</p><ul class="puntos">{lis}</ul></section>'
     criterios = """<ul class="puntos">
-<li>El proceso ya pasó por un piloto y su resultado se midió.</li>
-<li>La métrica se puede leer en tus propios sistemas (CRM, ERP, facturación), sin depender de mí.</li>
+<li>El diagnóstico encontró una línea base clara: sabemos cuánto cuesta o cuánto vende hoy el proceso.</li>
+<li>La métrica se puede leer en tus propios sistemas (CRM, ERP, facturación) o en los nuestros.</li>
 <li>Hay acceso a los datos necesarios para medirla cada mes.</li>
-<li>Un plazo mínimo de 12 meses y las reglas de cálculo firmadas antes de empezar.</li>
+<li>Las reglas de cálculo quedan firmadas antes de empezar.</li>
 </ul>"""
     oferta = {"@context": "https://schema.org", "@type": "OfferCatalog", "name": "Servicios de Lemoss", "itemListElement": [
         {"@type": "Offer", "itemOffered": {"@type": "Service", "name": "Autodiagnóstico de procesos", "provider": {"@id": SITE + "/#lemoss"}}, "price": "0", "priceCurrency": "MXN"},
         {"@type": "Offer", "itemOffered": {"@type": "Service", "name": "Diagnóstico tecnológico y de procesos", "provider": {"@id": SITE + "/#lemoss"}}, "price": 0, "priceCurrency": "MXN"},
-        {"@type": "Offer", "itemOffered": {"@type": "Service", "name": "Piloto con meta pactada", "provider": {"@id": SITE + "/#lemoss"}}, "priceSpecification": {"@type": "PriceSpecification", "minPrice": 45000, "priceCurrency": "MXN", "valueAddedTaxIncluded": False}},
+    ] + [
+        {"@type": "Offer", "itemOffered": {"@type": "Service", "name": f"Paquete {n}", "description": f"{txt} Cuota mensual más {ahorro}% del ahorro comprobado y {b2b}% de cada pedido atribuido en venta a empresas.", "provider": {"@id": SITE + "/#lemoss"}},
+         "priceSpecification": {"@type": "UnitPriceSpecification", "price": cuota, "priceCurrency": "MXN", "unitText": "mes", "valueAddedTaxIncluded": False}}
+        for n, cuota, ahorro, b2b, txt in PAQUETES
     ] + [{"@type": "Offer", "itemOffered": {"@type": "Service", "name": t, "description": d, "provider": {"@id": SITE + "/#lemoss"}}} for t, d, _ in SERVICIOS]}
     body = f"""
 <section class="hero hero-sm"><div class="wrap">
 <h1>Servicios y precios</h1>
-<p class="lead">Cinco áreas donde la tecnología ahorra tiempo o genera ventas de forma medible, y una ruta por etapas para que solo inviertas más cuando ya viste un resultado.</p>
+<p class="lead">Cinco áreas donde la tecnología reduce costos o genera ventas de forma medible, y tres paquetes en los que una parte de lo que cobramos depende del resultado.</p>
 </div></section>
 <section class="sec"><div class="wrap grid-serv">{bloques}</div></section>
 <section class="sec"><div class="wrap">
 <h2>Cómo trabajamos</h2>
-<p class="lead">Precios de referencia en pesos mexicanos, más IVA. Cada propuesta se firma con su alcance, meta y forma de pago.</p>
+<p class="lead">Tres pasos. Los dos primeros no cuestan y el tercero lo eliges tú.</p>
 {etapas_html(True)}
 </div></section>
+<section class="sec" id="paquetes"><div class="wrap">
+<div class="sec-cab rv"><div><p class="kicker">Paquetes</p><h2>A menor cuota fija, mayor participación</h2></div><p class="lead">Precios en pesos mexicanos, más IVA. Compromiso mínimo de tres meses; después, mes a mes.</p></div>
+{paquetes_html()}
+<p class="muted">La cuota cubre la operación: plataforma, agentes y medición mensual. La pauta publicitaria y los mensajes de WhatsApp los paga cada empresa directamente a su proveedor.</p>
+</div></section>
+{calculo_html()}
 <section class="sec"><div class="wrap dos">
-<div><h2>Criterios para ser socio estratégico</h2><p class="muted">La participación en resultados se ofrece solo cuando se cumplen todos estos puntos.</p></div>
+<div><h2>Cuándo ofrecemos el paquete Socio</h2><p class="muted">Es el paquete en el que más riesgo asumimos, así que lo ofrecemos cuando se cumplen estos puntos.</p></div>
 {criterios}
 </div></section>
 {cta_final()}
 """
     return layout("/servicios/", "Servicios y precios de consultoría tecnológica | Lemoss",
-                  "Estrategia tecnológica, procesos, sistemas y plataformas, ventas y adopción de IA. Diagnóstico sin costo y piloto con meta pactada desde $45,000 MXN.",
+                  "Estrategia tecnológica, procesos, sistemas, ventas y adopción de IA. Diagnóstico sin costo y paquetes desde $6,500 MXN al mes más participación en resultados.",
                   body, [ORG, oferta, migas(("Servicios", "/servicios/"))])
 
 
@@ -500,7 +589,7 @@ def autodiagnostico():
 (function(){var f=document.getElementById('diag'),r=document.getElementById('res');
 f.addEventListener('submit',function(ev){ev.preventDefault();var t=0,n=%d;for(var i=0;i<n;i++){var s=f.querySelector('input[name=p'+i+']:checked');if(!s){f.querySelector('input[name=p'+i+']').focus();return}t+=+s.value}
 var pct=Math.round(t/(n*2)*100),h,p;
-if(pct>=70){h='Tu proceso está listo para un piloto';p='Tiene volumen, está claro y hay datos. Es el escenario ideal para una prueba de 30 a 60 días con una meta medible.'}
+if(pct>=70){h='Tu proceso está listo para trabajar por resultados';p='Tiene volumen, está claro y hay datos. Es el escenario ideal para fijar una línea base en el diagnóstico y elegir un paquete.'}
 else if(pct>=45){h='Vas bien, con un par de huecos por cerrar';p='Conviene resolver primero las respuestas más bajas (normalmente documentar el proceso o calcular su costo). Un diagnóstico te dice exactamente cuáles.'}
 else{h='Primero conviene ordenar el proceso';p='Antes de invertir en tecnología, define cómo se hace bien y dónde vive la información. Te podemos orientar en una llamada sin costo.'}
 r.querySelector('h2').textContent=h+' ('+pct+'%%)';r.querySelector('p').textContent=p;
@@ -586,7 +675,7 @@ ARTICULOS = [
 <h2>4. Horas liberadas por vendedor</h2>
 <p>Tiempo que el equipo deja de gastar en capturar, copiar y perseguir. Pregunta en qué se usan esas horas: si no van a vender, no hay ganancia.</p>
 <h2>Cómo empezar</h2>
-<p>Toma hoy una foto de estas cuatro cifras, define cuál quieres mover y cuánto, y revisa a los 30 días contra esa foto, no contra la sensación del equipo. Así funciona un <a href="/servicios/">piloto con meta pactada</a>.</p>"""},
+<p>Toma hoy una foto de estas cuatro cifras, define cuál quieres mover y cuánto, y revisa a los 30 días contra esa foto, no contra la sensación del equipo. Así medimos en nuestros <a href="/servicios/#paquetes">paquetes de resultados</a>.</p>"""},
     {"slug": "4-errores-al-implementar-ia", "titulo": "4 errores comunes al implementar IA en una empresa mediana (y cómo evitarlos)",
      "desc": "Empezar por la herramienta, automatizar un proceso desordenado, no nombrar responsable y querer todo a la vez. Cómo evitar los errores más comunes con IA.",
      "fecha": "2026-11-03",
@@ -600,7 +689,7 @@ ARTICULOS = [
 <h2>4. Querer todo a la vez</h2>
 <p>Diez casos de uso en paralelo equivalen a ninguno terminado. Un proceso, una meta, de 30 a 60 días. Si funciona, escalas.</p>
 <h2>Lo que sí funciona</h2>
-<p>Un problema con costo medible, un proceso claro y un responsable, y una prueba corta con meta pactada antes de crecer. Es exactamente la <a href="/servicios/">ruta por etapas</a> con la que trabajamos.</p>"""},
+<p>Un problema con costo medible, un proceso claro y un responsable, y una meta pactada antes de crecer. Es la lógica de nuestros <a href="/servicios/#paquetes">paquetes de resultados</a>.</p>"""},
 ]
 
 
@@ -652,19 +741,31 @@ def no_encontrada():
 def llms():
     casos = "\n".join(f"- {c['cliente']} ({c['sector']}): {c['titulo']}. {c['resultado']}" for c in CASOS)
     serv = "\n".join(f"- {t}: {d}" for t, d, _ in SERVICIOS)
-    etapas = "\n".join(f"{i}. {n} ({p}): {t}" for i, (n, p, t, *_ ) in enumerate(ETAPAS))
+    etapas = "\n".join(f"{i + 1}. {n} ({p}): {t}" for i, (n, p, t, *_ ) in enumerate(ETAPAS))
     arts = "\n".join(f"- [{a['titulo']}]({SITE}/blog/{a['slug']}/): {a['desc']}" for a in ARTICULOS)
+    paqs = "\n".join(f"- {n}: {pesos(cuota)} MXN al mes más IVA, {ahorro}% del ahorro comprobado durante {MESES_AHORRO} meses y {b2b}% de cada pedido atribuido en venta a empresas. {txt}" for n, cuota, ahorro, b2b, txt in PAQUETES)
+    giros = "\n".join(f"- {g}: {a}% (Operación), {b}% (Equilibrio), {c}% (Socio)" for g, a, b, c in GIROS_B2C)
     return f"""# Lemoss
 
 > Consultoría en estrategia tecnológica por resultados para empresas medianas (20 a 250 colaboradores) en México. Sede en Mérida, Yucatán; atención en Ciudad de México y todo el país. Dirigida por Sebastián Lemos.
 
-Lemoss (también Lemoss Consulting) acuerda con cada cliente una meta medible antes de implementar y trabaja por etapas, desde un autodiagnóstico gratuito hasta la participación en resultados.
+Lemoss (también Lemoss Consulting) se presenta como socio de resultados: aumenta las ventas y reduce los costos de sus clientes con tecnología, y una parte de lo que cobra depende del resultado. Antes de empezar acuerda con cada cliente una métrica y su línea base.
 
 ## Servicios
 {serv}
 
-## Ruta de trabajo y precios de referencia (MXN, más IVA)
+## Ruta de trabajo
 {etapas}
+
+## Paquetes (compromiso mínimo de tres meses)
+{paqs}
+
+## Comisión por pedido atribuido en venta al consumidor, por giro
+{giros}
+
+## Cómo se mide
+- Ahorro: línea base firmada en el diagnóstico menos el costo real de cada mes.
+- Ventas: pedidos pagados que entran por el agente de WhatsApp, una liga con seguimiento o un código. Las ventas que el equipo del cliente cierra por su cuenta no generan comisión.
 
 ## Casos
 {casos}
