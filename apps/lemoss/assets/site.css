@@ -373,3 +373,6 @@ h1,h2,h3,.hr-s .h1,.slide h3{font-weight:600;letter-spacing:-.032em}
 .sl-pasos strong{color:var(--fg);font-weight:600}
 .calc-gate .calc-grid{grid-template-columns:repeat(3,minmax(0,1fr))}
 @media (max-width:900px){.calc-gate .calc-grid{grid-template-columns:1fr}}
+
+.paq-arranque{color:var(--accent);font-weight:600;font-size:.95rem;margin:-.4em 0 1em}
+.paq-arranque strong{font-weight:700}

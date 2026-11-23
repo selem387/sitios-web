@@ -205,7 +205,7 @@ WEBSITE = {"@context": "https://schema.org", "@type": "WebSite", "@id": SITE + "
 ETAPAS = [
     ("Diagnóstico gratuito", "En línea · 5 minutos", "Eliges hasta tres procesos, respondes con rangos y ves al instante cuánto te cuestan hoy, al mes y al año.", "/autodiagnostico/", "Hacer el diagnóstico gratuito"),
     ("Sesión de línea base", "Sin costo", "Revisamos contigo procesos, datos y sistemas, validamos cuánto te cuesta hoy cada proceso y fijamos por escrito una sola métrica y su línea base, firmada por ambas partes.", None, None),
-    ("Paquete de resultados", "Cuota mensual + participación · mínimo 3 meses", "Eliges cuánto riesgo compartimos: a menor cuota fija, mayor es nuestra participación en las ventas que generamos y en los costos que reducimos.", "/servicios/#paquetes", "Ver los paquetes"),
+    ("Paquete de resultados", "Cuota mensual + participación · mínimo 3 meses · primer mes a media cuota", "Eliges cuánto riesgo compartimos: a menor cuota fija, mayor es nuestra participación en las ventas que generamos y en los costos que reducimos.", "/servicios/#paquetes", "Ver los paquetes"),
 ]
 
 # Paquetes: (nombre, cuota mensual MXN, % del ahorro, % de comisión B2B, descripción)
@@ -215,6 +215,7 @@ PAQUETES = [
     ("Socio", 6500, 40, 8, "La cuota más baja y la participación más alta. Lo ofrecemos cuando hay una línea base clara y medible."),
 ]
 MESES_AHORRO = 12  # meses durante los que se cobra la participación en ahorro
+DESCUENTO_PRIMER_MES = 50  # % de descuento en la cuota del primer mes (mes de arranque)
 
 # Comisión sobre pedido atribuido en venta al consumidor, por giro: (giro, Operación, Equilibrio, Socio)
 GIROS_B2C = [
@@ -286,7 +287,7 @@ INDUSTRIAS = [
 
 FAQ = [
     ("¿Qué significa ser socio de resultados?", "Que antes de empezar acordamos por escrito una métrica y su línea base, y una parte de lo que cobramos depende de lo que logremos: un porcentaje del ahorro comprobado o una comisión sobre los pedidos que generamos. Ganamos cuando tú ganas."),
-    ("¿Cuánto cuesta trabajar con Lemoss?", "El diagnóstico gratuito en línea y la sesión de línea base no tienen costo. Después eliges un paquete: una cuota mensual de $6,500 a $18,000 MXN más IVA y una participación en los resultados. A menor cuota, mayor participación. El compromiso mínimo es de tres meses."),
+    ("¿Cuánto cuesta trabajar con Lemoss?", "El diagnóstico gratuito en línea y la sesión de línea base no tienen costo. Después eliges un paquete: una cuota mensual de $6,500 a $18,000 MXN más IVA y una participación en los resultados. A menor cuota, mayor participación. El primer mes, de arranque, se cobra a media cuota, y el compromiso mínimo es de tres meses."),
     ("¿Cómo saben qué ventas o ahorros generó Lemoss?", "En ahorro, comparamos el costo real de cada mes contra la línea base firmada antes de empezar. En ventas, solo contamos los pedidos que entran por nuestro agente de WhatsApp, por una liga con seguimiento o con un código. Las ventas que tu equipo cierra por su cuenta no generan comisión."),
     ("¿Cuánto tiempo tarda en verse un resultado?", "El resultado se mide cada mes contra la línea base que fijamos antes de empezar. El compromiso mínimo es de tres meses; después continúas mes a mes."),
     ("¿Para qué tamaño de empresa es?", "Principalmente para empresas medianas, de 20 a 250 colaboradores, con venta consultiva o procesos operativos que hoy dependen de mucho trabajo manual."),
@@ -318,6 +319,7 @@ def paquetes_html():
     for n, cuota, ahorro, b2b, txt in PAQUETES:
         items += f"""<li class="card rv"><h3>{n}</h3>
 <p class="paq-cuota"><strong>{pesos(cuota)}</strong><span>MXN al mes, más IVA</span></p>
+<p class="paq-arranque">Primer mes: <strong>{pesos(cuota * (100 - DESCUENTO_PRIMER_MES) // 100)}</strong></p>
 <p>{txt}</p>
 <ul class="puntos"><li><strong>{ahorro}%</strong> del ahorro comprobado</li><li><strong>{b2b}%</strong> de cada pedido atribuido, en venta a empresas</li><li>Comisión por giro, en venta al consumidor</li></ul></li>"""
     return f'<ul class="paqs">{items}</ul>'
@@ -919,7 +921,7 @@ def llms():
     serv = "\n".join(f"- {t}: {d}" for t, d, _ in SERVICIOS)
     etapas = "\n".join(f"{i + 1}. {n} ({p}): {t}" for i, (n, p, t, *_ ) in enumerate(ETAPAS))
     arts = "\n".join(f"- [{a['titulo']}]({SITE}/blog/{a['slug']}/): {a['desc']}" for a in ARTICULOS)
-    paqs = "\n".join(f"- {n}: {pesos(cuota)} MXN al mes más IVA, {ahorro}% del ahorro comprobado durante {MESES_AHORRO} meses y {b2b}% de cada pedido atribuido en venta a empresas. {txt}" for n, cuota, ahorro, b2b, txt in PAQUETES)
+    paqs = "\n".join(f"- {n}: {pesos(cuota)} MXN al mes más IVA, {ahorro}% del ahorro comprobado durante {MESES_AHORRO} meses y {b2b}% de cada pedido atribuido en venta a empresas; primer mes a media cuota ({pesos(cuota * (100 - DESCUENTO_PRIMER_MES) // 100)}). {txt}" for n, cuota, ahorro, b2b, txt in PAQUETES)
     giros = "\n".join(f"- {g}: {a}% (Operación), {b}% (Equilibrio), {c}% (Socio)" for g, a, b, c in GIROS_B2C)
     return f"""# Lemoss
 
