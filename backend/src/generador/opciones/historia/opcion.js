@@ -10,6 +10,8 @@ import { tono, conContraste } from '../../kit/color.js';
 
 export const opcion = {
   nombre: 'historia', letra: 'I', indice: 8, titulo: 'Historia con scroll',
+  // Plantilla hecha a partir de un sitio modelo externo: las reglas duras no le aplican (decisión de Sebastián, 24-nov-2026).
+  modelo: 'https://savor.it/',
   // Material con el que se ve completa (verificado el 17 y 18-nov-2026; doc claude/etapa2-mapa-por-giro-propuesta.md).
   requisitos: {},
   // Página propia con el orden de su referencia (excepción aprobada el 16-nov-2026): del giro solo toma los nombres.

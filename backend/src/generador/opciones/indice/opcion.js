@@ -7,6 +7,8 @@ import { tono, conContraste } from '../../kit/color.js';
 
 export const opcion = {
   nombre: 'indice', letra: 'H', indice: 7, titulo: 'Recorrido con índice',
+  // Plantilla hecha a partir de un sitio modelo externo: las reglas duras no le aplican (decisión de Sebastián, 24-nov-2026).
+  modelo: 'https://fame-estate.com/',
   // Material con el que se ve completa (verificado el 17 y 18-nov-2026; doc claude/etapa2-mapa-por-giro-propuesta.md).
   requisitos: { fotosTotal: 3, secciones: 4 },
   // Colores de la opción a partir de los del cliente (la plantilla general completa el resto de la paleta).

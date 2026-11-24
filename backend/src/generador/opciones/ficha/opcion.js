@@ -5,6 +5,8 @@ import { tono, conContraste } from '../../kit/color.js';
 
 export const opcion = {
   nombre: 'ficha', letra: 'P', indice: 15, titulo: 'Ficha en movimiento',
+  // Plantilla hecha a partir de un sitio modelo externo: las reglas duras no le aplican (decisión de Sebastián, 24-nov-2026).
+  modelo: 'https://onyxcoffeelab.com/products/southern-weather',
   // Material con el que se ve completa (verificado el 17 y 18-nov-2026; doc claude/etapa2-mapa-por-giro-propuesta.md).
   requisitos: { producto: true },
   // Página propia: excepción aprobada por Sebastián el 16-nov-2026 (sigue su orden; toma los nombres del giro).

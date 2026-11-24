@@ -3,6 +3,8 @@ import { paginaVitrina, LETRA_Q, URL_FUENTES_Q } from './vitrina.js';
 
 export const opcion = {
   nombre: 'vitrina', letra: 'Q', indice: 16, titulo: 'Vitrina',
+  // Plantilla hecha a partir de un sitio modelo externo: las reglas duras no le aplican (decisión de Sebastián, 24-nov-2026).
+  modelo: 'https://www.dvf.com/',
   // Material con el que se ve completa (verificado el 17 y 18-nov-2026; doc claude/etapa2-mapa-por-giro-propuesta.md).
   requisitos: { productos: 4 },
   // Página propia: excepción aprobada por Sebastián el 16-nov-2026 (sigue su orden; toma los nombres del giro).

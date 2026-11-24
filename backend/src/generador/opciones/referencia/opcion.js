@@ -6,6 +6,8 @@ import { paginaReferencia } from './referencia.js';
 
 export const opcion = {
   nombre: 'referencia', letra: 'S', indice: 18, titulo: 'Tu página de referencia',
+  // Plantilla hecha a partir de un sitio modelo externo: las reglas duras no le aplican (decisión de Sebastián, 24-nov-2026).
+  modelo: 'la página de referencia que manda el cliente',
   // Las referencias suelen llevar foto principal, galería y servicios: lo que falte lo llenan los elementos ilustrativos.
   requisitos: { fotoBuena: 1, fotosTrabajo: 4, servicios: 3 },
   apta: ({ brief }) => !!planoDe(brief),

@@ -13,6 +13,8 @@ const listaDe = ({ grupos, diapos }) => (grupos.length >= 3 ? grupos.map((g) => 
 
 export const opcion = {
   nombre: 'guia', letra: 'M', indice: 12, titulo: 'Guía en movimiento',
+  // Plantilla hecha a partir de un sitio modelo externo: las reglas duras no le aplican (decisión de Sebastián, 24-nov-2026).
+  modelo: 'https://brand.docusign.com/',
   // Material con el que se ve completa (verificado el 17 y 18-nov-2026; doc claude/etapa2-mapa-por-giro-propuesta.md).
   requisitos: { fotosTotal: 3 },
   // Como el modelo: portada casi negra con el color de la marca, interiores en tono crudo y bloque claro del color de la marca.

@@ -4,7 +4,7 @@
 
 import { config } from '../config.js';
 import { pedirJSON } from '../entrevista/claude.js';
-import { OPCIONES } from './opciones/registro.js';
+import { OPCIONES, porLetra } from './opciones/registro.js';
 import { reLigaPropuesta } from './opciones/letras.js';
 
 // Para medir y capturar: sin la etiqueta ni el botón flotante, y con las animaciones de entrada ya terminadas
@@ -89,6 +89,14 @@ async function revisarUna(o, caps, { refCaptura, pedido, fuentes }) {
   }
 }
 
+// Las opciones hechas a partir de un sitio modelo externo (opcion.modelo en su opcion.js) son plantillas: las reglas
+// duras y de diseño no les aplican (decisión de Sebastián, 24-nov-2026); se respeta el diseño del modelo. Solo las
+// detienen las fallas técnicas, que no son reglas sino algo roto: fotos que no cargan o deformadas, la página que se
+// sale de la pantalla, botones cortados, fotos con franjas negras y letras que no cargan.
+export const FALLAS_TECNICAS = /^(foto rota|foto deformada|desborde horizontal|botón cortado|foto con franjas negras|la letra .* no cargó)/;
+export const esPlantilla = (letra) => !!porLetra(letra)?.modelo;
+export const fallasQueAplican = (letra, problemas) => (esPlantilla(letra) ? (problemas || []).filter((p) => FALLAS_TECNICAS.test(p)) : problemas);
+
 /**
  * Revisa todas las opciones. Devuelve [{letra, ok, parecido, problemas, capturas}].
  * Con referencia, una opción con parecido < 3 no pasa.
@@ -99,12 +107,16 @@ export async function revisarOpciones(opciones, { referencia = null, pedido = ''
   // De 2 en 2 para no saturar el servicio de capturas.
   for (let i = 0; i < opciones.length; i += 2) {
     const lote = await Promise.all(opciones.slice(i, i + 2).map(async (o) => {
-      const [caps, obj] = await Promise.all([capturasOpcion(o), objetivas(o.url)]);
+      const [caps, obj0] = await Promise.all([capturasOpcion(o), objetivas(o.url)]);
+      const plantilla = esPlantilla(o.letra);
+      const obj = obj0 && { ...obj0, problemas: fallasQueAplican(o.letra, obj0.problemas), omitidas: plantilla ? (obj0.problemas || []).filter((p) => !FALLAS_TECNICAS.test(p)) : [] };
       const v = await revisarUna(o, caps, { refCaptura, pedido, fuentes: obj?.fuentes });
+      // Plantilla: la opinión de la IA (que revisa con las reglas del proyecto) no la detiene ni la manda a corregir.
+      if (plantilla && v.ok === false && !v.error) { v.ok = true; v.opinion = v.problemas; v.problemas = []; }
       if (v.ok && refCaptura && v.parecido != null && v.parecido < 3) { v.ok = false; v.problemas = [...v.problemas, `poco parecida a la referencia (${v.parecido}/5)`]; }
-      // Lo objetivo manda: cualquier falla medida con código hace que no pase.
+      // Lo objetivo manda: cualquier falla medida con código hace que no pase (en plantillas, solo las técnicas).
       if (obj?.problemas?.length) { v.ok = false; v.problemas = [...obj.problemas, ...v.problemas]; }
-      return { letra: o.letra, ...v, objetivas: obj ? obj.problemas : null, capturas: caps.map((c) => c.url).filter(Boolean) };
+      return { letra: o.letra, ...v, objetivas: obj ? obj.problemas : null, omitidas: obj?.omitidas || [], plantilla, capturas: caps.map((c) => c.url).filter(Boolean) };
     }));
     out.push(...lote);
   }

@@ -11,6 +11,8 @@ const lineaDe = (neg) => [giroCorto(neg.giro_texto), neg.ciudad].filter(Boolean)
 
 export const opcion = {
   nombre: 'catalogo', letra: 'O', indice: 14, titulo: 'Catálogo en movimiento',
+  // Plantilla hecha a partir de un sitio modelo externo: las reglas duras no le aplican (decisión de Sebastián, 24-nov-2026).
+  modelo: 'https://shop.lululemon.com/',
   // Material con el que se ve completa (verificado el 17 y 18-nov-2026; doc claude/etapa2-mapa-por-giro-propuesta.md).
   requisitos: { grupos: 2, fotosTrabajo: 1 },
   // Colores de la opción a partir de los del cliente (la plantilla general completa el resto de la paleta).

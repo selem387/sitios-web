@@ -8,6 +8,8 @@ import { comoSeccion } from '../../giros/index.js';
 
 export const opcion = {
   nombre: 'avance', letra: 'N', indice: 13, titulo: 'Avance en el espacio',
+  // Plantilla hecha a partir de un sitio modelo externo: las reglas duras no le aplican (decisión de Sebastián, 24-nov-2026).
+  modelo: 'https://www.vastspace.com/',
   // Material con el que se ve completa (verificado el 17 y 18-nov-2026; doc claude/etapa2-mapa-por-giro-propuesta.md).
   requisitos: { fotoBuena: 1, servicios: 3 },
   // N: neutros de la referencia (crema, grafito, arena); el acento es el color del cliente.
