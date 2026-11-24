@@ -143,7 +143,7 @@ const TEMA = {
   // Redes antes que logo: la pregunta de redes dice "de ahí tomo tu logo" y un "no tengo" se tomaba como "no tengo logo".
   redes: /facebook|instagram/,
   logo: /logo/,
-  fotos_suficientes: /mas fotos|otras fotos|fotos mas|al menos \w+ mas/,
+  fotos_suficientes: /mas fotos|otras fotos|fotos? mas|al menos \w+ (\w+ )?mas/,
 };
 // Temas opcionales (no son requisitos): si dijo que no los tiene, tampoco se vuelven a preguntar.
 export const OPCIONALES = { certificaciones: 'certificaciones, premios o reconocimientos', cifras: 'cifras o números (años, clientes, trámites)', garantias: 'garantías', historia: 'historia del negocio', equipo: 'equipo', otro_dato_confianza: 'otro dato de confianza' };
@@ -163,7 +163,8 @@ export function requisitoDePregunta(mensaje) {
   // La última pregunta con lo que le sigue: los ejemplos entre paréntesis después del "?" también dicen de qué es.
   const qs = String(mensaje || '').match(/¿[^?]*\?[^¿]*$/);
   const q = norm(qs ? qs[0] : mensaje);
-  return Object.keys(TEMA).find((id) => TEMA[id].test(q)) || null;
+  // Si la pregunta no dice de qué es ("¿tú en tu espacio, un proyecto terminado…?"), lo dice el resto del mensaje.
+  return Object.keys(TEMA).find((id) => TEMA[id].test(q)) || (qs ? Object.keys(TEMA).find((id) => id === 'fotos_suficientes' && TEMA[id].test(norm(mensaje))) : null) || null;
 }
 
 /** Ids que el cliente dijo que no tiene, leídos del historial (pares pregunta de Ari → respuesta del cliente). */

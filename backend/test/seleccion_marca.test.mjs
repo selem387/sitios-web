@@ -79,3 +79,8 @@ test('"no tengo" a la pregunta de redes no cuenta como "no tengo logo"', async (
   assert.equal(requisitoDePregunta('¿Tu negocio tiene página de Facebook o Instagram? Mándame las ligas y de ahí tomo tu logo, tus fotos y tus datos.'), 'redes');
   assert.equal(requisitoDePregunta('¿Tienes logotipo? Mándamelo por aquí.'), 'logo');
 });
+
+test('"ya no tengo más fotos" cuenta aunque la pregunta final no diga "fotos"', async () => {
+  const { requisitoDePregunta } = await import('../src/entrevista/requisitos.js');
+  assert.equal(requisitoDePregunta('Para armar bien tus opciones necesito al menos una foto más: ¿tú en tu espacio de trabajo o un proyecto terminado?'), 'fotos_suficientes');
+});
