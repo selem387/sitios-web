@@ -272,10 +272,10 @@ async function servirMenu(c, sv, { previa }) {
   }
 }
 
-async function servirSitio(c, sv, { previa }) {
+async function servirSitio(c, sv, { previa, letra = null }) {
   try {
-    const html = await S.renderSitio(sv, { previa });
-    return c.html(html, 200, { 'cache-control': 'no-cache', ...(previa ? { 'x-robots-tag': 'noindex' } : {}) });
+    const html = await S.renderSitio(sv, { previa, letra });
+    return c.html(html, 200, { 'cache-control': 'no-cache', ...(previa || letra ? { 'x-robots-tag': 'noindex' } : {}) });
   } catch (e) {
     console.error('[sitio vivo]', sv.id, e);
     return c.html('<!doctype html><meta charset="utf-8"><meta name="viewport" content="width=device-width"><title>En mantenimiento</title><p style="font:18px system-ui;padding:40px;text-align:center">Estamos actualizando esta página. Vuelve en unos minutos.</p>', 503);
@@ -336,6 +336,8 @@ export function registerPanelRoutes(app, wrap) {
     const base = `/s/${sv.slug}`;
     const ruta = c.req.path.slice(base.length).replace(/\/+$/, '') || '/';
     if (ruta === '/') return servirSitio(c, sv, { previa: !sv.url_publica });
+    const mver = ruta.match(/^\/v\/([A-Za-z])$/); // versión de trabajo para comparar (24-nov-2026)
+    if (mver) return servirSitio(c, sv, { previa: true, letra: mver[1].toUpperCase() });
     const mprop = ruta.match(/^\/propiedad\/([a-z0-9-]{1,80})$/);
     if (mprop) return servirPropiedad(c, sv, mprop[1], { previa: !sv.url_publica });
     if (ruta === '/aviso-de-privacidad') return servirAviso(c, sv, { previa: !sv.url_publica });

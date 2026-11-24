@@ -196,6 +196,64 @@ export function comoSitio(html, brief, { letra, dominio } = {}) {
     .replace(new RegExp(` · Propuesta ${letra}: [^<]*</footer>`), '</footer>');
 }
 
+/* ---------------- Varias versiones de diseño (24-nov-2026) ----------------
+ * Después de elegir, el cliente puede modificar otras de sus propuestas para comparar y quedarse con una:
+ * - contenido (textos, servicios, fotos, datos) es del sitio y lo comparten todas las versiones;
+ * - diseño (paleta, letra, acomodo/estructura, CSS) es de cada versión: la activa vive en contenido.diseno y las demás
+ *   se guardan en contenido.disenos[letra] tal como las dejó;
+ * - los cambios de diseño van a la versión activa (la última que eligió o mencionó);
+ * - al decidir ("me quedo con la N") queda contenido.diseno_final = {letra, en}; las demás se guardan 30 días.
+ */
+const DIAS_VERSIONES = 30;
+/** Letra de la versión activa del sitio. */
+export const letraActiva = (sv, brief) => sv?.contenido?.diseno?.propuesta || brief?.marca?.propuestas?.elegido || null;
+/** Letras con versión de trabajo: la activa y las guardadas. */
+export function versionesDe(sv, brief) {
+  const act = letraActiva(sv, brief);
+  return [...new Set([act, ...Object.keys(sv?.contenido?.disenos || {})].filter(Boolean))];
+}
+/** Liga de una versión concreta (no cambia aunque cambie la activa). */
+export const urlVersion = (sv, letra) => `${config.publicUrl}/s/${sv.slug}/v/${letra}`;
+
+/**
+ * Contenido con el diseño activo cambiado: la versión que deja de estar activa se guarda con sus ajustes y, si el nuevo
+ * diseño es solo "pásame a la N" ({propuesta:N}), se recupera la N como la dejó.
+ */
+export function conDisenoActivo(k, nuevoDz, { letraAntes } = {}) {
+  const out = { ...(k || {}) };
+  const antes = letraAntes || out.diseno?.propuesta || null;
+  const despues = nuevoDz?.propuesta || antes;
+  if (!nuevoDz || !despues || despues === antes) { if (nuevoDz) out.diseno = nuevoDz; return out; }
+  const disenos = { ...(out.disenos || {}) };
+  if (antes) disenos[antes] = { ...(out.diseno || {}), propuesta: antes, guardado: new Date().toISOString() };
+  const soloLetra = Object.keys(nuevoDz).every((x) => ['propuesta', 'colores_de'].includes(x));
+  const recuperada = soloLetra && disenos[despues] ? { ...disenos[despues], ...nuevoDz } : nuevoDz;
+  delete recuperada.guardado;
+  delete disenos[despues];
+  out.diseno = recuperada;
+  if (Object.keys(disenos).length) out.disenos = disenos; else delete out.disenos;
+  return out;
+}
+
+/** Fija la versión final: la activa pasa a ser esa letra y se anota la decisión. Devuelve el sitio actualizado. */
+export async function fijarFinal(sv, brief, letra) {
+  const k = conDisenoActivo(sv.contenido, letra === letraActiva(sv, brief) ? (sv.contenido?.diseno || { propuesta: letra }) : { propuesta: letra }, { letraAntes: letraActiva(sv, brief) });
+  k.diseno = { ...(k.diseno || {}), propuesta: letra };
+  k.diseno_final = { letra, en: new Date().toISOString() };
+  const r = await q(`UPDATE sitios_vivos SET contenido=$2::jsonb, version=version+1, actualizado=now() WHERE id=$1 RETURNING *`, [sv.id, JSON.stringify(k)]);
+  invalidar(sv.id);
+  return r.rows[0];
+}
+
+/** Borra las versiones no elegidas 30 días después de decidir (lo llama el cron de cambios). */
+export async function limpiarVersiones() {
+  await migrarPanel();
+  const r = await q(`UPDATE sitios_vivos SET contenido = contenido - 'disenos'
+    WHERE contenido ? 'disenos' AND (contenido->'diseno_final'->>'en')::timestamptz < now() - interval '${DIAS_VERSIONES} days' RETURNING id`);
+  for (const x of r.rows) invalidar(x.id);
+  return r.rows.length;
+}
+
 const cache = new Map(); // `${id}:${version}` → html
 /** Dirección pública del sitio con / final: su dominio, nuestra dirección si pagó sin dominio, o la vista previa. */
 export function urlPublica(sv, { previa = false } = {}) {
@@ -210,12 +268,15 @@ export const rutaBase = (sv, { previa = false } = {}) => (!previa && sv.dominio 
 export function invalidar(id) { for (const k of cache.keys()) if (k.startsWith(`${id}:`)) cache.delete(k); }
 
 /** HTML del sitio en vivo. */
-export async function renderSitio(sv, { previa = false } = {}) {
-  const clave = `${sv.id}:${sv.version}:${previa ? 'p' : 's'}`;
-  if (cache.has(clave)) return cache.get(clave);
+export async function renderSitio(sv, { previa = false, letra = null } = {}) {
   const e0 = await db.obtener(sv.entrevista_id);
   if (!e0) throw new Error('entrevista no encontrada');
-  const dz = sv.contenido?.diseno || {};
+  // Otra versión de trabajo (/v/<letra>): su diseño guardado (o la propuesta tal cual) con el contenido de siempre.
+  const otra = letra && letra !== letraActiva(sv, e0.brief) && (e0.brief?.marca?.propuestas?.opciones || []).some((o) => (o.etiqueta || o.letra) === letra) ? letra : null;
+  if (otra) previa = true;
+  const clave = `${sv.id}:${sv.version}:${previa ? 'p' : 's'}${otra ? `:${otra}` : ''}`;
+  if (cache.has(clave)) return cache.get(clave);
+  const dz = otra ? { ...(sv.contenido?.disenos?.[otra] || {}), propuesta: otra } : (sv.contenido?.diseno || {});
   // Otra de sus 6 propuestas, si la pidió después por chat.
   const prop0 = e0.brief?.marca?.propuestas;
   const e = dz.propuesta && prop0?.opciones?.some((o) => (o.etiqueta || o.letra) === dz.propuesta)
@@ -254,6 +315,7 @@ export async function renderSitio(sv, { previa = false } = {}) {
   if (css) html = html.replace('</head>', () => `<style id="ajustes">${String(css).replace(/<\/style/gi, '')}</style></head>`);
   for (const k of cache.keys()) if (k.startsWith(`${sv.id}:`) && !k.startsWith(`${sv.id}:${sv.version}:`)) cache.delete(k);
   cache.set(clave, html);
+  if (otra) return html;
   // Secciones que aparecen después de los ajustes de diseño del cliente: la IA las ajusta sola (11-nov-2026).
   import('./cambios_vivo.js').then((m) => m.revisarSeccionesNuevas(sv, html)).catch(() => {});
   return html;

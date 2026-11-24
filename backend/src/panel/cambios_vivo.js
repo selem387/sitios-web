@@ -10,7 +10,7 @@ import { pedirJSON } from '../entrevista/claude.js';
 import { avisar } from '../entrevista/avisos.js';
 import { procesarMateriales } from '../generador/materiales.js';
 import { config } from '../config.js';
-import { SECCIONES, urlBase, limpiarSeccion, contenidoActual, disenoElegido, renderSitio, invalidar, porId } from './sitios.js';
+import { SECCIONES, urlBase, limpiarSeccion, contenidoActual, disenoElegido, renderSitio, invalidar, porId, conDisenoActivo, letraActiva, versionesDe, urlVersion } from './sitios.js';
 import { textosInventados, separarPrecio, renglonesAjenos } from './reinterpretar.js';
 import { validarEstructura, textoDe } from './estructura.js';
 import { opcionesNuevasPendientes, adoptarOpcionNueva, restaurarBrief } from './rediseno.js';
@@ -22,6 +22,7 @@ const RE_LIGA_LETRA = new RegExp(`\\/p\\/[A-Za-z0-9]+\\/(${CLASE_MAYUS})\\b`);
 const q = db.q;
 const NO_PUDE = 'No pude aplicar ese cambio a tu página 😔 ¿Me lo explicas de otra forma? Por ejemplo, dime en qué parte de la página está y cómo quieres que quede.';
 
+const propNuevaFinal = (plan, act) => !!plan?.propuesta && plan.propuesta === act && !plan.css && !plan.estructura && !Object.keys(plan.paleta || {}).length && !plan.fuentes && !Object.keys(plan.secciones || {}).length;
 export const urlSitio = (sv) => (sv.dominio ? `https://${sv.dominio}/` : `${config.publicUrl}/s/${sv.slug}`);
 
 const COLORES = ['bg', 'fg', 'p', 'primary', 'accent', 'mut', 'card', 'bor', 'soft', 'banda', 'on'];
@@ -243,7 +244,13 @@ function validar(plan, act, fuentes, pedidoTexto = '') {
 async function escribir(sv, e, { secciones = {}, quitar = [], diseno, fotos, usar = {} }) {
   const k = { ...(sv.contenido || {}) };
   for (const [s, v] of Object.entries(secciones)) { if (v === null) delete k[s]; else k[s] = v; }
-  if (diseno !== undefined) { if (diseno === null) delete k.diseno; else k.diseno = diseno; }
+  if (diseno !== undefined) {
+    // Varias versiones (24-nov-2026): cambiar de letra guarda la versión que deja de estar activa y recupera la nueva.
+    const elegido = e.brief?.marca?.propuestas?.elegido;
+    const nz = diseno === null ? (elegido ? { propuesta: elegido } : null) : diseno;
+    if (!nz) delete k.diseno;
+    else { const n = conDisenoActivo(k, nz, { letraAntes: letraActiva(sv, e.brief) }); k.diseno = n.diseno; if (n.disenos) k.disenos = n.disenos; else delete k.disenos; }
+  }
   if (fotos !== undefined) { if (fotos === null) delete k.fotos; else k.fotos = fotos; }
   for (const s of quitar) delete k[s];
   for (const [clave, u] of Object.entries(usar)) await db.actualizarAssets(e.id, [{ clave, usar: u }]);
@@ -424,6 +431,18 @@ export async function aplicarCambioVivo(c, e, sv) {
   await guardar(c.id, { estado: 'aplicado', resultado: { secciones: Object.keys(v.secciones), paleta: v.paleta, css: !!plan.css, vista, pendientes } });
   const extra = pendientes.length ? `\n\nLo que no pude hacer: ${pendientes.join('; ')}. ¿Me lo explicas de otra forma o me dices qué prefieres?` : '';
   await registrarSeccionesVistas(nuevo).catch(() => {});
+  // Varias versiones (24-nov-2026): con más de una, cada confirmación dice la letra y lleva la liga de esa versión.
+  const vers = versionesDe(nuevo, e.brief);
+  const activa = letraActiva(nuevo, e.brief);
+  if (vers.length > 1 && activa) {
+    const decidida = nuevo.contenido?.diseno_final?.letra;
+    const otras = vers.filter((l) => l !== activaiva);
+    const cierre = decidida ? '¿Hay algo más que quieras ajustar?' : `Cuando decidas, dime *me quedo con la ${activa}* (o con la que prefieras).`;
+    if (propNuevaFinal(plan, activa)) {
+      return decir(e.id, `Ahora estamos trabajando la *${activa}* 👇\n${urlVersion(nuevo, activa)}\n\n${otras.length === 1 ? `Tu versión de la *${otras[0]}* queda guardada con sus cambios` : 'Tus otras versiones quedan guardadas con sus cambios'}:\n${otras.map((l) => `*${l}* · ${urlVersion(nuevo, l)}`).join('\n')}\n\nLos cambios de diseño que me pidas ahora van a la *${activa}*; los de textos, fotos y datos se ven en todas.${extra}\n${cierre}`, { evento: 'cambios_sitio', datos: { cambio_id: c.id, version: activa } });
+    }
+    return decir(e.id, `${plan.resumen_cliente}\nYa quedó en la *${activa}* ✅ Recarga para verlo:\n${urlVersion(nuevo, activa)}${extra}\n${cierre}`, { evento: 'cambios_sitio', datos: { cambio_id: c.id, version: activa } });
+  }
   return decir(e.id, `${plan.resumen_cliente}\nYa quedó ✅ Recarga tu página para verlo:\n${urlSitio(nuevo)}${extra}\n¿Hay algo más que quieras ajustar?`, { evento: 'cambios_sitio', datos: { cambio_id: c.id } });
 }
 

@@ -630,6 +630,8 @@ export async function cronCambios() {
   corriendo = true;
   try {
     await migrar();
+    // Versiones no elegidas: se borran 30 días después de decidir (24-nov-2026).
+    await import('../panel/sitios.js').then((m) => m.limpiarVersiones()).catch((err) => console.error('limpiar versiones', err.message));
     // Los que se quedaron a medias por un reinicio vuelven a la cola.
     await q(`UPDATE cambios_sitio SET estado='pendiente', aplicar_en=now() WHERE estado='aplicando' AND actualizado < now() - interval '30 minutes'`);
     for (let i = 0; i < 10; i++) {

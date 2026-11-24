@@ -54,6 +54,13 @@ async function guardarPago(entrevistaId, patch) {
 export async function publicarSinDominio(entrevistaId) {
   const sv = (await db.q(`SELECT * FROM sitios_vivos WHERE entrevista_id=$1 ORDER BY id DESC LIMIT 1`, [entrevistaId]).catch(() => ({ rows: [] }))).rows[0];
   if (!sv || sv.dominio) return { publicado: false, motivo: sv ? 'tiene dominio propio' : 'sin sitio en vivo aún' };
+  // Se publica la versión activa; si tenía varias y no decidió, esa queda como la final (las demás se guardan 30 días).
+  if (!sv.contenido?.diseno_final) {
+    const S = await import('../panel/sitios.js');
+    const e = await db.obtener(entrevistaId).catch(() => null);
+    const l = S.letraActiva(sv, e?.brief);
+    if (l) await S.fijarFinal(sv, e?.brief, l).catch(() => {});
+  }
   const url = `${BASE_SIN_DOMINIO()}/s/${sv.slug}`;
   if (sv.url_publica !== url) {
     await db.q(`UPDATE sitios_vivos SET url_publica=$2, version=version+1, actualizado=now() WHERE id=$1`, [sv.id, url]);
