@@ -266,7 +266,7 @@ export async function mostrar(e, brief, mat, { ronda = 0, excluir = [] } = {}) {
  * Se llama ANTES del turno de Ari cuando hay propuestas pendientes. Devuelve
  * {responder:{textos, media}, brief, seguirConAri:boolean}.
  */
-export async function atenderPropuestas(e, brief, { texto = '', huboMedia = false, clavesNuevas = [] }) {
+export async function atenderPropuestas(e, brief, { texto = '', huboMedia = false, clavesNuevas = [], forzar = false }) {
   const p = brief.marca?.propuestas || {};
   if (p.estado === 'pendiente_material') {
     // Con elementos ilustrativos ya no se espera material: lo que falte va de ejemplo (decisión 4 del 18-nov-2026).
@@ -286,7 +286,8 @@ export async function atenderPropuestas(e, brief, { texto = '', huboMedia = fals
     const preguntas = p.preguntas_estilo || 0;
     let d = comentarios.length ? await entenderRechazo(brief, p, comentarios) : { claro: false };
     if (!d) d = { claro: !(!texto || VAGO.test(texto.trim())), resumen: '' }; // sin IA: lo de antes (palabras clave)
-    if (!d.claro && preguntas < 2) {
+    // forzar: rehacerlas con lo que ya dijo, sin volver a preguntar (ruta de administración /propuestas/rehacer).
+    if (!d.claro && preguntas < 2 && !forzar) {
       const pregunta = preguntas === 0 || !d.pregunta ? (d.pregunta || PREGUNTA_RECHAZO) : d.pregunta;
       return { responder: { textos: [pregunta] }, brief: { ...brief, marca: { ...brief.marca, propuestas: { ...p, comentarios_rechazo: comentarios, preguntas_estilo: preguntas + 1 } } }, seguirConAri: false };
     }
