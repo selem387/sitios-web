@@ -476,6 +476,8 @@ export async function procesarMensaje(b) {
       // Un error aquí no debe dejar al cliente en un ciclo de "dame un momento" (10-nov-2026): se registra y sigue Ari.
       console.error('propuestas', err);
       await db.evento(e.id, 'propuestas_error', { error: String(err?.message || err).slice(0, 500), texto: String(texto || '').slice(0, 200) }).catch(() => {});
+      // Las opciones nuevas no pasaron la revisión: se le dice claro (antes Ari seguía con otra pregunta, 24-nov-2026).
+      if (err?.code === 'OPCIONES_RETENIDAS') return responder(['Preparé tus opciones nuevas, pero al revisarlas no quedaron como deben y no te quiero mandar algo a medias. Las sigo afinando: escríbeme *opciones* en unos minutos y te las mando por aquí 🙏'], 'texto');
     }
   }
 

@@ -9,7 +9,9 @@ import { reLigaPropuesta } from './opciones/letras.js';
 
 // Para medir y capturar: sin la etiqueta ni el botón flotante, y con las animaciones de entrada ya terminadas
 // (12-nov-2026: se medía a media animación y salían falsos "título desalineado" y "desborde horizontal", y capturas en blanco).
-const CSS_REVISION = '.etq,.wa{display:none!important}*,*::before,*::after{animation-duration:0s!important;animation-delay:0s!important;transition-duration:0s!important;transition-delay:0s!important}'
+// El crédito de las imágenes ilustrativas (12px, al pie) no se mide: hacía que TODAS las opciones salieran con
+// "texto chico" y se retuvieran (24-nov-2026, Intiviso Lab).
+const CSS_REVISION = '.etq,.wa,.credito-ilus{display:none!important}*,*::before,*::after{animation-duration:0s!important;animation-delay:0s!important;transition-duration:0s!important;transition-delay:0s!important}'
   // Cada opción declara en su carpeta (opcion.js, cssRevision) cómo se mide quieta y completa.
   + OPCIONES.map((o) => o.cssRevision || '').join('');
 
