@@ -20,6 +20,8 @@ export const ilustrativasActivas = (brief = {}) => !!process.env.PIXABAY_API_KEY
 
 // Requisitos que el relleno puede cubrir (los demás, como "secciones" o la regla apta de la I, siguen decidiendo).
 export const RELLENABLES = ['fotosTrabajo', 'fotoBuena', 'fotosTotal', 'logo', 'servicios', 'grupos', 'productos', 'producto'];
+/** Requisitos que el relleno cubre para este cliente (los grupos no, si ya tiene 3 servicios o más). */
+export const rellenablesPara = ({ brief = {}, mat = {}, textos = {} } = {}) => (contarMaterial({ brief, mat, textos }).servicios >= 3 ? RELLENABLES.filter((r) => r !== 'grupos') : RELLENABLES);
 
 // Búsqueda por giro y subtipo (en español; Pixabay con lang=es).
 const TERMINOS = {
@@ -85,6 +87,9 @@ export function necesidades(ops, { brief = {}, mat = {}, textos = {} } = {}) {
     if (f.logo) n.logoLetras = true;
   }
   n.fotos = Math.min(n.fotos, 8);
+  // Con 3 servicios o más del cliente no se agregan servicios de ejemplo solo para formar grupos (24-nov-2026, Intiviso
+  // Lab: con 8 servicios reales le salieron 2 de ejemplo para la O); la opción que pide grupos no entra.
+  if (c.servicios >= 3) n.grupos = 0;
   return n;
 }
 

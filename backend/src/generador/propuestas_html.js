@@ -25,7 +25,7 @@ import { direccionTexto, testimoniosValidos } from './datos_brief.js';
 import { indiceDeLetra, porLetra } from './opciones/registro.js';
 import { paginasRestaurante } from './restaurante/plantilla.js';
 import { refrescarAprobadas, aprobadasDe, listaConPlantillas } from './plantillas_ref.js';
-import { ilustrativasActivas, RELLENABLES, construirRelleno, dependenciasReales, aplicarRelleno, conCredito } from './ilustrativas.js';
+import { ilustrativasActivas, RELLENABLES, rellenablesPara, construirRelleno, dependenciasReales, aplicarRelleno, conCredito } from './ilustrativas.js';
 
 // Regla dura de tipografía: la escala, el interlineado y la medida se agregan al final del CSS (mandan sobre la plantilla).
 const conReglaTipo = (html, par, estilo) => {
@@ -110,7 +110,7 @@ export async function renderPropuestas(brief, mat, textos, { ronda = 0, fijo = n
     // la propuesta; los cambios, el sitio en vivo y el rediseño lo vuelven a aplicar (solo lo que siga faltando).
     let relleno = brief.marca?.propuestas?.relleno || null;
     if (conLista && desdeCero && ilustrativasActivas(brief)) {
-      const conRelleno = primeroS(elegirLetras(mapa, { brief, mat, textos, porLetra, rellenables: RELLENABLES }));
+      const conRelleno = primeroS(elegirLetras(mapa, { brief, mat, textos, porLetra, rellenables: rellenablesPara({ brief, mat, textos }) }));
       try {
         relleno = await construirRelleno(conRelleno.letras.map(porLetra), { brief, mat, textos }, depsIlustrativas || await dependenciasReales());
         eleccion = conRelleno;

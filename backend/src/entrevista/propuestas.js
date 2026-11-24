@@ -101,7 +101,7 @@ function mensajeOpciones(op, brief, mat, ronda = 0) {
       ...(nota ? [nota] : []),
       ...(avisoIlustrativas(op.relleno, mat, brief) ? [avisoIlustrativas(op.relleno, mat, brief)] : []),
       ...(avisoReferencia(op.referencia) ? [avisoReferencia(op.referencia)] : []),
-      `¿Cuál te gusta más? Respóndeme con la letra (${op.opciones.map((o) => `*${o.letra}*`).join(', ')}). También puedes pedir mezclas, por ejemplo _la B con los colores de la E_. Si ninguna te convence, dime *ninguna* y qué te gustaría distinto.`,
+      `¿Cuál te gusta más? Respóndeme con la letra (${op.opciones.map((o) => `*${o.letra}*`).join(', ')}). ${op.opciones.length >= 2 ? `También puedes pedir mezclas, por ejemplo _la ${op.opciones[0].letra} con los colores de la ${op.opciones[1].letra}_. ` : ''}Si ninguna te convence, dime *ninguna* y qué te gustaría distinto.`,
     ],
     media: [],
   };
