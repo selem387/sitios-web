@@ -48,6 +48,9 @@ export function registerEntrevistaRoutes(app, wrap) {
     const out = { ...e };
     if (c.req.query('historial')) out.mensajes = await db.mensajesDesde(e.id, 0);
     out.assets = await db.assetsDe(e.id);
+    // Diagnóstico: últimos eventos de la entrevista (?eventos=N).
+    const n = Math.min(200, Number(c.req.query('eventos')) || 0);
+    if (n) out.eventos = (await db.q('SELECT tipo, datos, creado FROM eventos WHERE entrevista_id=$1 ORDER BY id DESC LIMIT $2', [e.id, n])).rows.reverse();
     return out;
   }));
 
