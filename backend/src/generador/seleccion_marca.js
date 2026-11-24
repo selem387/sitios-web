@@ -17,7 +17,9 @@ const LETRAS = 'ABCDEFGH';
 const esHex = (c) => /^#[0-9a-f]{6}$/i.test(String(c || ''));
 const esc = (s) => String(s ?? '').replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 
-const deFamilia = (f) => ({ id: f.n, nombre: f.n, colores: { marca: f.m, acento: f.a, fondo: f.c, texto: f.o }, por: f.por, estilo: f.e?.[0] || null, origen: 'giro' });
+// De otro giro (ronda "más"): su razón habla de ese giro, así que se explica solo por sus colores.
+const deFamilia = (f, afin = false) => ({ id: f.n, nombre: f.n, colores: { marca: f.m, acento: f.a, fondo: f.c, texto: f.o },
+  por: afin ? `combina ${nombreColor(f.m)} con ${nombreColor(f.a)}: se ve profesional y actual` : f.por, estilo: f.e?.[0] || null, origen: afin ? 'afin' : 'giro' });
 
 /** Todas las familias candidatas, en orden: las del giro del cliente y luego las de giros afines y el resto. */
 export function familiasCandidatas(brief = {}, evitarHex = []) {
@@ -33,7 +35,7 @@ export function familiasCandidatas(brief = {}, evitarHex = []) {
   for (const g of [propio, ...otros]) for (const f of g.familias) {
     const k = `${f.m}|${f.a}|${f.c}`.toUpperCase();
     if (vistos.has(f.n) || vistos.has(k)) continue;
-    vistos.add(f.n); vistos.add(k); out.push(deFamilia(f));
+    vistos.add(f.n); vistos.add(k); out.push(deFamilia(f, g !== propio));
   }
   return out;
 }
@@ -67,7 +69,7 @@ export function opcionesPaleta({ brief = {}, coloresLogo = [], ronda = 0, mostra
   const elegidas = fams.slice(0, POR_IMAGEN);
   const logo = ronda === 0 ? paletaDeLogo(coloresLogo, brief) : null;
   const lista = [...(logo ? [logo] : []), ...elegidas].map((o, i) => ({ ...o, letra: LETRAS[i] }));
-  const rec = lista.find((o) => o.origen === 'giro') || lista[0] || null;
+  const rec = lista.find((o) => o.origen === 'giro') || lista.find((o) => o.origen === 'afin') || lista[0] || null;
   return { opciones: lista, recomendada: rec?.letra || null, disenador: LETRAS[lista.length], agotadas: fams.length <= POR_IMAGEN };
 }
 
