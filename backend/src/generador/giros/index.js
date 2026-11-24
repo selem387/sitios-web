@@ -18,6 +18,8 @@ import { giro as generico } from './generico.js';
 import { giro as restaurante } from './restaurante.js';
 
 export const VERSION = 'giros-1';
+/** Opciones con movimiento y narrativa al hacer scroll (las de sitios de referencia premiados). */
+export const CON_MOVIMIENTO = Object.freeze(['K', 'N', 'J', 'M', 'I', 'R', 'H']);
 export const GIROS = Object.freeze({ servicios, clinica, inmobiliaria, tienda, oficios, educacion, turismo, generico });
 /** Secciones del kit que puede ordenar un mapa (id de cada una en kit/secciones.js). */
 export const SECCIONES = Object.freeze(['trabajo', 'servicios', 'sobre', 'equipo', 'resenas', 'proceso', 'video', 'faq', 'contacto']);
@@ -30,7 +32,10 @@ export function varianteDe(negocio = {}) {
   const g = GIROS[negocio.arquetipo] || (negocio.arquetipo === 'restaurante' ? null : GIROS.generico);
   if (!g) return null;
   const sub = negocio.subtipo_resuelto || negocio.subtipo;
-  const [id, v] = Object.entries(g.variantes).find(([, x]) => x.subtipos.includes(sub)) || [g.porOmision, g.variantes[g.porOmision]];
+  const texto = `${negocio.giro_texto || ''} ${negocio.descripcion_redes || ''}`;
+  const [id, v] = Object.entries(g.variantes).find(([, x]) => x.subtipos.includes(sub))
+    || (!sub && Object.entries(g.variantes).find(([, x]) => x.detectar?.test(texto)))
+    || [g.porOmision, g.variantes[g.porOmision]];
   return { giro: g.id, variante: id, ...v };
 }
 
@@ -39,7 +44,9 @@ export function mapaNuevo(brief = {}) {
   if (brief.negocio?.arquetipo === 'restaurante') { const v = restaurante.variantes.base; return { version: VERSION, giro: 'restaurante', variante: 'base', orden: [...v.orden], nombres: { ...v.nombres }, lista: [...v.lista] }; }
   const v = varianteDe(brief.negocio || {});
   if (!v) return null;
-  return { version: VERSION, giro: v.giro, variante: v.variante, orden: [...v.orden], nombres: { ...v.nombres }, lista: [...v.lista] };
+  // Si pidió "con todo el espectáculo" (marca.efectos), las opciones con movimiento de su lista van primero.
+  const lista = brief.marca?.efectos === 'espectacular' ? [...v.lista.filter((l) => CON_MOVIMIENTO.includes(l)), ...v.lista.filter((l) => !CON_MOVIMIENTO.includes(l))] : [...v.lista];
+  return { version: VERSION, giro: v.giro, variante: v.variante, orden: [...v.orden], nombres: { ...v.nombres }, lista };
 }
 
 /** Mapa con el que se arma una propuesta: el que se pida, el guardado en la propuesta o, si no hay, el legado. */
@@ -110,7 +117,8 @@ export function cumple(op, cuenta, { brief, mat, ignorar = [] } = {}) {
  */
 export function elegirLetras(mapa, { brief, mat, textos, porLetra, rellenables = [] }) {
   const cuenta = contarMaterial({ brief, mat, textos });
-  const existe = (l) => !!porLetra(l);
+  // mapa.excluir: letras que no deben salir (ya mostradas y rechazadas, o con defectos en la revisión visual).
+  const existe = (l) => !!porLetra(l) && !(mapa.excluir || []).includes(l);
   const lista = mapa.lista.filter(existe);
   // Con elementos ilustrativos (rellenables = requisitos que el relleno cubre), salen las primeras 6 de la lista.
   const elegidas = lista.filter((l) => cumple(porLetra(l), cuenta, { brief, mat, ignorar: rellenables })).slice(0, 6);

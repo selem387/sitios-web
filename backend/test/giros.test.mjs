@@ -20,7 +20,7 @@ test('cada mapa por giro es válido', () => {
 });
 
 test('cada subtipo de la base cae en su variante y sin giro es genérico; restaurante tiene su mapa aparte', () => {
-  const casos = { dental: 'clinica/resultados', estetica_spa: 'clinica/resultados', medica: 'clinica/espacio', veterinaria: 'clinica/espacio', legal: 'servicios/profesionales', contador_consultor: 'servicios/profesionales', agencia_marketing: 'servicios/profesionales', fotografia: 'servicios/visual', arquitectura_construccion: 'servicios/proyectos', hotel: 'turismo/hotel', tours: 'turismo/tours' };
+  const casos = { dental: 'clinica/resultados', estetica_spa: 'clinica/resultados', medica: 'clinica/espacio', veterinaria: 'clinica/espacio', legal: 'servicios/profesionales', contador_consultor: 'servicios/profesionales', agencia_marketing: 'servicios/creativos', fotografia: 'servicios/visual', arquitectura_construccion: 'servicios/proyectos', hotel: 'turismo/hotel', tours: 'turismo/tours' };
   const arq = { dental: 'clinica', estetica_spa: 'clinica', medica: 'clinica', veterinaria: 'clinica', legal: 'servicios', contador_consultor: 'servicios', agencia_marketing: 'servicios', fotografia: 'servicios', arquitectura_construccion: 'servicios', hotel: 'turismo', tours: 'turismo' };
   for (const [sub, esperado] of Object.entries(casos)) { const v = varianteDe({ arquetipo: arq[sub], subtipo: sub }); assert.equal(`${v.giro}/${v.variante}`, esperado, sub); }
   assert.equal(varianteDe({}).giro, 'generico');

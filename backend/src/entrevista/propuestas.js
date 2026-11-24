@@ -6,7 +6,7 @@
 import { procesarMateriales } from '../generador/materiales.js';
 import { interpretarEleccion } from '../generador/opciones.js';
 import { crearPropuestasHTML, textosPropuestas } from '../generador/propuestas_html.js';
-import { resolverMapa } from '../generador/giros/index.js';
+import { resolverMapa, esLegado } from '../generador/giros/index.js';
 import { ilustrativasActivas } from '../generador/ilustrativas.js';
 import { reconstruirReferencia } from '../generador/reconstruir.js';
 import { guardarCandidata } from '../generador/plantillas_ref.js';
@@ -175,13 +175,26 @@ async function aplicarRechazo(brief, d, comentarios) {
 // Página de referencia (decisiones del 18-nov-2026, doc claude/pagina-referencia-plantilla.md): si el cliente mandó una
 // liga (en la entrevista o al rechazar), se reconstruye su estructura y estilo como opción S, que va primero.
 // Se intenta una vez por liga; si falla, Ari lo dice y siguen las opciones normales.
-const ligaReferencia = (brief) => [...(brief.marca?.referencias_sitios || [])].reverse().find((u) => /^https?:\/\//.test(u) && !/figma\.com/i.test(u)) || null;
-export async function prepararReferencia(e, brief, mat, mapa, { reconstruir = reconstruirReferencia } = {}) {
-  const url = ligaReferencia(brief);
+// Si mandó varias (24-nov-2026, Intiviso Lab mandó 5 y solo se probaba la última), se prueban de la más reciente a la
+// más antigua, hasta 3 por vez, y se usa la primera que se deje reconstruir.
+const ligasReferencia = (brief) => [...(brief.marca?.referencias_sitios || [])].reverse().filter((u) => /^https?:\/\//.test(u) && !/figma\.com/i.test(u));
+export async function prepararReferencia(e, brief, mat, mapa, deps = {}) {
   const prev = brief.marca?.propuestas || {};
-  if (!url) return { brief, plano_ref: null, fallo: null };
+  const fallidas = new Set([...(prev.referencias_fallidas || []), prev.referencia_fallo?.url].filter(Boolean));
+  const ligas = ligasReferencia(brief);
+  const hecha = ligas.find((u) => prev.plano_ref?.origen === 'propia' && prev.plano_ref.url === u);
+  if (hecha) return prepararUna(e, brief, mat, mapa, hecha, deps);
+  let ultimo = { brief, plano_ref: null, fallo: null };
+  for (const url of ligas.filter((u) => !fallidas.has(u)).slice(0, 3)) {
+    ultimo = await prepararUna(e, brief, mat, mapa, url, deps);
+    if (ultimo.plano_ref) return ultimo;
+    if (ultimo.fallo) fallidas.add(url);
+  }
+  return { ...ultimo, fallidas: [...fallidas] };
+}
+async function prepararUna(e, brief, mat, mapa, url, { reconstruir = reconstruirReferencia } = {}) {
+  const prev = brief.marca?.propuestas || {};
   if (prev.plano_ref?.origen === 'propia' && prev.plano_ref.url === url) return { brief: { ...brief, marca: { ...brief.marca, plano_ref: prev.plano_ref } }, plano_ref: prev.plano_ref, fallo: null };
-  if (prev.referencia_fallo?.url === url) return { brief, plano_ref: null, fallo: null };
   try {
     const r = await reconstruir(url, { brief, mat, titulos: mapa?.nombres || {} });
     const plano_ref = { plano: r.plano, url, origen: 'propia', parecido: r.parecido };
@@ -194,9 +207,11 @@ export async function prepararReferencia(e, brief, mat, mapa, { reconstruir = re
   }
 }
 
-export async function mostrar(e, brief, mat, { ronda = 0 } = {}) {
+export async function mostrar(e, brief, mat, { ronda = 0, excluir = [] } = {}) {
   // Etapa 2: propuestas desde cero con el mapa de su giro de hoy; se guarda en la propuesta y los cambios lo reutilizan.
-  const mapa = resolverMapa(brief, 'nuevo');
+  // excluir: letras que ya vio y rechazó ("ninguna"): las nuevas son otros diseños, no los mismos con otros colores.
+  let mapa = resolverMapa(brief, 'nuevo');
+  if (excluir.length && !esLegado(mapa) && mapa.lista.filter((l) => !excluir.includes(l)).length >= 4) mapa = { ...mapa, excluir: [...new Set(excluir)] };
   const ref = brief.negocio?.arquetipo === 'restaurante' ? { brief, plano_ref: null, fallo: null } : await prepararReferencia(e, brief, mat, mapa);
   brief = ref.brief;
   const textos = await textosPropuestas(brief, mat, { mapa });
@@ -213,10 +228,14 @@ export async function mostrar(e, brief, mat, { ronda = 0 } = {}) {
   const INTENTOS = 3;
   const aOpcion = (o) => ({ etiqueta: o.letra, letra: o.letra, layout: o.layout, nombre: o.nombre, url: o.url, estilo: o.fuentes.estilo, tipografia: { titulos: o.fuentes.titulos, cuerpo: o.fuentes.cuerpo }, paleta: o.paleta });
   let mejor = null;
+  const defectuosas = new Set();
   // Tope de tiempo: el cliente está esperando en el chat. Pasado el tope no se empieza otro intento.
   const t0 = Date.now(), TOPE_MS = 9 * 60000;
   for (let intento = 0; intento < INTENTOS && (intento === 0 || Date.now() - t0 < TOPE_MS); intento++) {
-    const r = await crearPropuestasHTML(brief, mat, textos, { ronda: ronda + intento, mapa });
+    // Las que salieron con defectos medibles en el intento anterior se cambian por la siguiente de la lista del giro
+    // (antes se mandaban menos de 6: a Intiviso Lab le llegaron 4 porque la R y la F no pasaron la revisión).
+    const mapaIntento = defectuosas.size && !esLegado(mapa) ? { ...mapa, excluir: [...new Set([...(mapa.excluir || []), ...defectuosas])] } : mapa;
+    const r = await crearPropuestasHTML(brief, mat, textos, { ronda: ronda + intento, mapa: mapaIntento, desdeCero: true });
     const opciones = r.opciones.map(aOpcion);
     const rev = await revisarYCorregir(opciones, { referencia: (brief.marca?.referencias_sitios || [])[0] || null }).catch((err) => { console.error('[propuestas] revisión', err.message); return { pasan: opciones, revision: [] }; });
     const de = (l) => (rev.revision || []).find((x) => x.letra === l);
@@ -224,7 +243,8 @@ export async function mostrar(e, brief, mat, { ronda = 0 } = {}) {
     const limpias = opciones.filter((o) => { const v = de(o.letra); return !v || v.ok !== false || (!v.error && !(v.objetivas || []).length); });
     if (e?.id) await db.evento(e.id, 'revision_opciones', { intento, token: r.token, pasan: rev.pasan.map((o) => o.letra), sin_defectos: limpias.map((o) => o.letra), revision: (rev.revision || []).map(({ letra, ok, problemas, objetivas }) => ({ letra, ok, medibles: (objetivas || []).length, problemas })) }).catch(() => {});
     if (!mejor || limpias.length > mejor.limpias.length || (limpias.length === mejor.limpias.length && rev.pasan.length > mejor.pasan.length)) mejor = { r, pasan: rev.pasan, limpias, ronda: ronda + intento };
-    if (rev.pasan.length >= 4 || (limpias.length >= 4 && intento >= 1)) break;
+    for (const o of opciones) if (!limpias.includes(o)) defectuosas.add(o.letra);
+    if (limpias.length >= Math.min(6, opciones.length) || (limpias.length >= 4 && intento >= 1 && Date.now() - t0 > 5 * 60000)) break;
   }
   const { r, limpias } = mejor;
   if (limpias.length < 2) {
@@ -237,7 +257,7 @@ export async function mostrar(e, brief, mat, { ronda = 0 } = {}) {
   // Plantilla candidata para otros clientes del giro (decisión 5): se guarda y se avisa a Sebastián por Telegram.
   const s = opciones.find((o) => o.letra === 'S');
   if (s && ref.plano_ref && ref.plano_ref !== prev.plano_ref) guardarCandidata({ giro: brief.negocio?.arquetipo || 'generico', subtipo: brief.negocio?.subtipo_resuelto || brief.negocio?.subtipo || null, plano: ref.plano_ref.plano, urlOrigen: ref.plano_ref.url, urlMuestra: s.url, entrevistaId: e?.id, parecido: ref.plano_ref.parecido, negocio: brief.negocio?.nombre }).catch(() => {});
-  return { propuestas: { ...prev, estado: 'mostradas', token: r.token, opciones, textos, mapa: r.mapa, relleno: r.relleno || null, plano_ref: ref.plano_ref || r.plano_ref || null, referencia_fallo: ref.fallo || prev.referencia_fallo || null, ronda: mejor.ronda, asesor_color: r.asesor?.hallazgos || [], usados: [...(prev.usados || []), r.token] }, salida: mensajeOpciones({ opciones, asesor: r.asesor, relleno: r.relleno, referencia: { ...ref, sale: opciones.some((o) => o.letra === 'S' && ref.plano_ref) } }, brief, mat, mejor.ronda) };
+  return { propuestas: { ...prev, estado: 'mostradas', token: r.token, opciones, textos, mapa: r.mapa, relleno: r.relleno || null, plano_ref: ref.plano_ref || r.plano_ref || null, referencia_fallo: ref.fallo || prev.referencia_fallo || null, referencias_fallidas: ref.fallidas || prev.referencias_fallidas || [], ronda: mejor.ronda, asesor_color: r.asesor?.hallazgos || [], usados: [...(prev.usados || []), r.token] }, salida: mensajeOpciones({ opciones, asesor: r.asesor, relleno: r.relleno, referencia: { ...ref, sale: opciones.some((o) => o.letra === 'S' && ref.plano_ref) } }, brief, mat, mejor.ronda) };
 }
 
 /**
@@ -271,11 +291,11 @@ export async function atenderPropuestas(e, brief, { texto = '', huboMedia = fals
     const comentario = comentarios.join(' · ');
     const b2 = d.estilo || d.colores || d.evitar || d.preset ? await aplicarRechazo(brief, d, comentarios) : ajustesDeComentario(comentario, brief);
     const mat = await procesarMateriales(e.id, b2, { aceptarLoQueHay: true });
-    const m = await mostrar(e, b2, mat, { ronda: (p.ronda || 0) + 1 });
+    const m = await mostrar(e, b2, mat, { ronda: (p.ronda || 0) + 1, excluir: [...(p.letras_rechazadas || []), ...(p.opciones || []).map((o) => o.letra)].filter((l) => l !== 'S') });
     const intro = d.resumen ? `${d.resumen.trim()} Con eso te preparé 6 nuevas 👇` : 'Te preparé 6 nuevas con lo que me dijiste 👇';
     const salida = { ...m.salida, textos: [intro, ...(m.salida?.textos || [])] };
     await db.evento(e.id, 'opciones_rehechas', { comentarios, entendido: d, ronda: (p.ronda || 0) + 1 }).catch(() => {});
-    return { responder: salida, brief: { ...b2, marca: { ...b2.marca, propuestas: { ...m.propuestas, comentario, comentarios_rechazo: [], preguntas_estilo: 0, rechazos_previos: [...(p.rechazos_previos || []), { ronda: p.ronda || 0, comentarios, entendido: d }] } } }, seguirConAri: false };
+    return { responder: salida, brief: { ...b2, marca: { ...b2.marca, propuestas: { ...m.propuestas, comentario, comentarios_rechazo: [], preguntas_estilo: 0, letras_rechazadas: [...new Set([...(p.letras_rechazadas || []), ...(p.opciones || []).map((o) => o.letra)])], rechazos_previos: [...(p.rechazos_previos || []), { ronda: p.ronda || 0, comentarios, entendido: d }] } } }, seguirConAri: false };
   }
   if (p.estado === 'mostradas') {
     const reenviar = () => ({ responder: { textos: ['Claro, aquí van otra vez 👇', p.opciones.map((o) => `*${o.letra}* · ${o.nombre}\n${o.url}`).join('\n\n'), `¿Cuál te gusta más? Respóndeme con la letra (${p.opciones.map((o) => `*${o.letra}*`).join(', ')}) o dime *ninguna* y qué cambiarías. Ya que elijas una, puedes pedirme cualquier ajuste.`] }, brief, seguirConAri: false });
