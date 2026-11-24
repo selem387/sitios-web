@@ -20,7 +20,7 @@ import { limpiarDominio } from '../dominio/registrador.js';
 import { paginaEditable, estadoCambios, registrarPedido, clasificarMensaje } from './cambios.js';
 import { alElegir } from '../panel/rehacer.js';
 import { avisarEquipo } from './avisos.js';
-import { notaRequisitos, primerBloqueIncompleto, faltantes, unirNoTiene, noTieneDelHistorial, preguntaYaNegada, rellenarDelHistorial, omitidasDelHistorial } from './requisitos.js';
+import { notaRequisitos, primerBloqueIncompleto, faltantes, unirNoTiene, noTieneDelHistorial, preguntaYaNegada, rellenarDelHistorial, omitidasDelHistorial, listoParaOpciones, notaAntesDeOpciones } from './requisitos.js';
 import { atenderExtraccion, asegurarResumen } from './redes_extraccion.js';
 import { dominioRespondido, quiereDominio, PREGUNTA_DOMINIO, mensajePago, pagoPendiente, atenderPostCierre } from './pago_pagina.js';
 import { reLigaPropuesta } from '../generador/opciones/letras.js';
@@ -530,6 +530,7 @@ export async function procesarMensaje(b) {
     if (rx.nota) notaAri = [notaAri, rx.nota].filter(Boolean).join('\n');
     resumenRedes = rx.resumen || null;
   }
+  notaAri = [notaAri, notaAntesDeOpciones(e.brief)].filter(Boolean).join('\n') || null;
   let t = await turnoAri(e, { mensajesRecientes, ultimoTexto: textoTurno, regresaDePausa, arquetipos, assets, notaAri });
   let brief = mergeProfundo(e.brief || {}, t.briefPatch);
   brief.no_tiene = unirNoTiene(e.brief?.no_tiene, t.briefPatch?.no_tiene);
@@ -563,10 +564,19 @@ export async function procesarMensaje(b) {
       const nota = `NO REPITAS: ya preguntaste "${rep.pregunta}" y el cliente contestó "${rep.respuesta.slice(0, 300)}". Eso ya está en BRIEF. Pregunta lo SIGUIENTE que falte; si del bloque ${t.bloque} ya tienes todo, ciérralo y pasa al siguiente bloque.`;
       const eAct = { ...e, bloque_actual: t.bloque, brief };
       const t3 = await turnoAri(eAct, { mensajesRecientes, ultimoTexto: textoTurno, regresaDePausa, arquetipos, assets, notaAri: [notaAri, nota].filter(Boolean).join('\n') }).catch(() => null);
+      let resuelto = false;
       if (t3 && !(await preguntaRepetida(e.id, t3.reply))) {
         const b3 = mergeProfundo(brief, t3.briefPatch);
         b3.no_tiene = unirNoTiene(brief.no_tiene, t3.briefPatch?.no_tiene);
-        if (!primerBloqueIncompleto(b3, assets, t3.completado ? 'B12' : t3.bloque)) { brief = b3; t = { ...t3, assetsPatch: [...t.assetsPatch, ...t3.assetsPatch] }; }
+        if (!primerBloqueIncompleto(b3, assets, t3.completado ? 'B12' : t3.bloque)) { brief = b3; t = { ...t3, assetsPatch: [...t.assetsPatch, ...t3.assetsPatch] }; resuelto = true; }
+      }
+      // Si Ari insiste en la misma pregunta (23-nov-2026, Intiviso: "¿alguna anécdota memorable?" tres veces), se pasa
+      // a lo siguiente que falte con el texto fijo, o al siguiente bloque.
+      if (!resuelto) {
+        await db.evento(e.id, 'pregunta_repetida_forzada', { reply: t.reply.slice(0, 200) });
+        const sig = faltantes(brief, assets).find((f) => !preguntaYaNegada(f.pedir, brief));
+        const i = BLOQUES.indexOf(t.bloque);
+        t = { ...t, reply: sig ? sig.pedir : 'Perfecto, con eso seguimos 👍', bloque: sig ? sig.bloque : (BLOQUES[i + 1] || t.bloque) };
       }
     }
   }
@@ -670,9 +680,18 @@ export async function procesarMensaje(b) {
   // Si ya se retuvieron dos veces (no pasaron la revisión), no se reintenta en cada cambio de bloque: solo al cierre.
   const retenidas = e.brief?.marca?.opciones_retenidas || 0;
   let avisoRetenidas = null;
-  if (!t.completado && ((tocaPropuestas(e.brief, bloqueAnterior, t.bloque) && retenidas < 2) || (sinDiseno && !e.brief?.marca?.propuestas))) {
+  // Las opciones salen en cuanto está lo indispensable (requisitos.js → ANTES_DE_OPCIONES), sin esperar a terminar B6;
+  // si fallaron, se reintentan en el siguiente mensaje (antes solo se intentaba al cruzar B6 y, si fallaba, nunca más).
+  const fallos = e.brief?.marca?.propuestas_fallos || 0;
+  const listas = !e.brief?.marca?.propuestas && fallos < 4 && listoParaOpciones(e.brief, assets);
+  if (!t.completado && ((((tocaPropuestas(e.brief, bloqueAnterior, t.bloque) || listas) && retenidas < 2)) || (sinDiseno && !e.brief?.marca?.propuestas))) {
     try {
-      const r = await iniciarPropuestas(e, e.brief);
+      let r;
+      try { r = await iniciarPropuestas(e, e.brief); } catch (err1) {
+        if (err1?.code === 'OPCIONES_RETENIDAS') throw err1;
+        await db.evento(e.id, 'propuestas_error', { error: String(err1?.message || err1).slice(0, 500), reintento: true }).catch(() => {});
+        r = await iniciarPropuestas(e, e.brief);
+      }
       await db.guardar(e.id, { brief: r.brief }); e.brief = r.brief;
       return responderConMedia([...mensajes, ...r.responder.textos], r.responder.media);
     } catch (err) {
@@ -684,6 +703,11 @@ export async function procesarMensaje(b) {
         const b = { ...e.brief, marca: { ...(e.brief.marca || {}), opciones_retenidas: retenidas + 1 } };
         await db.guardar(e.id, { brief: b }).catch(() => {}); e.brief = b;
         avisoRetenidas = 'Sigo afinando tus opciones de diseño para que queden bien; te las mando por aquí en cuanto estén listas 🙏';
+      } else {
+        // Falla de otro tipo: no se sigue con la entrevista como si nada; se le dice y se reintenta en su siguiente mensaje.
+        const b = { ...e.brief, marca: { ...(e.brief.marca || {}), propuestas_fallos: fallos + 1 } };
+        await db.guardar(e.id, { brief: b }).catch(() => {}); e.brief = b;
+        if (listas) t = { ...t, reply: 'Estoy terminando de preparar tus opciones de diseño. Escríbeme *opciones* en un par de minutos y te las mando por aquí 🙏' };
       }
     }
   }
