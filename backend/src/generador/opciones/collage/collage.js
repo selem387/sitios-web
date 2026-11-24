@@ -106,7 +106,7 @@ export const CSS_COLLAGE = `
 .h-col>.col-fondo{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;max-width:none;z-index:-2}
 .h-col>.col-velo{position:absolute;inset:0;z-index:-1;background:linear-gradient(180deg,rgba(0,0,0,.58),rgba(0,0,0,.74))}
 .h-col.sin-fondo{background:var(--banda)}
-.h-col .wrap{max-width:1320px}.h-col .col-in{display:grid;gap:clamp(28px,4vw,52px);align-items:center}
+.h-col .col-in{display:grid;gap:clamp(28px,4vw,52px);align-items:center}
 .h-col h1{font-size:clamp(38px,8.4vw,72px)}.h-col .sub,.h-col .kicker{color:rgba(255,255,255,.9)}.h-col .info{color:rgba(255,255,255,.86)}
 .col{position:relative;width:100%;aspect-ratio:4/3}
 .col-e{position:absolute;inset:0;display:grid;gap:8px;visibility:hidden;z-index:0}

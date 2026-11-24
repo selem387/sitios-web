@@ -136,7 +136,7 @@ body.l-guia{--osc:var(--banda);--pad:clamp(20px,4vw,56px);font-family:var(--fc)}
 body.l-guia h1,body.l-guia h2,body.l-guia h3,body.l-guia h4{font-family:var(--ft);font-weight:500;letter-spacing:-.03em;line-height:1.02}
 body.l-guia h2{font-size:clamp(34px,5vw,72px);margin-bottom:28px}
 body.l-guia .sec{padding:clamp(72px,10vw,140px) 0}
-body.l-guia .wrap{max-width:1280px;padding:0 var(--pad)}
+body.l-guia .wrap{max-width:none;padding:0 var(--pad)}
 body.l-guia .btn{border-radius:999px;font-weight:500}
 body.l-guia .paq,body.l-guia blockquote,body.l-guia .tr-c figure,body.l-guia .galeria img{border-radius:12px}
 html.gu-js body.l-guia .barra{position:fixed;left:0;right:0;background:transparent;backdrop-filter:none;border:0;transition:color .4s ease,background-color .4s ease}

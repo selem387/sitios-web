@@ -324,8 +324,8 @@ img,video{display:block;max-width:100%}a{color:inherit}h1,h2,h3{font-weight:400;
 .vq-hf,.vq-video{width:100%;height:100%;object-fit:cover;object-position:50% 30%}
 .vq-hf{animation:vq-z 16s ease-in-out infinite alternate;will-change:transform}
 @keyframes vq-z{from{transform:scale(1)}to{transform:scale(1.07)}}
-.vq-hero::after{content:"";position:absolute;inset:auto 0 0 0;height:60%;background:linear-gradient(180deg,rgba(0,0,0,0),rgba(0,0,0,.58));pointer-events:none}
-.vq-hero-txt{position:absolute;left:50px;right:50px;bottom:52px;z-index:2;max-width:640px;text-shadow:0 1px 3px rgba(0,0,0,.45),0 1px 14px rgba(0,0,0,.3)}
+.vq-hero::after{content:"";position:absolute;inset:auto 0 0 0;height:80%;background:linear-gradient(180deg,rgba(0,0,0,0),rgba(0,0,0,.45) 45%,rgba(0,0,0,.72));pointer-events:none}
+.vq-hero-txt{position:absolute;left:32px;right:32px;bottom:52px;z-index:2;max-width:640px;text-shadow:0 1px 3px rgba(0,0,0,.45),0 1px 14px rgba(0,0,0,.3)}
 .vq-hero h1{font-size:clamp(24px,2.1vw,30px);font-weight:400;line-height:1.25}
 .vq-hsub{font-size:20px;font-weight:300;margin-top:8px;max-width:52ch;opacity:.95}
 .vq-promo{display:inline-block;font-size:20px;letter-spacing:.01em;margin-bottom:12px;padding:5px 10px;background:#fff;color:#000;text-shadow:none}

@@ -363,9 +363,9 @@ img.ag-m.on{animation:ag-zoom 9s ease-out both}.ag-oculta{display:none}
 .ag-tj ul{padding-left:18px;font-size:14.5px;color:var(--gris);display:grid;gap:2px}
 /* Contacto */
 .ag-cont-s{border-top:1px solid var(--bor);padding:clamp(48px,5vw,72px) 0}
-.ag-cont{background:var(--sup);border-radius:36px;padding:clamp(36px,4.4vw,60px) clamp(20px,4vw,48px);display:grid;justify-items:center;text-align:center;gap:10px}
+.ag-cont{background:var(--sup);border-radius:36px;padding:clamp(36px,4.4vw,60px) clamp(20px,4vw,48px);display:grid;grid-template-columns:minmax(0,1fr);justify-items:center;text-align:center;gap:10px}
 .ag-cont-sub{font-size:17.5px;color:var(--gris);max-width:52ch}
-.ag-form{display:grid;gap:16px;width:min(780px,100%);margin-top:28px}
+.ag-form{display:grid;grid-template-columns:minmax(0,1fr);gap:16px;width:min(780px,100%);margin-top:28px}
 .ag-temas{display:flex;flex-wrap:wrap;gap:8px;justify-content:center}
 .ag-tema{position:relative;cursor:pointer}.ag-tema input{position:absolute;opacity:0;pointer-events:none}
 .ag-tema span{display:inline-flex;align-items:center;gap:6px;font-size:13.5px;font-weight:450;padding:10px 16px;border-radius:999px;background:#fff;color:var(--gris);box-shadow:inset 0 0 0 1px var(--bor);transition:background .2s,color .2s}
