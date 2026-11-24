@@ -102,11 +102,11 @@ export function porQueFuente(par = {}) {
 
 /* ---------- Cuadrículas (HTML que el servicio render convierte en imagen) ---------- */
 
-const CSS_BASE = `*{box-sizing:border-box;margin:0}body{font-family:system-ui,-apple-system,'Segoe UI',sans-serif;background:#EEECE8;color:#1C1C1C;padding:18px;width:480px}
+const CSS_BASE = `*{box-sizing:border-box;margin:0}body{font-family:'Onest',system-ui,-apple-system,'Segoe UI',sans-serif;background:#EEECE8;color:#1C1C1C;padding:18px;width:480px}
 h1{font-size:19px;font-weight:700;letter-spacing:-.01em;margin:2px 4px 4px}p.sub{font-size:13px;color:#5C5A56;margin:0 4px 14px}
 .g{display:grid;grid-template-columns:1fr 1fr;gap:12px}.c{position:relative;background:#fff;border-radius:16px;overflow:hidden;box-shadow:0 1px 2px rgba(0,0,0,.08)}
-.l{position:absolute;top:8px;left:8px;width:34px;height:34px;border-radius:50%;background:#1C1C1C;color:#fff;font:700 19px/34px system-ui,sans-serif;text-align:center;z-index:2;box-shadow:0 0 0 3px #fff}
-.rec{position:absolute;top:12px;right:8px;background:#1C1C1C;color:#fff;font:600 10px/1 system-ui,sans-serif;letter-spacing:.04em;text-transform:uppercase;padding:6px 8px;border-radius:999px;z-index:2}
+.l{position:absolute;top:8px;left:8px;width:34px;height:34px;border-radius:50%;background:#1C1C1C;color:#fff;font:700 19px/34px 'Onest',system-ui,sans-serif;text-align:center;z-index:2;box-shadow:0 0 0 3px #fff}
+.rec{position:absolute;top:12px;right:8px;background:#1C1C1C;color:#fff;font:600 10px/1 'Onest',system-ui,sans-serif;letter-spacing:.04em;text-transform:uppercase;padding:6px 8px;border-radius:999px;z-index:2}
 .n{font-size:12.5px;font-weight:600;padding:8px 10px 10px;line-height:1.25}.n small{display:block;font-weight:400;color:#6A6763;font-size:11px;margin-top:2px}
 .dis{display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;min-height:100%;padding:52px 14px 18px;background:repeating-linear-gradient(135deg,#F7F6F3 0 10px,#F1EFEB 10px 20px)}
 .dis b{font-size:15px}.dis span{font-size:12px;color:#5C5A56;margin-top:6px;line-height:1.35}`;
@@ -117,13 +117,13 @@ export function htmlPaletas({ opciones = [], recomendada = null, disenador = 'F'
     const c = o.colores;
     return `<div class="c"><span class="l">${o.letra}</span>${o.letra === recomendada ? '<span class="rec">Recomendada</span>' : ''}
 <div style="background:${c.fondo};padding:52px 14px 14px;min-height:150px">
-<div style="font:700 17px/1.15 system-ui,sans-serif;color:${c.marca};letter-spacing:-.01em">${esc(negocio || 'Tu negocio')}</div>
+<div style="font:700 17px/1.15 'Onest',system-ui,sans-serif;color:${c.marca};letter-spacing:-.01em">${esc(negocio || 'Tu negocio')}</div>
 <div style="height:6px;width:70%;background:${c.texto};opacity:.55;border-radius:3px;margin-top:10px"></div><div style="height:6px;width:52%;background:${c.texto};opacity:.35;border-radius:3px;margin-top:6px"></div>
-<span style="display:inline-block;margin-top:12px;background:${c.acento};color:${legibleSobre(c.acento)};font:600 11px/1 system-ui,sans-serif;padding:8px 12px;border-radius:999px">Escríbenos</span></div>
+<span style="display:inline-block;margin-top:12px;background:${c.acento};color:${legibleSobre(c.acento)};font:600 11px/1 'Onest',system-ui,sans-serif;padding:8px 12px;border-radius:999px">Escríbenos</span></div>
 <div style="display:flex;height:22px">${[c.marca, c.acento, c.texto, c.fondo].map((h, k) => `<span style="flex:${k === 0 ? 3 : 2};background:${h}${k === 3 ? ';box-shadow:inset 0 0 0 1px rgba(0,0,0,.12)' : ''}"></span>`).join('')}</div>
 <div class="n">${esc(o.nombre)}<small>${esc(`${nombreColor(c.marca)}, ${nombreColor(c.acento)} y ${nombreColor(c.fondo)}`)}</small></div></div>`;
   };
-  return `<!doctype html><html lang="es"><head><meta charset="utf-8"><style>${CSS_BASE}</style></head><body>
+  return `<!doctype html><html lang="es"><head><meta charset="utf-8"><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Onest:wght@400;600;700&display=swap"><style>${CSS_BASE}</style></head><body>
 <h1>Colores para ${esc(negocio || 'tu página')}</h1><p class="sub">Respóndeme con la letra que más te guste</p>
 <div class="g">${opciones.map(tarjeta).join('')}<div class="c"><span class="l">${disenador}</span><div class="dis"><b>Que lo decida el diseñador</b><span>Uso los colores de cada diseño tal como fueron creados</span></div></div></div></body></html>`;
 }
@@ -138,7 +138,7 @@ export function htmlFuentes({ opciones = [], recomendada = null, disenador = 'E'
 <div style="font-family:'${o.cuerpo}',sans-serif;font-size:12px;line-height:1.5;color:${c.texto};opacity:.85;margin-top:8px">Así se leen los textos de tu página: claros y cómodos en el celular.</div>
 <span style="display:inline-block;margin-top:12px;background:${c.acento};color:${legibleSobre(c.acento)};font-family:'${o.cuerpo}',sans-serif;font-weight:600;font-size:11px;padding:8px 12px;border-radius:999px">Escríbenos</span></div>
 <div class="n">${esc(o.titulos)}<small>Títulos · ${esc(o.cuerpo)} en textos</small></div></div>`;
-  return `<!doctype html><html lang="es"><head><meta charset="utf-8"><link rel="stylesheet" href="${esc(urlFuentes(opciones.map((o) => ({ titulos: o.titulos, cuerpo: o.cuerpo }))))}"><style>${CSS_BASE}</style></head><body>
+  return `<!doctype html><html lang="es"><head><meta charset="utf-8"><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Onest:wght@400;600;700&display=swap"><link rel="stylesheet" href="${esc(urlFuentes(opciones.map((o) => ({ titulos: o.titulos, cuerpo: o.cuerpo }))))}"><style>${CSS_BASE}</style></head><body>
 <h1>Letras para ${esc(negocio || 'tu página')}</h1><p class="sub">Respóndeme con la letra que más te guste</p>
 <div class="g">${opciones.map(tarjeta).join('')}<div class="c"><span class="l">${disenador}</span><div class="dis"><b>Que lo decida el diseñador</b><span>Uso la letra de cada diseño tal como fue creado</span></div></div></div></body></html>`;
 }

@@ -124,7 +124,7 @@ app.post('/v1/imagen', async (c) => {
   if (!b || typeof b.html !== 'string' || !b.html.trim()) return c.json({ error: 'falta html' }, 400);
   const t0 = Date.now();
   const ancho = Math.max(320, Math.min(1200, Number(b.ancho) || 480));
-  const buf = await conPagina({ width: ancho, height: 800, scale: 2, movil: false }, async (page) => {
+  const buf = await conPagina({ width: ancho, height: 300, scale: 2, movil: false }, async (page) => {
     await page.setContent(b.html, { waitUntil: 'networkidle', timeout: 20000 }).catch(() => {});
     await page.evaluate(() => document.fonts?.ready).catch(() => {});
     await page.waitForTimeout(300);

@@ -131,8 +131,9 @@ const TEMA = {
   otro_dato_confianza: /otro dato de confianza|algun otro dato|algo mas que (quieras|te gustaria) (incluir|agregar|mostrar)/,
   diferenciador: /diferente|diferencia|distingue|que otros no/,
   horarios: /horario/,
-  logo: /logo/,
+  // Redes antes que logo: la pregunta de redes dice "de ahí tomo tu logo" y un "no tengo" se tomaba como "no tengo logo".
   redes: /facebook|instagram/,
+  logo: /logo/,
   fotos_suficientes: /mas fotos|otras fotos|fotos mas|al menos \w+ mas/,
 };
 // Temas opcionales (no son requisitos): si dijo que no los tiene, tampoco se vuelven a preguntar.

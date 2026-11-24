@@ -73,3 +73,9 @@ test('flujo: sin logo pasa directo a paletas; quien ya tiene propuestas no entra
   assert.equal(r.brief.marca.seleccion.paletas.opciones[0].origen, 'giro');
   assert.equal(seleccionAplica({ ...brief, marca: { propuestas: { estado: 'enviada' } } }), false);
 });
+
+test('"no tengo" a la pregunta de redes no cuenta como "no tengo logo"', async () => {
+  const { requisitoDePregunta } = await import('../src/entrevista/requisitos.js');
+  assert.equal(requisitoDePregunta('¿Tu negocio tiene página de Facebook o Instagram? Mándame las ligas y de ahí tomo tu logo, tus fotos y tus datos.'), 'redes');
+  assert.equal(requisitoDePregunta('¿Tienes logotipo? Mándamelo por aquí.'), 'logo');
+});
