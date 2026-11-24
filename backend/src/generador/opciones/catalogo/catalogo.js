@@ -148,7 +148,8 @@ html:not(.ct-js) .ct-x{display:none}
 .ct-pista:focus-visible{outline:3px solid var(--primary);outline-offset:-3px}
 .ct-slide{flex:0 0 100%;scroll-snap-align:start;position:relative;display:grid;grid-template-columns:minmax(0,1fr);align-items:end;min-height:clamp(500px,84svh,820px);background:var(--banda);color:#fff}
 .ct-fig{position:absolute;inset:0;margin:0}.ct-img{width:100%;height:100%;object-fit:cover;display:block}
-.ct-slide::after{content:"";position:absolute;inset:0;background:linear-gradient(0deg,rgba(0,0,0,.55),rgba(0,0,0,0) 55%);pointer-events:none}
+.ct-slide::after{content:"";position:absolute;inset:0;background:linear-gradient(90deg,rgba(0,0,0,.58),rgba(0,0,0,.18) 70%),linear-gradient(0deg,rgba(0,0,0,.5),rgba(0,0,0,0) 60%);pointer-events:none}
+@media (max-width:700px){.ct-slide::after{background:linear-gradient(0deg,rgba(0,0,0,.72),rgba(0,0,0,.42) 55%,rgba(0,0,0,.18))}}
 .ct-txt{position:relative;z-index:1;width:100%;display:grid;gap:10px;justify-items:start;padding-top:48px;padding-bottom:clamp(72px,9vw,120px)}
 .ct-h{font-size:clamp(38px,5.4vw,84px);line-height:1.04;letter-spacing:-.04em;font-weight:400;margin:0;max-width:16ch}.ct-h.h1-m{font-size:clamp(34px,4.6vw,72px)}.ct-h.h1-l{font-size:clamp(30px,4vw,60px)}
 .ct-sub{font-size:clamp(18px,1.7vw,24px);font-weight:500;line-height:1.25;letter-spacing:-.01em;max-width:34ch;margin:0}

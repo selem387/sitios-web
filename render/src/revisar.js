@@ -37,7 +37,8 @@ export async function revisarPagina(page) {
     if (document.documentElement.scrollWidth > W + 2) prob.push(`desborde horizontal: la página mide ${document.documentElement.scrollWidth}px en una pantalla de ${W}px`);
     // Botones fuera de la pantalla y textos encimados (en lo visible de cada sección).
     const btns = Array.from(document.querySelectorAll('a.btn, button.btn, .btn')).filter((b) => visible(b) && !b.closest('.etq,.wa'));
-    for (const b of btns) { const r = b.getBoundingClientRect(); if (r.left < -1 || r.right > W + 1) prob.push(`botón cortado por el borde: "${(b.textContent || '').trim().slice(0, 40)}"`); }
+    // Solo los que quedan partidos por el borde: los que están enteros fuera (diapositivas siguientes de un carrusel) no cuentan.
+    for (const b of btns) { const r = b.getBoundingClientRect(); if ((r.left < -1 && r.right > 0) || (r.right > W + 1 && r.left < W)) prob.push(`botón cortado por el borde: "${(b.textContent || '').trim().slice(0, 40)}"`); }
     // El texto decorativo (aria-hidden, p. ej. la firma a mano que la opción R pone encima de su nombre) se encima a propósito.
     const txt = Array.from(document.querySelectorAll('h1,h2,h3,p,.btn,.kicker,.sub')).filter((e) => visible(e) && !e.closest('.etq,.wa,footer,[aria-hidden="true"]'));
     for (let a = 0; a < txt.length; a++) {
@@ -72,7 +73,7 @@ export async function revisarPagina(page) {
       const moda = lefts.sort((a, b) => lefts.filter((x) => x === b).length - lefts.filter((x) => x === a).length)[0];
       // Sin columna medible (títulos a todo el ancho o fuera de la pantalla en diseños de scroll horizontal) no se compara.
       if (moda != null && moda >= 4 && moda < W - 40) {
-        const bloques = Array.from(document.querySelectorAll('main h1, .hero .sub, .galeria, .just, .tira, .paqs, .quotes, .datos')).filter((e) => visible(e) && !e.closest('.sl'));
+        const bloques = Array.from(document.querySelectorAll('main h1, .hero .sub, .galeria, .just, .tira, .paqs, .quotes, .datos')).filter((e) => visible(e) && !e.closest('.sl,footer'));
         for (const e of bloques) {
           const r = e.getBoundingClientRect(), s = getComputedStyle(e);
           const centrado = Math.abs((r.left + r.right) / 2 - W / 2) < 8 && (s.textAlign === 'center' || e.closest('[style*="center"],.h-logo'));
@@ -151,13 +152,20 @@ export async function revisarContraste(page) {
     return els.map((e, k) => {
       e.setAttribute('data-rv', k);
       const s = getComputedStyle(e); const r = e.getBoundingClientRect();
-      const m = s.color.match(/[\d.]+/g).map(Number);
+      // El color puede venir como rgb() o como color(srgb 0–1) / oklch (color-mix, colores relativos): se normaliza
+      // pintándolo en un canvas (antes color(srgb 0.97 …) se leía como casi negro y daba contraste falso de 1.1:1).
+      const cv = document.createElement('canvas'); cv.width = cv.height = 1; const cx = cv.getContext('2d');
+      cx.fillStyle = '#000'; cx.fillStyle = s.color; cx.fillRect(0, 0, 1, 1); const px1 = cx.getImageData(0, 0, 1, 1).data;
+      const alfa0 = (s.color.match(/\/\s*([\d.]+)(%?)\s*\)$/) || s.color.match(/rgba\([^)]*,\s*([\d.]+)\)/) || [])[1];
+      const m = [px1[0], px1[1], px1[2], alfa0 != null ? Number(alfa0) : 1];
       const tam = parseFloat(s.fontSize), peso = parseInt(s.fontWeight, 10) || 400;
       return { k, texto: e.textContent.trim().replace(/\s+/g, ' ').slice(0, 40), color: m.slice(0, 3), alfa: m[3] ?? 1, grande: tam >= 24 || (tam >= 18.6 && peso >= 700), clip: { x: Math.max(0, r.left), y: Math.max(0, r.top), width: Math.min(r.width, W - Math.max(0, r.left)), height: Math.min(r.height, H - Math.max(0, r.top)) } };
     });
   });
   if (!items.length) return [];
-  const estilo = await page.addStyleTag({ content: '[data-rv],[data-rv] *{color:transparent!important;-webkit-text-stroke:0!important}' });
+  // También el relleno y la sombra del texto: los titulares partidos en letras (opción I) se pintan con -webkit-text-fill-color
+  // y antes seguían en la captura, así que se medía el texto contra sí mismo (contraste 1.1:1 falso).
+  const estilo = await page.addStyleTag({ content: '[data-rv],[data-rv] *{color:transparent!important;-webkit-text-fill-color:transparent!important;text-shadow:none!important;-webkit-text-stroke:0!important}' });
   await page.waitForTimeout(150);
   const out = [];
   for (const it of items) {

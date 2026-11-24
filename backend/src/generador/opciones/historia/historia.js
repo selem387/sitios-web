@@ -166,9 +166,9 @@ img,video{display:block;max-width:100%}a{color:inherit}
 .sv-hero{position:relative;height:100svh;min-height:560px;overflow:hidden;color:var(--crema);background:var(--ink)}
 .sv-hero-img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;max-width:none}
 .sv-vivo .sv-hero-img{transform:scale(1.12);transition:transform 2.4s cubic-bezier(.19,1,.22,1)}.sv-vivo.sv-listo .sv-hero-img{transform:scale(1)}
-.sv-hero-velo{position:absolute;inset:0;background:linear-gradient(180deg,rgba(0,0,0,.34),rgba(0,0,0,.06) 26%,rgba(0,0,0,.22) 52%,rgba(0,0,0,.66))}
-.sv-hero-in{position:absolute;left:0;right:0;bottom:0;padding:0 var(--pad) clamp(28px,4vw,56px);display:grid;grid-template-columns:1fr auto;gap:24px 48px;align-items:end}
-.sv-hero h1{max-width:9.5em;text-shadow:0 2px 30px rgba(0,0,0,.25)}.sv-hero h1.sv-largo{font-size:clamp(44px,6.6vw,100px);max-width:11em}.sv-hero-der{text-shadow:0 1px 16px rgba(0,0,0,.35)}.sv-hero-der{display:grid;gap:clamp(20px,3vw,44px);justify-items:start;max-width:20ch}.sv-hero-der p{font-size:22px;line-height:1.35}
+.sv-hero-velo{position:absolute;inset:0;background:linear-gradient(180deg,rgba(0,0,0,.4),rgba(0,0,0,.14) 22%,rgba(0,0,0,.52) 46%,rgba(0,0,0,.76))}
+.sv-hero-in{position:absolute;left:0;right:0;bottom:0;padding:0 var(--pad) clamp(28px,4vw,56px);display:grid;grid-template-columns:minmax(0,1fr) auto;gap:24px 48px;align-items:end}
+.sv-hero h1{max-width:9.5em;text-shadow:0 2px 30px rgba(0,0,0,.25)}.sv-hero h1.sv-largo{font-size:clamp(44px,6.6vw,100px);max-width:11em}.sv-hero-der{text-shadow:0 1px 16px rgba(0,0,0,.35)}.sv-hero-der{display:grid;gap:clamp(20px,3vw,44px);justify-items:start;width:min(340px,30vw);max-width:100%}.sv-hero-der .sv-btn{max-width:100%}.sv-hero-der p{font-size:22px;line-height:1.35}
 @media (max-width:860px){.sv-hero-in{grid-template-columns:1fr;padding-bottom:84px}.sv-hero-der{max-width:none}.sv-hero-der p{display:-webkit-box;-webkit-line-clamp:4;-webkit-box-orient:vertical;overflow:hidden}}
 .sv-relato{position:relative;background:var(--ink)}
 .sv-fotos{display:grid}.sv-foto{position:relative;height:90svh;overflow:hidden}.sv-foto img{width:100%;height:100%;object-fit:cover;max-width:none}
