@@ -12,7 +12,7 @@ import { BLOQUES, TOTAL_BLOQUES, PALABRA_INICIO, INSTRUCCIONES, SISTEMA_ARI, GUI
 import { isObject } from '../util.js';
 import { resolverSubtipo } from './subtipo.js';
 import { estudiarReferencias } from './referencias.js';
-import { propuestasPendientes, ajusteElegida, tocaPropuestas, atenderPropuestas, iniciarPropuestas } from './propuestas.js';
+import { propuestasPendientes, ajusteElegida, tocaPropuestas, atenderPropuestas, iniciarPropuestas, preguntaVersionFinal } from './propuestas.js';
 import { verificacionPendiente, atenderVerificacion, enviarVerificacion, correoCambio, faltaCorreo } from './verificacion.js';
 import { normalizarRedes, redesFaltantes, listaNombres } from './redes.js';
 import { redesEnCurso, atenderRedes } from './entrega.js';
@@ -142,11 +142,12 @@ async function respuestaPostCierre(u, texto = '', media = []) {
       if (opc.length) {
         const sv = (await db.q(`SELECT contenido FROM sitios_vivos WHERE entrevista_id=$1 ORDER BY id DESC LIMIT 1`, [u.id]).catch(() => ({ rows: [] }))).rows[0];
         const actual = sv?.contenido?.diseno?.propuesta || prop.elegido;
-        const lista = opc.map((o) => `*${o.letra || o.etiqueta}. ${o.nombre}*${(o.letra || o.etiqueta) === actual ? ' (la que tienes ahora)' : ''}\n${o.url}`).join('\n\n');
+        const guardadas = Object.keys(sv?.contenido?.disenos || {});
+        const lista = opc.map((o) => { const l = o.letra || o.etiqueta; return `*${l}. ${o.nombre}*${l === actual ? ' (la que estás trabajando)' : guardadas.includes(l) ? ' (ya la modificaste)' : ''}\n${o.url}`; }).join('\n\n');
         await db.evento(u.id, 'opciones_reenviadas', { actual });
         const ref = (texto.match(/https?:\/\/\S+/g) || []).filter((x) => !RE_LIGA_PROPUESTA.test(x));
         await db.evento(u.id, 'pregunta_cambio_diseno', { actual, referencias: ref });
-        return `¿Quieres cambiar el diseño de tu página por otra de tus opciones? 😊${ref.length ? ' Revisa cuál se parece más a la página que me compartiste.' : ''}\n\nEstas son:\n\n${lista}\n\nDime la letra de la que quieres. Si ninguna te convence, dime *ninguna* y te preparo 6 nuevas${ref.length ? ' inspiradas en esa página' : ''}. Tus textos, fotos y los cambios que ya hicimos se quedan; solo cambia el diseño.`;
+        return `¿Quieres cambiar el diseño de tu página por otra de tus opciones? 😊${ref.length ? ' Revisa cuál se parece más a la página que me compartiste.' : ''}\n\nEstas son:\n\n${lista}\n\nDime la letra de la que quieres. Si ninguna te convence, dime *ninguna* y te preparo 6 nuevas${ref.length ? ' inspiradas en esa página' : ''}. Tus textos, fotos y datos se quedan en todas; los cambios de diseño de cada versión se guardan por separado, así puedes comparar y quedarte con una.`;
       }
       tipo = 'cambio';
     }
@@ -689,6 +690,14 @@ export async function procesarMensaje(b) {
   // podía armar porque el generador exige una opción elegida). Aquí se mandan las opciones; la respuesta va más abajo.
   const sinDiseno = t.completado && e.brief?.marca?.propuestas?.estado !== 'elegida';
   if (sinDiseno) { t.completado = false; t.bloque = 'B12'; }
+  // Varias versiones (24-nov-2026): antes de publicar, si trabajó 2 o más y no ha decidido, se le pregunta con cuál se queda.
+  if (t.completado) {
+    const pv = await preguntaVersionFinal(e.id, brief).catch(() => null);
+    if (pv) {
+      t.completado = false; t.bloque = 'B12'; t.reply = pv;
+      brief.marca = { ...(brief.marca || {}), propuestas: { ...(brief.marca?.propuestas || {}), preguntando_final: true } };
+    }
+  }
   // Cierre: tras la dirección, el enlace de pago para alojarla en su dominio y el aviso de que se arma la página.
   if (t.completado) {
     const cierre = 'Mientras tanto ya estoy armando tu página: en unos minutos te mando la liga para que la veas desde tu celular. Después me dices qué ajustar; los primeros cambios van incluidos.';

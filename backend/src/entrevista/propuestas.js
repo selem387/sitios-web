@@ -352,9 +352,24 @@ export async function atenderPropuestas(e, brief, { texto = '', huboMedia = fals
     return { responder: { textos: [conf] }, brief: nb, seguirConAri: true };
   }
   if (p.estado === 'elegida' && e && ['en_curso', 'pausada'].includes(e.estado) && (texto || clavesNuevas.length)) {
-    const m = await atenderMostradas(e, brief, p, { texto, clavesNuevas, elegida: p.elegido });
+    // Varias versiones (24-nov-2026): "me quedo con la N" fija la final; con la pregunta de antes de publicar abierta,
+    // basta la letra. La versión activa (la que recibe los cambios de diseño) puede no ser la elegida al principio.
+    const S = await import('../panel/sitios.js');
+    const svV = await S.porEntrevista(e.id).catch(() => null);
+    const activa = svV ? S.letraActiva(svV, brief) : p.elegido;
+    const letras = (p.opciones || []).map((o) => o.etiqueta || o.letra);
+    const fin = !clavesNuevas.length && leerFinal(texto, letras, { preguntando: !!p.preguntando_final });
+    if (svV && fin) {
+      const sv2 = await S.fijarFinal(svV, brief, fin);
+      const otras = S.versionesDe(sv2, brief).filter((l) => l !== fin);
+      const nb = { ...brief, marca: { ...brief.marca, propuestas: { ...p, elegido: fin, preguntando_final: false } } };
+      await db.evento(e.id, 'version_final', { letra: fin, otras }).catch(() => {});
+      return { responder: { textos: [`¡Listo! Tu página queda con la *${fin}* ✅ 👇\n${S.urlPublica(sv2, { previa: !sv2.url_publica && !sv2.dominio })}${otras.length ? `\n\nGuardo tus otras versiones (${otras.map((l) => `*${l}*`).join(', ')}) 30 días por si quieres regresar a alguna.` : ''}`] }, brief: nb, seguirConAri: true };
+    }
+    const m = await atenderMostradas(e, brief, p, { texto, clavesNuevas, elegida: activa });
+    if (m?.accion === 'elegir' && m.letra === activa && m.letra !== p.elegido) m.accion = 'seguir';
     if (!m || m.accion === 'seguir') return { responder: null, brief, seguirConAri: true };
-    if (m.accion === 'encolar' || (m.accion === 'elegir' && m.letra !== p.elegido)) {
+    if (m.accion === 'encolar' || (m.accion === 'elegir' && m.letra !== activa)) {
       // Cambios con la opción ya elegida (11-nov-2026): datos → base, visual → IA sobre el sitio armado desde la base.
       const sv = await asegurarSitioVivo(e, brief);
       if (sv) {
@@ -371,7 +386,7 @@ export async function atenderPropuestas(e, brief, { texto = '', huboMedia = fals
       const o = (p.opciones || []).find((x) => (x.etiqueta || x.letra) === p.elegido);
       return { responder: { textos: [`Claro, aquí está tu página 👇\n${o?.url || ''}`] }, brief, seguirConAri: true };
     }
-    if (m.accion === 'elegir' && m.letra !== p.elegido) {
+    if (m.accion === 'elegir' && m.letra !== activa) {
       const o = (p.opciones || []).find((x) => (x.etiqueta || x.letra) === m.letra);
       if (o) {
         const nb = { ...brief, marca: { ...brief.marca, estilo: o.estilo, propuestas: { ...p, elegido: m.letra, colores_de: m.colores_de || null } } };
@@ -388,6 +403,33 @@ export async function atenderPropuestas(e, brief, { texto = '', huboMedia = fals
     return { responder: null, brief, seguirConAri: true };
   }
   return { responder: null, brief, seguirConAri: true };
+}
+
+/**
+ * "Me quedo con la N" / "la final es la N" / "decidí la N" → 'N'. Con la pregunta de antes de publicar abierta,
+ * también "la N" o solo "N". null si no es una decisión final.
+ */
+export function leerFinal(texto, letras = [], { preguntando = false } = {}) {
+  const t = String(texto || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9 ]+/g, ' ').replace(/\s+/g, ' ').trim();
+  if (!t || t.length > 90) return null;
+  const ok = (l) => (l && letras.includes(l.toUpperCase()) ? l.toUpperCase() : null);
+  const m = t.match(/\b(?:me quedo con|nos quedamos con|me decido por|nos decidimos por|decidi(?: por)?|decidimos(?: por)?|la final es|la definitiva es|elijo como final)\s+(?:la\s+)?(?:opcion\s+|version\s+)?([a-z])\b/)
+    || t.match(/\b(?:la\s+)?(?:opcion\s+|version\s+)?([a-z])\s+(?:es\s+)?(?:la\s+)?(?:final|definitiva|buena|ganadora)\b/);
+  if (m) return ok(m[1]);
+  if (preguntando) { const b = t.match(/^(?:con\s+)?(?:la\s+)?(?:opcion\s+|version\s+)?([a-z])(?:\s+(?:porfa|por favor|gracias))?$/); if (b) return ok(b[1]); }
+  return null;
+}
+
+/** Antes de publicar: con 2 o más versiones y sin decidir, la pregunta de con cuál se queda (null si no hace falta). */
+export async function preguntaVersionFinal(entrevistaId, brief) {
+  const S = await import('../panel/sitios.js');
+  const sv = await S.porEntrevista(entrevistaId).catch(() => null);
+  if (!sv || sv.contenido?.diseno_final) return null;
+  const vers = S.versionesDe(sv, brief);
+  if (vers.length < 2) return null;
+  const opc = brief?.marca?.propuestas?.opciones || [];
+  const nombre = (l) => opc.find((o) => (o.etiqueta || o.letra) === l)?.nombre || '';
+  return `Antes de publicar tu página: tienes ${vers.length} versiones trabajadas 👇\n\n${vers.map((l) => `*${l}*${nombre(l) ? ` · ${nombre(l)}` : ''}\n${S.urlVersion(sv, l)}`).join('\n\n')}\n\n¿Con cuál te quedas? Respóndeme con la letra.`;
 }
 
 /** Se llama DESPUÉS del turno de Ari cuando el cliente terminó las fotos (sale de B6). */
