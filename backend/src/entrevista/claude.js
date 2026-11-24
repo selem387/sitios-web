@@ -20,7 +20,17 @@ export function parsearReparando(t) {
   return null;
 }
 
-export async function pedirJSON({ system, contenido, schema, model = MODELO_ARI, max_tokens = 2000, timeoutMs = 120000 }) {
+// Si el modelo no devuelve JSON, se reintenta una vez (23-nov-2026, Intiviso Lab: el turno de Ari se cayó y el cliente
+// tuvo que escribir "¿qué pasó?").
+export async function pedirJSON(opciones) {
+  try { return await pedirJSONUnaVez(opciones); } catch (err) {
+    if (!/no devolvió JSON/.test(String(err?.message))) throw err;
+    console.error('[pedirJSON] sin JSON, reintento');
+    return pedirJSONUnaVez(opciones);
+  }
+}
+
+async function pedirJSONUnaVez({ system, contenido, schema, model = MODELO_ARI, max_tokens = 2000, timeoutMs = 120000 }) {
   const apiKey = config.anthropicApiKey;
   if (!apiKey) throw new Error('Falta ANTHROPIC_API_KEY');
   const content = typeof contenido === 'string' ? [{ type: 'text', text: contenido }] : contenido;
@@ -47,7 +57,7 @@ export async function pedirJSON({ system, contenido, schema, model = MODELO_ARI,
   if (!data) {
     const texto = (json.content || []).filter((b) => b.type === 'text').map((b) => b.text).join('\n');
     const m = texto.match(/\{[\s\S]*\}/);
-    if (m) { try { data = JSON.parse(m[0]); } catch { /* sigue */ } }
+    if (m) { try { data = JSON.parse(m[0]); } catch { data = parsearReparando(m[0]) || undefined; } }
   }
   // A veces la respuesta llega envuelta como texto ({ _texto: "{...}" } desde el gateway, o un solo campo string con el JSON): se desenvuelve.
   if (data && typeof data === 'object' && !Array.isArray(data)) {
