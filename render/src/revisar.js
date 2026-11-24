@@ -38,7 +38,8 @@ export async function revisarPagina(page) {
     // Botones fuera de la pantalla y textos encimados (en lo visible de cada sección).
     const btns = Array.from(document.querySelectorAll('a.btn, button.btn, .btn')).filter((b) => visible(b) && !b.closest('.etq,.wa'));
     for (const b of btns) { const r = b.getBoundingClientRect(); if (r.left < -1 || r.right > W + 1) prob.push(`botón cortado por el borde: "${(b.textContent || '').trim().slice(0, 40)}"`); }
-    const txt = Array.from(document.querySelectorAll('h1,h2,h3,p,.btn,.kicker,.sub')).filter((e) => visible(e) && !e.closest('.etq,.wa,footer'));
+    // El texto decorativo (aria-hidden, p. ej. la firma a mano que la opción R pone encima de su nombre) se encima a propósito.
+    const txt = Array.from(document.querySelectorAll('h1,h2,h3,p,.btn,.kicker,.sub')).filter((e) => visible(e) && !e.closest('.etq,.wa,footer,[aria-hidden="true"]'));
     for (let a = 0; a < txt.length; a++) {
       for (let b = a + 1; b < txt.length; b++) {
         const x = txt[a], y = txt[b];
@@ -69,7 +70,8 @@ export async function revisarPagina(page) {
       // 3) Bloques fuera de la columna del sitio: la columna es el borde izquierdo más común de los h2 de sección.
       const lefts = Array.from(document.querySelectorAll('main h2')).filter(visible).map((e) => Math.round(e.getBoundingClientRect().left));
       const moda = lefts.sort((a, b) => lefts.filter((x) => x === b).length - lefts.filter((x) => x === a).length)[0];
-      if (moda != null) {
+      // Sin columna medible (títulos a todo el ancho o fuera de la pantalla en diseños de scroll horizontal) no se compara.
+      if (moda != null && moda >= 4 && moda < W - 40) {
         const bloques = Array.from(document.querySelectorAll('main h1, .hero .sub, .galeria, .just, .tira, .paqs, .quotes, .datos')).filter((e) => visible(e) && !e.closest('.sl'));
         for (const e of bloques) {
           const r = e.getBoundingClientRect(), s = getComputedStyle(e);
