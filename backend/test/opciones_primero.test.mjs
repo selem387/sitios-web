@@ -91,3 +91,14 @@ test('A–F suspendidas por omisión: no salen ni de relleno, y se completa con 
     assert.ok(r2.letras.some((l) => 'ABCDEF'.includes(l)));
   } finally { if (antes === undefined) delete process.env.OPCIONES_SUSPENDIDAS; else process.env.OPCIONES_SUSPENDIDAS = antes; }
 });
+
+// Plantillas de sitios modelo externos: las reglas duras no les aplican (24-nov-2026).
+import { esPlantilla, fallasQueAplican } from '../src/generador/revision_visual.js';
+
+test('plantillas (opcion.modelo): solo las detienen las fallas técnicas; la G (propia) sigue con todas las reglas', () => {
+  for (const l of ['H', 'I', 'J', 'K', 'L', 'M', 'N', 'O', 'P', 'Q', 'R', 'S']) assert.ok(esPlantilla(l), l);
+  assert.equal(esPlantilla('G'), false);
+  const p = ['titular de portada chico para computadora: 29px (mínimo 56px)', 'el logo aparece 2 veces en la primera pantalla', 'foto rota: a.jpg', 'desborde horizontal: la página mide 600px', 'texto con poco contraste (2:1, mínimo 3:1): "x"'];
+  assert.deepEqual(fallasQueAplican('Q', p), ['foto rota: a.jpg', 'desborde horizontal: la página mide 600px']);
+  assert.deepEqual(fallasQueAplican('G', p), p);
+});

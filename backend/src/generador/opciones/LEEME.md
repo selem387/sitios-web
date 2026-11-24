@@ -38,7 +38,11 @@ la verificación de GitHub.
    lugar. Las listas (`backend/src/generador/giros/<giro>.js`) son compartidas: solo las cambia el chat designado, nunca
    el chat de una opción.
 6. **Reglas duras** (color, tipografía, fotos del cliente, todo visible sin JavaScript, etc.) sin excepción; las de
-   diseño, solo con excepción declarada y aprobada.
+   diseño, solo con excepción declarada y aprobada. **Excepción (Sebastián, 24-nov-2026): las reglas duras no aplican a
+   las plantillas**, es decir, a las opciones hechas a partir de un sitio modelo externo (H, I, J, K, L, M, N, O, P, Q, R
+   y S). Se declaran con `modelo: '<sitio>'` en su `opcion.js`; la revisión visual solo las detiene por fallas técnicas
+   (fotos que no cargan o deformadas, página que se sale de la pantalla, botones cortados, franjas negras, letras que no
+   cargan) y no les aplica correcciones de estilo. Las reglas siguen aplicando a las opciones propias (hoy la G).
 7. **Librerías** solo desde el propio servidor (`backend/src/generador/librerias.js`), con versión fija; nunca desde un
    CDN. *(Prueba: ningún archivo de una opción carga de un CDN.)*
 8. **CSS en su carpeta.** Todo el CSS de la opción va en su carpeta: `plantilla.css` (al final del `<style>`) o

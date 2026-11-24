@@ -7,6 +7,8 @@ import { tono, conContraste } from '../../kit/color.js';
 
 export const opcion = {
   nombre: 'movimiento', letra: 'K', indice: 10, titulo: 'Recorrido en movimiento',
+  // Plantilla hecha a partir de un sitio modelo externo: las reglas duras no le aplican (decisión de Sebastián, 24-nov-2026).
+  modelo: 'https://endingtheviolence.com/',
   // Material con el que se ve completa (verificado el 17 y 18-nov-2026; doc claude/etapa2-mapa-por-giro-propuesta.md).
   requisitos: { fotoBuena: 1 },
   // Colores de la opción a partir de los del cliente (la plantilla general completa el resto de la paleta).

@@ -6,6 +6,8 @@ import { paginaPlataforma, efectoParaBrief, CSS_REVISION_PLATAFORMA } from './pl
 
 export const opcion = {
   nombre: 'plataforma', letra: 'L', indice: 11, titulo: 'Plataforma',
+  // Plantilla hecha a partir de un sitio modelo externo: las reglas duras no le aplican (decisión de Sebastián, 24-nov-2026).
+  modelo: 'https://antigravity.google/',
   // Material con el que se ve completa (verificado el 17 y 18-nov-2026; doc claude/etapa2-mapa-por-giro-propuesta.md).
   requisitos: { servicios: 3 },
   // Página propia: excepción aprobada por Sebastián el 16-nov-2026 (sigue su orden; toma los nombres del giro).
