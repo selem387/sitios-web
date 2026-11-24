@@ -1,6 +1,6 @@
 // Ari: conduce la entrevista por mensajes (mismo contrato que creador_video/entrevista).
 import { coloresDePalabras } from '../generador/materiales.js';
-import { atenderSeleccion, seleccionEnCurso, seleccionAplica } from './seleccion.js';
+import { atenderSeleccion, seleccionEnCurso, seleccionAplica, inferirArquetipo } from './seleccion.js';
 import { contextoColorParaAri } from '../generador/asesor_color.js';
 import { paresTipograficos } from '../generador/fuentes.js';
 import crypto from 'node:crypto';
@@ -704,6 +704,10 @@ export async function procesarMensaje(b) {
   // Recién se conoce el giro: arranca la etapa de paleta y letra (pide el logo o manda las paletas) en lugar de la
   // siguiente pregunta de Ari; se conserva lo que Ari dijo antes de su pregunta.
   let mediaSeleccion = null;
+  if (!t.completado && String(brief.negocio?.giro_texto || '').trim() && !brief.negocio?.arquetipo) {
+    const inf = inferirArquetipo(brief, arquetipos);
+    if (inf) brief.negocio = { ...brief.negocio, arquetipo: inf.arquetipo, subtipo: brief.negocio.subtipo || inf.subtipo };
+  }
   if (!t.completado && seleccionAplica(brief) && !brief.marca?.seleccion?.paso) {
     try {
       const s = await atenderSeleccion({ brief, assets, texto: textoTurno, nuevosAssets, inicio: true });
@@ -766,6 +770,12 @@ export async function procesarMensaje(b) {
   } else if (avisoRetenidas) mensajes.push(avisoRetenidas);
   // La dirección ya no arranca aquí: es la última pregunta y su flujo empieza al confirmarse el pago de la página (pago_pagina.js).
   const demasiado = !t.completado && e.mensajes_cliente + 1 >= MAX_MSGS_CLIENTE;
+  // Nunca un mensaje vacío (24-nov-2026: a "no tengo, es este mismo número" Ari contestó en blanco): se pide lo siguiente que falte.
+  if (!String(t.reply || '').trim() && !t.completado) {
+    await db.evento(e.id, 'reply_vacio', { bloque: t.bloque, texto: String(textoTurno || '').slice(0, 200) }).catch(() => {});
+    const sig = faltantes(brief, assets).find((f) => !preguntaYaNegada(f.pedir, brief));
+    t = { ...t, reply: sig ? sig.pedir : 'Perfecto, con eso seguimos 👍 ¿Qué más te gustaría que tenga tu página?' };
+  }
   // Cierre forzado por tope: nunca dejar una pregunta de Ari sin respuesta posible.
   mensajes.push(demasiado ? CIERRE_POR_TOPE : t.reply);
   if (avisoCorreo && !demasiado) mensajes.push(avisoCorreo);

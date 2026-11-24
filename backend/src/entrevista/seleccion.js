@@ -7,6 +7,23 @@ import { config } from '../config.js';
 import { esNegativa } from './requisitos.js';
 import { opcionesPaleta, opcionesFuente, htmlPaletas, htmlFuentes, leerRespuesta, porQueFuente } from '../generador/seleccion_marca.js';
 import { nombreColor } from '../generador/asesor_color.js';
+import { resolverSubtipo } from './subtipo.js';
+
+/**
+ * Giro dicho pero sin arquetipo todavía (Ari lo pone a veces un turno después): se infiere por palabras clave entre
+ * todos los arquetipos para poder mostrar paletas de su giro sin esperar. null si ninguno coincide.
+ */
+export function inferirArquetipo(brief = {}, arquetipos = []) {
+  const n = brief.negocio || {};
+  if (vacio(n.giro_texto) || !vacio(n.arquetipo)) return null;
+  let mejor = null;
+  for (const a of arquetipos) {
+    const r = resolverSubtipo({ ...brief, negocio: { ...n, arquetipo: a.slug, subtipo: null } }, arquetipos);
+    const pts = r.fuente === 'inferido' ? Math.max(0, ...Object.values(r.puntajes || {})) : 0;
+    if (pts > 0 && (!mejor || pts > mejor.pts)) mejor = { arquetipo: a.slug, subtipo: r.subtipo, pts };
+  }
+  return mejor;
+}
 
 const vacio = (v) => v === null || v === undefined || (typeof v === 'string' && !v.trim());
 
