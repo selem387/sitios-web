@@ -106,7 +106,8 @@ export function contarMaterial({ brief = {}, mat = {}, textos = {} } = {}) {
 /** ¿El material del cliente alcanza para que la opción se vea completa? (requisitos de su opcion.js y su regla apta). */
 export function cumple(op, cuenta, { brief, mat, ignorar = [] } = {}) {
   if (!op) return false;
-  if (op.apta && !op.apta({ brief, mat })) return false;
+  // Una regla apta que truena con material incompleto cuenta como "no apta" (no tumba la elección de las 6).
+  if (op.apta) { let a = false; try { a = op.apta({ brief, mat }); } catch { a = false; } if (!a) return false; }
   return Object.entries(op.requisitos || {}).filter(([k]) => !ignorar.includes(k)).every(([k, v]) => (typeof v === 'boolean' ? !v || cuenta[k] === true : (cuenta[k] || 0) >= v));
 }
 
@@ -115,15 +116,34 @@ export function cumple(op, cuenta, { brief, mat, ignorar = [] } = {}) {
  * se juntan 6, se completa con E y F (no piden nada) y luego con el resto de la lista. Devuelve también el respaldo
  * (las siguientes de la lista), por si alguna falla al generarse.
  */
+// Opciones suspendidas (24-nov-2026, decisión de Sebastián): las 6 de siempre (A–F) dejan de proponerse "hasta nuevo
+// aviso" en propuestas nuevas de todos los giros, salvo restaurantes (sus A–F son otras, con registro propio). Las propuestas
+// ya generadas y los sitios elegidos con A–F siguen funcionando igual. Para volver a proponerlas: OPCIONES_SUSPENDIDAS=ninguna
+// en el servicio api (o la lista de letras que se quieran suspender, separadas por coma).
+export const SUSPENDIDAS_POR_OMISION = Object.freeze(['A', 'B', 'C', 'D', 'E', 'F']);
+export function suspendidas() {
+  const v = process.env.OPCIONES_SUSPENDIDAS;
+  if (v == null || v === '') return [...SUSPENDIDAS_POR_OMISION];
+  if (/^ningun[oa]s?$/i.test(v.trim())) return [];
+  return v.split(',').map((x) => x.trim().toUpperCase()).filter(Boolean);
+}
+// Con A–F suspendidas, lo que falte para llegar a 6 se completa con estas (en este orden), primero las que el material
+// del cliente permite armar completas. S solo sale con página de referencia; P, Q y O solo si cumplen (son de productos).
+const COMPLETAR = ['K', 'N', 'J', 'M', 'H', 'G', 'I', 'R', 'L', 'O', 'Q', 'P'];
+const SOLO_SI_CUMPLE = new Set(['O', 'P', 'Q', 'S']);
+
 export function elegirLetras(mapa, { brief, mat, textos, porLetra, rellenables = [] }) {
   const cuenta = contarMaterial({ brief, mat, textos });
+  const fuera = new Set([...(mapa.excluir || []), ...suspendidas()]);
   // mapa.excluir: letras que no deben salir (ya mostradas y rechazadas, o con defectos en la revisión visual).
-  const existe = (l) => !!porLetra(l) && !(mapa.excluir || []).includes(l);
+  const existe = (l) => !!porLetra(l) && !fuera.has(l);
   const lista = mapa.lista.filter(existe);
+  const ok = (l) => cumple(porLetra(l), cuenta, { brief, mat, ignorar: rellenables });
   // Con elementos ilustrativos (rellenables = requisitos que el relleno cubre), salen las primeras 6 de la lista.
-  const elegidas = lista.filter((l) => cumple(porLetra(l), cuenta, { brief, mat, ignorar: rellenables })).slice(0, 6);
-  for (const l of ['E', 'F', ...lista, 'A', 'B', 'C', 'D']) if (elegidas.length < 6 && existe(l) && !elegidas.includes(l)) elegidas.push(l);
-  const respaldo = [...lista, 'E', 'F', 'A', 'B', 'C', 'D'].filter((l, k, a) => existe(l) && !elegidas.includes(l) && a.indexOf(l) === k);
+  const elegidas = lista.filter(ok).slice(0, 6);
+  for (const l of COMPLETAR) if (elegidas.length < 6 && existe(l) && !elegidas.includes(l) && ok(l)) elegidas.push(l);
+  for (const l of ['E', 'F', ...lista, 'A', 'B', 'C', 'D', ...COMPLETAR]) if (elegidas.length < 6 && existe(l) && !elegidas.includes(l) && !SOLO_SI_CUMPLE.has(l)) elegidas.push(l);
+  const respaldo = [...lista, ...COMPLETAR, 'E', 'F', 'A', 'B', 'C', 'D'].filter((l, k, a) => existe(l) && !elegidas.includes(l) && a.indexOf(l) === k && (!SOLO_SI_CUMPLE.has(l) || ok(l)));
   // Se muestran en el orden de preferencia de la lista (las que no están en ella, al final).
   const lugar = (l) => (lista.includes(l) ? lista.indexOf(l) : 99);
   return { letras: elegidas.sort((a, b) => lugar(a) - lugar(b)), respaldo, cuenta };

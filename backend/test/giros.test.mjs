@@ -1,3 +1,5 @@
+// Estas pruebas cubren la elección con A–F disponibles; la suspensión de A–F se prueba en opciones_primero.test.mjs.
+process.env.OPCIONES_SUSPENDIDAS = 'ninguna';
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { GIROS, SECCIONES, LEGADO, esLegado, varianteDe, mapaNuevo, resolverMapa, ordenarPiezas, elegirLetras, comoSeccion } from '../src/generador/giros/index.js';

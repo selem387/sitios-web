@@ -1,3 +1,5 @@
+// Estas pruebas cubren la elección con A–F disponibles; la suspensión de A–F se prueba en opciones_primero.test.mjs.
+process.env.OPCIONES_SUSPENDIDAS = 'ninguna';
 // Elementos ilustrativos (etapa 2, parte 3): con poco material salen las primeras 6 de la lista del giro y lo que falta
 // se llena con fotos marcadas, ejemplos sin precio y logo con letras; nunca desplazan material del cliente.
 import { test } from 'node:test';

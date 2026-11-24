@@ -17,7 +17,7 @@ import { coloresDePalabras, logoTenido } from './materiales.js';
 import { CSS_MOVIMIENTO, JS_MOVIMIENTO, sliderHTML, diapositivasDe, emparejarFotos, efectosDe, conSrcset } from './movimiento.js';
 import { waUrl, formatoTel } from './bloques.js';
 import { paginaFicha } from './opciones/ficha/ficha.js';
-import { resolverMapa, esLegado, elegirLetras } from './giros/index.js';
+import { resolverMapa, esLegado, elegirLetras, suspendidas } from './giros/index.js';
 import { esDireccionRef } from './estilo_ref.js';
 import { logoLleno, JS_LOGO_UNICO, paginasGenerales, logoHTML, redes, urlsPorUbicacion, conOpcionP, conOpcionG, conOpcionH, conOpcionI, conOpcionJ, conOpcionK, conOpcionL, conOpcionM } from './propuestas_general.js';
 import { completarMaterial } from './validar_material.js';
@@ -86,7 +86,10 @@ export async function renderPropuestas(brief, mat, textos, { ronda = 0, fijo = n
   if (brief.negocio?.arquetipo !== 'restaurante') {
     // Logo de un color: versión pintada con la tinta de cada propuesta (contraste garantizado sobre fondos claros u oscuros).
     // Etapa 2: con mapa nuevo (y sin estilo de referencia ni letra pedida), las opciones salen de la lista del giro.
-    const conLista = !esLegado(mapa) && !fijo && !solo && !esDireccionRef(brief.marca?.direccion_ref);
+    // Con A–F suspendidas (giros/index.js → suspendidas), el estilo de referencia (que arma 6 variaciones de A–F) ya no
+    // reemplaza la lista del giro: salen las opciones de la G en adelante.
+    const baseSuspendida = suspendidas().some((l) => ['A', 'B', 'C', 'D', 'E', 'F'].includes(l));
+    const conLista = !esLegado(mapa) && !fijo && !solo && (!esDireccionRef(brief.marca?.direccion_ref) || baseSuspendida);
     // Página de referencia (opción S, 18-nov-2026): la reconstrucción del cliente va primero + las 5 primeras de su lista.
     // Sin reconstrucción propia, una plantilla aprobada de su giro entra en el lugar que Sebastián le dio o al final.
     let plano_ref = brief.marca?.propuestas?.plano_ref || null;
@@ -214,7 +217,7 @@ export async function textosPropuestas(brief, mat, { mapa: mapaPedido = null } =
   const menu = brief.negocio?.arquetipo === 'restaurante';
   // Etapa 2: con mapa nuevo, un texto por cada letra que puede salir de la lista del giro (cada opción usa el de su índice).
   const mapa = mapaPedido ? resolverMapa(brief, mapaPedido) : null;
-  const conLista = mapa && !esLegado(mapa) && !esDireccionRef(brief.marca?.direccion_ref);
+  const conLista = mapa && !esLegado(mapa) && (!esDireccionRef(brief.marca?.direccion_ref) || suspendidas().some((l) => 'ABCDEF'.includes(l)));
   const cat = catalogoFotos(mat);
   const enfoques = menu ? 'producto, antojo, rapidez/pickup, ubicación, variedad del menú, experiencia'
     : 'el resultado que se lleva el cliente, la especialidad más fuerte, la experiencia/años, la zona, la variedad de servicios o paquetes, el trato personal';
