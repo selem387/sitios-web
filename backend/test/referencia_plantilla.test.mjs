@@ -75,6 +75,7 @@ test('Telegram: solo el secreto del webhook y el chat de Sebastián', async () =
 
 test('Ari dice si la S viene de su página o si no se pudo', () => {
   assert.match(avisoReferencia({ sale: true }), /\*S\*/);
-  assert.match(avisoReferencia({ fallo: { url: 'x' } }), /No pude reproducir/);
+  assert.match(avisoReferencia({ fallo: { url: 'x' } }), /No pude leer/);
+  assert.match(avisoReferencia({ plano_ref: { plano: {} } }), /no quedó como debe/);
   assert.equal(avisoReferencia({}), null);
 });

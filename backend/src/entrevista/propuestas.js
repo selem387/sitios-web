@@ -82,7 +82,9 @@ export function avisoIlustrativas(relleno, mat, brief = {}) {
 export function avisoReferencia(r) {
   if (!r) return null;
   if (r.sale) return 'La *S* está hecha a partir de la página que me mandaste: tomé su estructura y su estilo, con tus textos y tus fotos.';
-  if (r.fallo || r.plano_ref) return 'No pude reproducir la página que me mandaste, así que te preparé tus opciones de siempre. Si quieres, mándame otra página que te guste y lo intento con esa.';
+  // Se reconstruyó pero no pasó la revisión visual (24-nov-2026, Intiviso Lab: decía "no pude reproducirla" y sí se había hecho).
+  if (r.plano_ref) return 'Armé una versión a partir de la página que me mandaste, pero al revisarla no quedó como debe y no te la quise mandar a medias. Si quieres, mándame otra página que te guste y lo intento con esa.';
+  if (r.fallo) return 'No pude leer la página que me mandaste, así que te preparé otras opciones. Si quieres, mándame otra página que te guste y lo intento con esa.';
   return null;
 }
 
@@ -292,7 +294,9 @@ export async function atenderPropuestas(e, brief, { texto = '', huboMedia = fals
     const b2 = d.estilo || d.colores || d.evitar || d.preset ? await aplicarRechazo(brief, d, comentarios) : ajustesDeComentario(comentario, brief);
     const mat = await procesarMateriales(e.id, b2, { aceptarLoQueHay: true });
     const m = await mostrar(e, b2, mat, { ronda: (p.ronda || 0) + 1, excluir: [...(p.letras_rechazadas || []), ...(p.opciones || []).map((o) => o.letra)].filter((l) => l !== 'S') });
-    const intro = d.resumen ? `${d.resumen.trim()} Con eso te preparé 6 nuevas 👇` : 'Te preparé 6 nuevas con lo que me dijiste 👇';
+    const n = m.propuestas?.opciones?.length || 0;
+    const cuantas = n === 1 ? 'una nueva' : `${n} nuevas`;
+    const intro = d.resumen ? `${d.resumen.trim()} Con eso te preparé ${cuantas} 👇` : `Te preparé ${cuantas} con lo que me dijiste 👇`;
     const salida = { ...m.salida, textos: [intro, ...(m.salida?.textos || [])] };
     await db.evento(e.id, 'opciones_rehechas', { comentarios, entendido: d, ronda: (p.ronda || 0) + 1 }).catch(() => {});
     return { responder: salida, brief: { ...b2, marca: { ...b2.marca, propuestas: { ...m.propuestas, comentario, comentarios_rechazo: [], preguntas_estilo: 0, letras_rechazadas: [...new Set([...(p.letras_rechazadas || []), ...(p.opciones || []).map((o) => o.letra)])], rechazos_previos: [...(p.rechazos_previos || []), { ronda: p.ronda || 0, comentarios, entendido: d }] } } }, seguirConAri: false };
