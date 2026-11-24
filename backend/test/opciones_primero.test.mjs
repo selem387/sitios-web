@@ -73,3 +73,21 @@ test('descripciones de la IA solo donde el cliente no dio una', () => {
   assert.equal(b.oferta.items[0].descripcion_generada, true);
   assert.equal(b.oferta.items[1].descripcion_corta, 'La mía');
 });
+
+test('A–F suspendidas por omisión: no salen ni de relleno, y se completa con la G en adelante', () => {
+  const antes = process.env.OPCIONES_SUSPENDIDAS; delete process.env.OPCIONES_SUSPENDIDAS;
+  try {
+    for (const negocio of [{ arquetipo: 'oficios', subtipo: null }, { arquetipo: 'clinica', subtipo: 'dental' }, { arquetipo: 'generico' }]) {
+      const m = mapaNuevo({ negocio });
+      const mat = { hero: { url: 'h' }, trabajos: [{ url: 'a' }, { url: 'b' }, { url: 'c' }, { url: 'd' }], logo: { url: 'l' } };
+      const brief = { negocio, oferta: { items: ['x', 'y', 'z'].map((n) => ({ nombre: n, descripcion_corta: 'd' })) } };
+      const r = elegirLetras(m, { brief, mat, textos: { sobre: 's' }, porLetra });
+      assert.ok(r.letras.every((l) => !'ABCDEF'.includes(l)), `${negocio.arquetipo}: ${r.letras}`);
+      assert.ok(r.respaldo.every((l) => !'ABCDEF'.includes(l)));
+      assert.ok(r.letras.length >= 4, `${negocio.arquetipo}: ${r.letras}`);
+    }
+    process.env.OPCIONES_SUSPENDIDAS = 'ninguna';
+    const r2 = elegirLetras(mapaNuevo({ negocio: { arquetipo: 'generico' } }), { brief: { oferta: { items: [] } }, mat: {}, textos: {}, porLetra });
+    assert.ok(r2.letras.some((l) => 'ABCDEF'.includes(l)));
+  } finally { if (antes === undefined) delete process.env.OPCIONES_SUSPENDIDAS; else process.env.OPCIONES_SUSPENDIDAS = antes; }
+});

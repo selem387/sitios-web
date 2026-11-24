@@ -13,7 +13,7 @@ import { sliderHTML, diapositivasDe, emparejarFotos, CSS_MOVIMIENTO, JS_MOVIMIEN
 import { direccionTexto, testimoniosValidos } from './datos_brief.js';
 import { CSS_REDES } from './iconos_redes.js';
 import { LAYOUTS, LETRAS as LETRAS_REGISTRO, NOMBRES, OPCIONES_EXTRA, porNombre, porLetra, indiceDeLetra } from './opciones/registro.js';
-import { LEGADO, esLegado, ordenarPiezas } from './giros/index.js';
+import { LEGADO, esLegado, ordenarPiezas, suspendidas } from './giros/index.js';
 import { esc, lum, logoLleno, logoHTML, pasoHTML, agruparOferta, giroCorto, parrafosHTML, detalleHTML, redes, JS_LOGO_UNICO } from './kit/utiles.js';
 import { seccionesComunes } from './kit/secciones.js';
 import { sobre, hsl, tono, conContraste } from './kit/color.js';
@@ -312,7 +312,8 @@ export function paginasGenerales({ brief, mat, textos, pares, urlFuentes, ronda 
   const cps = cpsDados || LAYOUTS_GENERAL.map((_, i) => coloresParaPropuesta({ brief, coloresCliente: colores, i, ronda, evitarHex }));
   const c = brief.contacto || {};
   // Estilo de referencia del cliente: 6 variaciones de ese estilo (acomodos, letras y paletas propias).
-  const dref = esDireccionRef(brief.marca?.direccion_ref) ? brief.marca.direccion_ref : null;
+  // Con letras de la lista del giro y A–F suspendidas, el estilo de referencia no aplica (sus 6 variaciones son de A–F).
+  const dref = esDireccionRef(brief.marca?.direccion_ref) && !(letras && suspendidas().some((l) => 'ABCDEF'.includes(l))) ? brief.marca.direccion_ref : null;
   // Opciones adicionales: van siempre con su letra fija, también con estilo de referencia (que define solo las 6 primeras).
   // Cada una sale si está encendida para todos (y cumple su requisito, si lo tiene), o si se pidió a mano (fijo o solo).
   const adicionales = OPCIONES_EXTRA.filter((o) => (conOpcion(o.letra) && (!o.apta || o.apta({ brief, mat }))) || fijo?.letra === o.letra || !!solo?.includes(o.letra));

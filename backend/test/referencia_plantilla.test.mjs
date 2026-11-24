@@ -1,3 +1,5 @@
+// Estas pruebas cubren la elección con A–F disponibles; la suspensión de A–F se prueba en opciones_primero.test.mjs.
+process.env.OPCIONES_SUSPENDIDAS = 'ninguna';
 // Página de referencia → opción S + plantillas del giro (decisiones del 18-nov-2026; doc claude/pagina-referencia-plantilla.md).
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
