@@ -41,3 +41,35 @@ test('JSON de textos con comillas sin escapar se repara', () => {
   assert.match(d.sobre, /100%/);
   assert.deepEqual(d.info, ['a', 'b']);
 });
+
+// Agencias creativas (24-nov-2026, Intiviso Lab): lista con movimiento, sin subtipo asignado todavía.
+import { mapaNuevo, elegirLetras, CON_MOVIMIENTO } from '../src/generador/giros/index.js';
+import { porLetra } from '../src/generador/opciones/registro.js';
+import { conDescripciones } from '../src/generador/propuestas_html.js';
+
+test('agencia de marketing sin subtipo → variante creativos, con las opciones de movimiento primero', () => {
+  const m = mapaNuevo({ negocio: { arquetipo: 'servicios', subtipo: null, giro_texto: 'Marketing Digital y Contenidos' } });
+  assert.equal(m.variante, 'creativos');
+  assert.ok(m.lista.slice(0, 4).every((l) => CON_MOVIMIENTO.includes(l)));
+  assert.equal(mapaNuevo({ negocio: { arquetipo: 'servicios', subtipo: null, giro_texto: 'Despacho de abogados' } }).variante, 'profesionales');
+});
+
+test('"espectacular" pone primero las opciones con movimiento de la lista del giro', () => {
+  const m = mapaNuevo({ negocio: { arquetipo: 'servicios', subtipo: 'legal' }, marca: { efectos: 'espectacular' } });
+  const k = m.lista.findIndex((l) => !CON_MOVIMIENTO.includes(l));
+  assert.ok(m.lista.slice(k).every((l) => !CON_MOVIMIENTO.includes(l)));
+  assert.equal([...m.lista].sort().join(), [...mapaNuevo({ negocio: { arquetipo: 'servicios', subtipo: 'legal' } }).lista].sort().join());
+});
+
+test('las letras excluidas no vuelven a salir, ni de relleno', () => {
+  const m = { ...mapaNuevo({ negocio: { arquetipo: 'servicios', subtipo: 'legal' } }), excluir: ['B', 'H', 'E', 'A', 'F'] };
+  const r = elegirLetras(m, { brief: { oferta: { items: [] } }, mat: {}, textos: {}, porLetra });
+  for (const l of m.excluir) assert.ok(!r.letras.includes(l) && !r.respaldo.includes(l), l);
+});
+
+test('descripciones de la IA solo donde el cliente no dio una', () => {
+  const b = conDescripciones({ oferta: { items: [{ nombre: 'Estrategia Digital', descripcion_corta: '' }, { nombre: 'Podcast', descripcion_corta: 'La mía' }] } }, { descripciones: { 'estrategia digital': 'Plan de canales y mensajes', Podcast: 'otra' } });
+  assert.equal(b.oferta.items[0].descripcion_corta, 'Plan de canales y mensajes');
+  assert.equal(b.oferta.items[0].descripcion_generada, true);
+  assert.equal(b.oferta.items[1].descripcion_corta, 'La mía');
+});

@@ -44,8 +44,8 @@ const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '
  * @param {object} mat     procesarMateriales(...)
  * @param {object} textos  {variantes:[{titular, subtitulo, cta}], info:[], destacados, categorias, visita}
  */
-export async function crearPropuestasHTML(brief, mat, textos, { token = crypto.randomBytes(9).toString('base64url').replace(/[_-]/g, 'x'), ronda = 0, mapa = null, depsIlustrativas = null } = {}) {
-  const r = await renderPropuestas(brief, mat, textos, { ronda, mapa, depsIlustrativas });
+export async function crearPropuestasHTML(brief, mat, textos, { token = crypto.randomBytes(9).toString('base64url').replace(/[_-]/g, 'x'), ronda = 0, mapa = null, depsIlustrativas = null, desdeCero = false } = {}) {
+  const r = await renderPropuestas(brief, mat, textos, { ronda, mapa, depsIlustrativas, desdeCero });
   await fs.mkdir(path.join(DIR_PROPUESTAS, token), { recursive: true });
   const opciones = [];
   for (const pg of r.paginas) {
@@ -63,8 +63,12 @@ export async function crearPropuestasHTML(brief, mat, textos, { token = crypto.r
  * y, si una falla al armarse, entra la siguiente de la lista.
  * → {paginas:[{letra, layout, nombre, html, fuentes, paleta}], avisos_color, asesor, faltan, mapa}
  */
-export async function renderPropuestas(brief, mat, textos, { ronda = 0, fijo = null, solo = null, mapa: mapaPedido = null, depsIlustrativas = null } = {}) {
+export async function renderPropuestas(brief, mat, textos, { ronda = 0, fijo = null, solo = null, mapa: mapaPedido = null, depsIlustrativas = null, desdeCero: desdeCeroPedido = false } = {}) {
   let mapa = resolverMapa(brief, mapaPedido);
+  // Propuestas desde cero: con mapa 'nuevo' o con el mapa ya resuelto que pasa la entrevista (24-nov-2026: la entrevista
+  // pasaba el mapa como objeto y por eso nunca entraban los elementos ilustrativos ni las plantillas aprobadas del giro).
+  const desdeCero = mapaPedido === 'nuevo' || desdeCeroPedido === true;
+  brief = conDescripciones(brief, textos);
   const faltanTodas = [];
   // Cada ronda ("ninguna me gustó") usa otras tipografías y otro orden de color/fotos.
   const estilo = brief.marca?.estilo || 'calido';
@@ -87,7 +91,7 @@ export async function renderPropuestas(brief, mat, textos, { ronda = 0, fijo = n
     // Sin reconstrucción propia, una plantilla aprobada de su giro entra en el lugar que Sebastián le dio o al final.
     let plano_ref = brief.marca?.propuestas?.plano_ref || null;
     const propia = !!brief.marca?.plano_ref?.plano;
-    if (conLista && mapaPedido === 'nuevo') {
+    if (conLista && desdeCero) {
       plano_ref = null;
       if (!propia) {
         await refrescarAprobadas().catch(() => {});
@@ -102,7 +106,7 @@ export async function renderPropuestas(brief, mat, textos, { ronda = 0, fijo = n
     // que les falte se llena (fotos de Pixabay con marca, ejemplos sin precio, logo con letras). El relleno se guarda en
     // la propuesta; los cambios, el sitio en vivo y el rediseño lo vuelven a aplicar (solo lo que siga faltando).
     let relleno = brief.marca?.propuestas?.relleno || null;
-    if (conLista && mapaPedido === 'nuevo' && ilustrativasActivas(brief)) {
+    if (conLista && desdeCero && ilustrativasActivas(brief)) {
       const conRelleno = primeroS(elegirLetras(mapa, { brief, mat, textos, porLetra, rellenables: RELLENABLES }));
       try {
         relleno = await construirRelleno(conRelleno.letras.map(porLetra), { brief, mat, textos }, depsIlustrativas || await dependenciasReales());
@@ -159,7 +163,7 @@ export async function renderPropuestas(brief, mat, textos, { ronda = 0, fijo = n
   // Elementos ilustrativos también en restaurantes (etapa 3, decisión 6 del 19-nov-2026): solo en propuestas desde cero;
   // después se reaplica el relleno guardado (solo lo que siga faltando).
   let rellenoR = brief.marca?.propuestas?.relleno || null;
-  if (mapaPedido === 'nuevo' && ilustrativasActivas(brief)) {
+  if (desdeCero && ilustrativasActivas(brief)) {
     rellenoR = await construirRelleno([], { brief, mat, textos }, depsIlustrativas || await dependenciasReales()).catch((err) => { console.warn('[propuestas] ilustrativas restaurante:', err.message); return null; });
   }
   if (rellenoR) ({ brief, mat } = aplicarRelleno(brief, mat, rellenoR));
@@ -175,6 +179,20 @@ export function catalogoFotos(mat = {}) {
   return [mat.hero, ...(mat.trabajos || []), ...(mat.local || []), ...(mat.fotos || []).filter((x) => !x.sin_fondo && x.tipo !== 'foto_producto')]
     .filter((x) => x?.url && !x.captura && x.calidad !== 'regular' && !vistas.has(x.url) && vistas.add(x.url)).slice(0, 24)
     .map((x, k) => ({ id: `F${k + 1}`, url: x.url, descripcion: String(x.alt || '').slice(0, 160), tipo: x.tipo || '' }));
+}
+
+/** Servicios sin descripción: se les pone la que escribió la IA con los textos (solo donde el cliente no dio una). */
+export function conDescripciones(brief = {}, textos = {}) {
+  const d = textos?.descripciones; const items = brief.oferta?.items;
+  if (!d || typeof d !== 'object' || !Array.isArray(items)) return brief;
+  const n = (x) => String(x || '').trim().toLowerCase();
+  const mapa = new Map(Object.entries(d).map(([k, v]) => [n(k), String(v || '').trim()]));
+  let cambio = false;
+  const nuevos = items.map((it) => {
+    if (!it || typeof it !== 'object' || String(it.descripcion_corta || '').trim() || !mapa.get(n(it.nombre))) return it;
+    cambio = true; return { ...it, descripcion_corta: mapa.get(n(it.nombre)).slice(0, 140), descripcion_generada: true };
+  });
+  return cambio ? { ...brief, oferta: { ...brief.oferta, items: nuevos } } : brief;
 }
 
 /** JSON de la respuesta de Claude; si falla, intenta repararlo (comillas sin escapar dentro de los textos, comas sobrantes). */
@@ -201,13 +219,15 @@ export async function textosPropuestas(brief, mat, { mapa: mapaPedido = null } =
   const enfoques = menu ? 'producto, antojo, rapidez/pickup, ubicación, variedad del menú, experiencia'
     : 'el resultado que se lleva el cliente, la especialidad más fuerte, la experiencia/años, la zona, la variedad de servicios o paquetes, el trato personal';
   const nVar = menu ? 6 : conLista ? Math.max(6, ...[...mapa.lista, 'E', 'F', 'A', 'B', 'C', 'D'].map((l) => (porLetra(l)?.indice ?? -1) + 1)) : conOpcionM() ? 13 : conOpcionL() ? 12 : conOpcionK() ? 11 : conOpcionJ() ? 10 : conOpcionI() ? 9 : conOpcionH() ? 8 : conOpcionG() ? 7 : 6; // G (collage), H (recorrido con índice) I (historia con scroll), J (narrativa) K (movimiento) y M (guía) solo en la plantilla general
+  const sinDescripcion = menu ? [] : (brief.oferta?.items || []).filter((x) => x && typeof x === 'object' && x.nombre && !x.ejemplo && !String(x.descripcion_corta || '').trim()).map((x) => x.nombre).slice(0, 12);
   const prompt = `Escribe los textos de ${nVar} propuestas de página de inicio para este negocio mexicano (giro: ${brief.negocio?.giro_texto || brief.negocio?.arquetipo || ''}). Español de México, trato "${brief?.marca?.tono_textos === 'usted' ? 'usted' : 'tú'}", ${brief.negocio?.tamano === 'solo_tu' ? 'en primera persona del singular (es una sola persona), ' : ''}sin emojis, sin frases genéricas de IA, sin inventar datos (nada de años, clientes, premios ni promociones que no estén abajo). Cada titular con un enfoque distinto (${enfoques}).
 Además, "diapositivas": los textos que van encima de las fotos 2 a 5 del slider de la portada (la foto 1 usa el titular de cada propuesta). En este orden y solo si el brief trae el dato real: diferenciador (oferta.diferenciador: lo que lo distingue de la competencia o su ventaja injusta), oferta (servicio o producto estrella, o la promoción vigente), prueba (cifra, años, certificación o reseña real del brief), vision (su historia o visión). Si un dato no está en el brief, omite esa diapositiva; nunca inventes. Cada una: una sola idea, beneficio antes que característica, titular de 3 a 8 palabras.
 Fotos del cliente (cada una con su descripción hecha por IA): ${JSON.stringify(cat.map(({ id, descripcion, tipo }) => ({ id, descripcion, tipo })))}
 Regla de fotos: en cada variante y en cada diapositiva pon "foto" con el id de la foto que muestra EXACTAMENTE lo que dice ese texto. Si el texto habla de un producto o servicio (p. ej. smash cake, newborn, maternidad, un platillo), la foto debe ser de ese mismo producto o servicio; nunca la de otro. Si el texto es general (años, visión, trato, zona), elige una foto general que no muestre un producto distinto al que mencionan otros textos. Si ninguna foto corresponde, deja "foto":"". Procura que las ${nVar} variantes abran con fotos distintas cuando el texto lo permita.
 Brief: ${JSON.stringify({ negocio: brief.negocio, oferta: brief.oferta, cliente_ideal: brief.cliente_ideal, confianza: { historia_corta: brief.confianza?.historia_corta, cifras: brief.confianza?.cifras }, marca: { personalidad: brief.marca?.personalidad, evitar: brief.marca?.evitar, comentarios_del_cliente: brief.marca?.referencias_que_gusta }, zona: brief.zona, contacto: { ciudad: brief.contacto?.direccion?.ciudad, horarios: brief.contacto?.horarios } })}
 ${menu ? `Menú real (resumen): ${JSON.stringify((mat.menu_texto || []).map((s) => ({ seccion: s.seccion, items: (s.items || []).slice(0, 6).map((i) => `${i.nombre} ${i.precio || ''}`) })))}` : ''}
-Responde SOLO JSON: {"variantes":[{"titular":"≤ 55 caracteres","subtitulo":"≤ 120 caracteres","cta":"≤ 22 caracteres, abre WhatsApp","foto":"F#"} ×${nVar}],"info":["3 datos cortos y reales (≤ 30 caracteres) p. ej. modalidad, zona, entrega"],"diapositivas":[{"tipo":"diferenciador|oferta|prueba|vision","titular":"3 a 8 palabras, ≤ 50 caracteres","apoyo":"≤ 90 caracteres o vacío","cta":"≤ 22 caracteres o vacío","foto":"F#"}],"destacados":"título ≤ 22","categorias":"título ≤ 22","visita":"título ≤ 22"${menu ? '' : ',"secciones":{"trabajo":"≤ 22","servicios":"≤ 22","sobre":"≤ 22","resenas":"≤ 30","faq":"≤ 24","contacto":"≤ 22","galeria":"≤ 22"},"sobre":"la historia real del brief, pulida, ≤ 380 caracteres, sin agregar datos"'}}`;
+${sinDescripcion.length ? `Además, "descripciones": una línea (≤ 90 caracteres) para cada uno de estos servicios que el cliente nombró sin describir: ${JSON.stringify(sinDescripcion)}. Di qué recibe el cliente con ese servicio, con lo que se sabe del negocio; sin cifras, promesas ni datos inventados. Usa el nombre EXACTO como llave.` : ''}
+Responde SOLO JSON: {${sinDescripcion.length ? '"descripciones":{"nombre exacto del servicio":"≤ 90 caracteres"},' : ''}"variantes":[{"titular":"≤ 55 caracteres","subtitulo":"≤ 120 caracteres","cta":"≤ 22 caracteres, abre WhatsApp","foto":"F#"} ×${nVar}],"info":["3 datos cortos y reales (≤ 30 caracteres) p. ej. modalidad, zona, entrega"],"diapositivas":[{"tipo":"diferenciador|oferta|prueba|vision","titular":"3 a 8 palabras, ≤ 50 caracteres","apoyo":"≤ 90 caracteres o vacío","cta":"≤ 22 caracteres o vacío","foto":"F#"}],"destacados":"título ≤ 22","categorias":"título ≤ 22","visita":"título ≤ 22"${menu ? '' : ',"secciones":{"trabajo":"≤ 22","servicios":"≤ 22","sobre":"≤ 22","resenas":"≤ 30","faq":"≤ 24","contacto":"≤ 22","galeria":"≤ 22"},"sobre":"la historia real del brief, pulida, ≤ 380 caracteres, sin agregar datos"'}}`;
   // JSON mal formado (23-nov-2026, Intiviso Lab: una comilla sin escapar tumbó las opciones y Ari siguió sin mandarlas):
   // se reintenta hasta 2 veces más, con más espacio y pidiendo JSON válido.
   let d = null; let ultimoError = null;
@@ -215,7 +235,7 @@ Responde SOLO JSON: {"variantes":[{"titular":"≤ 55 caracteres","subtitulo":"�
     const nota = intento ? '\nIMPORTANTE: tu respuesta anterior no era JSON válido. Responde SOLO el objeto JSON, sin texto antes ni después; dentro de los textos usa comillas angulares « » en lugar de comillas dobles.' : '';
     const res = await fetch(`${config.anthropicBaseUrl}/v1/messages`, {
       method: 'POST', headers: { 'x-api-key': config.anthropicApiKey, 'anthropic-version': '2023-06-01', 'content-type': 'application/json' },
-      body: JSON.stringify({ model: config.generadorModel || config.anthropicModel, max_tokens: intento ? 6000 : 4500, messages: [{ role: 'user', content: prompt + nota }] }),
+      body: JSON.stringify({ model: config.generadorModel || config.anthropicModel, max_tokens: intento ? 7000 : 5500, messages: [{ role: 'user', content: prompt + nota }] }),
       signal: AbortSignal.timeout(120000),
     });
     const j = await res.json();
@@ -229,6 +249,7 @@ Responde SOLO JSON: {"variantes":[{"titular":"≤ 55 caracteres","subtitulo":"�
   d.variantes = (d.variantes || []).map((v) => ({ titular: limpio(v.titular), subtitulo: limpio(v.subtitulo), cta: limpio(v.cta), foto_url: urlDe(v.foto) }));
   d.diapositivas = (Array.isArray(d.diapositivas) ? d.diapositivas : []).map((x) => ({ tipo: limpio(x?.tipo), titular: limpio(x?.titular), apoyo: limpio(x?.apoyo), cta: limpio(x?.cta), foto_url: urlDe(x?.foto) })).filter((x) => x.titular && x.titular.length <= 60).slice(0, 4);
   if (d.sobre) d.sobre = limpio(d.sobre);
+  if (d.descripciones && typeof d.descripciones === 'object') d.descripciones = Object.fromEntries(Object.entries(d.descripciones).filter(([k, v]) => sinDescripcion.includes(k) && typeof v === 'string' && v.trim()).map(([k, v]) => [k, limpio(v)])); else delete d.descripciones;
   // Con mapa nuevo los nombres de las secciones son los del giro; en textos.secciones solo quedan los que pida el cliente.
   if (mapa && !esLegado(mapa)) delete d.secciones;
   return d;
