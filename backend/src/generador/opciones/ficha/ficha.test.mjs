@@ -4,7 +4,6 @@ import assert from 'node:assert/strict';
 import { paginasGenerales, LETRAS } from '../../propuestas_general.js';
 import { interpretarEleccion } from '../../opciones.js';
 import { fotosRepetidas } from '../../validar_material.js';
-import { auditarPaleta } from '../../tipo_color.js';
 import { datosFicha, paginaFicha } from './ficha.js';
 
 const foto = (n, x = {}) => ({ url: `https://x/${n}.jpg`, ancho: 1200, alto: 800, alt: `foto ${n}`, tipo: 'foto_trabajo', clave: `a${n}`, ...x });
@@ -48,9 +47,9 @@ test('la P usa solo datos reales: sin reseñas no hay sección ni estrellas', ()
   assert.equal(D.claros.cols.length, 2);
 });
 
-test('la P: paleta oscura con contraste y fotos del cliente sin repetir fuera de lo permitido', () => {
+// Desde el 24-nov-2026 las reglas duras (color incluido) no aplican a las plantillas: la P queda como su modelo.
+test('la P: fotos del cliente sin repetir fuera de lo permitido', () => {
   const [p] = gen({ solo: 'P' });
-  assert.deepEqual(auditarPaleta(p.paleta), []);
   assert.match(p.html, /https:\/\/x\/1\.jpg/);
   assert.deepEqual(fotosRepetidas(p.html, matDe(5)), []);
 });

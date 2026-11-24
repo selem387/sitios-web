@@ -129,13 +129,17 @@ export async function renderPropuestas(brief, mat, textos, { ronda = 0, fijo = n
       return pags;
     };
     const procesar = async (pg) => {
-      const errColor = fijo ? [] : auditarPaleta(pg.paleta);
+      // Plantillas de sitios modelo externos (opcion.modelo): quedan idénticas a su modelo, sin la escala tipográfica,
+      // el piso de letra ni la regla de color del proyecto (Sebastián, 24-nov-2026: si algo no le gusta al cliente, se
+      // modifica después de la propuesta).
+      const plantilla = !!porLetra(pg.letra)?.modelo;
+      const errColor = fijo || plantilla ? [] : auditarPaleta(pg.paleta);
       if (errColor.length) throw new Error(`Propuesta ${pg.letra} no cumple la regla de color: ${errColor.join('; ')}`);
-      const { html, faltan, repetidas } = completarMaterial(conReglaTipo(pg.html, pg.fuentes, fijo?.fuentes?.estilo || estilo), matP);
+      const { html, faltan, repetidas } = completarMaterial(plantilla ? pg.html : conReglaTipo(pg.html, pg.fuentes, fijo?.fuentes?.estilo || estilo), matP);
       if (faltan.length && !fijo) throw new Error(`Propuesta ${pg.letra} sin material del cliente: ${faltan.map((f) => f.clave).join(', ')}`);
       if (repetidas.length && !fijo) throw new Error(`Propuesta ${pg.letra} con fotos repetidas: ${repetidas.map((f) => f.url.split('/').pop()).join(', ')}`);
       faltanTodas.push(...faltan);
-      return { letra: pg.letra, layout: pg.layout, nombre: pg.nombre, html: conCredito(conPisoTexto(await conImagenesOptimizadas(conContacto(conMenuMovil(html), brief)))), fuentes: pg.fuentes, paleta: pg.paleta };
+      return { letra: pg.letra, layout: pg.layout, nombre: pg.nombre, html: conCredito((plantilla ? (h) => h : conPisoTexto)(await conImagenesOptimizadas(conContacto(conMenuMovil(html), brief)))), fuentes: pg.fuentes, paleta: pg.paleta };
     };
     const out = [];
     if (!conLista) {

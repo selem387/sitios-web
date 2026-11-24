@@ -27,12 +27,13 @@ test('todas las portadas y estilos de bloque arman la página con todas las secc
   }
 });
 
-test('colores: los de la referencia con el acento acomodado al logo, siempre legibles', () => {
+// Desde el 24-nov-2026 las reglas duras no aplican a las plantillas: los colores de la referencia van tal cual.
+test('colores: los de la referencia tal cual, con el acento acomodado al logo', () => {
   const plano = normalizarPlano({ estilo: { colores: { fondo: '#111111', texto: '#333333', acento: '#D4AF37' } } });
   const p = paletaPlano(plano, ['#1F4E79']);
   assert.equal(p.fondo, '#111111');
-  assert.ok(wcag(p.texto, p.fondo) >= 4.5, 'el texto se ajusta para leerse');
-  assert.ok(wcag(p.sobreAcento, p.acento) >= 4.5);
+  assert.equal(p.texto, '#333333', 'el texto de la referencia no se ajusta');
+  assert.ok(wcag(p.sobreAcento, p.acento) >= wcag(p.sobreAcento === '#FFFFFF' ? '#111111' : '#FFFFFF', p.acento), 'sobre el acento, el mejor entre blanco y negro');
   const sinLogo = paletaPlano(plano, []);
   assert.notEqual(sinLogo.acento, p.acento, 'con logo el acento toma su tono');
 });

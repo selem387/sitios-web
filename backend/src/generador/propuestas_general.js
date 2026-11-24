@@ -340,7 +340,7 @@ export function paginasGenerales({ brief, mat, textos, pares, urlFuentes, ronda 
     const par = fijo?.fuentes || parH || (dref ? parPorNombres(dref.pares[i] || dref.pares[i % dref.pares.length]) : pares[i % pares.length]);
     const d = {
       i: i + ronda * 3, letra, layout, dref: propia ? null : dref, nombre: brief.negocio?.nombre || '', brief, mat, titulos, mapa,
-      pal: fijo?.paleta || (dref && !propia ? paletaRef(dref, dref.paletas?.[i] ? i : 0) : { ...corregirPaleta(paletaGeneral(layout, cps[i % cps.length].colores, pastel, i + ronda * 2, { acento: cps[i % cps.length].acento, acentoCta: cps[i % cps.length].acentoCta })).paleta, familia: cps[i % cps.length].familia, origen: cps[i % cps.length].origen }), f: par, fuentesUrl: op?.urlFuentes && !fijo?.fuentes ? op.urlFuentes : urlFuentes([par]),
+      pal: fijo?.paleta || (dref && !propia ? paletaRef(dref, dref.paletas?.[i] ? i : 0) : { ...((x) => (op?.modelo ? x : corregirPaleta(x).paleta))(paletaGeneral(layout, cps[i % cps.length].colores, pastel, i + ronda * 2, { acento: cps[i % cps.length].acento, acentoCta: cps[i % cps.length].acentoCta })), familia: cps[i % cps.length].familia, origen: cps[i % cps.length].origen }), f: par, fuentesUrl: op?.urlFuentes && !fijo?.fuentes ? op.urlFuentes : urlFuentes([par]),
       t: { titular: v.titular, subtitulo: v.subtitulo, foto_url: v.foto_url || null, cta: v.cta || 'Escríbeme por WhatsApp', info: (textos.info || []).slice(0, 3), sobre: textos.sobre, proceso: textos.proceso, proceso_intro: textos.proceso_intro, servicios_intro: textos.servicios_intro, servicios_cierre: textos.servicios_cierre, servicios_boton: textos.servicios_boton, diapositivas: textos.diapositivas },
       wa, tel: c.whatsapp ? formatoTel(c.whatsapp) : null,
     };
