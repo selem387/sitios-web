@@ -117,6 +117,23 @@ app.post('/v1/mockups', async (c) => {
   return c.json({ opciones: res, ms: Date.now() - t0 });
 });
 
+// Imagen a partir de un HTML (cuadrículas de paletas y letras de la entrevista, 24-nov-2026).
+// Cuerpo: {html, ancho?:480, prefijo?}. Página completa a 2x (nítida en el celular).
+app.post('/v1/imagen', async (c) => {
+  const b = await c.req.json().catch(() => null);
+  if (!b || typeof b.html !== 'string' || !b.html.trim()) return c.json({ error: 'falta html' }, 400);
+  const t0 = Date.now();
+  const ancho = Math.max(320, Math.min(1200, Number(b.ancho) || 480));
+  const buf = await conPagina({ width: ancho, height: 800, scale: 2, movil: false }, async (page) => {
+    await page.setContent(b.html, { waitUntil: 'networkidle', timeout: 20000 }).catch(() => {});
+    await page.evaluate(() => document.fonts?.ready).catch(() => {});
+    await page.waitForTimeout(300);
+    return page.screenshot({ type: 'png', fullPage: true });
+  });
+  const f = await guardarPNG(buf, String(b.prefijo || 'img').replace(/[^\w-]/g, '').slice(0, 20) || 'img');
+  return c.json({ ...f, ms: Date.now() - t0 });
+});
+
 // Captura de una URL pública (QA post-publicación). Cuerpo: {url, ancho?:390|1280, completa?:boolean, tramos?:n}
 app.post('/v1/captura', async (c) => {
   const b = await c.req.json().catch(() => null);

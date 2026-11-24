@@ -67,7 +67,9 @@ const diferido = (brief, id) => brief?.marca?.propuestas?.estado !== 'elegida'
   && ((Array.isArray(brief?.diferir) && brief.diferir.includes(id)) || (sinOpciones(brief) && !ANTES_DE_OPCIONES.includes(id)));
 
 /** true cuando ya está todo lo indispensable para armar las opciones de diseño. */
-export const listoParaOpciones = (brief = {}, assets = []) => sinOpciones(brief) && !faltantes(brief, assets).length;
+// Paleta y letra al inicio (entrevista/seleccion.js): con giro conocido, las opciones esperan a que el cliente las elija.
+const seleccionPendiente = (b = {}) => !vacio(b.negocio?.giro_texto) && !vacio(b.negocio?.arquetipo) && !(b.marca?.paleta_elegida && b.marca?.tipografia_elegida);
+export const listoParaOpciones = (brief = {}, assets = []) => sinOpciones(brief) && !seleccionPendiente(brief) && !faltantes(brief, assets).length;
 
 /** Nota para Ari mientras no se han mostrado las opciones de diseño. */
 export function notaAntesDeOpciones(brief = {}, assets = []) {
@@ -215,6 +217,10 @@ const CAMPOS_YA = [
   ['idiomas', (b) => (Array.isArray(b.zona?.idiomas) && b.zona.idiomas.length > 1 ? b.zona.idiomas : null)],
   ['servicios', (b) => (Array.isArray(b.oferta?.items) ? b.oferta.items.map((x) => (typeof x === 'string' ? x : x?.nombre)).filter(Boolean) : null)],
   ['diferenciador', (b) => b.oferta?.diferenciador],
+  // Paleta y letra elegidas al inicio (24-nov-2026): Ari ya no pregunta por colores, letra ni estilo.
+  ['colores de la página (ya los eligió con imágenes; no preguntes por colores)', (b) => (b.marca?.paleta_elegida ? (b.marca.paleta_elegida.disenador ? 'que los decida el diseñador' : b.marca.paleta_elegida.nombre) : null)],
+  ['letra de la página (ya la eligió con imágenes; no preguntes por tipografía)', (b) => (b.marca?.tipografia_elegida ? (b.marca.tipografia_elegida.disenador ? 'que la decida el diseñador' : `${b.marca.tipografia_elegida.titulos} y ${b.marca.tipografia_elegida.cuerpo}`) : null)],
+  ['estilo', (b) => (b.marca?.paleta_elegida || b.marca?.tipografia_elegida ? b.marca?.estilo : null)],
 ];
 function yaTiene(b = {}) {
   return CAMPOS_YA.map(([et, f]) => { const v = f(b); return vacio(v) ? null : `${et}: ${Array.isArray(v) ? v.join(', ') : String(v).slice(0, 120)}`; }).filter(Boolean);

@@ -7,13 +7,15 @@ import { parsearJSONTextos } from '../src/generador/propuestas_html.js';
 const indispensable = {
   cliente: { nombre: 'Jeancarlo' }, contacto: { whatsapp: '529990000000' }, no_tiene: ['redes'],
   negocio: { nombre: 'Intiviso Lab', giro_texto: 'agencia de marketing', arquetipo: 'servicios', ciudad: 'CDMX' },
-  objetivo: { principal: 'me_contacten_whatsapp' }, oferta: { items: ['Branding', 'Pauta'] }, marca: { estilo: 'tecnologico' },
+  objetivo: { principal: 'me_contacten_whatsapp' }, oferta: { items: ['Branding', 'Pauta'] }, marca: { estilo: 'tecnologico', paleta_elegida: { disenador: true }, tipografia_elegida: { disenador: true } },
 };
 const assets = [{ tipo: 'logo', usar: true }, ...Array.from({ length: 5 }, () => ({ tipo: 'foto_equipo', usar: true }))];
 
 test('antes de las opciones no se piden cliente ideal, zonas, reseñas, FAQ ni horarios', () => {
   assert.deepEqual(faltantes(indispensable, assets), []);
   assert.equal(listoParaOpciones(indispensable, assets), true);
+  // Sin paleta y letra elegidas (24-nov-2026), las opciones esperan.
+  assert.equal(listoParaOpciones({ ...indispensable, marca: { estilo: 'tecnologico' } }, assets), false);
 });
 
 test('sin fotos todavía no hay opciones', () => {
