@@ -96,12 +96,12 @@ function mensajeOpciones(op, brief, mat, ronda = 0) {
   const nota = h ? `Una nota sobre tus colores: ${h.mensaje_cliente}${conF ? ' La *F* ya trae ese ajuste para que compares; las demás usan tus colores tal cual.' : ''}` : null;
   return {
     textos: [
-      `${ronda ? `Aquí van ${op.opciones.length} propuestas nuevas, con otros colores, letras y acomodo` : `Te preparé ${op.opciones.length} propuestas de tu página`}, con ${queIncluye(brief, mat)}. Ábrelas en tu celular y recórrelas completas 👇`,
+      `${ronda ? `Aquí van ${op.opciones.length} propuestas nuevas, con ${brief?.marca?.paleta_elegida?.colores || brief?.marca?.tipografia_elegida?.titulos ? 'otro acomodo (con los colores y la letra que elegiste)' : 'otros colores, letras y acomodo'}` : `Te preparé ${op.opciones.length} propuestas de tu página`}, con ${queIncluye(brief, mat)}. Ábrelas en tu celular y recórrelas completas 👇`,
       lista,
       ...(nota ? [nota] : []),
       ...(avisoIlustrativas(op.relleno, mat, brief) ? [avisoIlustrativas(op.relleno, mat, brief)] : []),
       ...(avisoReferencia(op.referencia) ? [avisoReferencia(op.referencia)] : []),
-      `¿Cuál te gusta más? Respóndeme con la letra (${op.opciones.map((o) => `*${o.letra}*`).join(', ')}). ${op.opciones.length >= 2 ? `También puedes pedir mezclas, por ejemplo _la ${op.opciones[0].letra} con los colores de la ${op.opciones[1].letra}_. ` : ''}Si ninguna te convence, dime *ninguna* y qué te gustaría distinto.`,
+      `¿Cuál te gusta más? Respóndeme con la letra (${op.opciones.map((o) => `*${o.letra}*`).join(', ')}). ${op.opciones.length >= 2 ? `También puedes pedir mezclas, por ejemplo _la ${op.opciones[0].letra} con ${brief?.marca?.paleta_elegida?.colores ? 'la portada' : 'los colores'} de la ${op.opciones[1].letra}_. ` : ''}Si ninguna te convence, dime *ninguna* y qué te gustaría distinto.`,
     ],
     media: [],
   };
