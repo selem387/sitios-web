@@ -80,7 +80,16 @@ export function notaAntesDeOpciones(brief = {}, assets = []) {
     : '';
   return 'PRIMERO LAS OPCIONES DE DISEÑO: todavía no le mostramos sus opciones visuales. Pregunta SOLO lo que diga REVISIÓN DE REQUISITOS (nombre, WhatsApp, redes, nombre y giro del negocio, ciudad, objetivo, servicios, logo, estilo y fotos), una cosa por mensaje. '
     + 'NO hagas ninguna otra pregunta de la GUÍA DEL BLOQUE aunque aparezca ahí (años, local o domicilio, equipo, cliente ideal, zonas, diferenciador, proceso, promociones, colores, personalidad, páginas que le gusten, qué no quiere ver, tú o usted, efectos, video, foto vertical, permiso de IA, PDF, historia, cifras, certificaciones, reseñas, garantías, anécdotas, preguntas frecuentes, horarios): todo eso se pregunta después de que elija su diseño. '
-    + 'Si el cliente pide ver las opciones, dile que en cuanto tengas lo que falte se las mandas. Cuando REVISIÓN DE REQUISITOS esté completa, el sistema manda las opciones solo; tú no las prometas con tiempos.' + relleno;
+    + 'Si el cliente pide ver las opciones, dile que en cuanto tengas lo que falte se las mandas. Cuando REVISIÓN DE REQUISITOS esté completa, el sistema manda las opciones solo; tú no las prometas con tiempos.' + relleno
+    + siguiente(brief, assets);
+}
+// Lo siguiente indispensable, aunque sea de un bloque posterior (24-nov-2026: en B1 Ari preguntaba años, modalidad y
+// equipo en lugar de objetivo y servicios, y no guardaba lo que el cliente contestaba de otros bloques).
+function siguiente(brief, assets) {
+  const f = faltantes(brief, assets);
+  if (!f.length) return '';
+  return `\nSIGUIENTE PREGUNTA (obligatoria, no preguntes otra cosa): "${f[0].pedir}" (requisito ${f[0].id} de ${f[0].bloque}). `
+    + 'Guarda en brief_patch todo lo que el cliente conteste aunque sea de otro bloque (objetivo.principal, oferta.items, negocio.ciudad…), y pon bloque_actual en el bloque de esa pregunta.';
 }
 const textoPedir = (r, brief, assets = []) => (typeof r.pedir === 'function' ? r.pedir(brief, assets) : r.pedir);
 
