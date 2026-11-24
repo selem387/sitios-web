@@ -82,8 +82,8 @@ test('A–F suspendidas por omisión: no salen ni de relleno, y se completa con 
       const mat = { hero: { url: 'h' }, trabajos: [{ url: 'a' }, { url: 'b' }, { url: 'c' }, { url: 'd' }], logo: { url: 'l' } };
       const brief = { negocio, oferta: { items: ['x', 'y', 'z'].map((n) => ({ nombre: n, descripcion_corta: 'd' })) } };
       const r = elegirLetras(m, { brief, mat, textos: { sobre: 's' }, porLetra });
-      assert.ok(r.letras.every((l) => !'ABCDEF'.includes(l)), `${negocio.arquetipo}: ${r.letras}`);
-      assert.ok(r.respaldo.every((l) => !'ABCDEF'.includes(l)));
+      assert.ok(r.letras.every((l) => !'ABCDEFG'.includes(l)), `${negocio.arquetipo}: ${r.letras}`);
+      assert.ok(r.respaldo.every((l) => !'ABCDEFG'.includes(l)));
       assert.ok(r.letras.length >= 4, `${negocio.arquetipo}: ${r.letras}`);
     }
     process.env.OPCIONES_SUSPENDIDAS = 'ninguna';

@@ -120,7 +120,8 @@ export function cumple(op, cuenta, { brief, mat, ignorar = [] } = {}) {
 // aviso" en propuestas nuevas de todos los giros, salvo restaurantes (sus A–F son otras, con registro propio). Las propuestas
 // ya generadas y los sitios elegidos con A–F siguen funcionando igual. Para volver a proponerlas: OPCIONES_SUSPENDIDAS=ninguna
 // en el servicio api (o la lista de letras que se quieran suspender, separadas por coma).
-export const SUSPENDIDAS_POR_OMISION = Object.freeze(['A', 'B', 'C', 'D', 'E', 'F']);
+// La G (collage, la única opción propia de la G en adelante) también, desde el 24-nov-2026.
+export const SUSPENDIDAS_POR_OMISION = Object.freeze(['A', 'B', 'C', 'D', 'E', 'F', 'G']);
 export function suspendidas() {
   const v = process.env.OPCIONES_SUSPENDIDAS;
   if (v == null || v === '') return [...SUSPENDIDAS_POR_OMISION];
