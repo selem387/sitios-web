@@ -23,6 +23,7 @@ import { servirClip } from '../generador/clips.js';
 import { servirVendor } from '../generador/librerias.js';
 import { pendientesChat, desdeChat, ultimoAviso, avisar } from '../entrevista/avisos.js';
 import { conBarraBorrador, textoReaccion } from '../generador/barra_borrador.js';
+import { conFotosEnMovimiento } from '../generador/kit/fotos_movimiento.js';
 import { urlSitio } from '../panel/cambios_vivo.js';
 import { esLetra } from '../generador/opciones/letras.js';
 
@@ -98,7 +99,7 @@ export function registerChatRoutes(app, wrap) {
       }
     } catch (err) { console.error('[p] sitio vivo', token, err.message); }
     try {
-      const html = conBarraBorrador(await fs.readFile(path.join(DIR_PROPUESTAS, token, `${letra}.html`), 'utf8'), { acciones: accionesReaccion(token, letra) });
+      const html = conBarraBorrador(conFotosEnMovimiento(await fs.readFile(path.join(DIR_PROPUESTAS, token, `${letra}.html`), 'utf8')), { acciones: accionesReaccion(token, letra) }); // fotos nunca estáticas (24-nov-2026)
       return c.html(html, 200, { 'cache-control': 'no-store', 'x-robots-tag': 'noindex' });
     }
     catch { return c.text('Propuesta no encontrada', 404); }
@@ -113,7 +114,7 @@ export function registerChatRoutes(app, wrap) {
       const html = await fs.readFile(path.join(DIR_PROPUESTAS, token, `${letra}.html`), 'utf8');
       const nombre = (html.match(/<title>([\s\S]*?) · Propuesta/) || [])[1] || '';
       const out = paginaMenu(html, { nombre, inicio: `/p/${token}/${letra}` });
-      return out ? c.html(out, 200, { 'cache-control': 'no-store', 'x-robots-tag': 'noindex' }) : c.text('Esta propuesta no tiene menú', 404);
+      return out ? c.html(conFotosEnMovimiento(out), 200, { 'cache-control': 'no-store', 'x-robots-tag': 'noindex' }) : c.text('Esta propuesta no tiene menú', 404);
     } catch { return c.text('Propuesta no encontrada', 404); }
   });
 

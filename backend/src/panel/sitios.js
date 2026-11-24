@@ -249,6 +249,7 @@ export async function renderSitio(sv, { previa = false } = {}) {
   if (sv.contenido?.pies?.items?.length) html = conPies(html, sv.contenido.pies.items);
   { const { conMenuMovil, conContacto } = await import('../generador/movil.js'); html = conContacto(conMenuMovil(html), brief); } // menú en celular, teléfono y cómo llegar
   { const { conImagenesOptimizadas } = await import('../imagenes.js'); html = await conImagenesOptimizadas(html); } // srcset WebP + tamaño real en todas las fotos
+  { const { conFotosEnMovimiento } = await import('../generador/kit/fotos_movimiento.js'); html = conFotosEnMovimiento(html); } // fotos nunca estáticas (24-nov-2026)
   const css = dz.css;
   if (css) html = html.replace('</head>', () => `<style id="ajustes">${String(css).replace(/<\/style/gi, '')}</style></head>`);
   for (const k of cache.keys()) if (k.startsWith(`${sv.id}:`) && !k.startsWith(`${sv.id}:${sv.version}:`)) cache.delete(k);
