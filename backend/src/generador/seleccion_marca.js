@@ -214,6 +214,9 @@ export function conTipografia(html, par) {
     const deCuerpo = varCuerpo ? k === varCuerpo : (famCuerpo && f.toLowerCase() === famCuerpo.toLowerCase());
     return `${k}:${pila(deCuerpo ? par.cuerpo : par.titulos, v.trim())}`;
   });
+  // Modelos que ponen la letra de títulos también en el texto (J: body.l-narrativa{--fc:var(--ft)}): el cliente eligió una
+  // letra para textos, así que el texto la conserva.
+  if (varCuerpo) out = out.replace(new RegExp(`(${varCuerpo.replace(/[-]/g, '\\-')})\\s*:\\s*var\\(\\s*--[\\w-]+\\s*\\)`, 'g'), `$1:'${par.cuerpo}', sans-serif`);
   // Atajo font: 700 48px/1 "X", serif.
   out = out.replace(/(\bfont\s*:\s*[^;}]*?\d(?:px|rem|em|%|vw)[^;}'"]*?\s)((?:['"][^'"]+['"]|[A-Z][\w -]+)(?:\s*,\s*[^;}]+)?)(?=[;}])/g, (m, pre, fams) => { const n = cambiar(fams); return n ? `${pre}${n}` : m; });
   // Modelos de una sola familia (los títulos heredan la del cuerpo): los títulos toman la letra de títulos. Va al inicio
