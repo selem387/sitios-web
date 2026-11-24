@@ -9,7 +9,7 @@ const indispensable = {
   negocio: { nombre: 'Intiviso Lab', giro_texto: 'agencia de marketing', arquetipo: 'servicios', ciudad: 'CDMX' },
   objetivo: { principal: 'me_contacten_whatsapp' }, oferta: { items: ['Branding', 'Pauta'] }, marca: { estilo: 'tecnologico' },
 };
-const assets = [{ tipo: 'logo', usar: true }, { tipo: 'foto_equipo', usar: true }];
+const assets = [{ tipo: 'logo', usar: true }, ...Array.from({ length: 5 }, () => ({ tipo: 'foto_equipo', usar: true }))];
 
 test('antes de las opciones no se piden cliente ideal, zonas, reseñas, FAQ ni horarios', () => {
   assert.deepEqual(faltantes(indispensable, assets), []);
@@ -113,4 +113,23 @@ test('plantillas idénticas a su modelo: sin piso de letra ni escala tipográfic
   const k = r.paginas.find((p) => p.letra === 'K'); const g = r.paginas.find((p) => p.letra === 'G');
   assert.ok(k && !/font-size:max\(20px/.test(k.html), 'la K sin piso de letra');
   assert.ok(g && /font-size:max\(20px/.test(g.html), 'la G con piso de letra');
+});
+
+// Fotos suficientes (24-nov-2026): primero se piden más; solo si dice que no tiene más se completa con ilustrativas.
+import { MIN_FOTOS } from '../src/entrevista/requisitos.js';
+test('con menos de MIN_FOTOS fotos, Ari pide más antes de las opciones; "ya no tengo más" las libera', () => {
+  const pocas = [{ tipo: 'logo', usar: true }, { tipo: 'foto_local', usar: true }, { tipo: 'foto_otro', usar: true }];
+  const f = faltantes(indispensable, pocas);
+  assert.deepEqual(f.map((x) => x.id), ['fotos_suficientes']);
+  assert.match(f[0].pedir, /Ya tengo 2 fotos.*al menos 3 más/);
+  assert.equal(listoParaOpciones(indispensable, pocas), false);
+  assert.equal(requisitoDePregunta(f[0].pedir), 'fotos_suficientes');
+  for (const r of ['ya no tengo más', 'no tengo más fotos', 'son todas', 'es todo lo que tengo', 'no']) assert.ok(esNegativa(r), r);
+  assert.ok(!esNegativa('te mando más'));
+  assert.deepEqual(noTieneDelHistorial([{ rol: 'agente', contenido: f[0].pedir }, { rol: 'cliente', contenido: 'Ya no tengo más' }]), ['fotos_suficientes']);
+  const b = { ...indispensable, no_tiene: [...indispensable.no_tiene, 'fotos_suficientes'] };
+  assert.equal(listoParaOpciones(b, pocas), true);
+  assert.match(notaAntesDeOpciones(b, pocas), /NO TIENE MÁS FOTOS/);
+  const muchas = [{ tipo: 'logo', usar: true }, ...Array.from({ length: MIN_FOTOS }, () => ({ tipo: 'foto_otro', usar: true }))];
+  assert.equal(listoParaOpciones(indispensable, muchas), true);
 });

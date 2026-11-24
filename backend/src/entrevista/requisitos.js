@@ -12,6 +12,8 @@ const faqSinRespuesta = (b) => faqLista(b).filter((x) => vacio(x.respuesta));
 const TIPOS_FOTO = ['foto_local', 'foto_producto', 'foto_equipo', 'foto_fundador', 'foto_otro'];
 
 export const fotosUtiles = (assets = []) => assets.filter((a) => a.usar !== false && TIPOS_FOTO.includes(a.tipo));
+// Fotos con las que salen completas las opciones que se proponen (la que más pide: foto principal + 4 de trabajo).
+export const MIN_FOTOS = 5;
 export const logoRecibido = (assets = []) => assets.some((a) => a.tipo === 'logo');
 
 // id · bloque · cumple(brief, assets) · pedir (texto para el cliente si hay que volver a pedirlo) · puedeNoTener
@@ -37,6 +39,12 @@ export const REQUISITOS = [
     pedir: (b) => (b.marca?.tiene_logo === true ? 'Me dijiste que sí tienes logotipo, pero todavía no me llega. ¿Me lo mandas por aquí? Si no lo tienes a la mano, dime y seguimos sin él.' : '¿Tienes logotipo? Mándamelo aquí. Si no, no pasa nada, lo resolvemos.') },
   { id: 'personalidad', bloque: 'B5', cumple: (b) => !vacio(b.marca?.personalidad), pedir: 'Si tu negocio fuera una persona, ¿cómo sería? Dame 3 palabras, por ejemplo "confiable, moderno, cercano".' },
   { id: 'estilo', bloque: 'B5', cumple: (b) => !vacio(b.marca?.estilo), pedir: '¿Qué estilo te late más para tu página: elegante, fresco, minimalista, cálido, tecnológico o tradicional?' },
+  // Fotos suficientes para armar las opciones (24-nov-2026, decisión de Sebastián): si mandó menos de MIN_FOTOS, Ari
+  // insiste en que mande más; solo si dice expresamente que no tiene más, le avisa que lo que falte se completa con
+  // imágenes ilustrativas de ejemplo y se arman las opciones. Antes pasaba directo a preguntar por imágenes con IA.
+  { id: 'fotos_suficientes', bloque: 'B6', puedeNoTener: true,
+    cumple: (b, a) => fotosUtiles(a).length === 0 || fotosUtiles(a).length >= MIN_FOTOS || b.fotos?.sin_fotos === true || noTiene(b, 'fotos_suficientes'),
+    pedir: (b, a) => { const n = fotosUtiles(a).length; const f = MIN_FOTOS - n; return `Ya tengo ${n === 1 ? 'una foto' : `${n} fotos`} tuya${n === 1 ? '' : 's'}. Para armar bien tus opciones de diseño necesito al menos ${f === 1 ? 'una más' : `${f} más`}: tu local o espacio, tus trabajos o productos, tú o tu equipo. ¿Me mandas más fotos?`; } },
   { id: 'fotos', bloque: 'B6', cumple: (b, a) => fotosUtiles(a).length > 0 || (b.fotos?.sin_fotos === true && !vacio(b.fotos?.temas)),
     pedir: (b) => (b.fotos?.sin_fotos === true ? 'Como no tienes fotos, dime de qué te gustaría que fueran (por ejemplo: tu local, tus platillos, gente usando tu servicio) para buscarte ejemplos o crearlas.' : 'Antes de seguir necesito las fotos de tu negocio: tu local o espacio, tus productos o trabajos, tú y tu equipo. Mándame las que tengas. Si no tienes, dime de qué te gustaría que fueran para buscarte ejemplos o crearlas.') },
   { id: 'testimonios', bloque: 'B7', puedeNoTener: true, cumple: (b) => !vacio(b.confianza?.testimonios) || !vacio(b.confianza?.link_resenas), pedir: '¿Tienes reseñas en Google o Facebook? Mándame la liga, o copia 2 o 3 comentarios de clientes contentos.' },
@@ -51,7 +59,7 @@ const idx = (bl) => BLOQUES.indexOf(bl);
 // Primero las opciones de diseño (23-nov-2026, caso Intiviso Lab: Ari hacía preguntas de confianza, cifras y anécdotas
 // antes de mostrar las opciones y el cliente pidió "dame las opciones visuales primero"). Antes de las opciones solo se
 // pide lo indispensable para armarlas; todo lo demás se pregunta después de que el cliente elige su diseño.
-export const ANTES_DE_OPCIONES = ['nombre_cliente', 'whatsapp_negocio', 'redes', 'nombre_negocio', 'giro', 'ciudad', 'objetivo', 'servicios', 'logo', 'estilo', 'fotos'];
+export const ANTES_DE_OPCIONES = ['nombre_cliente', 'whatsapp_negocio', 'redes', 'nombre_negocio', 'giro', 'ciudad', 'objetivo', 'servicios', 'logo', 'estilo', 'fotos', 'fotos_suficientes'];
 const sinOpciones = (brief) => !brief?.marca?.propuestas?.opciones?.length && brief?.marca?.propuestas?.estado !== 'elegida';
 // Atajo a las propuestas: ids en brief.diferir[] se saltan hasta que el cliente elige diseño;
 // después vuelven a contar y la revisión de requisitos hace que Ari los pida.
@@ -62,20 +70,24 @@ const diferido = (brief, id) => brief?.marca?.propuestas?.estado !== 'elegida'
 export const listoParaOpciones = (brief = {}, assets = []) => sinOpciones(brief) && !faltantes(brief, assets).length;
 
 /** Nota para Ari mientras no se han mostrado las opciones de diseño. */
-export function notaAntesDeOpciones(brief = {}) {
+export function notaAntesDeOpciones(brief = {}, assets = []) {
   if (!sinOpciones(brief)) return null;
+  const n = fotosUtiles(assets).length;
+  const relleno = noTiene(brief, 'fotos_suficientes') && n > 0 && n < MIN_FOTOS
+    ? `\nEL CLIENTE YA DIJO QUE NO TIENE MÁS FOTOS (tiene ${n}): no se las vuelvas a pedir. Dile, en un mensaje corto, que con las suyas y con imágenes ilustrativas de ejemplo (marcadas así en la página) completas lo que falte para que vea sus opciones, y que después las puede cambiar por fotos suyas cuando quiera.`
+    : '';
   return 'PRIMERO LAS OPCIONES DE DISEÑO: todavía no le mostramos sus opciones visuales. Pregunta SOLO lo que diga REVISIÓN DE REQUISITOS (nombre, WhatsApp, redes, nombre y giro del negocio, ciudad, objetivo, servicios, logo, estilo y fotos), una cosa por mensaje. '
     + 'NO hagas ninguna otra pregunta de la GUÍA DEL BLOQUE aunque aparezca ahí (años, local o domicilio, equipo, cliente ideal, zonas, diferenciador, proceso, promociones, colores, personalidad, páginas que le gusten, qué no quiere ver, tú o usted, efectos, video, foto vertical, permiso de IA, PDF, historia, cifras, certificaciones, reseñas, garantías, anécdotas, preguntas frecuentes, horarios): todo eso se pregunta después de que elija su diseño. '
-    + 'Si el cliente pide ver las opciones, dile que en cuanto tengas lo que falte se las mandas. Cuando REVISIÓN DE REQUISITOS esté completa, el sistema manda las opciones solo; tú no las prometas con tiempos.';
+    + 'Si el cliente pide ver las opciones, dile que en cuanto tengas lo que falte se las mandas. Cuando REVISIÓN DE REQUISITOS esté completa, el sistema manda las opciones solo; tú no las prometas con tiempos.' + relleno;
 }
-const textoPedir = (r, brief) => (typeof r.pedir === 'function' ? r.pedir(brief) : r.pedir);
+const textoPedir = (r, brief, assets = []) => (typeof r.pedir === 'function' ? r.pedir(brief, assets) : r.pedir);
 
 /** Requisitos sin cumplir de los bloques en [desde, hasta] (inclusive). */
 export function faltantes(brief = {}, assets = [], { hasta = 'B12', desde = 'B0' } = {}) {
   return REQUISITOS
     .filter((r) => idx(r.bloque) >= idx(desde) && idx(r.bloque) <= idx(hasta))
     .filter((r) => !r.cumple(brief, assets) && !(r.puedeNoTener && noTiene(brief, r.id)) && !diferido(brief, r.id))
-    .map((r) => ({ id: r.id, bloque: r.bloque, pedir: textoPedir(r, brief), puedeNoTener: !!r.puedeNoTener }));
+    .map((r) => ({ id: r.id, bloque: r.bloque, pedir: textoPedir(r, brief, assets), puedeNoTener: !!r.puedeNoTener }));
 }
 
 /** Bloque más temprano con algo pendiente antes de `bloque` (excluido), o null. */
@@ -119,6 +131,7 @@ const TEMA = {
   horarios: /horario/,
   logo: /logo/,
   redes: /facebook|instagram/,
+  fotos_suficientes: /mas fotos|otras fotos|fotos mas|al menos \w+ mas/,
 };
 // Temas opcionales (no son requisitos): si dijo que no los tiene, tampoco se vuelven a preguntar.
 export const OPCIONALES = { certificaciones: 'certificaciones, premios o reconocimientos', cifras: 'cifras o números (años, clientes, trámites)', garantias: 'garantías', historia: 'historia del negocio', equipo: 'equipo', otro_dato_confianza: 'otro dato de confianza' };
@@ -126,9 +139,11 @@ const ETIQUETA = { whatsapp_negocio: 'número de WhatsApp', redes: 'página de F
 const norm = (x) => String(x || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-zñ0-9 ]+/g, ' ').replace(/\s+/g, ' ').trim();
 const NEG = /^(no+|nop|nel|nada|ningun[oa]?s?|aun no|todavia no|por ahora no|no por (ahora|el momento)|sin \w+|de momento no)( (no|tengo|tenemos|hay|cuento|contamos|con|ninguna?o?s?|las|los|la|lo|ahorita|aun|todavia|por ahora|resenas|testimonios|comentarios|logo|redes|redes sociales|facebook|instagram|face|insta|ni|horarios?|nada|gracias|la verdad|realmente|fijo|todavia no))*$/;
 
+// "Ya no tengo más", "son todas", "es todo lo que tengo": también es decir que no tiene (más).
+const SIN_MAS = /^(ya )?(no )?(tengo|tenemos|hay|cuento con|contamos con)? ?(no (tengo|tenemos|hay) )?(mas|otras)( fotos)?( que esas| que estas)?$|^(son|eran|esas son|estas son) (todas|las unicas)|^(es|eso es) todo( lo que tengo)?$|^solo (tengo )?(esas|estas)( fotos)?$|^ya no (tengo|hay)( mas)?( fotos)?$|^no tengo mas( fotos)?$/;
 export function esNegativa(respuesta) {
   const r = norm(respuesta);
-  return !!r && r.length <= 60 && NEG.test(r) && !/\b(pero|si tengo|aqui|te mando|ahi va)\b/.test(r);
+  return !!r && r.length <= 60 && (NEG.test(r) || SIN_MAS.test(r)) && !/\b(pero|si tengo|aqui|te mando|ahi va)\b/.test(r);
 }
 
 /** Requisito (puedeNoTener o logo) al que se refiere la última pregunta de un mensaje de Ari, o null. */

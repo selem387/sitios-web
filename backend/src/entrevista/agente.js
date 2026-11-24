@@ -532,7 +532,7 @@ export async function procesarMensaje(b) {
     if (rx.nota) notaAri = [notaAri, rx.nota].filter(Boolean).join('\n');
     resumenRedes = rx.resumen || null;
   }
-  notaAri = [notaAri, notaAntesDeOpciones(e.brief)].filter(Boolean).join('\n') || null;
+  notaAri = [notaAri, notaAntesDeOpciones(e.brief, assets)].filter(Boolean).join('\n') || null;
   let t = await turnoAri(e, { mensajesRecientes, ultimoTexto: textoTurno, regresaDePausa, arquetipos, assets, notaAri });
   let brief = mergeProfundo(e.brief || {}, t.briefPatch);
   brief.no_tiene = unirNoTiene(e.brief?.no_tiene, t.briefPatch?.no_tiene);
