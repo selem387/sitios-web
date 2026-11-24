@@ -128,6 +128,9 @@ export async function rehospedar(sf) {
   return { ...sf, ...g };
 }
 
+/** Colores dominantes de una imagen por URL (logo del cliente). */
+export async function coloresDeUrl(url) { return coloresDe(await descargar(url)); }
+
 async function descargar(url) {
   // Archivos del chat: leer del disco (evita ida y vuelta por internet).
   const m = url.match(/\/chat\/archivos\/([\w-]+\.[a-z0-9]+)$/);
@@ -240,7 +243,7 @@ export async function fondoTransparente(buf) {
 }
 
 /** Colores dominantes por cuantización simple (sin fondo blanco/negro puro). */
-async function coloresDe(buf) {
+export async function coloresDe(buf) {
   const { data, info } = await sharp(buf).resize(48, 48, { fit: 'inside' }).removeAlpha().raw().toBuffer({ resolveWithObject: true });
   // Color de fondo = el de la esquina superior izquierda: se excluye (si no, el "color de marca" sale beige del fondo).
   const fondo = [data[0], data[1], data[2]];

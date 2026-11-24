@@ -9,7 +9,8 @@ import path from 'node:path';
 import { enlacesRedes, CSS_REDES } from './iconos_redes.js';
 import { config } from '../config.js';
 import { mezclar, contraste } from '../entrevista/tema.js';
-import { paresTipograficos, urlFuentes } from './fuentes.js';
+import { paresTipograficos, urlFuentes, parPorNombres } from './fuentes.js';
+import { conTipografia } from './seleccion_marca.js';
 import { corregirPaleta, auditarPaleta, cssTipografia, textoSobre, conPisoTexto, fuenteUI } from './tipo_color.js';
 import { coloresParaPropuesta, avisosDeGiro } from './paletas_giro.js';
 import { evaluarColoresCliente, asignarFuentes } from './asesor_color.js';
@@ -79,10 +80,19 @@ export async function renderPropuestas(brief, mat, textos, { ronda = 0, fijo = n
   const coloresCliente = [...new Set([...coloresDePalabras(brief.marca?.colores || []), ...(mat.colores || [])])];
   const evitarHex = coloresDePalabras(String(brief.marca?.evitar || '').split(/[,;y]+/));
   const asesor = evaluarColoresCliente({ brief, colores: coloresCliente });
-  const cps = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((i) => coloresParaPropuesta({ brief, coloresCliente, i, ronda, evitarHex }));
-  if (asesor.corregidos && !brief.marca?.colores_aviso_aceptado) cps[5] = { ...coloresParaPropuesta({ brief, coloresCliente: asesor.corregidos, i: 5, ronda, evitarHex }), origen: 'sugerencia', familia: 'Tus colores con el ajuste sugerido' };
+  // Paleta elegida al inicio de la entrevista (24-nov-2026): va en todas las propuestas, también en las plantillas.
+  const palElegida = brief.marca?.paleta_elegida?.colores ? brief.marca.paleta_elegida : null;
+  const cps = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((i) => (palElegida
+    ? { colores: [palElegida.colores.marca, palElegida.colores.fondo, palElegida.colores.acento], acento: palElegida.colores.acento, acentoCta: false, familia: palElegida.nombre, origen: 'elegida', por: 'Paleta que eligió el cliente' }
+    : coloresParaPropuesta({ brief, coloresCliente, i, ronda, evitarHex })));
+  if (!palElegida && asesor.corregidos && !brief.marca?.colores_aviso_aceptado) cps[5] = { ...coloresParaPropuesta({ brief, coloresCliente: asesor.corregidos, i: 5, ronda, evitarHex }), origen: 'sugerencia', familia: 'Tus colores con el ajuste sugerido' };
   // Regla de coherencia letra–paleta: cada paleta recibe el par tipográfico que transmite la misma personalidad.
-  const pares = asignarFuentes(cps.map((c) => c.colores), candidatos);
+  // Letra elegida al inicio: la misma pareja en todas; en las plantillas se cambia sobre su página (conTipografia).
+  const letraElegida = brief.marca?.tipografia_elegida?.titulos ? parPorNombres(brief.marca.tipografia_elegida) : null;
+  const pares = letraElegida ? cps.map(() => letraElegida) : asignarFuentes(cps.map((c) => c.colores), candidatos);
+  // Si después pidió otra letra con cambios (fijo.fuentes distinto), manda la de los cambios.
+  const letraFinal = letraElegida && !(fijo?.fuentes?.titulos && fijo.fuentes.titulos !== letraElegida.titulos) ? letraElegida : null;
+  const conLetra = (pg) => (letraFinal && pg.fuentes?.titulos !== letraFinal.titulos ? { ...pg, html: conTipografia(pg.html, letraFinal), fuentes: letraFinal } : pg);
   if (brief.negocio?.arquetipo !== 'restaurante') {
     // Logo de un color: versión pintada con la tinta de cada propuesta (contraste garantizado sobre fondos claros u oscuros).
     // Etapa 2: con mapa nuevo (y sin estilo de referencia ni letra pedida), las opciones salen de la lista del giro.
@@ -128,7 +138,8 @@ export async function renderPropuestas(brief, mat, textos, { ronda = 0, fijo = n
       }
       return pags;
     };
-    const procesar = async (pg) => {
+    const procesar = async (pg0) => {
+      const pg = conLetra(pg0);
       // Plantillas de sitios modelo externos (opcion.modelo): quedan idénticas a su modelo, sin la escala tipográfica,
       // el piso de letra ni la regla de color del proyecto (Sebastián, 24-nov-2026: si algo no le gusta al cliente, se
       // modifica después de la propuesta).
@@ -175,7 +186,7 @@ export async function renderPropuestas(brief, mat, textos, { ronda = 0, fijo = n
   }
   if (rellenoR) ({ brief, mat } = aplicarRelleno(brief, mat, rellenoR));
   const { paginas: out0, colores } = await paginasRestaurante({ brief, mat, textos, fijo, solo, cps, pares, estilo, coloresCliente, conReglaTipo, faltanTodas, mapa });
-  const out = out0.map((pg) => ({ ...pg, html: conCredito(pg.html) }));
+  const out = out0.map(conLetra).map((pg) => ({ ...pg, html: conCredito(pg.html) }));
   return { mapa, relleno: rellenoR, paginas: out, faltan: faltanTodas, avisos_color: avisosDeGiro({ arquetipo: brief.negocio?.arquetipo, subtipo: brief.negocio?.subtipo_resuelto || brief.negocio?.subtipo, colores }), asesor };
 }
 

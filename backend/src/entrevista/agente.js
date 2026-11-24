@@ -1,5 +1,6 @@
 // Ari: conduce la entrevista por mensajes (mismo contrato que creador_video/entrevista).
 import { coloresDePalabras } from '../generador/materiales.js';
+import { atenderSeleccion, seleccionEnCurso, seleccionAplica } from './seleccion.js';
 import { contextoColorParaAri } from '../generador/asesor_color.js';
 import { paresTipograficos } from '../generador/fuentes.js';
 import crypto from 'node:crypto';
@@ -532,6 +533,26 @@ export async function procesarMensaje(b) {
     if (rx.nota) notaAri = [notaAri, rx.nota].filter(Boolean).join('\n');
     resumenRedes = rx.resumen || null;
   }
+  // Paleta y letra al inicio (entrevista/seleccion.js, 24-nov-2026): mientras espera logo, paleta o letra, responde el código.
+  if (!nueva && seleccionEnCurso(e.brief)) {
+    try {
+      const s = await atenderSeleccion({ brief: e.brief, assets, texto: textoTurno, nuevosAssets });
+      if (s) {
+        if (s.assetsPatch.length) {
+          await db.actualizarAssets(e.id, s.assetsPatch);
+          for (const p of s.assetsPatch) { const a = assets.find((x) => x.clave === p.clave); if (a) a.tipo = p.tipo; }
+        }
+        e.brief = s.brief; await db.guardar(e.id, { brief: e.brief });
+        await db.evento(e.id, 'seleccion_marca', { paso: e.brief.marca?.seleccion?.paso, paleta: e.brief.marca?.paleta_elegida?.nombre || (e.brief.marca?.paleta_elegida?.disenador ? 'disenador' : null), letra: e.brief.marca?.tipografia_elegida?.titulos || (e.brief.marca?.tipografia_elegida?.disenador ? 'disenador' : null) }).catch(() => {});
+        if (!s.terminado) return responderConMedia([...mensajes, ...s.textos], s.media);
+        mensajes.push(...s.textos);
+        notaAri = [notaAri, 'EL CLIENTE ACABA DE ELEGIR LOS COLORES Y LA LETRA DE SU PÁGINA (ya se le confirmó en otro mensaje): no lo comentes ni preguntes por colores, letra o estilo; sigue directo con lo siguiente que falte de REVISIÓN DE REQUISITOS.'].filter(Boolean).join('\n');
+      }
+    } catch (err) {
+      console.error('seleccion', err);
+      await db.evento(e.id, 'seleccion_error', { error: String(err?.message || err).slice(0, 300) }).catch(() => {});
+    }
+  }
   notaAri = [notaAri, notaAntesDeOpciones(e.brief, assets)].filter(Boolean).join('\n') || null;
   let t = await turnoAri(e, { mensajesRecientes, ultimoTexto: textoTurno, regresaDePausa, arquetipos, assets, notaAri });
   let brief = mergeProfundo(e.brief || {}, t.briefPatch);
@@ -610,6 +631,11 @@ export async function procesarMensaje(b) {
   // El estado de las propuestas lo maneja solo propuestas.js; Ari no puede tocarlo (antes lo pisaba con "pendiente").
   if (brief.marca) { if (e.brief?.marca?.propuestas) brief.marca.propuestas = e.brief.marca.propuestas; else delete brief.marca.propuestas; }
   if (brief.marca && e.brief?.marca?.vistazo) brief.marca.vistazo = e.brief.marca.vistazo; else if (brief.marca) delete brief.marca.vistazo;
+  // Paleta y letra elegidas al inicio: las maneja solo seleccion.js.
+  for (const k of ['seleccion', 'paleta_elegida', 'tipografia_elegida']) {
+    if (e.brief?.marca?.[k]) brief.marca = { ...(brief.marca || {}), [k]: e.brief.marca[k] };
+    else if (brief.marca) delete brief.marca[k];
+  }
   // La verificación del correo la maneja solo verificacion.js; Ari no puede marcarla.
   if (brief.contacto) {
     brief.contacto.email_verificado = e.brief?.contacto?.email_verificado === true;
@@ -675,6 +701,25 @@ export async function procesarMensaje(b) {
     }
   }
 
+  // Recién se conoce el giro: arranca la etapa de paleta y letra (pide el logo o manda las paletas) en lugar de la
+  // siguiente pregunta de Ari; se conserva lo que Ari dijo antes de su pregunta.
+  let mediaSeleccion = null;
+  if (!t.completado && seleccionAplica(brief) && !brief.marca?.seleccion?.paso) {
+    try {
+      const s = await atenderSeleccion({ brief, assets, texto: textoTurno, nuevosAssets, inicio: true });
+      if (s) {
+        if (s.assetsPatch.length) await db.actualizarAssets(e.id, s.assetsPatch);
+        brief = s.brief;
+        const sinPregunta = String(t.reply || '').split(/\n{2,}/).filter((p) => !p.includes('?')).join('\n\n').trim();
+        t = { ...t, reply: [sinPregunta, ...s.textos].filter(Boolean).join('\n\n') };
+        mediaSeleccion = s.media;
+        await db.evento(e.id, 'seleccion_marca', { paso: brief.marca?.seleccion?.paso, inicio: true }).catch(() => {});
+      }
+    } catch (err) {
+      console.error('seleccion inicio', err);
+      await db.evento(e.id, 'seleccion_error', { error: String(err?.message || err).slice(0, 300), inicio: true }).catch(() => {});
+    }
+  }
   const cambios = { brief, bloque_actual: t.bloque, pendientes_bloque: t.pendientes, arquetipo_slug: brief.negocio?.arquetipo || null, nombre: brief.cliente?.nombre || e.nombre };
   await db.guardar(e.id, cambios);
   Object.assign(e, cambios);
@@ -726,6 +771,7 @@ export async function procesarMensaje(b) {
   if (avisoCorreo && !demasiado) mensajes.push(avisoCorreo);
 
   if (!t.completado && !demasiado) {
+    if (mediaSeleccion?.length) return responderConMedia(mensajes, mediaSeleccion);
     const res = await responder(mensajes, e.bloque_actual === 'B6' ? 'media' : 'texto');
     // Memoria en segundo plano: cierre de bloque o ventana de 10 mensajes.
     tocaActualizar(e, bloqueAnterior).then((d) => d && actualizarMemoria(e.id, d)).catch((err) => console.error('memoria', err));
