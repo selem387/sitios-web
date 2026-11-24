@@ -463,6 +463,29 @@ export function registerGeneradorRoutes(app, wrap) {
     return { token: r.token, opciones: opciones.map((o) => ({ letra: o.letra, nombre: o.nombre, url: o.url, fuentes: o.tipografia })), revision: (rev.revision || []).map(({ letra, ok, problemas }) => ({ letra, ok, problemas })) };
   }));
 
+  // Rehacer las opciones de un cliente que dijo "ninguna" y se quedó sin respuesta (24-nov-2026, Intiviso Lab): corre la
+  // misma ronda de rechazo que el chat, con lo que el cliente ya dijo y sin volver a preguntarle, y le manda las opciones
+  // por su chat. Responde de inmediato (202); la generación tarda varios minutos.
+  app.post('/entrevista/v1/sesiones/:id/propuestas/rehacer', wrap(async (c) => {
+    auth(c);
+    const e = await db.obtener(c.req.param('id'));
+    if (!e) throw new HttpError(404, 'no existe');
+    if (e.brief?.marca?.propuestas?.estado !== 'rechazadas') throw new HttpError(409, `las propuestas están en "${e.brief?.marca?.propuestas?.estado || 'sin propuestas'}", no en "rechazadas"`);
+    const { atenderPropuestas } = await import('../entrevista/propuestas.js');
+    (async () => {
+      try {
+        const r = await atenderPropuestas(e, e.brief, { texto: '', forzar: true });
+        await db.guardar(e.id, { brief: r.brief });
+        await avisar(e.id, r.responder?.textos || [], { evento: 'opciones_rehechas_admin' });
+      } catch (err) {
+        console.error('rehacer propuestas', err);
+        await db.evento(e.id, 'propuestas_error', { error: String(err?.message || err).slice(0, 500), rehacer: true }).catch(() => {});
+      }
+    })();
+    c.status(202);
+    return { ok: true, mensaje: 'generando; las opciones le llegan por su chat en unos minutos' };
+  }));
+
   // Conectar el dominio del cliente a su sitio en vivo (opción elegida): {dominio, sesion_id}. Sin elección → 409.
   app.post('/entrevista/v1/dominios', wrap(async (c) => {
     auth(c);
