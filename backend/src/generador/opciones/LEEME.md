@@ -42,7 +42,9 @@ la verificación de GitHub.
    las plantillas**, es decir, a las opciones hechas a partir de un sitio modelo externo (H, I, J, K, L, M, N, O, P, Q, R
    y S). Se declaran con `modelo: '<sitio>'` en su `opcion.js`; la revisión visual solo las detiene por fallas técnicas
    (fotos que no cargan o deformadas, página que se sale de la pantalla, botones cortados, franjas negras, letras que no
-   cargan) y no les aplica correcciones de estilo. Las reglas siguen aplicando a las opciones propias (hoy la G).
+   cargan) y no les aplica correcciones de estilo. Al armarlas tampoco se les aplica la escala tipográfica, el piso de
+   letra de 20 px ni la regla de color del proyecto: quedan idénticas a su modelo, y si algo no le gusta al cliente se
+   modifica después de la propuesta. Las reglas siguen aplicando a las opciones propias (hoy la G, suspendida).
 7. **Librerías** solo desde el propio servidor (`backend/src/generador/librerias.js`), con versión fija; nunca desde un
    CDN. *(Prueba: ningún archivo de una opción carga de un CDN.)*
 8. **CSS en su carpeta.** Todo el CSS de la opción va en su carpeta: `plantilla.css` (al final del `<style>`) o

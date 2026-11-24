@@ -7,7 +7,7 @@ import { esc, logoHTML, agruparOferta, redes } from '../../kit/utiles.js';
 import { direccionTexto, testimoniosValidos } from '../../datos_brief.js';
 import { enlacesRedes, CSS_REDES } from '../../iconos_redes.js';
 import { CATALOGO, urlFuentes } from '../../fuentes.js';
-import { wcag, ajustarContraste, textoSobre, oklch, aHex } from '../../tipo_color.js';
+import { wcag, oklch, aHex } from '../../tipo_color.js';
 
 // ---------------- catálogo de piezas del plano ----------------
 export const PORTADAS = ['foto_completa', 'dividida', 'texto_grande', 'texto_centrado', 'tarjeta', 'mosaico'];
@@ -66,28 +66,28 @@ export function normalizarPlano(p0 = {}) {
 // ---------------- colores ----------------
 /**
  * Paleta de la página: fondo, texto y superficies de la referencia (el plano); el acento se acomoda al logo del cliente
- * si tiene colores (decisión 10 del 18-nov-2026), conservando la luminosidad del acento de la referencia. Contraste
- * siempre con las reglas duras (ajustarContraste).
+ * si tiene colores (decisión 10 del 18-nov-2026), conservando la luminosidad del acento de la referencia. Desde el
+ * 24-nov-2026 las reglas duras no aplican a las plantillas: los colores de la referencia van tal cual (sin ajustarContraste);
+ * solo el texto sobre el acento se elige entre blanco y negro.
  */
 export function paletaPlano(plano, coloresCliente = []) {
   const c = plano.estilo.colores;
   const fondo = c.fondo;
   const oscuroFondo = wcag('#FFFFFF', fondo) > wcag('#111111', fondo);
-  const texto = ajustarContraste(c.texto, fondo, 'cuerpo');
+  const texto = c.texto;
   let acento = c.acento;
   const marca = (coloresCliente || []).find((x) => HEX.test(x) && oklch(x).c > 0.04);
   if (marca) { const r = oklch(acento), m = oklch(marca); acento = aHex({ l: r.l, c: Math.max(m.c, 0.06), h: m.h }); }
-  const sobre = textoSobre(acento, '#111111', 'boton');
-  acento = sobre.solido;
-  const acentoTxt = ajustarContraste(acento, fondo, 'secundario');
+  const sobre = { texto: wcag('#FFFFFF', acento) >= wcag('#111111', acento) ? '#FFFFFF' : '#111111' };
+  const acentoTxt = acento;
   const alterno = c.alterno || aHex({ ...oklch(fondo), l: Math.max(0, Math.min(1, oklch(fondo).l + (oscuroFondo ? 0.05 : -0.035))) });
   const oscuro = c.oscuro || (oscuroFondo ? aHex({ ...oklch(fondo), l: Math.max(0, oklch(fondo).l - 0.06) }) : aHex({ l: 0.22, c: 0.02, h: oklch(acento).h }));
   return {
     fondo, texto, acento, acentoTxt, alterno, oscuro,
     sobreAcento: sobre.texto,
     sobreOscuro: wcag('#FFFFFF', oscuro) >= wcag('#111111', oscuro) ? '#FFFFFF' : '#111111',
-    textoAlterno: ajustarContraste(texto, alterno, 'cuerpo'),
-    suave: ajustarContraste(aHex({ ...oklch(texto), l: oklch(texto).l + (oscuroFondo ? -0.18 : 0.22) }), fondo, 'cuerpo'),
+    textoAlterno: texto,
+    suave: c.suave || aHex({ ...oklch(texto), l: Math.max(0, Math.min(1, oklch(texto).l + (oscuroFondo ? -0.18 : 0.22))) }),
   };
 }
 

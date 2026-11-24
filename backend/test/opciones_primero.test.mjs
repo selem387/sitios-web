@@ -102,3 +102,15 @@ test('plantillas (opcion.modelo): solo las detienen las fallas técnicas; la G (
   assert.deepEqual(fallasQueAplican('Q', p), ['foto rota: a.jpg', 'desborde horizontal: la página mide 600px']);
   assert.deepEqual(fallasQueAplican('G', p), p);
 });
+
+test('plantillas idénticas a su modelo: sin piso de letra ni escala tipográfica del proyecto; la G sí los lleva', async () => {
+  const { renderPropuestas } = await import('../src/generador/propuestas_html.js');
+  const brief = { negocio: { nombre: 'Luz', arquetipo: 'tienda', giro_texto: 'Ropa' }, contacto: { whatsapp: '5219990000000' }, marca: { estilo: 'elegante' }, oferta: { items: [{ nombre: 'Blusa', descripcion_corta: 'd' }, { nombre: 'Vestido', descripcion_corta: 'd' }, { nombre: 'Hamaca', descripcion_corta: 'd' }] } };
+  const f = (n) => ({ url: `https://x.test/${n}.jpg`, ancho: 1200, alto: 800, alt: 'f', clave: `a${n}` });
+  const mat = { logo: null, logos_extra: [], colores: [], hero: f(1), fundador: null, fotos: [], trabajos: [f(2), f(3), f(4), f(5), f(6)], equipo: [], local: [], resenas: [], catalogos: [], menus: [], otras: [], documentos: [], videos: [] };
+  const textos = { variantes: Array.from({ length: 20 }, () => ({ titular: 'Hola', subtitulo: 's', cta: 'c' })), info: [], sobre: 's' };
+  const r = await renderPropuestas(brief, mat, textos, { solo: ['K', 'G'] });
+  const k = r.paginas.find((p) => p.letra === 'K'); const g = r.paginas.find((p) => p.letra === 'G');
+  assert.ok(k && !/font-size:max\(20px/.test(k.html), 'la K sin piso de letra');
+  assert.ok(g && /font-size:max\(20px/.test(g.html), 'la G con piso de letra');
+});
