@@ -177,6 +177,21 @@ export function catalogoFotos(mat = {}) {
     .map((x, k) => ({ id: `F${k + 1}`, url: x.url, descripcion: String(x.alt || '').slice(0, 160), tipo: x.tipo || '' }));
 }
 
+/** JSON de la respuesta de Claude; si falla, intenta repararlo (comillas sin escapar dentro de los textos, comas sobrantes). */
+export function parsearJSONTextos(t) {
+  const crudo = String(t || '').slice(String(t || '').indexOf('{'), String(t || '').lastIndexOf('}') + 1);
+  try { return JSON.parse(crudo); } catch { /* se intenta reparar */ }
+  // Comillas dobles internas: una " que no abre ni cierra un valor (no va pegada a : , [ { } ]) se cambia por «/».
+  let abierta = false;
+  const reparado = crudo.replace(/"/g, (q, i, todo) => {
+    const antes = todo.slice(0, i).trimEnd().slice(-1); const despues = todo.slice(i + 1).trimStart()[0];
+    const estructural = (!abierta && [':', ',', '[', '{', ''].includes(antes)) || (abierta && [':', ',', ']', '}', undefined].includes(despues));
+    if (estructural) { abierta = !abierta; return q; }
+    return abierta ? '»' : q;
+  }).replace(/,\s*([}\]])/g, '$1');
+  return JSON.parse(reparado);
+}
+
 export async function textosPropuestas(brief, mat, { mapa: mapaPedido = null } = {}) {
   const menu = brief.negocio?.arquetipo === 'restaurante';
   // Etapa 2: con mapa nuevo, un texto por cada letra que puede salir de la lista del giro (cada opción usa el de su índice).
@@ -193,15 +208,22 @@ Regla de fotos: en cada variante y en cada diapositiva pon "foto" con el id de l
 Brief: ${JSON.stringify({ negocio: brief.negocio, oferta: brief.oferta, cliente_ideal: brief.cliente_ideal, confianza: { historia_corta: brief.confianza?.historia_corta, cifras: brief.confianza?.cifras }, marca: { personalidad: brief.marca?.personalidad, evitar: brief.marca?.evitar, comentarios_del_cliente: brief.marca?.referencias_que_gusta }, zona: brief.zona, contacto: { ciudad: brief.contacto?.direccion?.ciudad, horarios: brief.contacto?.horarios } })}
 ${menu ? `Menú real (resumen): ${JSON.stringify((mat.menu_texto || []).map((s) => ({ seccion: s.seccion, items: (s.items || []).slice(0, 6).map((i) => `${i.nombre} ${i.precio || ''}`) })))}` : ''}
 Responde SOLO JSON: {"variantes":[{"titular":"≤ 55 caracteres","subtitulo":"≤ 120 caracteres","cta":"≤ 22 caracteres, abre WhatsApp","foto":"F#"} ×${nVar}],"info":["3 datos cortos y reales (≤ 30 caracteres) p. ej. modalidad, zona, entrega"],"diapositivas":[{"tipo":"diferenciador|oferta|prueba|vision","titular":"3 a 8 palabras, ≤ 50 caracteres","apoyo":"≤ 90 caracteres o vacío","cta":"≤ 22 caracteres o vacío","foto":"F#"}],"destacados":"título ≤ 22","categorias":"título ≤ 22","visita":"título ≤ 22"${menu ? '' : ',"secciones":{"trabajo":"≤ 22","servicios":"≤ 22","sobre":"≤ 22","resenas":"≤ 30","faq":"≤ 24","contacto":"≤ 22","galeria":"≤ 22"},"sobre":"la historia real del brief, pulida, ≤ 380 caracteres, sin agregar datos"'}}`;
-  const res = await fetch(`${config.anthropicBaseUrl}/v1/messages`, {
-    method: 'POST', headers: { 'x-api-key': config.anthropicApiKey, 'anthropic-version': '2023-06-01', 'content-type': 'application/json' },
-    body: JSON.stringify({ model: config.generadorModel || config.anthropicModel, max_tokens: 3800, messages: [{ role: 'user', content: prompt }] }),
-    signal: AbortSignal.timeout(120000),
-  });
-  const j = await res.json();
-  if (!res.ok) throw new Error(`Claude: ${j?.error?.message || res.status}`);
-  const t = (j.content || []).filter((x) => x.type === 'text').map((x) => x.text).join('');
-  const d = JSON.parse(t.slice(t.indexOf('{'), t.lastIndexOf('}') + 1));
+  // JSON mal formado (23-nov-2026, Intiviso Lab: una comilla sin escapar tumbó las opciones y Ari siguió sin mandarlas):
+  // se reintenta hasta 2 veces más, con más espacio y pidiendo JSON válido.
+  let d = null; let ultimoError = null;
+  for (let intento = 0; intento < 3 && !d; intento++) {
+    const nota = intento ? '\nIMPORTANTE: tu respuesta anterior no era JSON válido. Responde SOLO el objeto JSON, sin texto antes ni después; dentro de los textos usa comillas angulares « » en lugar de comillas dobles.' : '';
+    const res = await fetch(`${config.anthropicBaseUrl}/v1/messages`, {
+      method: 'POST', headers: { 'x-api-key': config.anthropicApiKey, 'anthropic-version': '2023-06-01', 'content-type': 'application/json' },
+      body: JSON.stringify({ model: config.generadorModel || config.anthropicModel, max_tokens: intento ? 6000 : 4500, messages: [{ role: 'user', content: prompt + nota }] }),
+      signal: AbortSignal.timeout(120000),
+    });
+    const j = await res.json();
+    if (!res.ok) throw new Error(`Claude: ${j?.error?.message || res.status}`);
+    const t = (j.content || []).filter((x) => x.type === 'text').map((x) => x.text).join('');
+    try { d = parsearJSONTextos(t); } catch (err) { ultimoError = err; console.error('[textosPropuestas] JSON inválido, intento', intento + 1, err.message); }
+  }
+  if (!d) throw ultimoError || new Error('textosPropuestas: sin JSON');
   const limpio = (s) => String(s || '').replace(/\p{Extended_Pictographic}/gu, '').replace(/\s*→\s*/g, ' ').trim();
   const urlDe = (id) => cat.find((f) => f.id === String(id || '').trim())?.url || null;
   d.variantes = (d.variantes || []).map((v) => ({ titular: limpio(v.titular), subtitulo: limpio(v.subtitulo), cta: limpio(v.cta), foto_url: urlDe(v.foto) }));

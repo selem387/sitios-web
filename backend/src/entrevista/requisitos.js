@@ -48,9 +48,26 @@ export const REQUISITOS = [
 ];
 
 const idx = (bl) => BLOQUES.indexOf(bl);
+// Primero las opciones de diseño (23-nov-2026, caso Intiviso Lab: Ari hacía preguntas de confianza, cifras y anécdotas
+// antes de mostrar las opciones y el cliente pidió "dame las opciones visuales primero"). Antes de las opciones solo se
+// pide lo indispensable para armarlas; todo lo demás se pregunta después de que el cliente elige su diseño.
+export const ANTES_DE_OPCIONES = ['nombre_cliente', 'whatsapp_negocio', 'redes', 'nombre_negocio', 'giro', 'ciudad', 'objetivo', 'servicios', 'logo', 'estilo', 'fotos'];
+const sinOpciones = (brief) => !brief?.marca?.propuestas?.opciones?.length && brief?.marca?.propuestas?.estado !== 'elegida';
 // Atajo a las propuestas: ids en brief.diferir[] se saltan hasta que el cliente elige diseño;
 // después vuelven a contar y la revisión de requisitos hace que Ari los pida.
-const diferido = (brief, id) => Array.isArray(brief?.diferir) && brief.diferir.includes(id) && brief?.marca?.propuestas?.estado !== 'elegida';
+const diferido = (brief, id) => brief?.marca?.propuestas?.estado !== 'elegida'
+  && ((Array.isArray(brief?.diferir) && brief.diferir.includes(id)) || (sinOpciones(brief) && !ANTES_DE_OPCIONES.includes(id)));
+
+/** true cuando ya está todo lo indispensable para armar las opciones de diseño. */
+export const listoParaOpciones = (brief = {}, assets = []) => sinOpciones(brief) && !faltantes(brief, assets).length;
+
+/** Nota para Ari mientras no se han mostrado las opciones de diseño. */
+export function notaAntesDeOpciones(brief = {}) {
+  if (!sinOpciones(brief)) return null;
+  return 'PRIMERO LAS OPCIONES DE DISEÑO: todavía no le mostramos sus opciones visuales. Pregunta SOLO lo que diga REVISIÓN DE REQUISITOS (nombre, WhatsApp, redes, nombre y giro del negocio, ciudad, objetivo, servicios, logo, estilo y fotos), una cosa por mensaje. '
+    + 'NO hagas ninguna otra pregunta de la GUÍA DEL BLOQUE aunque aparezca ahí (años, local o domicilio, equipo, cliente ideal, zonas, diferenciador, proceso, promociones, colores, personalidad, páginas que le gusten, qué no quiere ver, tú o usted, efectos, video, foto vertical, permiso de IA, PDF, historia, cifras, certificaciones, reseñas, garantías, anécdotas, preguntas frecuentes, horarios): todo eso se pregunta después de que elija su diseño. '
+    + 'Si el cliente pide ver las opciones, dile que en cuanto tengas lo que falte se las mandas. Cuando REVISIÓN DE REQUISITOS esté completa, el sistema manda las opciones solo; tú no las prometas con tiempos.';
+}
 const textoPedir = (r, brief) => (typeof r.pedir === 'function' ? r.pedir(brief) : r.pedir);
 
 /** Requisitos sin cumplir de los bloques en [desde, hasta] (inclusive). */
@@ -95,7 +112,7 @@ const TEMA = {
   certificaciones: /certificaci|premio|reconocimiento|titulo|cedula|acreditaci|credencial/,
   cifras: /cifra|numero que|numeros? que impresione|anos de experiencia|cuantos (clientes|tramites|proyectos)/,
   garantias: /garantia|quite el miedo/,
-  historia: /como empezo|historia del (negocio|equipo)|como nacio/,
+  historia: /como empezo|historia (del (negocio|equipo)|personal)|como nacio|anecdota/,
   equipo: /tu equipo|quien(es)? (esta|estan|trabaja)/,
   otro_dato_confianza: /otro dato de confianza|algun otro dato|algo mas que (quieras|te gustaria) (incluir|agregar|mostrar)/,
   diferenciador: /diferente|diferencia|distingue|que otros no/,
@@ -116,8 +133,9 @@ export function esNegativa(respuesta) {
 
 /** Requisito (puedeNoTener o logo) al que se refiere la última pregunta de un mensaje de Ari, o null. */
 export function requisitoDePregunta(mensaje) {
-  const qs = String(mensaje || '').match(/¿[^?]*\?/g);
-  const q = norm(qs ? qs[qs.length - 1] : mensaje);
+  // La última pregunta con lo que le sigue: los ejemplos entre paréntesis después del "?" también dicen de qué es.
+  const qs = String(mensaje || '').match(/¿[^?]*\?[^¿]*$/);
+  const q = norm(qs ? qs[0] : mensaje);
   return Object.keys(TEMA).find((id) => TEMA[id].test(q)) || null;
 }
 
