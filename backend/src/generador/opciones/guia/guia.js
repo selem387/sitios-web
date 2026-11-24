@@ -162,7 +162,7 @@ html.gu-menu-on .gu-mb{color:#fff!important}
 .gu-mancha{position:absolute;inset:-20%;pointer-events:none;background:radial-gradient(40% 36% at 30% 40%,color-mix(in srgb,var(--p) 70%,transparent),transparent 70%),radial-gradient(36% 40% at 72% 64%,color-mix(in srgb,var(--p) 55%,var(--osc)),transparent 72%);filter:blur(60px);opacity:.75}
 .gu-cab{position:relative;z-index:2;text-align:center;display:grid;gap:12px;justify-items:center}
 .gu-kick{font-size:13px;letter-spacing:.1em;text-transform:uppercase;opacity:.75}
-.gu-h1{font-size:clamp(26px,2.8vw,44px);max-width:28ch;overflow:clip;padding-bottom:.06em}.gu-h1.h1-l{font-size:clamp(24px,2.4vw,38px)}.gu-h1>span{display:inline-block}
+.gu-h1{font-size:clamp(30px,4.2vw,64px);max-width:28ch;overflow:clip;padding-bottom:.06em}.gu-h1.h1-l{font-size:clamp(28px,4.1vw,58px)}.gu-h1>span{display:inline-block}
 .gu-sub{max-width:36ch;opacity:.85;font-size:clamp(15px,1.15vw,18px);line-height:1.4}
 .gu-esc{position:relative;z-index:1;display:flex;gap:16px;overflow-x:auto;scroll-snap-type:x mandatory;padding:8px 0;align-items:center}
 .gu-t{flex:0 0 auto;scroll-snap-align:center;display:block;color:#fff;text-decoration:none;width:min(72vw,520px)}

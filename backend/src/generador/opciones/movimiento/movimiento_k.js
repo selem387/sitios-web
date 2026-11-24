@@ -27,7 +27,7 @@ export const CSS_MOVIMIENTO_K = `
 body.l-movimiento{--margen:clamp(20px,5vw,72px);--f-titulo:var(--ft)}
 body.l-movimiento h1,body.l-movimiento h2,body.l-movimiento h3{font-weight:500;letter-spacing:-.03em;line-height:1.04}
 .h-mov{padding:clamp(96px,14vh,150px) 0 0;overflow:clip}.mv-cab{display:grid;gap:18px}
-.mv-kick{font-size:13px;letter-spacing:.14em;text-transform:uppercase;color:var(--mut)}
+.mv-kick{font-size:13px;letter-spacing:.14em;text-transform:uppercase;color:var(--soft)}
 .mv-tit{font-size:clamp(38px,6.6vw,112px);line-height:.96;text-transform:uppercase;max-width:17ch}.mv-tit.h1-m{font-size:clamp(34px,5.8vw,96px)}.mv-tit.h1-l{font-size:clamp(30px,4.9vw,82px)}
 .h-mov .sub{max-width:52ch;font-size:clamp(17px,1.4vw,21px)}
 .mv-foto{margin:clamp(28px,5vw,64px) var(--margen) 0;border-radius:22px;overflow:hidden;aspect-ratio:16/8;position:relative}.mv-foto .fx-paralaje-in{position:absolute;inset:-6% 0}.mv-img{width:100%;height:100%;object-fit:cover;display:block}
