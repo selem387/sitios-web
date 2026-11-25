@@ -235,6 +235,18 @@ export function conDisenoActivo(k, nuevoDz, { letraAntes } = {}) {
   return out;
 }
 
+/** CSS sin declaraciones de color (color, fondo, borde, relleno) con valores de color; quita reglas que queden vacías. */
+export function sinColoresCss(css = '') {
+  const COLOR = /(#[0-9a-f]{3,8}\b|rgba?\(|hsla?\(|oklch\(|\b(white|black|orange|red|blue|green)\b)/i;
+  const PROP = /^\s*(color|background|background-color|background-image|border(-(top|right|bottom|left))?(-color)?|outline(-color)?|fill|stroke|box-shadow|text-shadow|accent-color|caret-color|text-decoration-color)\s*:/i;
+  let out = String(css).replace(/\{([^{}]*)\}/g, (m, cuerpo) => {
+    const decl = cuerpo.split(';').filter((d) => d.trim() && !(PROP.test(d) && COLOR.test(d) && !/url\(/i.test(d)));
+    return `{${decl.join(';')}${decl.length ? ';' : ''}}`;
+  });
+  out = out.replace(/(^|\})\s*[^{}@]+\{\s*\}/g, '$1').replace(/@media[^{]*\{\s*\}/g, '').replace(/\/\*[^*]*\*\/\s*(?=\/\*|$)/g, '');
+  return out.trim();
+}
+
 /**
  * Paleta o letra elegida de nuevo con imágenes para la versión activa (24-nov-2026). Se aplica directo, sin el editor:
  * la paleta se calcula armando el diseño con los colores nuevos (así cada plantilla los reparte a su modo) y se guarda
@@ -259,6 +271,9 @@ export async function aplicarMarcaVersion(sv, brief, { tipo, valor }) {
     const pal = r.paginas?.[0]?.paleta;
     if (!pal || typeof pal !== 'object') throw new Error('no se pudo calcular la paleta nueva');
     dz.paleta = Object.fromEntries(Object.entries(pal).filter(([, v]) => /^#[0-9a-f]{6}$/i.test(String(v))));
+    // Los colores que el cliente pidió antes a mano ("botones naranja") eran de la paleta anterior: se quitan del CSS
+    // propio para que mande la nueva; lo demás del CSS (tamaños, acomodo) se queda.
+    if (dz.css) dz.css = sinColoresCss(dz.css);
   }
   if (!dz.propuesta) dz.propuesta = letraActiva(sv, brief);
   k.diseno = dz;

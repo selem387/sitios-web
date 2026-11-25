@@ -39,3 +39,10 @@ test('decisión final', () => {
   assert.equal(leerFinal('me quedo con la Z', L), null);
   assert.equal(leerFinal('quiero modificar la N', L), null);
 });
+
+test('paleta nueva: el CSS propio pierde los colores pero conserva tamaños', async () => {
+  const { sinColoresCss } = await import('../src/panel/sitios.js');
+  const out = sinColoresCss('.btn{background-color:#D08C60 !important;color:#fff}.h1{font-size:40px;color:#111}');
+  assert.doesNotMatch(out, /#D08C60|#fff\b|#111/);
+  assert.match(out, /font-size:40px/);
+});
