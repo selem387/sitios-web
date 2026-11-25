@@ -235,6 +235,38 @@ export function conDisenoActivo(k, nuevoDz, { letraAntes } = {}) {
   return out;
 }
 
+/**
+ * Paleta o letra elegida de nuevo con imágenes para la versión activa (24-nov-2026). Se aplica directo, sin el editor:
+ * la paleta se calcula armando el diseño con los colores nuevos (así cada plantilla los reparte a su modo) y se guarda
+ * completa en diseno.paleta; la letra va en diseno.fuentes. "Que lo decida el diseñador" quita el cambio.
+ * @returns el sitio actualizado
+ */
+export async function aplicarMarcaVersion(sv, brief, { tipo, valor }) {
+  const k = { ...(sv.contenido || {}) };
+  const dz = { ...(k.diseno || {}) };
+  if (tipo === 'letra') {
+    if (valor.disenador) delete dz.fuentes; else dz.fuentes = { titulos: valor.titulos, cuerpo: valor.cuerpo };
+  } else if (valor.disenador) delete dz.paleta;
+  else {
+    const act = letraActiva(sv, brief);
+    const b = { ...brief, marca: { ...brief.marca, paleta_elegida: valor, propuestas: { ...brief.marca.propuestas, elegido: act, colores_de: dz.colores_de ?? null } } };
+    const fijo0 = disenoElegido(b);
+    const fijo = { ...fijo0, paleta: undefined, ...(dz.fuentes?.titulos ? { fuentes: parPorNombres({ ...dz.fuentes, estilo: fijo0?.fuentes?.estilo }) } : {}) };
+    const e = await db.obtener(sv.entrevista_id);
+    const { brief: bc, textos } = aplicarContenido({ ...e, brief: b }, sv);
+    const mat = await procesarMateriales(e.id, bc, { aceptarLoQueHay: true });
+    const r = await renderPropuestas(bc, mat, textos, { ronda: fijo.ronda, fijo });
+    const pal = r.paginas?.[0]?.paleta;
+    if (!pal || typeof pal !== 'object') throw new Error('no se pudo calcular la paleta nueva');
+    dz.paleta = Object.fromEntries(Object.entries(pal).filter(([, v]) => /^#[0-9a-f]{6}$/i.test(String(v))));
+  }
+  if (!dz.propuesta) dz.propuesta = letraActiva(sv, brief);
+  k.diseno = dz;
+  const rr = await q(`UPDATE sitios_vivos SET contenido=$2::jsonb, version=version+1, actualizado=now() WHERE id=$1 RETURNING *`, [sv.id, JSON.stringify(k)]);
+  invalidar(sv.id);
+  return rr.rows[0];
+}
+
 /** Fija la versión final: la activa pasa a ser esa letra y se anota la decisión. Devuelve el sitio actualizado. */
 export async function fijarFinal(sv, brief, letra) {
   const k = conDisenoActivo(sv.contenido, letra === letraActiva(sv, brief) ? (sv.contenido?.diseno || { propuesta: letra }) : { propuesta: letra }, { letraAntes: letraActiva(sv, brief) });
@@ -279,9 +311,11 @@ export async function renderSitio(sv, { previa = false, letra = null } = {}) {
   const dz = otra ? { ...(sv.contenido?.disenos?.[otra] || {}), propuesta: otra } : (sv.contenido?.diseno || {});
   // Otra de sus 6 propuestas, si la pidió después por chat.
   const prop0 = e0.brief?.marca?.propuestas;
-  const e = dz.propuesta && prop0?.opciones?.some((o) => (o.etiqueta || o.letra) === dz.propuesta)
+  let e = dz.propuesta && prop0?.opciones?.some((o) => (o.etiqueta || o.letra) === dz.propuesta)
     ? { ...e0, brief: { ...e0.brief, marca: { ...e0.brief.marca, propuestas: { ...prop0, elegido: dz.propuesta, colores_de: dz.colores_de ?? null } } } }
     : e0;
+  // Letra de la versión (elegida de nuevo con imágenes o pedida al editor): también se aplica a las plantillas.
+  if (dz.fuentes?.titulos && dz.fuentes?.cuerpo) e = { ...e, brief: { ...e.brief, marca: { ...e.brief.marca, tipografia_elegida: { titulos: dz.fuentes.titulos, cuerpo: dz.fuentes.cuerpo } } } };
   const fijo0 = disenoElegido(e.brief);
   if (!fijo0) throw new Error('el cliente aún no elige propuesta');
   // Colores y letra que el cliente cambió después (cambios automáticos): se enciman a los de su propuesta.
