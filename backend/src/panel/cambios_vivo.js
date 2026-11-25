@@ -106,7 +106,7 @@ async function noPude(c, e, resultado, { silencioso = false } = {}) {
   // Se conserva el plan que se intentó (para revisar después) y se agrega la pregunta.
   if (silencioso) { await q(`UPDATE cambios_sitio SET estado='auto_fallo', resultado=$2, actualizado=now() WHERE id=$1`, [c.id, JSON.stringify(resultado)]); return null; }
   await q(`UPDATE cambios_sitio SET estado='preguntar', plan = COALESCE(plan,'{}'::jsonb) || $2::jsonb, resultado=$3, actualizado=now() WHERE id=$1`, [c.id, JSON.stringify({ pregunta: texto }), JSON.stringify(resultado)]);
-  return avisar(e.id, texto, { evento: 'cambios_sitio', datos: { cambio_id: c.id } });
+  return avisar(e.id, texto, { evento: 'cambios_sitio', datos: { cambio_id: c.id, no_pude: JSON.stringify(resultado || {}).slice(0, 1500) } });
 }
 
 async function conversacion(e, sv) {
