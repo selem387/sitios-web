@@ -436,7 +436,7 @@ export async function aplicarCambioVivo(c, e, sv) {
   const activa = letraActiva(nuevo, e.brief);
   if (vers.length > 1 && activa) {
     const decidida = nuevo.contenido?.diseno_final?.letra;
-    const otras = vers.filter((l) => l !== activaiva);
+    const otras = vers.filter((l) => l !== activa);
     const cierre = decidida ? '¿Hay algo más que quieras ajustar?' : `Cuando decidas, dime *me quedo con la ${activa}* (o con la que prefieras).`;
     if (propNuevaFinal(plan, activa)) {
       return decir(e.id, `Ahora estamos trabajando la *${activa}* 👇\n${urlVersion(nuevo, activa)}\n\n${otras.length === 1 ? `Tu versión de la *${otras[0]}* queda guardada con sus cambios` : 'Tus otras versiones quedan guardadas con sus cambios'}:\n${otras.map((l) => `*${l}* · ${urlVersion(nuevo, l)}`).join('\n')}\n\nLos cambios de diseño que me pidas ahora van a la *${activa}*; los de textos, fotos y datos se ven en todas.${extra}\n${cierre}`, { evento: 'cambios_sitio', datos: { cambio_id: c.id, version: activa } });

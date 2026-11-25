@@ -32,7 +32,9 @@ export const ajusteElegida = (e) => e?.brief?.marca?.propuestas?.estado === 'ele
 /** Última pregunta pendiente de Ari (para retomarla después de aplicar un cambio). */
 async function ultimaPregunta(entrevistaId) {
   const ms = await db.ultimosMensajes(entrevistaId, 30).catch(() => []);
-  const m = [...ms].reverse().find((x) => x.rol === 'agente' && x.tipo !== 'imagen' && x.contenido?.includes('?') && !/^(Listo ✅|Seguimos 👇)/.test(x.contenido));
+  const m = [...ms].reverse().find((x) => x.rol === 'agente' && x.tipo !== 'imagen' && x.contenido?.includes('?') && !/^(Listo ✅|Seguimos 👇|Mientras, seguimos)/.test(x.contenido)
+    // Confirmaciones de cambios a la página ("Ya quedó…¿algo más?", "No pude…") no son la pregunta de la entrevista.
+    && !/Ya quedó|No pude|Recarga|Cuando decidas|me quedo con|Ahora estamos trabajando/.test(x.contenido));
   if (!m) return null;
   const parrafos = m.contenido.split(/\n\s*\n/).filter((x) => x.includes('?'));
   return parrafos.at(-1)?.trim() || null;
