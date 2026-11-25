@@ -123,7 +123,10 @@ async function estadoActual(e, sv) {
   const mat = await procesarMateriales(e.id, e.brief || {}, { aceptarLoQueHay: true }).catch(() => null);
   const contenido = contenidoActual(e, sv, mat);
   delete contenido.es_menu;
-  const paleta = { ...(disenoElegido(e.brief)?.paleta || {}), ...(sv.contenido?.diseno?.paleta || {}) };
+  // Paleta de la versión activa (la que recibe los cambios), no la de la primera que eligió.
+  const pa = sv.contenido?.diseno?.propuesta;
+  const briefActivo = pa && e.brief?.marca?.propuestas ? { ...e.brief, marca: { ...e.brief.marca, propuestas: { ...e.brief.marca.propuestas, elegido: pa, colores_de: sv.contenido?.diseno?.colores_de ?? null } } } : e.brief;
+  const paleta = { ...(disenoElegido(briefActivo)?.paleta || {}), ...(sv.contenido?.diseno?.paleta || {}) };
   const todos = await db.assetsDe(e.id);
   const fotos = todos.filter((a) => a.url && a.tipo !== 'referencia' && (/^foto_|logo|imagen/.test(a.tipo) || /^image\//.test(a.mime || '')));
   const referencias = todos.filter((a) => a.url && a.tipo === 'referencia');
