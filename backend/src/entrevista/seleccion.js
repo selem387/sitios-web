@@ -55,7 +55,7 @@ async function coloresDeLogo(url) {
   return coloresDeUrl(url);
 }
 
-const DEPS = { imagen: imagenDeHtml, coloresLogo: coloresDeLogo };
+export const DEPS = { imagen: imagenDeHtml, coloresLogo: coloresDeLogo };
 
 const negocioDe = (b) => String(b?.negocio?.nombre || '').trim();
 const frase = (b) => { const g = String(b?.negocio?.giro_texto || '').trim(); return g ? (g[0].toUpperCase() + g.slice(1)).slice(0, 48) : ''; };
@@ -64,7 +64,7 @@ const minus = (s) => String(s || '').replace(/^./, (c) => c.toLowerCase()).repla
 const PIDE_LOGO = 'Antes de seguir, vamos a definir los colores y la letra de tu página 🎨\n\n¿Tienes logotipo? Mándamelo por aquí y lo uso para proponerte colores que combinen con tu marca. Si no tienes, dime y te muestro opciones pensadas para tu giro.';
 
 /** Mensaje y media de la cuadrícula de paletas de la ronda actual. */
-async function mandarPaletas(b, sel, deps) {
+export async function mandarPaletas(b, sel, deps = DEPS) {
   const p = opcionesPaleta({ brief: b, coloresLogo: sel.logo_colores || [], ronda: sel.ronda_paleta || 0, mostradas: sel.paletas_mostradas || [] });
   if (!p.opciones.length) {
     // Ya vio todas: se vuelve a empezar por las de su giro.
@@ -85,7 +85,7 @@ async function mandarPaletas(b, sel, deps) {
 }
 
 /** Mensaje y media de la cuadrícula de letras (con los colores elegidos). */
-async function mandarFuentes(b, sel, deps) {
+export async function mandarFuentes(b, sel, deps = DEPS) {
   const paleta = b.marca?.paleta_elegida?.colores ? b.marca.paleta_elegida : null;
   let f = opcionesFuente({ brief: b, paleta, mostradas: sel.fuentes_mostradas || [] });
   if (!f.opciones.length) { sel.fuentes_mostradas = []; f = opcionesFuente({ brief: b, paleta, mostradas: [] }); }
