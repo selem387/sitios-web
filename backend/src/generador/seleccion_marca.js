@@ -17,9 +17,11 @@ const LETRAS = 'ABCDEFGH';
 const esHex = (c) => /^#[0-9a-f]{6}$/i.test(String(c || ''));
 const esc = (s) => String(s ?? '').replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 
+// Razones de catálogo que son notas técnicas ("Energy Orange WGSN 2027") no se le dicen al cliente.
+const porLegible = (t) => !!t && String(t).length >= 30 && !/WGSN|Pantone|Coloro|\b20\d\d\b/i.test(t);
 // De otro giro (ronda "más"): su razón habla de ese giro, así que se explica solo por sus colores.
 const deFamilia = (f, afin = false) => ({ id: f.n, nombre: f.n, colores: { marca: f.m, acento: f.a, fondo: f.c, texto: f.o },
-  por: afin ? `combina ${nombreColor(f.m)} con ${nombreColor(f.a)}: se ve profesional y actual` : f.por, estilo: f.e?.[0] || null, origen: afin ? 'afin' : 'giro' });
+  por: afin || !porLegible(f.por) ? `combina ${nombreColor(f.m)} con ${nombreColor(f.a)}: se ve profesional y actual` : f.por, estilo: f.e?.[0] || null, origen: afin ? 'afin' : 'giro' });
 
 /** Todas las familias candidatas, en orden: las del giro del cliente y luego las de giros afines y el resto. */
 export function familiasCandidatas(brief = {}, evitarHex = []) {

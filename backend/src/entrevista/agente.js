@@ -125,10 +125,14 @@ async function cambioDeMarca(e, texto = '', { conMedia = false } = {}) {
   const el = r.eleccion;
   await db.evento(e.id, 'reseleccion_marca', { elegida: el }).catch(() => {});
   if (el.momento === 'version' && sv) {
-    const { registrarPedido } = await import('./cambios.js');
-    await registrarPedido(e.id, { texto: R.instruccionCambio(el) });
-    const vers = S.versionesDe(sv, e.brief);
-    return { textos: [`Va 👍 Lo aplico a tu página${vers.length > 1 ? ` (versión *${S.letraActiva(sv, e.brief)}*)` : ''}. En 1 o 2 minutos te mando aquí la liga para que lo veas.`] };
+    // Directo sobre la versión activa (el editor con IA se confundía con una paleta completa).
+    const sv2 = await S.aplicarMarcaVersion(sv, e.brief, el);
+    await S.renderSitio(sv2, { previa: true }).catch(() => {});
+    const vers = S.versionesDe(sv2, e.brief);
+    const act = S.letraActiva(sv2, e.brief);
+    const url = vers.length > 1 ? S.urlVersion(sv2, act) : S.urlPublica(sv2, { previa: !sv2.url_publica && !sv2.dominio });
+    const que = el.tipo === 'paleta' ? (el.valor.disenador ? 'los colores originales del diseño' : `la paleta *${el.valor.nombre.replace(/^./, (x) => x.toLowerCase())}*`) : (el.valor.disenador ? 'la letra original del diseño' : `la letra *${el.valor.titulos}* en títulos y *${el.valor.cuerpo}* en textos`);
+    return { textos: [`Listo ✅ Tu página${vers.length > 1 ? ` (versión *${act}*)` : ''} ya tiene ${que}. Recarga para verlo 👇\n${url}`] };
   }
   // Antes de elegir (o antes de las propuestas): queda como la paleta o letra de todas sus propuestas.
   let nb = { ...e.brief, marca: { ...e.brief.marca, [el.tipo === 'paleta' ? 'paleta_elegida' : 'tipografia_elegida']: el.valor } };
