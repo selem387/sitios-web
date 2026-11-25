@@ -158,6 +158,16 @@ async function rehacerMismas(e, brief, p, pedido, soloLetra = null) {
   return { ...p, opciones, textos };
 }
 
+/**
+ * Las mismas opciones rehechas con la paleta o la letra que el cliente volvió a elegir (24-nov-2026).
+ * @returns {{brief, textos:string[]}}
+ */
+export async function rehacerConMarca(e, brief, p, resumen) {
+  const np = await rehacerMismas(e, brief, p, resumen);
+  const nb = { ...brief, marca: { ...brief.marca, propuestas: { ...np, cambios_aplicados: [...(p.cambios_aplicados || []), { texto: resumen, hechos: ['marca'] }] } } };
+  return { brief: nb, textos: [`Listo ✅ ${resumen} Recarga las páginas para verlo 👇`, listaOpciones(np), cierre(np)] };
+}
+
 /** Aplica los cambios de texto y datos. Solo textos que el cliente escribió tal cual (letra por letra). */
 export function aplicarCambios(brief, p, c = {}, texto = '') {
   const t = norm(texto);

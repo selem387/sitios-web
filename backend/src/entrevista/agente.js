@@ -97,6 +97,51 @@ export const pideCambiosSinDetalle = (texto) => { const t = SIN_ACENTOS(texto); 
 /** Guarda (o borra con null) brief.marca.rediseno_pendiente: esperando que diga qué no le gustó de sus opciones. */
 const rediseñoPendiente = (id, valor) => db.q(`UPDATE entrevistas SET brief = jsonb_set(brief, '{marca,rediseno_pendiente}', $2::jsonb, true), actualizado=now() WHERE id=$1`, [id, JSON.stringify(valor)]);
 
+/**
+ * Pedido general de colores o letra (24-nov-2026): se le vuelven a mostrar las imágenes de paletas o letras y lo que elija
+ * se aplica a sus propuestas (antes de elegir) o a la versión que trabaja (después). null si no aplica.
+ */
+async function cambioDeMarca(e, texto = '', { conMedia = false } = {}) {
+  const R = await import('./reseleccion.js');
+  const b0 = e.brief || {};
+  const activa = R.reseleccionActiva(b0);
+  const tipo = !activa && !conMedia ? R.pideGeneral(texto) : null;
+  if (!activa && !tipo) return null;
+  if (!activa && !b0.marca?.propuestas?.opciones?.length && !b0.marca?.paleta_elegida) return null; // al inicio lo lleva seleccion.js
+  const S = await import('../panel/sitios.js');
+  const sv = await S.porEntrevista(e.id).catch(() => null);
+  const guardar = async (b) => { await db.guardar(e.id, { brief: b }); e.brief = b; };
+  if (!activa) {
+    const assets = await db.assetsDe(e.id).catch(() => []);
+    const r = await R.iniciarReseleccion({ brief: b0, assets, tipo, momento: R.momentoDe(b0, { sitioVivo: !!sv }) });
+    await guardar(r.brief);
+    await db.evento(e.id, 'reseleccion_marca', { tipo, momento: r.brief.marca.reseleccion.momento }).catch(() => {});
+    return { textos: r.textos, media: r.media };
+  }
+  const r = await R.atenderReseleccion({ brief: b0, texto });
+  await guardar(r.brief);
+  if (r.cancelado) return null;
+  if (!r.eleccion) return { textos: r.textos, media: r.media || [] };
+  const el = r.eleccion;
+  await db.evento(e.id, 'reseleccion_marca', { elegida: el }).catch(() => {});
+  if (el.momento === 'version' && sv) {
+    const { registrarPedido } = await import('./cambios.js');
+    await registrarPedido(e.id, { texto: R.instruccionCambio(el) });
+    const vers = S.versionesDe(sv, e.brief);
+    return { textos: [`Va 👍 Lo aplico a tu página${vers.length > 1 ? ` (versión *${S.letraActiva(sv, e.brief)}*)` : ''}. En 1 o 2 minutos te mando aquí la liga para que lo veas.`] };
+  }
+  // Antes de elegir (o antes de las propuestas): queda como la paleta o letra de todas sus propuestas.
+  let nb = { ...e.brief, marca: { ...e.brief.marca, [el.tipo === 'paleta' ? 'paleta_elegida' : 'tipografia_elegida']: el.valor } };
+  if (nb.marca.propuestas?.opciones?.length) {
+    const { rehacerConMarca } = await import('./propuestas_cambios.js');
+    const rr = await rehacerConMarca(e, nb, nb.marca.propuestas, R.resumenEleccion(el));
+    await guardar(rr.brief);
+    return { textos: rr.textos };
+  }
+  await guardar(nb);
+  return { textos: [`Listo ✅ ${R.resumenEleccion(el).replace(/^Ya tienen/, 'Tus opciones van a tener')}`] };
+}
+
 async function respuestaPostCierre(u, texto = '', media = []) {
   const s = (await db.q(`SELECT estado, url_publica FROM sitios WHERE entrevista_id=$1 AND estado<>'reemplazado' ORDER BY id DESC LIMIT 1`, [u.id]).catch(() => ({ rows: [] }))).rows[0];
   const previos = await db.ultimosMensajes(u.id, 6).catch(() => []);
@@ -397,6 +442,12 @@ export async function procesarMensaje(b) {
       const md = entrantes.length ? await registrarMediaPostCierre(u, entrantes, texto) : { claves: [], textoExtra: '' };
       const textoTodo = [texto, md.textoExtra].filter(Boolean).join('\n');
       await db.evento(u.id, 'comentario_post_cierre', { texto: textoTodo.slice(0, 300), media: md.claves });
+      const cm = await cambioDeMarca(u, textoTodo, { conMedia: md.claves.length > 0 }).catch((err) => { console.error('cambio de marca', err); return null; });
+      if (cm) {
+        for (const m of cm.media || []) await db.insertarMensaje(u.id, { rol: 'agente', tipo: 'imagen', contenido: `[${m.caption || 'imagen'}] ${m.url}` });
+        for (const t of cm.textos) await db.insertarMensaje(u.id, { rol: 'agente', contenido: t });
+        return { ...salida(u, cm.textos, 'nada'), media: cm.media || [] };
+      }
       const r = await respuestaPostCierre(u, textoTodo, md.claves);
       await db.insertarMensaje(u.id, { rol: 'agente', contenido: r });
       return salida(u, [r], 'nada');
@@ -468,6 +519,16 @@ export async function procesarMensaje(b) {
     return r;
   };
   const prefijo = [];
+  // Pedido general de colores o letra: se vuelven a mostrar las imágenes para elegir (24-nov-2026).
+  if (!nueva && texto !== undefined) {
+    try {
+      const cm = await cambioDeMarca(e, texto, { conMedia: nuevosAssets.length > 0 });
+      if (cm) return responderConMedia(cm.textos, cm.media || []);
+    } catch (err) {
+      console.error('cambio de marca', err);
+      await db.evento(e.id, 'reseleccion_error', { error: String(err?.message || err).slice(0, 300) }).catch(() => {});
+    }
+  }
   if (!nueva && (propuestasPendientes(e.brief) || ajusteElegida(e))) {
     try {
       const r = await atenderPropuestas(e, e.brief || {}, { texto, huboMedia: nuevosAssets.length > 0, clavesNuevas: nuevosAssets.filter((a) => !['documento', 'video'].includes(a.tipo)).map((a) => a.clave) });
@@ -633,7 +694,7 @@ export async function procesarMensaje(b) {
   if (brief.marca) { if (e.brief?.marca?.propuestas) brief.marca.propuestas = e.brief.marca.propuestas; else delete brief.marca.propuestas; }
   if (brief.marca && e.brief?.marca?.vistazo) brief.marca.vistazo = e.brief.marca.vistazo; else if (brief.marca) delete brief.marca.vistazo;
   // Paleta y letra elegidas al inicio: las maneja solo seleccion.js.
-  for (const k of ['seleccion', 'paleta_elegida', 'tipografia_elegida']) {
+  for (const k of ['seleccion', 'paleta_elegida', 'tipografia_elegida', 'reseleccion']) {
     if (e.brief?.marca?.[k]) brief.marca = { ...(brief.marca || {}), [k]: e.brief.marca[k] };
     else if (brief.marca) delete brief.marca[k];
   }
