@@ -67,3 +67,12 @@ test('color y letra: idénticos al modelo sin elección; los elegidos cuando los
   assert.match(html, /--ph:#FF3B30;/);
   assert.equal(/00ff41/i.test(CSS_SENAL), false); // el verde solo entra por la variable
 });
+
+test('colores a mano (Intiviso): fucsia en lugar del blanco y morado en lugar del verde', () => {
+  const b = { ...brief, marca: { colores_opcion: { senal: { estatica: '#E6007E', fosforo: '#5B2A86' } } } };
+  const { html } = paginaSenal({ brief: b, mat, textos, v: textos.variantes[0], titulos: {}, wa: 'https://wa.me/529990000000', letra: LT });
+  assert.match(html, /--ph:#5B2A86;--ph-ink:#FFFFFF;--st:#E6007E;/);
+  assert.equal(/224 224 224/.test(CSS_SENAL), false);
+  // Sin colores a mano, idéntica al modelo.
+  assert.match(paginaSenal({ brief, mat, textos, v: {}, titulos: {}, wa: '', letra: LT }).html, /--ph:#00FF41;--ph-ink:#050505;--st:#E0E0E0;/);
+});

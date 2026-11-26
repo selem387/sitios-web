@@ -43,12 +43,25 @@ const lum = (hex) => {
   return 0.2126 * v[0] + 0.7152 * v[1] + 0.0722 * v[2];
 };
 
-/** Color del fósforo: el de marca que eligió el cliente si se lee sobre negro; si no, el verde del modelo. */
+export const ESTATICA = '#E0E0E0';
+// Colores puestos a mano para un cliente (p. ej. Intiviso, 26-nov-2026: "cambia el blanco y verde por el fucsia y morado
+// de su logo"): brief.marca.colores_opcion.senal = { fosforo, estatica }. Mandan sobre todo lo demás. Los guarda
+// colores.mjs (en esta carpeta).
+const aMano = (brief, k) => { const x = brief.marca?.colores_opcion?.senal?.[k]; return esHex(x) ? x.toUpperCase() : null; };
+
+/** Color del fósforo (el verde): a mano; si no, el de marca elegido si se lee sobre negro; si no, el del modelo. */
 export function colorFosforo(brief = {}) {
+  if (aMano(brief, 'fosforo')) return aMano(brief, 'fosforo');
   const c = brief.marca?.paleta_elegida?.colores || {};
   const cand = [c.marca, c.acento].filter(esHex).find((x) => (lum(x) + 0.05) / (lum('#050505') + 0.05) >= 4.5);
   return (cand || FOSFORO).toUpperCase();
 }
+
+/** Color "estática" (el blanco de títulos y textos destacados): a mano o el del modelo. */
+export const colorEstatica = (brief = {}) => aMano(brief, 'estatica') || ESTATICA;
+
+/** Letra sobre el botón lleno: negra como en el modelo, o blanca si el color es oscuro. */
+export const tintaSobre = (hex) => ((lum(hex) + 0.05) / (lum('#050505') + 0.05) >= 4.5 ? '#050505' : '#FFFFFF');
 
 /** Pareja de letras: la elegida al inicio o la del modelo. */
 export function letrasSenal(brief = {}) {
@@ -83,6 +96,7 @@ export function paginaSenal(d) {
   const ext = ' target="_blank" rel="noopener noreferrer"';
   const waHref = d.wa ? ` href="${esc(d.wa)}"${ext}` : ' href="#contacto"';
   const ph = colorFosforo(brief);
+  const st = colorEstatica(brief);
   const par = letrasSenal(brief);
   const usadas = new Set();
   const marcar = (x) => { if (x?.url) usadas.add(x.url); return x; };
@@ -272,7 +286,7 @@ export function paginaSenal(d) {
   const pie = `<footer class="border-t border-white/10 bg-obsidian"><div class="grid gap-12 px-6 py-16 md:grid-cols-[1.4fr_1fr_1fr] md:px-14 md:py-24"><div><p class="${K.rot}">${esc(titCont)}</p><p class="mt-5 max-w-sm font-display text-2xl font-extrabold uppercase leading-tight text-static md:text-3xl">${esc(titular)}</p><p class="mt-2 font-body text-[10px] uppercase tracking-[0.35em] text-phosphor/80">${esc(nombre)}</p>${descripcion ? `<p class="mt-4 max-w-sm text-sm leading-relaxed text-ash">${esc(descripcion)}</p>` : ''}${marcas ? `<div class="mt-6 flex flex-wrap items-center gap-4">${marcas}</div>` : ''}</div><div><p class="font-body text-[10px] uppercase tracking-[0.3em] text-ash">Secciones</p><ul class="mt-5 space-y-3 text-sm">${secs.map(([id, n]) => `<li><a class="text-static transition-colors hover:text-phosphor" href="#${id}">${esc(n)}</a></li>`).join('')}</ul></div><div><p class="font-body text-[10px] uppercase tracking-[0.3em] text-ash">${avisoTxt ? 'Visítanos' : 'Escríbenos'}</p><p class="mt-5 text-sm leading-relaxed text-ash">${esc(avisoTxt || 'Te respondemos por WhatsApp.')}</p>${fueraTarjeta.map(([tipo, t, , u]) => `<a class="mt-3 block text-sm text-static transition-colors hover:text-phosphor [overflow-wrap:anywhere]" href="${esc(u)}"${/^mailto:/.test(u) ? '' : ext}>${esc(tipo === 'Correo' ? t : tipo)}</a>`).join('')}${mapa ? `<a class="mt-4 inline-block font-body text-[9px] uppercase tracking-[0.25em] text-phosphor underline-offset-4 transition-colors hover:underline" href="${esc(mapa)}"${ext}>Cómo llegar ↗</a>` : ''}</div></div><div class="flex flex-col gap-2 border-t border-white/10 px-6 py-6 font-body text-[10px] uppercase tracking-[0.28em] text-white/30 md:flex-row md:items-center md:justify-between md:px-14"><span>© ${new Date().getFullYear()} ${esc(nombre)} · Propuesta ${esc(d.letra || '')}: ${esc(d.titulo || 'Señal')}</span><a class="text-phosphor/70" ${waHref.trim()}>${esc(cta)}</a></div></footer>`;
 
   const css = CSS_SENAL
-    .replace('/*FOSFORO*/', `--ph:${ph};`)
+    .replace('/*FOSFORO*/', `--ph:${ph};--ph-ink:${tintaSobre(ph)};--st:${st};`)
     .replace('/*LETRAS*/', `--font-display:'${par.titulos}', ui-sans-serif, system-ui, sans-serif;--font-body:'${par.cuerpo}', ui-monospace, monospace;`);
   const fuentes = urlFuentes(par);
   const html = `<!doctype html><html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><meta name="robots" content="noindex">
@@ -286,7 +300,7 @@ export function paginaSenal(d) {
 }
 
 /** Paleta que se guarda con la propuesta (para el sitio en vivo y el panel). */
-export const paletaSenal = (brief = {}) => ({ bg: '#050505', fg: '#E0E0E0', primary: colorFosforo(brief), muted: '#8B8B8B', banda: '#0A0A0B', tarjeta: '#0A0A0B', borde: 'rgba(255,255,255,.1)' });
+export const paletaSenal = (brief = {}) => ({ bg: '#050505', fg: colorEstatica(brief), primary: colorFosforo(brief), muted: '#8B8B8B', banda: '#0A0A0B', tarjeta: '#0A0A0B', borde: 'rgba(255,255,255,.1)' });
 
 /** Para la revisión visual: todo quieto (la cinta y el parpadeo no se mueven) y la columna lateral visible. */
 export const CSS_REVISION_SENAL = '.marquee-track,.phosphor-flicker,.animate-pulse{animation:none!important}';
