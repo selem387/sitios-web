@@ -92,6 +92,8 @@ test('ajustes a mano (Intiviso): letra chica al doble, ícono del logo y título
   assert.match(html, /Terror del<br><span class="text-phosphor">fenómeno analógico<\/span>/);
   assert.match(html, /<h2 class="[^"]*">Nuestro <span class="text-phosphor">trabajo<\/span><\/h2>/);
   assert.match(html, /src="https:\/\/x\/icono\.png"/);
+  // El nombre vertical de la columna va en blanco aunque el blanco de títulos se haya cambiado (Intiviso).
+  assert.match(html, /\[writing-mode:vertical-rl\][^"]*" style="color:#FFFFFF">/);
   assert.match(html, /src="https:\/\/x\/logo\.png"[^>]*style="height:48px/); // logo completo en el pie
   assert.match(CSS_SENAL, /font-size:var\(--t9,9px\)/);
   // El ícono sale en la columna, la barra de celular y la tarjeta de WhatsApp: repetido a propósito.
