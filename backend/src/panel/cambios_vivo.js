@@ -162,7 +162,7 @@ async function planear(e, act, pedidos, conv, errores) {
     `NEGOCIO: ${e.brief?.negocio?.nombre || ''}`,
     `PEDIDO DEL CLIENTE (en orden):\n${pedidos.map((p, i) => `${i + 1}. ${p.texto || '(sin texto)'}${p.media?.length ? ` [mandó foto(s): ${p.media.join(', ')}]` : ''}`).join('\n')}`,
     `CONVERSACIÓN DESDE QUE TIENE SU PÁGINA (aplica también lo que pidió antes y no esté ya en el contenido):\n${conv.texto || '(nada)'}`,
-    `CONTENIDO ACTUAL (secciones):\n${JSON.stringify(act.contenido, null, 1)}`,
+    `CONTENIDO ACTUAL (secciones):\n${JSON.stringify(soloSecciones(act.contenido), null, 1)}`,
     `PALETA ACTUAL: ${JSON.stringify(act.paleta)}`,
     `CSS PROPIO ACTUAL (ajustes de diseño ya aplicados a este sitio):\n${act.css || '(ninguno)'}`,
     `SECCIONES EN LA PÁGINA (ids, en orden): portada, ${[...(act.htmlCompleto || '').matchAll(/<section\b[^>]*\sid="([^"]+)"/g)].map((m) => m[1]).join(', ')}. Si el cliente menciona una sección que no está, dilo en no_pude (o pregunta).`,
@@ -198,6 +198,9 @@ const ALIAS = { resenas: 'testimonios', servicios: 'oferta', sobre: 'historia', 
 const quiereQuitar = (fuentes) => /\b(quita|quitar|borra|borrar|elimina|eliminar|saca|sacar)\b/i.test(fuentes);
 const elementos = (v) => (Array.isArray(v?.items) ? v.items.length : Array.isArray(v?.secciones) ? v.secciones.length : null);
 
+/** Solo las secciones editables del contenido (sin marcas internas ni el diseño), para mostrárselas al modelo. */
+export const soloSecciones = (c = {}) => Object.fromEntries(Object.entries(c || {}).filter(([k]) => SECCIONES.includes(k)));
+
 /** Clave de una foto nombrada por su clave, su archivo o su liga; si no se reconoce, regresa lo que llegó. */
 export function clavePorArchivo(k, fotos = []) {
   const v = String(k || '').trim();
@@ -213,6 +216,9 @@ function validar(plan, act, fuentes, pedidoTexto = '') {
   const secciones = {};
   for (let [k0, v] of Object.entries(plan.secciones || {})) {
     const k = SECCIONES.includes(k0) ? k0 : ALIAS[k0];
+    // Marcas internas del contenido (p. ej. es_inmobiliaria) que el modelo copió tal cual: no son secciones y no cambian nada
+    // (26-nov-2026, Intiviso Lab: "Sección desconocida es_inmobiliaria" tiraba todo el cambio).
+    if (!k && (v === null || typeof v !== 'object' || JSON.stringify(v) === JSON.stringify(act.contenido?.[k0]))) continue;
     if (!k) { errores.push(`Sección desconocida "${k0}". Claves válidas: ${SECCIONES.join(', ')} (un título se cambia en "titulos"; un texto bajo una imagen en "pies")`); continue; }
     if (k !== k0 && secciones[k]) continue;
     if (k === 'oferta' && Array.isArray(v?.items)) v = { ...v, items: v.items.map(separarPrecio) };

@@ -24,3 +24,8 @@ test('foto nombrada por su archivo → su clave', () => {
   assert.equal(clavePorArchivo('a3', fotos), 'a3');
   assert.equal(clavePorArchivo('otra.jpg', fotos), 'otra.jpg');
 });
+
+test('al editor solo le llegan las secciones editables', async () => {
+  const { soloSecciones } = await import('../src/panel/cambios_vivo.js');
+  assert.deepEqual(Object.keys(soloSecciones({ portada: {}, es_inmobiliaria: false, diseno: {}, faq: [] })), ['portada', 'faq']);
+});
