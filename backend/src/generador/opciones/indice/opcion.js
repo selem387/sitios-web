@@ -32,10 +32,12 @@ export const opcion = {
         // El lema es una frase del cliente y puede pasar de 60 letras (26-nov-2026, Intiviso: "30 años + innovación + … = resultados
         // comprobables" se perdía porque las diapositivas se recortan a 60). Aquí se toma completo, hasta 110.
         const crudo = (c.brief?.marca?.propuestas?.textos?.diapositivas || []).find((x) => String(x?.titular || '').trim() && String(x.titular).trim().length <= 110);
-        const lemaTxt = crudo && String(crudo.titular).trim().length > 60 ? String(crudo.titular).trim() : dp?.titular;
         const giro = giroCorto(neg.giro_texto) || '';
+        const largo = !!(crudo && String(crudo.titular).trim().length > 60);
+        const lemaTxt = largo ? String(crudo.titular).trim() : dp?.titular;
+        const apoyoTxt = largo ? String(crudo.apoyo || '').trim() : (dp ? dp.apoyo : giro);
         const esc0 = escenaIndiceHTML({ heroFoto, tunel, img, kicker: [giro, neg.ciudad].filter(Boolean).join(' · '), titular: t.titular, subtitulo: t.subtitulo, cta: cta(), info: t.info || [],
-          lema: lemaTxt || d.nombre, apoyo: dp ? dp.apoyo : giro, logo: mat.logo ? logoHTML(mat.logo, '#141414', '#FFFFFF', { alt: d.nombre }) : '', nombre: d.nombre });
+          lema: lemaTxt || d.nombre, apoyo: apoyoTxt, logo: mat.logo ? logoHTML(mat.logo, '#141414', '#FFFFFF', { alt: d.nombre }) : '', nombre: d.nombre });
         esc0.urls.forEach((u) => enPortada.add(u));
         return esc0.html;
       };
