@@ -84,3 +84,18 @@ test('las fotos del fundador y del equipo no se repiten en Trabajo (caso Intivis
   assert.deepEqual(fotosRepetidas(p.html, m2), []);
   assert.deepEqual(validarMaterial(p.html, m2), []);
 });
+
+test('ajustes a mano (Intiviso): letra chica al doble, ícono del logo y títulos a dos colores', () => {
+  const b = { ...brief, marca: { colores_opcion: { senal: { estatica: '#F0087A', fosforo: '#7B2FD0', letra_chica: 2, titulos_mitad: true, logo_icono: 'https://x/icono.png' } } } };
+  const { html } = paginaSenal({ brief: b, mat, textos, v: textos.variantes[0], titulos: {}, wa: 'https://wa.me/529990000000', letra: LT });
+  assert.match(html, /--t9:18px;--t10:20px;--t11:22px;--lat:162px;/);
+  assert.match(html, /Terror del<br><span class="text-phosphor">fenómeno analógico<\/span>/);
+  assert.match(html, /<h2 class="[^"]*">Nuestro <span class="text-phosphor">trabajo<\/span><\/h2>/);
+  assert.match(html, /src="https:\/\/x\/icono\.png"/);
+  assert.match(html, /src="https:\/\/x\/logo\.png"[^>]*style="height:48px/); // logo completo en el pie
+  assert.match(CSS_SENAL, /font-size:var\(--t9,9px\)/);
+  // Sin ajustes, idéntica al modelo.
+  const igual = paginaSenal({ brief, mat, textos, v: textos.variantes[0], titulos: {}, wa: '', letra: LT }).html;
+  assert.doesNotMatch(igual, /--t9:/);
+  assert.match(igual, /Terror del fenómeno<br><span class="text-phosphor">analógico<\/span>/);
+});
