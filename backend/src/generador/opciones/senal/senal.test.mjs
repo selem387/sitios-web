@@ -94,6 +94,10 @@ test('ajustes a mano (Intiviso): letra chica al doble, ícono del logo y título
   assert.match(html, /src="https:\/\/x\/icono\.png"/);
   assert.match(html, /src="https:\/\/x\/logo\.png"[^>]*style="height:48px/); // logo completo en el pie
   assert.match(CSS_SENAL, /font-size:var\(--t9,9px\)/);
+  // El ícono sale en la columna, la barra de celular y la tarjeta de WhatsApp: repetido a propósito.
+  const m3 = { ...mat, usables: [...mat.usables] };
+  const [p3] = gen({ solo: LT, mat: m3, brief: b });
+  assert.deepEqual(fotosRepetidas(p3.html, m3), []);
   // Sin ajustes, idéntica al modelo.
   const igual = paginaSenal({ brief, mat, textos, v: textos.variantes[0], titulos: {}, wa: '', letra: LT }).html;
   assert.doesNotMatch(igual, /--t9:/);
