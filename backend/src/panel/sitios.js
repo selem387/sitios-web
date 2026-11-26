@@ -353,7 +353,8 @@ export async function renderSitio(sv, { previa = false, letra = null } = {}) {
     html = conPropiedades(html, await listar(sv.id, { publicas: true }), { base: rutaBase(sv, { previa }) });
   }
   // Estructura y ajustes de diseño propios de este sitio (los escribe el editor de cambios a pedido del cliente).
-  { const { conLigaAviso } = await import('./aviso.js'); html = conLigaAviso(html, `${rutaBase(sv, { previa })}/aviso-de-privacidad`); }
+  // Pie estándar con contacto completo, mapa y legales (26-nov-2026): reemplaza el pie de cada opción.
+  { const { conPieCompleto } = await import('./pie.js'); html = conPieCompleto(html, brief, { base: rutaBase(sv, { previa }), medicion: previa ? null : sv.medicion }); }
   if (!previa && sv.medicion) { const { conMedicion } = await import('./medicion.js'); html = conMedicion(html, sv.medicion); }
   if (dz.estructura) { const { aplicarEstructura } = await import('./estructura.js'); html = aplicarEstructura(html, dz.estructura); }
   if (sv.contenido?.pies?.items?.length) html = conPies(html, sv.contenido.pies.items);

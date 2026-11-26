@@ -296,6 +296,32 @@ async function servirAviso(c, sv, { previa }) {
   }
 }
 
+/** Términos, cookies y mapa del sitio (26-nov-2026): mismas reglas que el aviso, con el encabezado y pie del sitio. */
+async function servirLegal(c, sv, pagina, { previa }) {
+  try {
+    const e = await db.obtener(sv.entrevista_id);
+    const brief = e?.brief || {};
+    const L = await import('./legales.js');
+    const html = await S.renderSitio(sv, { previa });
+    const base = S.rutaBase(sv, { previa });
+    const url = `${S.urlPublica(sv, { previa })}${pagina}`;
+    const nombre = brief.negocio?.nombre || '';
+    let cuerpo, titulo, descripcion;
+    if (pagina === 'terminos-y-condiciones') { titulo = 'Términos y condiciones'; descripcion = `Términos y condiciones de uso de la página de ${nombre}.`; cuerpo = L.terminos(brief, { base }); }
+    else if (pagina === 'politica-de-cookies') { titulo = 'Política de cookies'; descripcion = `Qué cookies usa la página de ${nombre} y cómo decidir.`; cuerpo = L.politicaCookies(brief, { medicion: previa ? null : sv.medicion, base }); }
+    else {
+      titulo = 'Mapa del sitio'; descripcion = `Todas las secciones y páginas de ${nombre}.`;
+      const propiedades = brief.negocio?.arquetipo === 'inmobiliaria' ? await P.listar(sv.id, { publicas: true }).catch(() => []) : [];
+      cuerpo = L.mapaDelSitio(brief, { html, base, propiedades });
+    }
+    return c.html(L.paginaLegal(html, brief, { titulo, descripcion, cuerpo, base, url }), 200, { 'cache-control': 'no-cache', ...(previa ? { 'x-robots-tag': 'noindex' } : {}) });
+  } catch (x) {
+    console.error('[legal]', sv.id, pagina, x);
+    return c.redirect(S.rutaBase(sv, { previa }) || '/', 302);
+  }
+}
+const RUTAS_LEGALES = ['terminos-y-condiciones', 'politica-de-cookies', 'mapa-del-sitio'];
+
 /** Modo "vivo" del middleware de dominios. */
 async function modoVivo(c, reg, next, host) {
   await S.migrarPanel();
@@ -307,6 +333,7 @@ async function modoVivo(c, reg, next, host) {
   const mprop = ruta.match(/^\/propiedad\/([a-z0-9-]{1,80})$/);
   if (mprop) return servirPropiedad(c, sv, mprop[1], { previa: false });
   if (ruta === '/aviso-de-privacidad') return servirAviso(c, sv, { previa: false });
+  if (RUTAS_LEGALES.includes(ruta.slice(1))) return servirLegal(c, sv, ruta.slice(1), { previa: false });
   if (ruta === '/menu') return servirMenu(c, sv, { previa: false });
   if (ruta === '/robots.txt') return c.text(`User-agent: *\nDisallow: /admin\nAllow: /\n\n# Motores de IA bienvenidos\nUser-agent: GPTBot\nAllow: /\nUser-agent: ClaudeBot\nAllow: /\nUser-agent: PerplexityBot\nAllow: /\nUser-agent: Google-Extended\nAllow: /\n\nSitemap: https://${host}/sitemap.xml\n`);
   if (ruta === '/llms.txt') {
@@ -317,7 +344,7 @@ async function modoVivo(c, reg, next, host) {
   }
   if (ruta === '/sitemap.xml') {
     const props = await P.listar(sv.id, { publicas: true }).catch(() => []);
-    const urls = [`<url><loc>https://${host}/</loc><lastmod>${new Date(sv.actualizado).toISOString().slice(0, 10)}</lastmod></url>`, ...props.map((p) => `<url><loc>https://${host}/propiedad/${p.slug}</loc><lastmod>${new Date(p.actualizado).toISOString().slice(0, 10)}</lastmod></url>`)];
+    const urls = [`<url><loc>https://${host}/</loc><lastmod>${new Date(sv.actualizado).toISOString().slice(0, 10)}</lastmod></url>`, ...['aviso-de-privacidad', ...RUTAS_LEGALES].map((r) => `<url><loc>https://${host}/${r}</loc></url>`), ...props.map((p) => `<url><loc>https://${host}/propiedad/${p.slug}</loc><lastmod>${new Date(p.actualizado).toISOString().slice(0, 10)}</lastmod></url>`)];
     return c.body(`<?xml version="1.0" encoding="UTF-8"?><urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">${urls.join('')}</urlset>`, 200, { 'content-type': 'application/xml' });
   }
   if (ruta.startsWith('/chat/archivos/') || ruta.startsWith('/files/')) return next();
@@ -341,6 +368,7 @@ export function registerPanelRoutes(app, wrap) {
     const mprop = ruta.match(/^\/propiedad\/([a-z0-9-]{1,80})$/);
     if (mprop) return servirPropiedad(c, sv, mprop[1], { previa: !sv.url_publica });
     if (ruta === '/aviso-de-privacidad') return servirAviso(c, sv, { previa: !sv.url_publica });
+    if (RUTAS_LEGALES.includes(ruta.slice(1))) return servirLegal(c, sv, ruta.slice(1), { previa: !sv.url_publica });
     if (ruta === '/menu') return servirMenu(c, sv, { previa: !sv.url_publica });
     return (await atenderPanel(c, sv, base, ruta)) || c.text('No encontrado', 404);
   });
