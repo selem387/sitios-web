@@ -77,6 +77,21 @@ export function opcionNombrada(texto, opciones = []) {
   return hits.length === 1 ? hits[0] : null;
 }
 
+/** Dirección de internet escrita por el cliente ("intiviso.com", "https://www.minegocio.mx/") → "intiviso.com"; null si no hay. */
+export function dominioEnTexto(t) {
+  const m = String(t || '').toLowerCase().match(/(?<![@\w.-])(?:https?:\/\/)?(?:www\.)?((?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+(?:com|mx|net|org|cafe|store|shop|site|online|info|co|io|app|studio|agency|design|tech|lat|com\.mx|org\.mx|net\.mx|[a-z]{2,10}))(?![\w.-]*\/p\/)/);
+  if (!m) return null;
+  const d = m[1].replace(/\.$/, '');
+  if (/easypanel|timewins|lemoss|iaprop|whatsapp|wa\.me|facebook|instagram|google|tiktok|youtube|linkedin/.test(d)) return null;
+  return /^[a-z0-9-]+(\.[a-z0-9-]+)+$/.test(d) ? d : null;
+}
+/** ¿Pide publicar o montar la página en su dirección? */
+export const pidePublicar = (t) => {
+  const x = String(t || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
+  return /\b(montar?|montarla|montala|montenla|publicar?|publicarla|publicala|publiquen(la)?|subir|subirla|subela|lanzarla|ponerla en linea|ponla en linea|ponla al aire)\b/.test(x) || /\bdominio\b/.test(x);
+};
+const hayCambioConcreto = (c = {}) => Object.entries(c || {}).some(([k, v]) => k !== 'dominio' && (Array.isArray(v) ? v.length : v && typeof v === 'object' ? Object.values(v).some(Boolean) : !!v));
+
 /** Entiende con IA qué quiere el cliente con su mensaje mientras ve las opciones. */
 async function entender(e, brief, p, { texto, nuevas, fotos, secciones, elegida = null }) {
   const historial = (await db.ultimosMensajes(e.id, 10).catch(() => [])).map((m) => `${m.rol === 'cliente' ? 'Cliente' : 'Ari'}: ${String(m.transcripcion || m.contenido || '').slice(0, 300)}`).join('\n');
@@ -96,6 +111,7 @@ Intenciones:${elegida ? `
 - "cambio": otro cambio a ${elegida ? 'su página' : 'sus opciones'}: textos, nombre de una sección, colores, estilo, datos de contacto, horario, promoción, los pasos de "Cómo funciona" o los textos de la sección de productos/servicios. Llena "cambios".
   · Pasos ("cómo funciona", "proceso" o como se llame esa sección): "proceso_titulo" con el título nuevo de la sección y "pasos" con CADA paso {titulo, texto} tal cual los escribió (sin el número).
   · Productos/servicios: "titulos_secciones.servicios" con el título, "servicios_intro" con la frase de debajo del título, "productos" con {nombre, descripcion} de cada uno (nombre como lo escribió el cliente), "servicios_cierre" con la frase del final y "servicios_boton" con el texto del botón de esa sección.
+- "publicar": quiere publicar o montar su página en su dirección de internet ("súbela a minegocio.com", "quiero montarla en mi dominio") o pregunta cómo publicarla. Pon en "dominio" la dirección tal cual la escribió (sin https:// ni www), si la dio. Aunque diga que luego hará cambios, si ahora no pide ninguno concreto la intención es "publicar".
 - "pregunta": pregunta algo del proceso; responde en "respuesta".
 - "otro": nada de lo anterior; en "respuesta" pregúntale qué quiso decir, con opciones sencillas.
 Secciones de fotos de sus páginas: ${secTxt}. Usa solo esas claves (o "auto"/"quitar").
@@ -114,7 +130,8 @@ MENSAJE NUEVO DEL CLIENTE: ${texto || '(solo mandó fotos)'}${nuevas.length ? ` 
     schema: {
       type: 'object',
       properties: {
-        intencion: { type: 'string', enum: ['elegir', 'ninguna', 'reenviar', 'agregar_fotos', 'ubicar_fotos', 'mover_fotos', 'cambio', 'pregunta', 'respuesta', 'otro'] },
+        intencion: { type: 'string', enum: ['elegir', 'ninguna', 'reenviar', 'agregar_fotos', 'ubicar_fotos', 'mover_fotos', 'cambio', 'publicar', 'pregunta', 'respuesta', 'otro'] },
+        dominio: { type: 'string' },
         letra: { type: 'string' }, colores_de: { type: 'string' },
         seccion_nuevas: { type: 'string' },
         ubicaciones: { type: 'array', items: { type: 'object', properties: { clave: { type: 'string' }, seccion: { type: 'string' } }, required: ['clave', 'seccion'] } },
@@ -247,6 +264,10 @@ export async function atenderMostradas(e, brief, p, { texto = '', clavesNuevas =
   if (d.intencion === 'elegir' && esLetra(d.letra || '', { i: true })) return { accion: 'elegir', letra: d.letra.toUpperCase(), colores_de: esLetra(d.colores_de || '', { i: true }) ? d.colores_de.toUpperCase() : null };
   if (d.intencion === 'ninguna') return { accion: 'ninguna' };
   if (d.intencion === 'reenviar') return { accion: 'reenviar' };
+  // Publicar en su dirección (26-nov-2026, Intiviso Lab: "quiero montarla en intiviso.com" se tomaba como un cambio a la
+  // página, el editor no hacía nada y Ari contestaba "No pude aplicar ese cambio").
+  const dom = dominioEnTexto(d.dominio) || dominioEnTexto(texto);
+  if (!nuevas.length && !clavesNuevas.length && (d.intencion === 'publicar' || (d.intencion === 'cambio' && pidePublicar(texto) && !hayCambioConcreto(d.cambios)))) return { accion: 'publicar', dominio: dom };
 
   // Antes de elegir no se modifica ninguna opción (10-nov-2026): el pedido se guarda y se aplica a la que elija.
   const CAMBIOS = ['agregar_fotos', 'ubicar_fotos', 'mover_fotos', 'cambio'];
