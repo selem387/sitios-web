@@ -57,6 +57,14 @@ export function colorFosforo(brief = {}) {
   return (cand || FOSFORO).toUpperCase();
 }
 
+/** Ajustes a mano por cliente (en el mismo objeto): letra_chica (factor para las letras de 9–11 px; p. ej. 2 = al
+ *  doble), logo_icono (url del logo recortado solo al ícono), titulos_mitad (títulos mitad en un color, mitad en otro). */
+export const ajustesSenal = (brief = {}) => {
+  const a = brief.marca?.colores_opcion?.senal || {};
+  const f = Number(a.letra_chica);
+  return { letraChica: f > 1 && f <= 3 ? f : 1, logoIcono: /^https?:\/\//.test(a.logo_icono || '') ? a.logo_icono : null, titulosMitad: !!a.titulos_mitad };
+};
+
 /** Color "estática" (el blanco de títulos y textos destacados): a mano o el del modelo. */
 export const colorEstatica = (brief = {}) => aMano(brief, 'estatica') || ESTATICA;
 
@@ -97,6 +105,14 @@ export function paginaSenal(d) {
   const waHref = d.wa ? ` href="${esc(d.wa)}"${ext}` : ' href="#contacto"';
   const ph = colorFosforo(brief);
   const st = colorEstatica(brief);
+  const aj = ajustesSenal(brief);
+  // Títulos a dos colores: el modelo pinta solo la última palabra; con titulos_mitad, la segunda mitad de las palabras.
+  const dosColores = (txt, br = false) => {
+    const w = String(txt || '').trim().split(/\s+/).filter(Boolean);
+    if (w.length < 2) return `<span class="text-phosphor">${esc(txt)}</span>`;
+    const corte = aj.titulosMitad ? Math.ceil(w.length / 2) : w.length - 1;
+    return `${esc(w.slice(0, corte).join(' '))}${br ? '<br>' : ' '}<span class="text-phosphor">${esc(w.slice(corte).join(' '))}</span>`;
+  };
   const par = letrasSenal(brief);
   const usadas = new Set();
   const marcar = (x) => { if (x?.url) usadas.add(x.url); return x; };
@@ -132,7 +148,7 @@ export function paginaSenal(d) {
 
   // --- Secciones (el número sale por orden de aparición) ---
   const secs = []; // [id, etiqueta del índice]
-  const cabecera = (num, rotulo, titulo, texto, boton) => `<div class="flex flex-col gap-6 border-t border-white/10 pt-8 md:flex-row md:items-end md:justify-between"><div class="max-w-2xl"><p class="${K.rot}">${num} <span class="text-ash">/ ${esc(rotulo)}</span></p><h2 class="${K.h2}">${esc(titulo)}</h2>${texto ? `<p class="${K.sub}">${esc(texto)}</p>` : ''}</div>${boton || ''}</div>`;
+  const cabecera = (num, rotulo, titulo, texto, boton) => `<div class="flex flex-col gap-6 border-t border-white/10 pt-8 md:flex-row md:items-end md:justify-between"><div class="max-w-2xl"><p class="${K.rot}">${num} <span class="text-ash">/ ${esc(rotulo)}</span></p><h2 class="${K.h2}">${aj.titulosMitad ? dosColores(titulo) : esc(titulo)}</h2>${texto ? `<p class="${K.sub}">${esc(texto)}</p>` : ''}</div>${boton || ''}</div>`;
   const boton = (texto, href) => `<a class="${K.btnBorde}"${href}>${esc(texto)} ↗</a>`;
   const nuevo = (id, etiqueta) => { secs.push([id, etiqueta]); return dos(secs.length); };
   const cta = v.cta || 'Escríbenos por WhatsApp';
@@ -250,10 +266,11 @@ export function paginaSenal(d) {
   // --- Portada ---
   const titular = String(v.titular || nombre).trim();
   const palabras = titular.split(/\s+/);
-  const h1 = palabras.length > 1 ? `${esc(palabras.slice(0, -1).join(' '))}<br><span class="text-phosphor">${esc(palabras.at(-1))}</span>` : `<span class="text-phosphor">${esc(titular)}</span>`;
+  const h1 = dosColores(titular, true);
   const giro = String(neg.giro || neg.categoria || neg.subtipo || '').trim();
   const estado = [horario ? 'Atendiendo hoy' : 'Señal activa', horario.split(/[·;\n]/)[0] || neg.ciudad || ''].filter(Boolean).join(' · ');
-  const logo = mat.logo?.url ? marcar(mat.logo) : null;
+  if (mat.logo?.url) marcar(mat.logo);
+  const logo = aj.logoIcono ? { url: aj.logoIcono } : (mat.logo?.url ? mat.logo : null);
   const icono = (cls) => (logo ? `<img src="${esc(logo.url)}" alt="${esc(`Logo de ${nombre}`)}" class="${cls} object-contain">` : `<span class="font-display text-lg font-extrabold uppercase text-phosphor">${esc(nombre.slice(0, 1))}</span>`);
   const redPrincipal = redesDe(c)[0];
   const aliado = d.wa
@@ -286,10 +303,10 @@ export function paginaSenal(d) {
   const marcas = (mat.logos_extra || []).filter((x) => x?.url).map((x) => img(x, 'h-10 w-auto object-contain opacity-80', { rep: true })).join('');
   const descripcion = String(of.diferenciador || neg.descripcion_redes || v.subtitulo || '').trim();
   const avisoTxt = [dir, horario].filter(Boolean).join(' · ');
-  const pie = `<footer class="border-t border-white/10 bg-obsidian"><div class="grid gap-12 px-6 py-16 md:grid-cols-[1.4fr_1fr_1fr] md:px-14 md:py-24"><div><p class="${K.rot}">${esc(titCont)}</p><p class="mt-5 max-w-sm font-display text-2xl font-extrabold uppercase leading-tight text-static md:text-3xl">${esc(titular)}</p><p class="mt-2 font-body text-[10px] uppercase tracking-[0.35em] text-phosphor/80">${esc(nombre)}</p>${descripcion ? `<p class="mt-4 max-w-sm text-sm leading-relaxed text-ash">${esc(descripcion)}</p>` : ''}${marcas ? `<div class="mt-6 flex flex-wrap items-center gap-4">${marcas}</div>` : ''}</div><div><p class="font-body text-[10px] uppercase tracking-[0.3em] text-ash">Secciones</p><ul class="mt-5 space-y-3 text-sm">${secs.map(([id, n]) => `<li><a class="text-static transition-colors hover:text-phosphor" href="#${id}">${esc(n)}</a></li>`).join('')}</ul></div><div><p class="font-body text-[10px] uppercase tracking-[0.3em] text-ash">${avisoTxt ? 'Visítanos' : 'Escríbenos'}</p><p class="mt-5 text-sm leading-relaxed text-ash">${esc(avisoTxt || 'Te respondemos por WhatsApp.')}</p>${fueraTarjeta.map(([tipo, t, , u]) => `<a class="mt-3 block text-sm text-static transition-colors hover:text-phosphor [overflow-wrap:anywhere]" href="${esc(u)}"${/^mailto:/.test(u) ? '' : ext}>${esc(tipo === 'Correo' ? t : tipo)}</a>`).join('')}${mapa ? `<a class="mt-4 inline-block font-body text-[9px] uppercase tracking-[0.25em] text-phosphor underline-offset-4 transition-colors hover:underline" href="${esc(mapa)}"${ext}>Cómo llegar ↗</a>` : ''}</div></div><div class="flex flex-col gap-2 border-t border-white/10 px-6 py-6 font-body text-[10px] uppercase tracking-[0.28em] text-white/30 md:flex-row md:items-center md:justify-between md:px-14"><span>© ${new Date().getFullYear()} ${esc(nombre)} · Propuesta ${esc(d.letra || '')}: ${esc(d.titulo || 'Señal')}</span><a class="text-phosphor/70" ${waHref.trim()}>${esc(cta)}</a></div></footer>`;
+  const pie = `<footer class="border-t border-white/10 bg-obsidian"><div class="grid gap-12 px-6 py-16 md:grid-cols-[1.4fr_1fr_1fr] md:px-14 md:py-24"><div><p class="${K.rot}">${esc(titCont)}</p><p class="mt-5 max-w-sm font-display text-2xl font-extrabold uppercase leading-tight text-static md:text-3xl">${esc(titular)}</p><p class="mt-2 font-body text-[10px] uppercase tracking-[0.35em] text-phosphor/80">${esc(nombre)}</p>${aj.logoIcono && mat.logo?.url ? `<img src="${esc(mat.logo.url)}" alt="${esc(`Logo de ${nombre}`)}" style="height:48px;width:auto;max-width:100%;margin-top:20px;object-fit:contain">` : ''}${descripcion ? `<p class="mt-4 max-w-sm text-sm leading-relaxed text-ash">${esc(descripcion)}</p>` : ''}${marcas ? `<div class="mt-6 flex flex-wrap items-center gap-4">${marcas}</div>` : ''}</div><div><p class="font-body text-[10px] uppercase tracking-[0.3em] text-ash">Secciones</p><ul class="mt-5 space-y-3 text-sm">${secs.map(([id, n]) => `<li><a class="text-static transition-colors hover:text-phosphor" href="#${id}">${esc(n)}</a></li>`).join('')}</ul></div><div><p class="font-body text-[10px] uppercase tracking-[0.3em] text-ash">${avisoTxt ? 'Visítanos' : 'Escríbenos'}</p><p class="mt-5 text-sm leading-relaxed text-ash">${esc(avisoTxt || 'Te respondemos por WhatsApp.')}</p>${fueraTarjeta.map(([tipo, t, , u]) => `<a class="mt-3 block text-sm text-static transition-colors hover:text-phosphor [overflow-wrap:anywhere]" href="${esc(u)}"${/^mailto:/.test(u) ? '' : ext}>${esc(tipo === 'Correo' ? t : tipo)}</a>`).join('')}${mapa ? `<a class="mt-4 inline-block font-body text-[9px] uppercase tracking-[0.25em] text-phosphor underline-offset-4 transition-colors hover:underline" href="${esc(mapa)}"${ext}>Cómo llegar ↗</a>` : ''}</div></div><div class="flex flex-col gap-2 border-t border-white/10 px-6 py-6 font-body text-[10px] uppercase tracking-[0.28em] text-white/30 md:flex-row md:items-center md:justify-between md:px-14"><span>© ${new Date().getFullYear()} ${esc(nombre)} · Propuesta ${esc(d.letra || '')}: ${esc(d.titulo || 'Señal')}</span><a class="text-phosphor/70" ${waHref.trim()}>${esc(cta)}</a></div></footer>`;
 
   const css = CSS_SENAL
-    .replace('/*FOSFORO*/', `--ph:${ph};--ph-ink:${tintaSobre(ph)};--st:${st};`)
+    .replace('/*FOSFORO*/', `--ph:${ph};--ph-ink:${tintaSobre(ph)};--st:${st};${aj.letraChica > 1 ? `--t9:${9 * aj.letraChica}px;--t10:${10 * aj.letraChica}px;--t11:${11 * aj.letraChica}px;--lat:${Math.round(92 + 70 * (aj.letraChica - 1))}px;` : ''}`)
     .replace('/*LETRAS*/', `--font-display:'${par.titulos}', ui-sans-serif, system-ui, sans-serif;--font-body:'${par.cuerpo}', ui-monospace, monospace;`);
   const fuentes = urlFuentes(par);
   const html = `<!doctype html><html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><meta name="robots" content="noindex">
