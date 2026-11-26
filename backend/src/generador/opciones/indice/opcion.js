@@ -29,9 +29,13 @@ export const opcion = {
         const vistas = new Set(heroFoto ? [heroFoto.url] : []);
         const tunel = [...fijasSl, ...poolBase].filter((x) => x?.url && !vistas.has(x.url) && vistas.add(x.url));
         const dp = diapos.find((x) => x?.titular) || null;
+        // El lema es una frase del cliente y puede pasar de 60 letras (26-nov-2026, Intiviso: "30 años + innovación + … = resultados
+        // comprobables" se perdía porque las diapositivas se recortan a 60). Aquí se toma completo, hasta 110.
+        const crudo = (c.brief?.marca?.propuestas?.textos?.diapositivas || []).find((x) => String(x?.titular || '').trim() && String(x.titular).trim().length <= 110);
+        const lemaTxt = crudo && String(crudo.titular).trim().length > 60 ? String(crudo.titular).trim() : dp?.titular;
         const giro = giroCorto(neg.giro_texto) || '';
         const esc0 = escenaIndiceHTML({ heroFoto, tunel, img, kicker: [giro, neg.ciudad].filter(Boolean).join(' · '), titular: t.titular, subtitulo: t.subtitulo, cta: cta(), info: t.info || [],
-          lema: dp?.titular || d.nombre, apoyo: dp ? dp.apoyo : giro, logo: mat.logo ? logoHTML(mat.logo, '#141414', '#FFFFFF', { alt: d.nombre }) : '', nombre: d.nombre });
+          lema: lemaTxt || d.nombre, apoyo: dp ? dp.apoyo : giro, logo: mat.logo ? logoHTML(mat.logo, '#141414', '#FFFFFF', { alt: d.nombre }) : '', nombre: d.nombre });
         esc0.urls.forEach((u) => enPortada.add(u));
         return esc0.html;
       };
