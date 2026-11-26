@@ -91,10 +91,11 @@ ${g.sensibles ? `<p>${esc(g.sensibles)}</p>` : ''}
 <h2>Con quién los compartimos</h2>
 ${g.transferencias.length ? `<p>Solo compartimos tus datos con:</p>${li(g.transferencias)}` : ''}
 <p>${g.transferencias.length ? 'Fuera de esos casos, no' : 'No'} vendemos ni compartimos tus datos con terceros, salvo cuando lo exija una autoridad o la ley. Quien los reciba asume las mismas obligaciones que nosotros.</p>
-<h2>Tus derechos (ARCO) y cómo revocar tu consentimiento</h2>
+<h2 id="arco">Tus derechos (ARCO) y cómo revocar tu consentimiento</h2>
 <p>Puedes pedirnos acceder a tus datos, corregirlos, cancelarlos u oponerte a su uso, así como revocar tu consentimiento o limitar su uso, escribiéndonos ${medio}. Indica tu nombre, lo que solicitas y un medio para responderte; te contestaremos en los plazos que marca la ley. Si consideras que no atendimos tu solicitud, puedes acudir a la Secretaría Anticorrupción y Buen Gobierno.</p>
 <h2>Cookies y tecnologías de esta página</h2>
 ${herramientas(medicion)}
+<p>El detalle está en nuestra <a href="politica-de-cookies">política de cookies</a>.</p>
 <h2>Cambios a este aviso</h2>
 <p>Cualquier cambio lo publicaremos en esta misma página. Última actualización: ${esc(fecha)}.</p>
 </section>`;
