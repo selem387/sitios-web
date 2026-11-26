@@ -104,7 +104,10 @@ export function paginaSenal(d) {
   // --- Material ---
   const unicas = (l) => l.filter((x) => x?.url).filter((x, k, a) => a.findIndex((y) => y.url === x.url) === k);
   const buena = (x) => x?.url && !x.captura && x.calidad !== 'regular';
+  // Las fotos de personas (fundador y equipo), reseñas y logos tienen su propia sección: no entran a "Trabajo".
+  const propias = new Set([mat.fundador, ...(mat.equipo || []), ...(mat.resenas || []), mat.logo, ...(mat.logos_extra || [])].filter((x) => x?.url).map((x) => x.url));
   const trabajos = unicas([...(mat.trabajos || []), ...(mat.local || []), ...(mat.otras || []), ...(mat.fotos || []).filter((x) => !x.recorte)])
+    .filter((x) => !propias.has(x.url) && !/fundador|equipo|logo|resena/.test(x.tipo || ''))
     .filter((x) => /\.(jpe?g|png|webp|gif|avif)(\?|$)/i.test(x.url) || x.ancho);
   const buenas = trabajos.filter(buena);
   const porUrl = new Map([mat.hero, ...buenas].filter((x) => x?.url).map((x) => [x.url, x]));

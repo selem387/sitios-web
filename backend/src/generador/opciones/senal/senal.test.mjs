@@ -76,3 +76,11 @@ test('colores a mano (Intiviso): fucsia en lugar del blanco y morado en lugar de
   // Sin colores a mano, idéntica al modelo.
   assert.match(paginaSenal({ brief, mat, textos, v: {}, titulos: {}, wa: '', letra: LT }).html, /--ph:#00FF41;--ph-ink:#050505;--st:#E0E0E0;/);
 });
+
+test('las fotos del fundador y del equipo no se repiten en Trabajo (caso Intiviso)', () => {
+  const fundador = foto(8, 'Fundador', { tipo: 'foto_fundador' }), otra = foto(9, 'Socia', { tipo: 'foto_fundador' });
+  const m2 = { ...mat, fundador, equipo: [otra], fotos: [fundador, otra], usables: [...mat.usables, ...[fundador, otra].map((x) => ({ clave: x.clave, tipo: x.tipo, urls: [x.url] }))] };
+  const [p] = gen({ solo: LT, mat: m2 });
+  assert.deepEqual(fotosRepetidas(p.html, m2), []);
+  assert.deepEqual(validarMaterial(p.html, m2), []);
+});
