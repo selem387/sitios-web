@@ -40,7 +40,7 @@ export function escenaIndiceHTML({ heroFoto = null, tunel = [], img, kicker = ''
   // y el botón de WhatsApp). Arriba lleva el nombre del negocio, no el giro recortado.
   const tarjeta = datos.length >= 2 ? `<div class="ix-tj-marco" aria-hidden="true"><div class="ix-tarjeta">${nombre ? `<p class="ix-tj-k">${esc(nombre)}</p>` : '<span></span>'}<div class="ix-rueda"><ul>${datos.map((x) => `<li>${esc(x)}</li>`).join('')}</ul></div></div></div>` : '';
   const figs = fotosT.map((x) => `<figure>${img(x, { cls: 'rep-ok', eager: true })}</figure>`).join('');
-  const html = `<div class="ix-escena" id="inicio"><section class="hero h-indice${heroFoto ? '' : ' sin-fondo'}">${fondo}${logo ? `<div class="ix-logo">${logo}</div>` : ''}<div class="wrap ix-txt">${kicker ? `<p class="kicker">${esc(kicker)}</p>` : ''}<h1>${esc(titular)}</h1>${subtitulo ? `<p class="sub">${esc(subtitulo)}</p>` : ''}${cta}</div>${ficha}${tarjeta}<div class="ix-banda ix-b1" aria-hidden="true"></div><div class="ix-tunel">${figs}<figure class="ix-fin"></figure></div>${lema ? `<div class="ix-lema"><p class="ix-lm ix-lm-t">${esc(lema)}</p>${apoyo ? `<p class="ix-lm ix-lm-a">${esc(apoyo)}</p>` : ''}</div>` : ''}<div class="ix-banda ix-b2" aria-hidden="true"></div></section></div>`;
+  const html = `<div class="ix-escena" id="inicio"><section class="hero h-indice${heroFoto ? '' : ' sin-fondo'}">${fondo}${logo ? `<div class="ix-logo">${logo}</div>` : ''}<div class="wrap ix-txt">${kicker ? `<p class="kicker">${esc(kicker)}</p>` : ''}<h1>${esc(titular)}</h1>${subtitulo ? `<p class="sub">${esc(subtitulo)}</p>` : ''}${cta}</div>${ficha}${tarjeta}<div class="ix-banda ix-b1" aria-hidden="true"></div><div class="ix-tunel">${figs}<figure class="ix-fin"></figure></div>${lema ? `<div class="ix-lema"><p class="ix-lm ix-lm-t${String(lema).length > 40 ? ' ix-lm-l' : ''}">${esc(lema)}</p>${apoyo ? `<p class="ix-lm ix-lm-a">${esc(apoyo)}</p>` : ''}</div>` : ''}<div class="ix-banda ix-b2" aria-hidden="true"></div></section></div>`;
   return { html, urls: [heroFoto?.url, ...fotosT.map((x) => x.url)].filter(Boolean) };
 }
 
@@ -87,7 +87,7 @@ body.l-indice .btn:hover{background:var(--fg);color:var(--bg)}
 .viva .ix-b2{background:var(--bg);z-index:5}
 .viva .ix-lema{display:grid;visibility:hidden;position:absolute;inset:0;z-index:4;place-content:center;justify-items:center;gap:24px;text-align:center;padding:90px 20px;color:#fff;will-change:transform}
 .viva .ix-lema.ver{visibility:visible}
-.ix-lm-t{font-family:var(--ft);font-size:clamp(30px,5.8vw,92px);line-height:1.02;max-width:17ch}.ix-lm-a{max-width:54ch;font-weight:600}
+.ix-lm-t{font-family:var(--ft);font-size:clamp(30px,5.8vw,92px);line-height:1.02;max-width:17ch}.ix-lm-t.ix-lm-l{font-size:clamp(26px,4.2vw,64px);max-width:24ch}.ix-lm-a{max-width:54ch;font-weight:600}
 /* en pantallas angostas los datos quedan fijos abajo (la tarjeta taparía el botón); la tarjeta que sube es de 900 px en adelante */
 .viva .ix-txt{padding-bottom:200px}
 .viva .ix-tj-marco{position:absolute;overflow:hidden;z-index:2}
