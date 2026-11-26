@@ -105,3 +105,13 @@ test('ajustes a mano (Intiviso): letra chica al doble, ícono del logo y título
   assert.doesNotMatch(igual, /--t9:/);
   assert.match(igual, /Terror del fenómeno<br><span class="text-phosphor">analógico<\/span>/);
 });
+
+test('Intiviso: foto de fundador sin clasificar va a Sobre nosotros y subtítulo 120 % más grande', () => {
+  const suelta = foto(10, 'Directora', { tipo: 'foto_fundador' });
+  const m4 = { ...mat, fotos: [suelta], usables: [...mat.usables, { clave: suelta.clave, tipo: suelta.tipo, urls: [suelta.url] }] };
+  const b = { ...brief, marca: { colores_opcion: { senal: { subtitulo: 2.2 } } } };
+  const [p] = gen({ solo: LT, mat: m4, brief: b });
+  assert.equal(p.html.includes('Más de nuestro trabajo'), false);
+  assert.match(p.html, /id="sobre"[\s\S]*x\/10\.jpg/);
+  assert.match(p.html, /font-size:clamp\(30\.8px,2\.4vw,35\.2px\)/);
+});
