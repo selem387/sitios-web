@@ -115,3 +115,10 @@ test('Intiviso: foto de fundador sin clasificar va a Sobre nosotros y subtítulo
   assert.match(p.html, /id="sobre"[\s\S]*x\/10\.jpg/);
   assert.match(p.html, /font-size:clamp\(30\.8px,2\.4vw,35\.2px\)/);
 });
+
+test('Intiviso: titular a mano con el color de cada parte', () => {
+  const b = { ...brief, marca: { colores_opcion: { senal: { titular: [{ t: 'Estrategia digital', c: 'fosforo' }, { t: 'con', c: 'blanco' }, { t: 'resultados medibles', c: 'estatica' }] } } } };
+  const { html } = paginaSenal({ brief: b, mat, textos, v: textos.variantes[0], titulos: {}, wa: '', letra: LT });
+  assert.match(html, /<h1[^>]*><span class="text-phosphor">Estrategia digital<\/span> <span style="color:#FFFFFF">con<\/span> <span class="text-static">resultados medibles<\/span><\/h1>/);
+  assert.match(html, /<title>Estrategia digital con resultados medibles/);
+});

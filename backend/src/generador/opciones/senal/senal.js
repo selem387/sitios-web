@@ -59,11 +59,13 @@ export function colorFosforo(brief = {}) {
 
 /** Ajustes a mano por cliente (en el mismo objeto): letra_chica (factor para las letras de 9–11 px; p. ej. 2 = al
  *  doble), logo_icono (url del logo recortado solo al ícono), titulos_mitad (títulos mitad en un color, mitad en otro),
- *  subtitulo (factor del texto bajo el titular; 2.2 = 120 % más grande). */
+ *  subtitulo (factor del texto bajo el titular; 2.2 = 120 % más grande), titular ([{t, c}] con c = fosforo | estatica |
+ *  blanco: titular escrito a mano con el color de cada parte). */
 export const ajustesSenal = (brief = {}) => {
   const a = brief.marca?.colores_opcion?.senal || {};
   const f = Number(a.letra_chica);
-  return { letraChica: f > 1 && f <= 3 ? f : 1, logoIcono: /^https?:\/\//.test(a.logo_icono || '') ? a.logo_icono : null, titulosMitad: !!a.titulos_mitad, subtitulo: Number(a.subtitulo) > 1 && Number(a.subtitulo) <= 4 ? Number(a.subtitulo) : 1 };
+  return { letraChica: f > 1 && f <= 3 ? f : 1, logoIcono: /^https?:\/\//.test(a.logo_icono || '') ? a.logo_icono : null, titulosMitad: !!a.titulos_mitad, subtitulo: Number(a.subtitulo) > 1 && Number(a.subtitulo) <= 4 ? Number(a.subtitulo) : 1,
+    titular: Array.isArray(a.titular) ? a.titular.filter((p) => p?.t && ['fosforo', 'estatica', 'blanco'].includes(p.c)) : [] };
 };
 
 /** Color "estática" (el blanco de títulos y textos destacados): a mano o el del modelo. */
@@ -258,8 +260,16 @@ export function paginaSenal(d) {
 
   // Material que ninguna sección tomó (regla de material completo): fila de tarjetas al final del trabajo.
   const cuerpo0 = partes.join('');
-  const faltan = unicas([...(mat.usables || []).filter((u) => u.tipo !== 'logo' && !/logo/.test(u.tipo || '')).flatMap((u) => (u.urls || []).map((url) => ({ url, alt: '' })))])
-    .filter((x) => /\.(jpe?g|png|webp|gif|avif)(\?|$)/i.test(x.url) && !usadas.has(x.url) && x.url !== portada?.url && !cuerpo0.includes(esc(x.url)));
+  // Mismo criterio que validarMaterial (un material cuenta si aparece cualquiera de sus versiones): lo que no quedó en
+  // ninguna sección, ni en la portada ni en el pie, va aquí, para que nunca se agregue la galería genérica
+  // "Más de nuestro trabajo" (Intiviso, 26-nov-2026).
+  const enPagina = (u) => cuerpo0.includes(u) || cuerpo0.includes(esc(u)) || usadas.has(u)
+    || [portada?.url, video?.url, mat.logo?.url, aj.logoIcono, ...(mat.logos_extra || []).map((x) => x?.url)].includes(u);
+  const faltan = (mat.usables || [])
+    .filter((u) => !(u.urls || []).some(enPagina))
+    .filter((u) => !(u.tipo === 'logo' && (u.urls || []).includes(mat.logo?.url)))
+    .map((u) => ({ url: u.urls[1] || u.urls[0], alt: '' }))
+    .filter((x) => /\.(jpe?g|png|webp|gif|avif)(\?|$)/i.test(x.url));
   const videosExtra = (mat.videos || []).filter((x) => x?.url && x.url !== video?.url);
   if (faltan.length || videosExtra.length) {
     const tit = T.galeria || 'Galería';
@@ -268,9 +278,10 @@ export function paginaSenal(d) {
   }
 
   // --- Portada ---
-  const titular = String(v.titular || nombre).trim();
+  const titular = aj.titular.length ? aj.titular.map((p) => p.t).join(' ') : String(v.titular || nombre).trim();
   const palabras = titular.split(/\s+/);
-  const h1 = dosColores(titular, true);
+  const COLOR = { fosforo: 'class="text-phosphor"', estatica: 'class="text-static"', blanco: 'style="color:#FFFFFF"' };
+  const h1 = aj.titular.length ? aj.titular.map((p) => `<span ${COLOR[p.c]}>${esc(p.t)}</span>`).join(' ') : dosColores(titular, true);
   const giro = String(neg.giro || neg.categoria || neg.subtipo || '').trim();
   const estado = [horario ? 'Atendiendo hoy' : 'Señal activa', horario.split(/[·;\n]/)[0] || neg.ciudad || ''].filter(Boolean).join(' · ');
   if (mat.logo?.url) marcar(mat.logo);
