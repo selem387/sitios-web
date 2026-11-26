@@ -198,6 +198,16 @@ const ALIAS = { resenas: 'testimonios', servicios: 'oferta', sobre: 'historia', 
 const quiereQuitar = (fuentes) => /\b(quita|quitar|borra|borrar|elimina|eliminar|saca|sacar)\b/i.test(fuentes);
 const elementos = (v) => (Array.isArray(v?.items) ? v.items.length : Array.isArray(v?.secciones) ? v.secciones.length : null);
 
+/** Clave de una foto nombrada por su clave, su archivo o su liga; si no se reconoce, regresa lo que llegó. */
+export function clavePorArchivo(k, fotos = []) {
+  const v = String(k || '').trim();
+  if (!v || fotos.some((a) => a.clave === v)) return v;
+  const archivo = v.split(/[?#]/)[0].split('/').pop().toLowerCase();
+  const base = archivo.replace(/\.[a-z0-9]+$/, '');
+  const f = fotos.find((a) => { const n = String(a.url || '').split(/[?#]/)[0].split('/').pop().toLowerCase(); return n && (n === archivo || n.replace(/\.[a-z0-9]+$/, '') === base); });
+  return f ? f.clave : v;
+}
+
 function validar(plan, act, fuentes, pedidoTexto = '') {
   const errores = [];
   const secciones = {};
@@ -239,6 +249,12 @@ function validar(plan, act, fuentes, pedidoTexto = '') {
   if (plan.fuentes && (!plan.fuentes.titulos || !plan.fuentes.cuerpo)) errores.push('Para cambiar la letra indica titulos y cuerpo');
   if (plan.fuentes && [plan.fuentes.titulos, plan.fuentes.cuerpo].some((f) => comunes.test(String(f || '').trim()))) errores.push('Usa tipografías poco comunes, no Arial, Roboto, Open Sans, Montserrat, Poppins, Lato ni Inter');
   const claves = new Set(act.fotos.map((a) => a.clave));
+  // El modelo a veces nombra la foto por su archivo o su liga ("rec-5wZ3SUmKAjkR.jpg") en vez de su clave (26-nov-2026,
+  // Intiviso Lab: el cambio pendiente fallaba con "La foto … no existe"). Se traduce a la clave antes de validar.
+  const aClave = (k) => clavePorArchivo(k, act.fotos);
+  if (plan.portada_foto) plan.portada_foto = aClave(plan.portada_foto);
+  if (Array.isArray(plan.fotos_quitar)) plan.fotos_quitar = plan.fotos_quitar.map(aClave);
+  if (Array.isArray(plan.fotos_poner)) plan.fotos_poner = plan.fotos_poner.map(aClave);
   for (const k of [plan.portada_foto, ...(plan.fotos_quitar || []), ...(plan.fotos_poner || [])].filter(Boolean)) if (!claves.has(k)) errores.push(`La foto "${k}" no existe`);
   return { secciones, paleta, estructura, errores };
 }

@@ -30,11 +30,16 @@ export const propuestasPendientes = (brief) => ['pendiente_material', 'mostradas
 export const ajusteElegida = (e) => e?.brief?.marca?.propuestas?.estado === 'elegida' && ['en_curso', 'pausada'].includes(e?.estado);
 
 /** Última pregunta pendiente de Ari (para retomarla después de aplicar un cambio). */
+/** Dirección (dominio) que el cliente ya dio: se guarda como en B12.3a para que Ari no la vuelva a preguntar. */
+function conDireccion(brief, dominio) {
+  return { ...brief, tecnico: { ...(brief.tecnico || {}), tiene_dominio: true, dominio } };
+}
+
 async function ultimaPregunta(entrevistaId) {
   const ms = await db.ultimosMensajes(entrevistaId, 30).catch(() => []);
   const m = [...ms].reverse().find((x) => x.rol === 'agente' && x.tipo !== 'imagen' && x.contenido?.includes('?') && !/^(Listo ✅|Seguimos 👇|Mientras, seguimos)/.test(x.contenido)
     // Confirmaciones de cambios a la página ("Ya quedó…¿algo más?", "No pude…") no son la pregunta de la entrevista.
-    && !/Ya quedó|No pude|Recarga|Cuando decidas|me quedo con|Ahora estamos trabajando/.test(x.contenido));
+    && !/Ya quedó|No pude|Recarga|Cuando decidas|me quedo con|Ahora estamos trabajando|Vamos con la opción|Ya estamos con la|Anoté \*/.test(x.contenido));
   if (!m) return null;
   const parrafos = m.contenido.split(/\n\s*\n/).filter((x) => x.includes('?'));
   return parrafos.at(-1)?.trim() || null;
@@ -317,6 +322,11 @@ export async function atenderPropuestas(e, brief, { texto = '', huboMedia = fals
       const m = await atenderMostradas(e, brief, p, { texto, clavesNuevas });
       if (m?.responder) return { ...m, seguirConAri: false };
       if (m?.accion === 'reenviar') return reenviar();
+      if (m?.accion === 'publicar') {
+        const disp = (p.opciones || []).map((o) => o.etiqueta || o.letra);
+        const nb = m.dominio ? conDireccion(brief, m.dominio) : brief;
+        return { responder: { textos: [`¡Con gusto! 🙌${m.dominio ? ` Anoté *${m.dominio}* como la dirección de tu página.` : ''} Primero dime cuál opción quieres publicar: ${disp.map((l) => `*${l}*`).join(', ')}.`] }, brief: nb, seguirConAri: false };
+      }
       if (m?.accion === 'elegir' && (p.opciones || []).some((o) => (o.etiqueta || o.letra) === m.letra)) r = { elegido: m.letra, colores_de: m.colores_de, pendiente: m.pendiente || null };
       else if (m?.accion === 'ninguna') r = { ninguna: true };
       else if (!m) r = interpretarEleccion(texto); // sin IA: como antes
@@ -370,6 +380,21 @@ export async function atenderPropuestas(e, brief, { texto = '', huboMedia = fals
     }
     const m = await atenderMostradas(e, brief, p, { texto, clavesNuevas, elegida: activa });
     if (m?.accion === 'elegir' && m.letra === activa && m.letra !== p.elegido) m.accion = 'seguir';
+    // "Vamos con la H" cuando ya va con la H (26-nov-2026): antes pasaba a Ari, que preguntaba qué cambiarle.
+    if (m?.accion === 'elegir' && m.letra === activa) {
+      const o = (p.opciones || []).find((x) => (x.etiqueta || x.letra) === activa);
+      const url = svV ? S.urlPublica(svV, { previa: !svV.url_publica && !svV.dominio }) : o?.url;
+      const q = await ultimaPregunta(e.id);
+      return { responder: { textos: [`¡Sí! Ya estamos con la *${activa}* ✅ Aquí está tu página 👇\n${url || ''}`, ...(q ? [`Seguimos 👇\n\n${q}`] : [])] }, brief, seguirConAri: false };
+    }
+    // Publicarla en su dirección: se anota la dirección y se sigue con las preguntas que faltan; al final van el pago y la conexión.
+    if (m?.accion === 'publicar') {
+      const nb = m.dominio ? conDireccion(brief, m.dominio) : brief;
+      await db.evento(e.id, 'pidio_publicar', { dominio: m.dominio || null }).catch(() => {});
+      const q = await ultimaPregunta(e.id);
+      const anoto = m.dominio ? `Anoté *${m.dominio}* como la dirección de tu página.` : 'Al final te pregunto la dirección donde la quieres.';
+      return { responder: { textos: [`¡Va! 🙌 ${anoto} Para publicarla me faltan unas preguntas cortas; al terminarlas te mando la liga de pago y la conecto. Los cambios a tu página me los puedes pedir cuando quieras, antes o después de publicarla.`, ...(q ? [`Seguimos 👇\n\n${q}`] : [])] }, brief: nb, seguirConAri: false };
+    }
     if (!m || m.accion === 'seguir') return { responder: null, brief, seguirConAri: true };
     if (m.accion === 'encolar' || (m.accion === 'elegir' && m.letra !== activa)) {
       // Cambios con la opción ya elegida (11-nov-2026): datos → base, visual → IA sobre el sitio armado desde la base.
