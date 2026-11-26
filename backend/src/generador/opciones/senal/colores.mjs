@@ -9,6 +9,7 @@
 //   --logo-fucsia-morado    toma del logo el fucsia (→ blanco) y el morado (→ verde)
 //   --letra-chica=2         letras de 9, 10 y 11 px multiplicadas (2 = al doble); la columna lateral se ensancha
 //   --titulos-mitad         títulos con la mitad de las palabras en un color y la otra mitad en el otro
+//   --subtitulo=2.2         texto bajo el titular más grande (2.2 = 120 % más grande)
 //   --logo-icono            recorta el logo hasta el primer hueco vertical (deja solo el ícono) y lo usa arriba;
 //                           el logo completo pasa al pie
 //   --sin-<ajuste>          quita ese ajuste (p. ej. --sin-logo-icono, --sin-titulos-mitad, --sin-letra-chica)
@@ -61,6 +62,7 @@ if (tiene('logo-fucsia-morado')) {
 }
 if (val('letra-chica')) a.letra_chica = Number(val('letra-chica'));
 if (tiene('titulos-mitad')) a.titulos_mitad = true;
+if (val('subtitulo')) a.subtitulo = Number(val('subtitulo'));
 if (tiene('logo-icono')) {
   if (!mat.logo?.url) { console.error('El cliente no tiene logo'); process.exit(1); }
   const buf = Buffer.from(await (await fetch(mat.logo.url)).arrayBuffer());
@@ -79,7 +81,7 @@ if (tiene('logo-icono')) {
   a.logo_icono = `${config.publicUrl}/chat/archivos/${nombre}`;
   console.log(`Ícono recortado (x ${inicio}–${fin} de ${W} px):`, a.logo_icono);
 }
-for (const [flag, k] of [['sin-logo-icono', 'logo_icono'], ['sin-titulos-mitad', 'titulos_mitad'], ['sin-letra-chica', 'letra_chica']]) if (tiene(flag)) delete a[k];
+for (const [flag, k] of [['sin-logo-icono', 'logo_icono'], ['sin-titulos-mitad', 'titulos_mitad'], ['sin-letra-chica', 'letra_chica'], ['sin-subtitulo', 'subtitulo']]) if (tiene(flag)) delete a[k];
 
 const actuales = { ...(e.brief.marca?.colores_opcion || {}) };
 if (Object.keys(a).length) actuales.senal = a; else delete actuales.senal;
