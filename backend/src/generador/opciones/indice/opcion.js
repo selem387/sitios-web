@@ -36,7 +36,8 @@ export const opcion = {
         const largo = !!(crudo && String(crudo.titular).trim().length > 60);
         const lemaTxt = largo ? String(crudo.titular).trim() : dp?.titular;
         const apoyoTxt = largo ? String(crudo.apoyo || '').trim() : (dp ? dp.apoyo : giro);
-        const esc0 = escenaIndiceHTML({ heroFoto, tunel, img, kicker: [giro, neg.ciudad].filter(Boolean).join(' · '), titular: t.titular, subtitulo: t.subtitulo, cta: cta(), info: t.info || [],
+        // La línea chica sobre el titular sale de giro · ciudad, salvo que el cliente pida otra (textos.kicker; 26-nov-2026, Intiviso).
+        const esc0 = escenaIndiceHTML({ heroFoto, tunel, img, kicker: String(c.brief?.marca?.propuestas?.textos?.kicker || '').trim() || [giro, neg.ciudad].filter(Boolean).join(' · '), titular: t.titular, subtitulo: t.subtitulo, cta: cta(), info: t.info || [],
           lema: lemaTxt || d.nombre, apoyo: apoyoTxt, logo: mat.logo ? logoHTML(mat.logo, '#141414', '#FFFFFF', { alt: d.nombre }) : '', nombre: d.nombre });
         esc0.urls.forEach((u) => enPortada.add(u));
         return esc0.html;
