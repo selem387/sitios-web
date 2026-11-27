@@ -10,7 +10,7 @@ const limpio = (s) => String(s ?? '').replace(/\s+/g, ' ').trim();
 const fechaMx = (d) => new Date(d).toLocaleDateString('es-MX', { day: 'numeric', month: 'long', year: 'numeric' });
 
 export const CSS_LEGAL = `<style>.aviso{max-width:68ch;margin:0 auto;padding:clamp(88px,12vw,128px) clamp(20px,5vw,32px) 72px;line-height:1.65}
-.aviso h1{font-size:clamp(2rem,7vw,3rem);line-height:1.1;margin:0 0 .6em}.aviso h2{font-size:clamp(1.25rem,4.2vw,1.6rem);line-height:1.2;margin:2.2em 0 .6em}
+.aviso h1{font-size:clamp(2rem,7vw,3rem)!important;line-height:1.1!important;margin:0 0 .6em!important}.aviso h2{font-size:clamp(1.25rem,4.2vw,1.6rem)!important;line-height:1.2!important;margin:2.2em 0 .6em!important;text-transform:none!important;letter-spacing:0!important;max-width:none!important}.aviso p,.aviso li{max-width:none!important}
 .aviso p{margin:0 0 1em}.aviso ul{margin:0 0 1.2em;padding-left:1.3em}.aviso li{margin:.3em 0}.aviso li::marker{color:var(--p,currentColor)}.aviso a{color:inherit}
 .aviso table{border-collapse:collapse;width:100%;margin:0 0 1.2em;font-size:.95em}.aviso th,.aviso td{border:1px solid color-mix(in srgb,currentColor 20%,transparent);padding:8px 10px;text-align:left;vertical-align:top}</style>`;
 
@@ -19,7 +19,7 @@ function quien(brief) {
   const c = brief.contacto || {};
   const nombre = limpio(n.nombre) || 'Este negocio';
   const titular = limpio(brief.confianza?.fundador?.nombre);
-  const dom = direccionTexto(brief) || [n.ciudad, n.estado, 'México'].filter(Boolean).join(', ');
+  const dom = direccionTexto(brief) || [...new Set([n.ciudad, n.estado, 'México'].filter(Boolean).map(limpio))].join(', ');
   const medio = c.email ? `<a href="mailto:${esc(c.email)}">${esc(c.email)}</a>` : (c.whatsapp || c.telefono) ? `WhatsApp o teléfono ${esc(c.whatsapp || c.telefono)}` : 'los medios de contacto de esta página';
   return { nombre, titular, dom, medio, estado: limpio(n.estado) || limpio(n.ciudad) };
 }

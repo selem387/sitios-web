@@ -68,13 +68,18 @@ const logoDe = (html = '') => {
   return src ? src : '';
 };
 
-export const CSS_PIE = `.pie-std{background:color-mix(in srgb,var(--fg,#111) 5%,var(--bg,#fff));color:var(--fg,#1a1a1a);font-family:var(--fc,inherit);border-top:1px solid color-mix(in srgb,var(--fg,#111) 12%,transparent);padding:clamp(48px,7vw,80px) 0 28px;margin-top:0}
+// Cada opción trae reglas globales fuertes (h2 gigantes en mayúsculas, ligas con forma de botón, texto centrado):
+// el pie las neutraliza con !important para verse igual en todas.
+const RESET_PIE = `.pie-std,.pie-std *{text-align:left!important}.pie-std h2{font-family:var(--fc,inherit)!important;font-size:13px!important;line-height:1.3!important;font-weight:600!important;letter-spacing:.12em!important;text-transform:uppercase!important;margin:0 0 14px!important;opacity:.7;max-width:none!important;animation:none!important;transform:none!important}
+.pie-std a:not(.ps-btn):not(.red){display:inline!important;border:0!important;padding:0!important;background:none!important;border-radius:0!important;min-height:0!important;box-shadow:none!important;font-weight:400!important;color:inherit!important;width:auto!important}
+.pie-std .ps-dato a{font-weight:500!important}.pie-std p{max-width:none!important}`;
+export const CSS_PIE = RESET_PIE + `.pie-std{position:relative;z-index:40;background:color-mix(in srgb,var(--fg,#111) 5%,var(--bg,#fff));color:var(--fg,#1a1a1a);font-family:var(--fc,inherit);border-top:1px solid color-mix(in srgb,var(--fg,#111) 12%,transparent);padding:clamp(48px,7vw,80px) 0 28px;margin-top:0}
 .pie-std *{box-sizing:border-box}.pie-std .ps-w{width:min(1200px,100% - 40px);margin:0 auto}
 .pie-std .ps-g{display:grid;gap:36px 40px;grid-template-columns:minmax(0,1.3fr) repeat(3,minmax(0,1fr))}
 @media(max-width:980px){.pie-std .ps-g{grid-template-columns:repeat(2,minmax(0,1fr))}}
 @media(max-width:600px){.pie-std .ps-g{grid-template-columns:1fr}}
 .pie-std h2{font-family:var(--fc,inherit);font-size:13px;font-weight:600;letter-spacing:.12em;text-transform:uppercase;margin:0 0 14px;opacity:.7}
-.pie-std .ps-logo{display:block;max-width:220px;max-height:64px;width:auto;height:auto;margin:0 0 14px}
+.pie-std .ps-logo{border:0!important;border-radius:0!important;padding:0!important;background:none!important;display:block;max-width:220px;max-height:64px;width:auto;height:auto;margin:0 0 14px}
 .pie-std .ps-nombre{font-family:var(--ft,inherit);font-size:22px;margin:0 0 8px}
 .pie-std p{margin:0 0 10px;line-height:1.55;font-size:15px}.pie-std ul{list-style:none;margin:0;padding:0;display:grid;gap:9px}
 .pie-std a{color:inherit;text-decoration:none;font-size:15px;line-height:1.4}.pie-std a:hover,.pie-std a:focus-visible{text-decoration:underline;text-underline-offset:3px}
