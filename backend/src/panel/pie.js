@@ -116,7 +116,7 @@ export function pieHTML(brief = {}, { html = '', base = '', medicion = null, ani
   const cookiesCfg = medicionActiva(medicion);
   const col1 = `<div>${logo ? `<a href="${esc(raiz)}" aria-label="${esc(nombre)}, inicio"><img class="ps-logo" src="${esc(logo)}" alt="${esc(nombre)}" loading="lazy" decoding="async"></a>` : `<p class="ps-nombre">${esc(nombre)}</p>`}${lema ? `<p>${esc(lema.length > 160 ? `${lema.slice(0, 157)}…` : lema)}</p>` : ''}${rs ? `<div class="rs" aria-label="Redes sociales">${rs}</div>` : ''}</div>`;
   const col2 = nav.length ? `<nav aria-label="Navegación del pie"><h2>Navegación</h2><ul><li><a href="${esc(raiz)}">Inicio</a></li>${nav.map(([id, t]) => `<li><a href="${esc(`${raiz}#${id}`)}">${esc(t)}</a></li>`).join('')}</ul></nav>` : '';
-  const col3 = `<div><h2>Contacto</h2>${dato('WhatsApp', wa ? `<a href="https://wa.me/${wa}" target="_blank" rel="noopener">${esc(telVer(wa))}</a>` : '')}${dato('Teléfono', tel && tel.replace(/\D/g, '') !== wa.replace(/^521?/, '') ? `<a href="tel:${esc(tel)}">${esc(telVer(tel))}</a>` : '')}${dato('Correo', c.email ? `<a href="mailto:${esc(c.email)}">${esc(c.email)}</a>` : '')}${dato(dir ? 'Dirección' : 'Zona de servicio', esc(dir || zona))}${dato('Horario', esc(hor))}${comoLlegar ? `<a class="ps-btn" href="${esc(comoLlegar)}" target="_blank" rel="noopener">Cómo llegar</a>` : ''}</div>`;
+  const col3 = `<div id="pie-contacto"><h2>Contacto</h2>${dato('WhatsApp', wa ? `<a href="https://wa.me/${wa}" target="_blank" rel="noopener">${esc(telVer(wa))}</a>` : '')}${dato('Teléfono', tel && tel.replace(/\D/g, '') !== wa.replace(/^521?/, '') ? `<a href="tel:${esc(tel)}">${esc(telVer(tel))}</a>` : '')}${dato('Correo', c.email ? `<a href="mailto:${esc(c.email)}">${esc(c.email)}</a>` : '')}${dato(dir ? 'Dirección' : 'Zona de servicio', esc(dir || zona))}${dato('Horario', esc(hor))}${comoLlegar ? `<a class="ps-btn" href="${esc(comoLlegar)}" target="_blank" rel="noopener">Cómo llegar</a>` : ''}</div>`;
   const legales = LEGALES.map(([r, t]) => `<li><a href="${esc(`${base}/${r}`)}">${esc(t)}</a></li>`);
   legales.splice(1, 0, `<li><a href="${esc(`${base}/aviso-de-privacidad#arco`)}">Derechos ARCO</a></li>`);
   const col4 = `<nav aria-label="Información legal"><h2>Legal</h2><ul>${legales.join('')}${cookiesCfg ? '<li><button type="button" class="ps-cookies" onclick="window.__cookies&&window.__cookies(true)">Configurar cookies</button></li>' : ''}</ul></nav>`;
@@ -124,9 +124,21 @@ export function pieHTML(brief = {}, { html = '', base = '', medicion = null, ani
   return `<footer class="pie-std" role="contentinfo"><style>${CSS_PIE}</style><div class="ps-w"><div class="ps-g">${col1}${col2}${col3}${col4}</div>${iframe}<div class="ps-base"><span>© ${anio} ${esc(nombre)}. Todos los derechos reservados.</span><span><a href="${esc(`${base}/aviso-de-privacidad`)}">Privacidad</a> · <a href="${esc(`${base}/terminos-y-condiciones`)}">Términos</a> · <a href="${esc(`${base}/politica-de-cookies`)}">Cookies</a></span></div></div></footer>`;
 }
 
+/** "Contacto" como último punto de cada menú del sitio (26-nov-2026, Intiviso: "agrega al menú el ítem 8 Contacto"),
+ * apuntando al contacto completo del pie. Si el menú ya tiene una liga llamada "Contacto", no se repite. */
+export function conMenuContacto(html = '') {
+  const liga = '<a href="#pie-contacto">Contacto</a>';
+  return html.replace(/<nav\b[^>]*>[\s\S]*?<\/nav>/g, (nav) => {
+    if (!/href="#/.test(nav) || />\s*Contacto\s*</i.test(nav)) return nav;
+    if (/<\/ol>|<\/ul>/.test(nav)) return nav.replace(/(<\/ol>|<\/ul>)(?![\s\S]*(<\/ol>|<\/ul>))/, `<li>${liga}</li>$1`);
+    return nav.replace(/<\/nav>$/, `${liga}</nav>`);
+  });
+}
+
 /** Reemplaza el pie de la opción de diseño por el estándar (o lo agrega antes de </body> si no tenía). */
 export function conPieCompleto(html, brief, opts = {}) {
   const pie = pieHTML(brief, { ...opts, html });
+  html = conMenuContacto(html);
   const fin = html.lastIndexOf('</footer>');
   if (fin >= 0) {
     const ini = html.lastIndexOf('<footer', fin);
